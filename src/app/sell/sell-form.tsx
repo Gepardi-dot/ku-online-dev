@@ -36,7 +36,6 @@ const ACCEPTED_FILE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'imag
 const ACCEPTED_FILE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
 const ACCEPTED_FILE_LABELS = ['JPG', 'PNG', 'WebP', 'AVIF'];
 const ACCEPTED_FILES_DESCRIPTION = ACCEPTED_FILE_LABELS.join(', ');
-const STORAGE_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'product-images';
 
 type UploadedImage = {
   url: string;
@@ -193,51 +192,40 @@ export default function SellForm({ user }: SellFormProps) {
           continue;
         }
 
-        const normalizedExtension = extension === 'jpeg' ? 'jpg' : extension;
-        const contentType = file.type && file.type.includes('/')
-          ? file.type
-          : normalizedExtension === 'jpg'
-            ? 'image/jpeg'
-            : `image/${normalizedExtension}`;
+        const uploadFormData = new FormData();
+        uploadFormData.append('file', file);
 
-        const uniqueSuffix = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-        const filePath = `${userForUpload.id}/${uniqueSuffix}.${normalizedExtension}`;
+        let response: Response;
+        let payload: { error?: string; publicUrl?: string; path?: string } | null = null;
 
-        const { error: uploadError } = await supabase.storage
-          .from(STORAGE_BUCKET)
-          .upload(filePath, file, {
-            cacheControl: '3600',
-            upsert: false,
-            contentType,
+        try {
+          response = await fetch('/api/uploads', {
+            method: 'POST',
+            body: uploadFormData,
           });
-
-        if (uploadError) {
-          console.error('Failed to upload image', uploadError);
+          payload = await response.json().catch(() => null);
+        } catch (networkError) {
+          console.error('Network error while uploading image', networkError);
           toast({
             title: 'Upload failed',
-            description: `Could not upload ${file.name}. Please try again.`,
+            description: `Could not upload ${file.name}. Check your connection and try again.`,
             variant: 'destructive',
           });
           continue;
         }
 
-        const { data: publicUrlData, error: publicUrlError } = supabase.storage
-          .from(STORAGE_BUCKET)
-          .getPublicUrl(filePath);
-
-        if (publicUrlError || !publicUrlData?.publicUrl) {
-          console.error('Failed to create public URL', publicUrlError);
-          await supabase.storage.from(STORAGE_BUCKET).remove([filePath]);
+        if (!response.ok || !payload?.publicUrl || !payload?.path) {
+          const message = payload?.error ?? `Could not upload ${file.name}. Please try again.`;
           toast({
             title: 'Upload failed',
-            description: `Could not prepare ${file.name} for display. Please try again.`,
+            description: message,
             variant: 'destructive',
           });
           continue;
         }
 
-        setUploadedImages((prev) => [...prev, { url: publicUrlData.publicUrl, path: filePath }]);
-        setFormData((prev) => ({ ...prev, images: [...prev.images, publicUrlData.publicUrl] }));
+        setUploadedImages((prev) => [...prev, { url: payload.publicUrl, path: payload.path }]);
+        setFormData((prev) => ({ ...prev, images: [...prev.images, payload.publicUrl] }));
 
         availableSlots -= 1;
         if (availableSlots <= 0) {
@@ -304,12 +292,16 @@ export default function SellForm({ user }: SellFormProps) {
     setStorageBusy(true);
 
     try {
-      const { error } = await supabase.storage.from(STORAGE_BUCKET).remove([image.path]);
-      if (error) {
-        console.error('Failed to remove image', error);
+      const response = await fetch(`/api/uploads?path=${encodeURIComponent(image.path)}`, {
+        method: 'DELETE',
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const message = payload?.error ?? 'Please try again in a moment.';
         toast({
           title: 'Unable to remove image',
-          description: 'Please try again in a moment.',
+          description: message,
           variant: 'destructive',
         });
         return;
@@ -320,6 +312,13 @@ export default function SellForm({ user }: SellFormProps) {
         ...prev,
         images: prev.images.filter((url) => url !== image.url),
       }));
+    } catch (error) {
+      console.error('Failed to remove image', error);
+      toast({
+        title: 'Unable to remove image',
+        description: 'Please try again in a moment.',
+        variant: 'destructive',
+      });
     } finally {
       setStorageBusy(false);
     }

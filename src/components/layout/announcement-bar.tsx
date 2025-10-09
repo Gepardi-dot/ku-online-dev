@@ -1,6 +1,7 @@
 "use client"
 
 import { cn } from "@/lib/utils"
+import { useLocale } from "@/providers/locale-provider"
 
 const Marquee = ({ className, reverse, children, ...props }: {
     className?: string,
@@ -35,14 +36,18 @@ const Marquee = ({ className, reverse, children, ...props }: {
 }
 
 export function AnnouncementBar() {
-    return (
-        <div className="bg-primary text-primary-foreground">
-            <Marquee className="text-sm font-medium">
-                 <span className="mx-4">Your Best Online Marketplace In Kurdistan</span>
-                 <span className="mx-4">Your Best Online Marketplace In Kurdistan</span>
-                 <span className="mx-4">Your Best Online Marketplace In Kurdistan</span>
-                 <span className="mx-4">Your Best Online Marketplace In Kurdistan</span>
-            </Marquee>
-        </div>
-    )
+  const { t } = useLocale()
+  const tagline = t("announcement.tagline")
+
+  return (
+    <div className="bg-primary text-primary-foreground">
+      <Marquee className="text-sm font-medium">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <span className="mx-4 whitespace-nowrap" key={index}>
+            {tagline}
+          </span>
+        ))}
+      </Marquee>
+    </div>
+  )
 }

@@ -6,6 +6,7 @@ import { AnnouncementBar } from '@/components/layout/announcement-bar';
 import AppFooter from '@/components/layout/footer';
 import MobileNav from '@/components/layout/mobile-nav';
 import { PT_Sans } from 'next/font/google';
+import { LocaleProvider } from '@/providers/locale-provider';
 
 const ptSans = PT_Sans({
   subsets: ['latin'],
@@ -26,11 +27,13 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={cn(ptSans.className, 'font-body antialiased min-h-screen bg-background font-sans')}>
+        <LocaleProvider>
           <AnnouncementBar />
           <div className="pb-16 md:pb-0">{children}</div>
           <MobileNav />
           <AppFooter />
           <Toaster />
+        </LocaleProvider>
       </body>
     </html>
   );

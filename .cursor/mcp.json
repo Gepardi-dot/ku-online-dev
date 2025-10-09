@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "supabase": {
+      "command": "npm",
+      "args": ["run", "dev"],
+      "cwd": "${workspaceFolder}/tools/supabase-mcp"
+    }
+  }
+}

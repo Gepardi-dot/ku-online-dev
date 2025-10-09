@@ -13,10 +13,22 @@ import ProductCard from '@/components/product-card-new';
 import { getProducts } from '@/lib/services/products';
 import { formatDistanceToNow } from 'date-fns';
 
-export default async function ProfilePage() {
+type ProfilePageSearchParams = {
+  tab?: string;
+};
+
+const ALLOWED_TABS = new Set(['listings', 'reviews', 'messages', 'settings']);
+
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams?: ProfilePageSearchParams;
+}) {
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   if (!user) {
     redirect('/');
@@ -24,7 +36,9 @@ export default async function ProfilePage() {
 
   const { data: profileRow } = await supabase
     .from('users')
-    .select('full_name, avatar_url, phone, location, bio, rating, total_ratings, created_at, response_rate, is_verified')
+    .select(
+      'full_name, avatar_url, phone, location, bio, rating, total_ratings, created_at, response_rate, is_verified',
+    )
     .eq('id', user.id)
     .maybeSingle();
 
@@ -42,13 +56,18 @@ export default async function ProfilePage() {
     rating: profileRow?.rating ? Number(profileRow.rating) : null,
     totalRatings: profileRow?.total_ratings ? Number(profileRow.total_ratings) : 0,
     joinedDate: profileRow?.created_at ?? user.created_at ?? null,
-    responseRate: profileRow?.response_rate ?? '—',
+    responseRate: profileRow?.response_rate ?? '--',
     isVerified: Boolean(profileRow?.is_verified),
   };
 
   const joinedLabel = profileData.joinedDate
     ? formatDistanceToNow(new Date(profileData.joinedDate), { addSuffix: true })
     : null;
+
+  const requestedTab = searchParams?.tab ?? 'listings';
+  const activeTab = ALLOWED_TABS.has(requestedTab ?? '')
+    ? (requestedTab as string)
+    : 'listings';
 
   return (
     <AppLayout user={user}>
@@ -79,7 +98,9 @@ export default async function ProfilePage() {
                     {(profileData.rating || profileData.totalRatings) && (
                       <div className="flex items-center justify-center gap-1 mt-1">
                         <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-medium">{(profileData.rating ?? 0).toFixed(1)}</span>
+                        <span className="font-medium">
+                          {(profileData.rating ?? 0).toFixed(1)}
+                        </span>
                         <span className="text-muted-foreground">
                           ({profileData.totalRatings} reviews)
                         </span>
@@ -129,7 +150,7 @@ export default async function ProfilePage() {
           </div>
 
           <div className="lg:col-span-2">
-            <Tabs defaultValue="listings" className="space-y-6">
+            <Tabs defaultValue={activeTab} className="space-y-6">
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="listings">
                   <Package className="mr-2 h-4 w-4" />

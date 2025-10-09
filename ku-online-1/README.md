@@ -63,6 +63,7 @@ public/ (implicit)        -> Not present; remote images used instead
   - Validates required fields (price, condition, location, category, at least one image).
   - Uploads images to Supabase storage bucket (`product-images` by default).
   - Modern drag-and-drop uploader accepts JPG, PNG, WebP, or AVIF up to 10MB each.
+  - Upload API (`src/app/api/uploads/route.ts`) uses Supabase service role on the server to persist and delete media safely.
   - Stores public image URLs with product insert.
   - Displays upload progress, preview, and removal (with storage cleanup).
   - Redirects to home on success.
