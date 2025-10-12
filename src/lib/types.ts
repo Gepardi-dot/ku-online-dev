@@ -9,6 +9,9 @@ export interface User {
   isVerified: boolean;
   rating: number;
   totalRatings: number;
+  responseRate?: number;
+  lastSeenAt?: string;
+  responseTimeMinutes?: number;
   createdAt: string;
   updatedAt: string;
 }

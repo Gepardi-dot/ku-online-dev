@@ -46,29 +46,40 @@ async function ProductsList({ searchParams, messages }: ProductsListProps) {
 
   return (
     <>
-      <section className="py-6 bg-white border-b">
-        <div className="container mx-auto px-4">
-          <div className="flex items-center gap-x-6 gap-y-2 flex-wrap">
-            <h3 className="text-lg font-semibold mr-4">
+      <section className="py-4 bg-white border-b">
+        <div className="container mx-auto px-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-semibold">
               {messages.homepage.categoriesLabel}
             </h3>
-            {categories.length === 0 ? (
-              <span className="text-sm text-muted-foreground">
-                {messages.homepage.noCategories}
-              </span>
-            ) : (
-              categories.map((category) => (
+            <Link
+              href="/products"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              {messages.homepage.viewAll}
+            </Link>
+          </div>
+
+          {categories.length === 0 ? (
+            <span className="text-sm text-muted-foreground">
+              {messages.homepage.noCategories}
+            </span>
+          ) : (
+            <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
+              {categories.map((category) => (
                 <Link
                   href={`/?category=${category.id}`}
                   key={category.id}
-                  className="font-medium text-muted-foreground hover:text-primary transition-colors"
+                  className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-transparent bg-white px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary"
                 >
-                  {category.icon ? `${category.icon} ` : ''}
-                  {category.name}
+                  <span className="text-base leading-none">
+                    {category.icon ?? '🛍️'}
+                  </span>
+                  <span className="whitespace-nowrap">{category.name}</span>
                 </Link>
-              ))
-            )}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 

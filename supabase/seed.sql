@@ -6,12 +6,14 @@ values
     ('00000000-0000-0000-0000-000000000003', 'Fashion', 'Clothing, shoes, and accessories', 3)
 on conflict (id) do nothing;
 
-insert into public.users (id, email, full_name, is_verified)
+insert into public.users (id, email, full_name, is_verified, response_rate, last_seen_at)
 values (
     '00000000-0000-0000-0000-0000000000aa',
     'demo@sellku.app',
     'Demo Seller',
-    true
+    true,
+    98.50,
+    timezone('utc', now())
 )
 on conflict (id) do nothing;
 

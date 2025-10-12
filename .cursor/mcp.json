@@ -3,7 +3,10 @@
     "supabase": {
       "command": "npm",
       "args": ["run", "dev"],
-      "cwd": "${workspaceFolder}/tools/supabase-mcp"
+      "cwd": "${workspaceFolder}/tools/supabase-mcp",
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "[REDACTED]"
+      }
     }
   }
 }

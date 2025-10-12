@@ -23,6 +23,41 @@ Image uploads for product listings rely on a Supabase Storage bucket. The fronte
 
 After the bucket exists, image uploads from the sell form will succeed. If uploads still fail, double-check the environment variables in `.env.local` for your Supabase URL, anon key, and storage bucket name.
 
+## Supabase database & edge functions
+
+Run the migrations and deploy the edge function so that the frontend can rely on live data instead of mocks:
+
+1. `supabase db reset --env-file .env.local` (or `supabase db push`) to apply the schema, triggers, policies, and the demo seed data.
+2. `supabase functions deploy product-search --project-ref <project-ref>` to publish the full-text search edge function.
+3. Verify the following environment variables exist in Vercel/Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET`.
+
+### What the migration enables
+
+- Marketplace tables: `users`, `categories`, `products`, `conversations`, `messages`, `reviews`, `favorites`, and `notifications`.
+- RLS policies for buyers/sellers, along with helper RPCs like `get_or_create_conversation` and `search_products`.
+- Automatic rating recalculation, conversation metadata updates, and message notifications via Postgres triggers.
+- Generated `search_document` column and supporting indexes for fast filtering and fuzzy searches.
+
+### Using the `product-search` edge function
+
+The edge function wraps the `search_products` RPC for richer search results. Invoke it from the client with:
+
+```ts
+const { data, error } = await supabase.functions.invoke('product-search', {
+  body: {
+    query: 'iphone',
+    categoryId: 'uuid',
+    minPrice: 100000,
+    maxPrice: 500000,
+    city: 'Erbil',
+    limit: 24,
+    offset: 0,
+  },
+});
+```
+
+The response includes `{ items, limit, offset }`, where `items` mirrors the `products` rows along with a `rank` column for relevance scoring.
+
 ## Committing and pushing changes
 
 If you are developing locally and want to publish updates to the default branch (commonly named `main`), run the following commands from the project root:
