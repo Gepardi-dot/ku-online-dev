@@ -12,6 +12,8 @@ import { MapPin, Star, Package, MessageCircle, Settings, Edit } from 'lucide-rea
 import ProductCard from '@/components/product-card-new';
 import { getProducts } from '@/lib/services/products';
 import { formatDistanceToNow } from 'date-fns';
+import ProfileSettingsForm from './profile-settings-form';
+import type { UpdateProfileFormValues } from './form-state';
 
 type ProfilePageSearchParams = {
   tab?: string;
@@ -58,6 +60,13 @@ export default async function ProfilePage({
     joinedDate: profileRow?.created_at ?? user.created_at ?? null,
     responseRate: profileRow?.response_rate ?? '--',
     isVerified: Boolean(profileRow?.is_verified),
+  };
+
+  const settingsInitialValues: UpdateProfileFormValues = {
+    fullName: profileRow?.full_name ?? user.user_metadata?.full_name ?? profileData.fullName,
+    phone: profileRow?.phone ?? user.user_metadata?.phone ?? null,
+    location: profileRow?.location ?? user.user_metadata?.location ?? null,
+    bio: profileRow?.bio ?? null,
   };
 
   const joinedLabel = profileData.joinedDate
@@ -223,20 +232,15 @@ export default async function ProfilePage({
                     <CardTitle>Account Settings</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       <div>
-                        <label className="text-sm font-medium">Email</label>
+                        <p className="text-sm font-medium">Account email</p>
                         <p className="text-sm text-muted-foreground">{profileData.email}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Email changes are managed through your authentication provider.
+                        </p>
                       </div>
-                      {profileData.phone && (
-                        <div>
-                          <label className="text-sm font-medium">Phone</label>
-                          <p className="text-sm text-muted-foreground">{profileData.phone}</p>
-                        </div>
-                      )}
-                      <Button variant="outline" className="mt-4">
-                        Update Contact Information
-                      </Button>
+                      <ProfileSettingsForm initialValues={settingsInitialValues} />
                     </div>
                   </CardContent>
                 </Card>
