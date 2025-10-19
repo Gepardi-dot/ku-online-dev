@@ -7,9 +7,10 @@ import { getSimilarProducts } from '@/lib/services/products';
 interface SimilarItemsProps {
   productId: string;
   categoryId: string | null | undefined;
+  viewerId?: string | null;
 }
 
-export default async function SimilarItems({ productId, categoryId }: SimilarItemsProps) {
+export default async function SimilarItems({ productId, categoryId, viewerId }: SimilarItemsProps) {
   if (!categoryId) {
     return null;
   }
@@ -37,7 +38,7 @@ export default async function SimilarItems({ productId, categoryId }: SimilarIte
             {similarProducts.map((recProduct) => (
               <CarouselItem key={recProduct.id} className="md:basis-1/2 lg:basis-1/3">
                 <div className="p-1 h-full">
-                  <ProductCard product={recProduct} />
+                  <ProductCard product={recProduct} viewerId={viewerId} />
                 </div>
               </CarouselItem>
             ))}

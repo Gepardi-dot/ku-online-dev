@@ -192,7 +192,7 @@ export default async function ProfilePage({
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {listings.map((listing) => (
-                          <ProductCard key={listing.id} product={listing} />
+                          <ProductCard key={listing.id} product={listing} viewerId={user.id} />
                         ))}
                       </div>
                     )}

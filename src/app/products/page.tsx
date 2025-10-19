@@ -33,6 +33,7 @@ interface ProductsContentProps {
   searchParams: Promise<ProductsSearchParams>;
   categories: { id: string; name: string }[];
   locations: string[];
+  viewerId?: string | null;
 }
 
 const PAGE_SIZE = 24;
@@ -98,7 +99,7 @@ function buildQueryString(base: ProductsFilterValues, overrides: Record<string, 
   return query ? `/products?${query}` : '/products';
 }
 
-async function ProductsContent({ searchParams, categories, locations }: ProductsContentProps) {
+async function ProductsContent({ searchParams, categories, locations, viewerId }: ProductsContentProps) {
   const params = await searchParams;
 
   const pageParam = params.page ? Number(params.page) : 1;
@@ -169,7 +170,7 @@ async function ProductsContent({ searchParams, categories, locations }: Products
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {items.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} viewerId={viewerId} />
             ))}
           </div>
         )}
@@ -209,7 +210,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   return (
     <AppLayout user={user}>
       <Suspense fallback={<div className="container mx-auto px-4 py-12 text-center">Loading listings...</div>}>
-        <ProductsContent searchParams={searchParams} categories={categoryOptions} locations={locations} />
+        <ProductsContent
+          searchParams={searchParams}
+          categories={categoryOptions}
+          locations={locations}
+          viewerId={user?.id ?? null}
+        />
       </Suspense>
     </AppLayout>
   );

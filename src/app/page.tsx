@@ -29,9 +29,10 @@ interface SearchPageProps {
 
 interface ProductsListProps extends SearchPageProps {
   messages: LocaleMessages;
+  viewerId?: string | null;
 }
 
-async function ProductsList({ searchParams, messages }: ProductsListProps) {
+async function ProductsList({ searchParams, messages, viewerId }: ProductsListProps) {
   const params = await searchParams;
 
   const [products, categories] = await Promise.all([
@@ -99,7 +100,7 @@ async function ProductsList({ searchParams, messages }: ProductsListProps) {
 
           <div className="grid grid-cols-2 gap-x-2 gap-y-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard key={product.id} product={product} viewerId={viewerId} />
             ))}
           </div>
 
@@ -136,7 +137,7 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
             </div>
           }
         >
-          <ProductsList searchParams={searchParams} messages={messages} />
+          <ProductsList searchParams={searchParams} messages={messages} viewerId={user?.id ?? null} />
         </Suspense>
 
         <section className="py-12 bg-gray-50">

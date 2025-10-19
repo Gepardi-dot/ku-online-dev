@@ -9,13 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, Eye, Heart, Share2, Flag } from 'lucide-react';
+import { MapPin, Eye, Share2, Flag } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ChatButton from '@/components/chat/chat-button';
 import ReviewSystem from '@/components/reviews/review-system';
 import SimilarItems from '@/components/product/similar-items';
 import { formatDistanceToNow } from 'date-fns';
 import { getProductById, incrementProductViews } from '@/lib/services/products';
+import FavoriteToggle from '@/components/product/favorite-toggle';
 
 const placeholderReviews = [
   {
@@ -109,9 +110,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   priority
                 />
                 <div className="absolute top-4 right-4 flex gap-2">
-                  <Button size="sm" variant="secondary" className="h-8 w-8 rounded-full p-0">
-                    <Heart className="h-4 w-4" />
-                  </Button>
+                  <FavoriteToggle productId={product.id} userId={user?.id ?? null} />
                   <Button size="sm" variant="secondary" className="h-8 w-8 rounded-full p-0">
                     <Share2 className="h-4 w-4" />
                   </Button>
@@ -209,6 +208,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     sellerName={seller?.fullName ?? seller?.email ?? 'Seller'}
                     productId={product.id}
                     productTitle={product.title}
+                    viewerId={user?.id ?? null}
+                    viewerName={user?.user_metadata?.full_name ?? user?.email ?? undefined}
                   />
                   <Button variant="outline" className="w-full">
                     <Flag className="mr-2 h-4 w-4" />
@@ -243,7 +244,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           )}
         >
           <div className="mt-8">
-            <SimilarItems productId={product.id} categoryId={product.categoryId} />
+            <SimilarItems productId={product.id} categoryId={product.categoryId} viewerId={user?.id ?? null} />
           </div>
         </Suspense>
       </div>
