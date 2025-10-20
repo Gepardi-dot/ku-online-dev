@@ -1,49 +1,127 @@
 
 import { Suspense } from 'react';
-import AppLayout from '@/components/layout/app-layout';
-import { createClient } from '@/utils/supabase/server';
-import { cookies } from 'next/headers';
-import { Button } from '@/components/ui/button';
-import { ArrowRight } from 'lucide-react';
-import ProductCard from '@/components/product-card-new';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { ArrowRight } from 'lucide-react';
+
+import AppLayout from '@/components/layout/app-layout';
+import ProductCard from '@/components/product-card-new';
+import { ProductsFilterBar } from '@/components/products/filter-bar';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { getProducts, getCategories } from '@/lib/services/products';
+import { Button } from '@/components/ui/button';
+import { createClient } from '@/utils/supabase/server';
+import {
+  getProducts,
+  getCategories,
+  getAvailableLocations,
+} from '@/lib/services/products';
+import {
+  DEFAULT_FILTER_VALUES,
+  parsePostedWithinParam,
+  parsePriceParam,
+  parseSortParam,
+  postedWithinToDate,
+  type ProductsFilterValues,
+} from '@/lib/products/filter-params';
 import { NewsletterSignup } from '@/components/marketing/newsletter-signup';
 import { getServerLocale } from '@/lib/locale/server';
 import { LocaleMessages, translations } from '@/lib/locale/dictionary';
 
-interface SearchPageProps {
-  searchParams: Promise<{
-    category?: string;
-    condition?: string;
-    location?: string;
-    search?: string;
-  }>;
+interface SearchPageParams {
+  category?: string;
+  condition?: string;
+  location?: string;
+  search?: string;
+  minPrice?: string;
+  maxPrice?: string;
+  sort?: string;
+  postedWithin?: string;
 }
 
-interface ProductsListProps extends SearchPageProps {
+interface SearchPageProps {
+  searchParams: Promise<SearchPageParams>;
+}
+
+interface ProductsListProps {
+  searchParams: Promise<SearchPageParams>;
   messages: LocaleMessages;
   viewerId?: string | null;
+}
+
+function buildHomepageQuery(values: ProductsFilterValues) {
+  const params = new URLSearchParams();
+
+  const entries: Record<string, string> = {
+    category: values.category,
+    condition: values.condition,
+    location: values.location,
+    minPrice: values.minPrice.trim(),
+    maxPrice: values.maxPrice.trim(),
+    sort: values.sort !== 'newest' ? values.sort : '',
+    postedWithin: values.postedWithin !== 'any' ? values.postedWithin : '',
+  };
+
+  const searchValue = values.search.trim();
+  if (searchValue) {
+    params.set('search', searchValue);
+  }
+
+  for (const [key, value] of Object.entries(entries)) {
+    if (value) {
+      params.set(key, value);
+    }
+  }
+
+  const query = params.toString();
+  return query ? `/?${query}` : '/';
 }
 
 async function ProductsList({ searchParams, messages, viewerId }: ProductsListProps) {
   const params = await searchParams;
 
-  const [products, categories] = await Promise.all([
-    getProducts({
-      category: params.category,
-      condition: params.condition,
-      location: params.location,
-      search: params.search,
-    }),
+  const sort = parseSortParam(params.sort);
+  const minPrice = parsePriceParam(params.minPrice);
+  const maxPrice = parsePriceParam(params.maxPrice);
+  const postedWithin = parsePostedWithinParam(params.postedWithin);
+  const createdAfter = postedWithinToDate(postedWithin);
+
+  const [products, categories, locations] = await Promise.all([
+    getProducts(
+      {
+        category: params.category,
+        condition: params.condition,
+        location: params.location,
+        search: params.search,
+        minPrice,
+        maxPrice,
+        createdAfter,
+      },
+      30,
+      0,
+      sort,
+    ),
     getCategories(),
+    getAvailableLocations(),
   ]);
+
+  const initialValues: ProductsFilterValues = {
+    ...DEFAULT_FILTER_VALUES,
+    search: params.search ?? DEFAULT_FILTER_VALUES.search,
+    category: params.category ?? DEFAULT_FILTER_VALUES.category,
+    condition: params.condition ?? DEFAULT_FILTER_VALUES.condition,
+    location: params.location ?? DEFAULT_FILTER_VALUES.location,
+    minPrice: params.minPrice ?? DEFAULT_FILTER_VALUES.minPrice,
+    maxPrice: params.maxPrice ?? DEFAULT_FILTER_VALUES.maxPrice,
+    sort,
+    postedWithin,
+  };
+
+  const viewAllHref = buildHomepageQuery(initialValues).replace(/^\//, '/products');
 
   return (
     <>
@@ -54,7 +132,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
               {messages.homepage.categoriesLabel}
             </h3>
             <Link
-              href="/products"
+              href={viewAllHref}
               className="text-sm font-medium text-primary hover:underline"
             >
               {messages.homepage.viewAll}
@@ -67,31 +145,44 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
             </span>
           ) : (
             <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
-              {categories.map((category) => (
-                <Link
-                  href={`/?category=${category.id}`}
-                  key={category.id}
-                  className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-transparent bg-white px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary"
-                >
-                  <span className="text-base leading-none">
-                    {category.icon ?? '🛍️'}
-                  </span>
-                  <span className="whitespace-nowrap">{category.name}</span>
-                </Link>
-              ))}
+              {categories.map((category) => {
+                const categoryHref = buildHomepageQuery({ ...initialValues, category: category.id });
+                return (
+                  <Link
+                    href={categoryHref}
+                    key={category.id}
+                    className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-transparent bg-white px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary"
+                  >
+                    <span className="text-base leading-none">
+                      {category.icon ?? '🛍️'}
+                    </span>
+                    <span className="whitespace-nowrap">{category.name}</span>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
       </section>
 
       <section id="products" className="pt-6 pb-12 bg-accent">
-        <div className="container mx-auto px-4">
+        <div className="container mx-auto px-4 space-y-6">
+          <ProductsFilterBar
+            categories={categories}
+            locations={locations}
+            initialValues={initialValues}
+            targetPath="/"
+            showSearchInput={false}
+            showCategorySelect={false}
+            priceInputMode="select"
+          />
+
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-2xl md:text-3xl font-bold">
               {messages.homepage.latest}
             </h2>
             <Button asChild variant="link" className="text-primary font-semibold">
-              <Link href="/products">
+              <Link href={viewAllHref}>
                 {messages.homepage.viewAll}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

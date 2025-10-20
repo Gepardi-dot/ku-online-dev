@@ -60,6 +60,7 @@ export interface ProductFilters {
   search?: string;
   sellerId?: string;
   sort?: ProductSort;
+  createdAfter?: string;
 }
 
 const PRODUCT_SELECT = `*,
@@ -237,6 +238,10 @@ function buildProductsQuery(supabase: any, filters: ProductFilters = {}, options
 
   if (filters.sellerId) {
     query = query.eq('seller_id', filters.sellerId);
+  }
+
+  if (filters.createdAfter) {
+    query = query.gte('created_at', filters.createdAfter);
   }
 
   return query;

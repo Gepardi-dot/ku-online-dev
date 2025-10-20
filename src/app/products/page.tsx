@@ -4,14 +4,21 @@ import { cookies } from 'next/headers';
 import { createClient } from '@/utils/supabase/server';
 import AppLayout from '@/components/layout/app-layout';
 import ProductCard from '@/components/product-card-new';
-import { ProductsFilterBar, type ProductsFilterValues } from '@/components/products/filter-bar';
+import { ProductsFilterBar } from '@/components/products/filter-bar';
 import {
   getProductsWithCount,
   getCategories,
   getAvailableLocations,
   type ProductFilters,
-  type ProductSort,
 } from '@/lib/services/products';
+import {
+  DEFAULT_FILTER_VALUES,
+  parsePostedWithinParam,
+  parsePriceParam,
+  parseSortParam,
+  postedWithinToDate,
+  type ProductsFilterValues,
+} from '@/lib/products/filter-params';
 import { Button } from '@/components/ui/button';
 
 interface ProductsSearchParams {
@@ -23,6 +30,7 @@ interface ProductsSearchParams {
   minPrice?: string;
   maxPrice?: string;
   sort?: string;
+  postedWithin?: string;
 }
 
 interface ProductsPageProps {
@@ -37,32 +45,6 @@ interface ProductsContentProps {
 }
 
 const PAGE_SIZE = 24;
-
-const DEFAULT_FILTERS: ProductsFilterValues = {
-  search: '',
-  category: '',
-  condition: '',
-  location: '',
-  minPrice: '',
-  maxPrice: '',
-  sort: 'newest',
-};
-
-function parseSort(value: string | undefined): ProductSort {
-  if (value === 'price_asc' || value === 'price_desc' || value === 'views_desc' || value === 'newest') {
-    return value;
-  }
-  return 'newest';
-}
-
-function parsePrice(value?: string) {
-  if (!value) return undefined;
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    return undefined;
-  }
-  return parsed;
-}
 
 function buildQueryString(base: ProductsFilterValues, overrides: Record<string, string | number | undefined> = {}) {
   const params = new URLSearchParams();
@@ -79,6 +61,11 @@ function buildQueryString(base: ProductsFilterValues, overrides: Record<string, 
   const sortValue = base.sort;
   if (sortValue && sortValue !== 'newest') {
     params.set('sort', sortValue);
+  }
+
+  const postedWithin = base.postedWithin;
+  if (postedWithin && postedWithin !== 'any') {
+    params.set('postedWithin', postedWithin);
   }
 
   for (const [key, value] of Object.entries(entries)) {
@@ -106,9 +93,11 @@ async function ProductsContent({ searchParams, categories, locations, viewerId }
   const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
   const offset = (currentPage - 1) * PAGE_SIZE;
 
-  const sort = parseSort(params.sort);
-  const minPrice = parsePrice(params.minPrice);
-  const maxPrice = parsePrice(params.maxPrice);
+  const sort = parseSortParam(params.sort);
+  const minPrice = parsePriceParam(params.minPrice);
+  const maxPrice = parsePriceParam(params.maxPrice);
+  const postedWithin = parsePostedWithinParam(params.postedWithin);
+  const createdAfter = postedWithinToDate(postedWithin);
 
   const filters: ProductFilters = {
     category: params.category || undefined,
@@ -119,19 +108,20 @@ async function ProductsContent({ searchParams, categories, locations, viewerId }
     maxPrice,
   };
 
-  const { items, count } = await getProductsWithCount(filters, PAGE_SIZE, offset, sort);
+  const { items, count } = await getProductsWithCount({ ...filters, createdAfter }, PAGE_SIZE, offset, sort);
 
   const boundedPage = count === 0 ? 1 : Math.min(currentPage, Math.max(1, Math.ceil(count / PAGE_SIZE)));
   const displayOffset = boundedPage === currentPage ? offset : (boundedPage - 1) * PAGE_SIZE;
 
   const initialValues: ProductsFilterValues = {
-    search: params.search ?? DEFAULT_FILTERS.search,
-    category: params.category ?? DEFAULT_FILTERS.category,
-    condition: params.condition ?? DEFAULT_FILTERS.condition,
-    location: params.location ?? DEFAULT_FILTERS.location,
-    minPrice: params.minPrice ?? DEFAULT_FILTERS.minPrice,
-    maxPrice: params.maxPrice ?? DEFAULT_FILTERS.maxPrice,
+    search: params.search ?? DEFAULT_FILTER_VALUES.search,
+    category: params.category ?? DEFAULT_FILTER_VALUES.category,
+    condition: params.condition ?? DEFAULT_FILTER_VALUES.condition,
+    location: params.location ?? DEFAULT_FILTER_VALUES.location,
+    minPrice: params.minPrice ?? DEFAULT_FILTER_VALUES.minPrice,
+    maxPrice: params.maxPrice ?? DEFAULT_FILTER_VALUES.maxPrice,
     sort,
+    postedWithin,
   };
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
