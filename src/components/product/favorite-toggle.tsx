@@ -5,12 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Heart, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import {
-  addFavorite,
-  countFavorites,
-  fetchFavoriteStatus,
-  removeFavorite,
-} from '@/lib/services/favorites-client';
+import { addFavorite, fetchFavoriteStatus, removeFavorite } from '@/lib/services/favorites-client';
 
 type FavoriteToggleVariant = 'icon' | 'pill';
 
@@ -108,22 +103,22 @@ export default function FavoriteToggle({
   }, [productId]);
 
   const dispatchFavoritesEvent = useCallback(
-    async (nowFavorited: boolean, nextFavoriteId: string | null) => {
+    (nowFavorited: boolean, nextFavoriteId: string | null) => {
       if (typeof window === 'undefined' || !userId) {
         return;
       }
 
-      let total = 0;
-      try {
-        total = await countFavorites(userId);
-      } catch (error) {
-        console.error('Failed to count favorites', error);
-      }
+      const detail = {
+        productId,
+        isFavorited: nowFavorited,
+        favoriteId: nextFavoriteId,
+        delta: nowFavorited ? 1 : -1,
+        mutatedFavoriteId: nextFavoriteId ?? favoriteId,
+      } as const;
 
-      const detail = { productId, isFavorited: nowFavorited, totalFavorites: total, favoriteId: nextFavoriteId };
       window.dispatchEvent(new CustomEvent(FAVORITES_EVENT, { detail }));
     },
-    [productId, userId],
+    [favoriteId, productId, userId],
   );
 
   const handleToggle = useCallback(async () => {

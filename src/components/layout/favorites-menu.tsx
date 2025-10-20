@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Heart, Loader2, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,6 +39,7 @@ export default function FavoritesMenu({ userId, strings }: FavoritesMenuProps) {
   const [favorites, setFavorites] = useState<FavoriteSummary[]>([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const recentMutationsRef = useRef(new Set<string>());
 
   const canLoad = Boolean(userId);
 
@@ -47,6 +48,7 @@ export default function FavoritesMenu({ userId, strings }: FavoritesMenuProps) {
       setCount(0);
       return;
     }
+
     try {
       const total = await countFavorites(userId);
       setCount(total);
@@ -62,8 +64,12 @@ export default function FavoritesMenu({ userId, strings }: FavoritesMenuProps) {
     }
     setLoading(true);
     try {
-      const items = await listFavorites(userId, 30);
+      const [items, total] = await Promise.all([
+        listFavorites(userId, 30),
+        countFavorites(userId),
+      ]);
       setFavorites(items);
+      setCount(total);
     } catch (error) {
       console.error('Failed to load favorites', error);
       toast({
@@ -85,8 +91,16 @@ export default function FavoritesMenu({ userId, strings }: FavoritesMenuProps) {
       return;
     }
 
-    const channel = subscribeToFavorites(userId, () => {
-      refreshCount();
+    const channel = subscribeToFavorites(userId, ({ type, favoriteId }) => {
+      if (favoriteId && recentMutationsRef.current.has(favoriteId)) {
+        recentMutationsRef.current.delete(favoriteId);
+      } else {
+        setCount((prev) => {
+          const delta = type === 'INSERT' ? 1 : type === 'DELETE' ? -1 : 0;
+          return Math.max(0, prev + delta);
+        });
+      }
+
       if (open) {
         loadFavorites();
       }
@@ -101,9 +115,17 @@ export default function FavoritesMenu({ userId, strings }: FavoritesMenuProps) {
     if (typeof window === 'undefined') return;
 
     const handler = (event: Event) => {
-      const customEvent = event as CustomEvent<{ totalFavorites?: number }>;
-      if (typeof customEvent.detail?.totalFavorites === 'number') {
-        setCount(customEvent.detail.totalFavorites);
+      const customEvent = event as CustomEvent<{ delta?: number; mutatedFavoriteId?: string | null }>;
+      const delta = customEvent.detail?.delta;
+      if (typeof delta === 'number') {
+        setCount((prev) => Math.max(0, prev + delta));
+      }
+      const mutationId = customEvent.detail?.mutatedFavoriteId;
+      if (mutationId) {
+        recentMutationsRef.current.add(mutationId);
+        setTimeout(() => {
+          recentMutationsRef.current.delete(mutationId);
+        }, 2000);
       }
       if (open) {
         loadFavorites();
@@ -142,22 +164,20 @@ export default function FavoritesMenu({ userId, strings }: FavoritesMenuProps) {
       try {
         await removeFavorite(favorite.id, userId);
         setFavorites((prev) => prev.filter((item) => item.id !== favorite.id));
-        setCount((prev) => {
-          const next = Math.max(0, prev - 1);
-          if (typeof window !== 'undefined') {
-            window.dispatchEvent(
-              new CustomEvent(favoritesEvents.eventName, {
-                detail: {
-                  productId: favorite.productId,
-                  isFavorited: false,
-                  totalFavorites: next,
-                  favoriteId: null,
-                },
-              }),
-            );
-          }
-          return next;
-        });
+        setCount((prev) => Math.max(0, prev - 1));
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent(favoritesEvents.eventName, {
+              detail: {
+                productId: favorite.productId,
+                isFavorited: false,
+                favoriteId: null,
+                delta: -1,
+                mutatedFavoriteId: favorite.id,
+              },
+            }),
+          );
+        }
       } catch (error) {
         console.error('Failed to remove favorite', error);
         toast({
