@@ -6,8 +6,9 @@ import {
   translateFromDictionary,
 } from "./dictionary";
 
-export function getServerLocale(): Locale {
-  const cookieLocale = cookies().get("ku_locale")?.value;
+export async function getServerLocale(): Promise<Locale> {
+  const cookieStore = await cookies();
+  const cookieLocale = cookieStore.get("ku_locale")?.value;
   if (isLocale(cookieLocale)) {
     return cookieLocale;
   }

@@ -24,8 +24,9 @@ const ALLOWED_TABS = new Set(['listings', 'reviews', 'messages', 'settings']);
 export default async function ProfilePage({
   searchParams,
 }: {
-  searchParams?: ProfilePageSearchParams;
+  searchParams?: Promise<ProfilePageSearchParams>;
 }) {
+  const params = searchParams ? await searchParams : {};
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
   const {
@@ -73,7 +74,7 @@ export default async function ProfilePage({
     ? formatDistanceToNow(new Date(profileData.joinedDate), { addSuffix: true })
     : null;
 
-  const requestedTab = searchParams?.tab ?? 'listings';
+  const requestedTab = params.tab ?? 'listings';
   const activeTab = ALLOWED_TABS.has(requestedTab ?? '')
     ? (requestedTab as string)
     : 'listings';

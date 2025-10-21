@@ -1,4 +1,4 @@
-﻿import { cookies } from "next/headers";
+import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 
 export interface SellerProfile {
@@ -47,6 +47,7 @@ export interface ProductWithRelations {
   updatedAt: Date | null;
   seller: SellerProfile | null;
   category?: MarketplaceCategory | null;
+  originalPrice?: number;
 }
 
 export type ProductSort = 'newest' | 'price_asc' | 'price_desc' | 'views_desc';
@@ -62,7 +63,7 @@ export interface ProductFilters {
   sort?: ProductSort;
 }
 
-const PRODUCT_SELECT = `*,
+export const PRODUCT_SELECT = `*,
        seller:users!products_seller_id_fkey(
          id,
          email,
@@ -89,11 +90,12 @@ const PRODUCT_SELECT = `*,
          created_at
        )`;
 
-type SupabaseProductRow = {
+export type SupabaseProductRow = {
   id: string;
   title: string;
   description: string | null;
   price: number | string | null;
+  original_price?: number | string | null;
   currency: string | null;
   condition: string | null;
   category_id: string | null;
@@ -174,7 +176,14 @@ function mapCategory(row: SupabaseCategoryRow | null): MarketplaceCategory | nul
   };
 }
 
-function mapProduct(row: SupabaseProductRow): ProductWithRelations {
+export function mapProduct(row: SupabaseProductRow): ProductWithRelations {
+  const originalPrice =
+    typeof row.original_price === "number"
+      ? row.original_price
+      : typeof row.original_price === "string" && row.original_price.trim() !== ""
+      ? Number(row.original_price)
+      : undefined;
+
   return {
     id: row.id,
     title: row.title,
@@ -194,6 +203,7 @@ function mapProduct(row: SupabaseProductRow): ProductWithRelations {
     updatedAt: toDate(row.updated_at),
     seller: mapSeller(row.seller ?? null),
     category: mapCategory(row.category ?? null),
+    originalPrice,
   };
 }
 

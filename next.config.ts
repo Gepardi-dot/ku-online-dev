@@ -1,7 +1,8 @@
 import type {NextConfig} from 'next';
+import type {RemotePattern} from 'next/dist/shared/lib/image-config';
 import path from 'path';
 
-const remotePatterns = [
+const remotePatterns: RemotePattern[] = [
   {
     protocol: 'https',
     hostname: 'placehold.co',
@@ -11,6 +12,12 @@ const remotePatterns = [
   {
     protocol: 'https',
     hostname: 'picsum.photos',
+    port: '',
+    pathname: '/**',
+  },
+  {
+    protocol: 'https',
+    hostname: 'images.unsplash.com',
     port: '',
     pathname: '/**',
   },

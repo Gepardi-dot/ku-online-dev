@@ -123,7 +123,7 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
     data: { user },
   } = await supabase.auth.getUser();
 
-  const locale = getServerLocale();
+  const locale = await getServerLocale();
   const messages = translations[locale];
 
   return (

@@ -62,7 +62,7 @@ const filterSchema = z.object({
 
 type FilterInput = z.infer<typeof filterSchema>;
 
-const selectArgs = {
+const selectShape = {
   table: z.string().min(1),
   columns: z.string().min(1).default("*"),
   filters: z.array(filterSchema).optional(),
@@ -74,43 +74,50 @@ const selectArgs = {
       nullsFirst: z.boolean().optional(),
     })
     .optional(),
-} as const;
+} satisfies Record<string, z.ZodTypeAny>;
 
-type SelectArgs = z.infer<z.ZodObject<typeof selectArgs>>;
+const selectSchema = z.object(selectShape);
+type SelectArgs = z.infer<typeof selectSchema>;
 
-const insertArgs = {
+const recordValueSchema = z.record(z.string(), z.any());
+
+const insertShape = {
   table: z.string().min(1),
-  values: z.union([z.array(z.record(z.any())), z.record(z.any())]),
+  values: z.union([z.array(recordValueSchema), recordValueSchema]),
   returning: z.enum(["representation", "minimal"]).default("representation"),
-} as const;
+} satisfies Record<string, z.ZodTypeAny>;
 
-type InsertArgs = z.infer<z.ZodObject<typeof insertArgs>>;
+const insertSchema = z.object(insertShape);
+type InsertArgs = z.infer<typeof insertSchema>;
 
-const updateArgs = {
+const updateShape = {
   table: z.string().min(1),
-  values: z.record(z.any()),
+  values: recordValueSchema,
   filters: z.array(filterSchema).min(1),
   returning: z.enum(["representation", "minimal"]).default("representation"),
-} as const;
+} satisfies Record<string, z.ZodTypeAny>;
 
-type UpdateArgs = z.infer<z.ZodObject<typeof updateArgs>>;
+const updateSchema = z.object(updateShape);
+type UpdateArgs = z.infer<typeof updateSchema>;
 
-const deleteArgs = {
+const deleteShape = {
   table: z.string().min(1),
   filters: z.array(filterSchema).min(1),
   returning: z.enum(["representation", "minimal"]).default("representation"),
-} as const;
+} satisfies Record<string, z.ZodTypeAny>;
 
-type DeleteArgs = z.infer<z.ZodObject<typeof deleteArgs>>;
+const deleteSchema = z.object(deleteShape);
+type DeleteArgs = z.infer<typeof deleteSchema>;
 
-const storageArgs = {
+const storageShape = {
   path: z.string().min(1),
   base64: z.string().min(1),
   contentType: z.string().default("application/octet-stream"),
   upsert: z.boolean().default(false),
-} as const;
+} satisfies Record<string, z.ZodTypeAny>;
 
-type StorageArgs = z.infer<z.ZodObject<typeof storageArgs>>;
+const storageSchema = z.object(storageShape);
+type StorageArgs = z.infer<typeof storageSchema>;
 
 function responseFromJSON(data: unknown) {
   return {
@@ -160,7 +167,7 @@ const server = new McpServer({
 
 server.registerTool("supabase.select", {
   description: "Run a SELECT query on the configured Supabase project.",
-  inputSchema: selectArgs,
+  inputSchema: selectShape as z.ZodRawShape,
 }, async (args: SelectArgs) => {
   const client = getClient("anon");
 
@@ -192,7 +199,7 @@ server.registerTool("supabase.select", {
 
 server.registerTool("supabase.insert", {
   description: "Insert one or more rows using the Supabase service role.",
-  inputSchema: insertArgs,
+  inputSchema: insertShape as z.ZodRawShape,
 }, async (args: InsertArgs) => {
   const payload = Array.isArray(args.values) ? args.values : [args.values];
   const baseQuery = adminClient.from(args.table).insert(payload);
@@ -211,7 +218,7 @@ server.registerTool("supabase.insert", {
 server.registerTool("supabase.update", {
   description:
     "Update rows in a table that match the provided filters using the service role.",
-  inputSchema: updateArgs,
+  inputSchema: updateShape as z.ZodRawShape,
 }, async (args: UpdateArgs) => {
   const filtered = applyFilters(
     adminClient.from(args.table).update(args.values),
@@ -233,7 +240,7 @@ server.registerTool("supabase.update", {
 server.registerTool("supabase.delete", {
   description:
     "Delete rows in a table that match the provided filters using the service role.",
-  inputSchema: deleteArgs,
+  inputSchema: deleteShape as z.ZodRawShape,
 }, async (args: DeleteArgs) => {
   const filtered = applyFilters(
     adminClient.from(args.table).delete(),
@@ -255,7 +262,7 @@ server.registerTool("supabase.delete", {
 server.registerTool("supabase.storageUpload", {
   description:
     "Upload a base64-encoded file to the configured storage bucket using the service role.",
-  inputSchema: storageArgs,
+  inputSchema: storageShape as z.ZodRawShape,
 }, async (args: StorageArgs) => {
   const fileBuffer = Buffer.from(args.base64, "base64");
 
