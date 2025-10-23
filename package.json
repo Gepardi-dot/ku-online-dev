@@ -8,6 +8,8 @@
     "start": "next start -H 0.0.0.0 -p 5000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "build:test": "tsc --project tsconfig.test.json",
+    "test": "npm run build:test && node --test --loader ./tools/test-stubs/alias-loader.mjs dist-tests",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",

@@ -101,11 +101,50 @@ serve(async (req) => {
       );
     }
 
+    let totalCount: number | null = null;
+
+    const countQuery = supabase
+      .from("products")
+      .select("id", { count: "exact", head: true })
+      .eq("is_active", true);
+
+    if (query && query.trim().length > 0) {
+      countQuery.textSearch("search_document", query, {
+        config: "simple",
+        type: "plain",
+      });
+    }
+
+    if (categoryId) {
+      countQuery.eq("category_id", categoryId);
+    }
+
+    if (typeof minPrice === "number") {
+      countQuery.gte("price", minPrice);
+    }
+
+    if (typeof maxPrice === "number") {
+      countQuery.lte("price", maxPrice);
+    }
+
+    if (city && city.trim().length > 0) {
+      countQuery.ilike("location", `${city}%`);
+    }
+
+    const { count, error: countError } = await countQuery;
+
+    if (countError) {
+      console.error("search_products count query failed", countError);
+    } else if (typeof count === "number") {
+      totalCount = count;
+    }
+
     return new Response(
       JSON.stringify({
         items: data ?? [],
         limit,
         offset,
+        totalCount,
       }),
       {
         status: 200,

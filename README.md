@@ -28,7 +28,8 @@ After the bucket exists, image uploads from the sell form will succeed. If uploa
 Run the migrations and deploy the edge function so that the frontend can rely on live data instead of mocks:
 
 1. `supabase db reset --env-file .env.local` (or `supabase db push`) to apply the schema, triggers, policies, and the demo seed data.
-2. `supabase functions deploy product-search --project-ref <project-ref>` to publish the full-text search edge function.
+2. `supabase functions deploy product-search --project-ref <project-ref>` to publish the full-text search edge function. The
+   frontend now relies on the function for both listings search and pagination metadata.
 3. Verify the following environment variables exist in Vercel/Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, and `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET`.
 
 ### What the migration enables
@@ -56,7 +57,22 @@ const { data, error } = await supabase.functions.invoke('product-search', {
 });
 ```
 
-The response includes `{ items, limit, offset }`, where `items` mirrors the `products` rows along with a `rank` column for relevance scoring.
+The response includes `{ items, limit, offset, totalCount }`, where `items` mirrors the `products` rows along with a `rank`
+column for relevance scoring and `totalCount` reports how many listings match the query.
+
+### Server-side search integration
+
+- The homepage and `/products` route call a new `searchProducts` helper that invokes the edge function when a search query is
+  provided, falling back to `getProducts` for empty queries.
+- Pagination is preserved by forwarding the `limit`/`offset` values to the edge function and consuming the returned
+  `totalCount`.
+- Server-side normalization now hydrates seller/category relations for search results so UI components receive
+  `ProductWithRelations` objects regardless of the data source.
+
+### Smoke tests
+
+Run `npm test` to compile the test bundle and execute smoke tests with Node's built-in runner. The tests stub the Supabase
+server client and `product-search` edge response to validate the integration without requiring a live Supabase instance.
 
 ## Committing and pushing changes
 

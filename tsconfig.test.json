@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist-tests",
+    "declaration": false,
+    "emitDeclarationOnly": false,
+    "sourceMap": false
+  },
+  "include": [
+    "src/lib/services/products.ts",
+    "src/lib/services/__tests__/**/*.ts"
+  ]
+}
