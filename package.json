@@ -14,7 +14,8 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "supabase:apply": "node scripts/apply-supabase-schema.mjs",
-    "supabase:policies": "node scripts/show-policies.mjs"
+    "supabase:policies": "node scripts/show-policies.mjs",
+    "tooling:status": "node scripts/check-tooling-status.mjs"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.3",
