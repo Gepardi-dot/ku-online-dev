@@ -9,6 +9,7 @@ import {
   getProductsWithCount,
   getCategories,
   getAvailableLocations,
+  searchProducts,
   type ProductFilters,
   type ProductSort,
 } from '@/lib/services/products';
@@ -118,7 +119,10 @@ async function ProductsContent({ searchParams, categories, locations }: Products
     maxPrice,
   };
 
-  const { items, count } = await getProductsWithCount(filters, PAGE_SIZE, offset, sort);
+  const hasQuery = Boolean(filters.search && filters.search.trim().length > 0);
+  const { items, count } = hasQuery
+    ? await searchProducts(filters, PAGE_SIZE, offset, sort)
+    : await getProductsWithCount(filters, PAGE_SIZE, offset, sort);
 
   const boundedPage = count === 0 ? 1 : Math.min(currentPage, Math.max(1, Math.ceil(count / PAGE_SIZE)));
   const displayOffset = boundedPage === currentPage ? offset : (boundedPage - 1) * PAGE_SIZE;

@@ -13,7 +13,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
-import { getProducts, getCategories } from '@/lib/services/products';
+import { getProducts, getCategories, searchProducts } from '@/lib/services/products';
 import { NewsletterSignup } from '@/components/marketing/newsletter-signup';
 import { getServerLocale } from '@/lib/locale/server';
 import { LocaleMessages, translations } from '@/lib/locale/dictionary';
@@ -34,13 +34,30 @@ interface ProductsListProps extends SearchPageProps {
 async function ProductsList({ searchParams, messages }: ProductsListProps) {
   const params = await searchParams;
 
+  const searchTerm = params.search?.trim();
+  const productLimit = 18;
+
   const [products, categories] = await Promise.all([
-    getProducts({
-      category: params.category,
-      condition: params.condition,
-      location: params.location,
-      search: params.search,
-    }),
+    searchTerm
+      ? searchProducts(
+          {
+            category: params.category,
+            condition: params.condition,
+            location: params.location,
+            search: searchTerm,
+          },
+          productLimit,
+          0,
+          'newest'
+        ).then((result) => result.items)
+      : getProducts(
+          {
+            category: params.category,
+            condition: params.condition,
+            location: params.location,
+          },
+          productLimit
+        ),
     getCategories(),
   ]);
 
