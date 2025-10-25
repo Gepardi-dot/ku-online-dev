@@ -9,6 +9,7 @@ import {
   getProductsWithCount,
   getCategories,
   getAvailableLocations,
+  searchProducts,
   type ProductFilters,
 } from '@/lib/services/products';
 import {
@@ -99,16 +100,21 @@ async function ProductsContent({ searchParams, categories, locations, viewerId }
   const postedWithin = parsePostedWithinParam(params.postedWithin);
   const createdAfter = postedWithinToDate(postedWithin);
 
+  const trimmedSearch = params.search?.trim() ?? '';
   const filters: ProductFilters = {
     category: params.category || undefined,
     condition: params.condition || undefined,
     location: params.location || undefined,
-    search: params.search ? params.search.trim() : undefined,
+    search: trimmedSearch ? trimmedSearch : undefined,
     minPrice,
     maxPrice,
+    createdAfter,
   };
 
-  const { items, count } = await getProductsWithCount({ ...filters, createdAfter }, PAGE_SIZE, offset, sort);
+  const shouldUseEdgeSearch = Boolean(filters.search) && postedWithin === 'any';
+  const { items, count } = shouldUseEdgeSearch
+    ? await searchProducts(filters, PAGE_SIZE, offset, sort)
+    : await getProductsWithCount(filters, PAGE_SIZE, offset, sort);
 
   const boundedPage = count === 0 ? 1 : Math.min(currentPage, Math.max(1, Math.ceil(count / PAGE_SIZE)));
   const displayOffset = boundedPage === currentPage ? offset : (boundedPage - 1) * PAGE_SIZE;

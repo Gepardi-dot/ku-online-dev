@@ -1,4 +1,4 @@
-﻿import { cookies } from "next/headers";
+import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 
 export interface SellerProfile {
@@ -47,6 +47,7 @@ export interface ProductWithRelations {
   updatedAt: Date | null;
   seller: SellerProfile | null;
   category?: MarketplaceCategory | null;
+  originalPrice?: number;
 }
 
 export type ProductSort = 'newest' | 'price_asc' | 'price_desc' | 'views_desc';
@@ -63,7 +64,7 @@ export interface ProductFilters {
   createdAfter?: string;
 }
 
-const PRODUCT_SELECT = `*,
+export const PRODUCT_SELECT = `*,
        seller:users!products_seller_id_fkey(
          id,
          email,
@@ -90,11 +91,12 @@ const PRODUCT_SELECT = `*,
          created_at
        )`;
 
-type SupabaseProductRow = {
+export type SupabaseProductRow = {
   id: string;
   title: string;
   description: string | null;
   price: number | string | null;
+  original_price?: number | string | null;
   currency: string | null;
   condition: string | null;
   category_id: string | null;
@@ -140,6 +142,21 @@ function normalizeImages(value: unknown): string[] {
   return [];
 }
 
+function parseNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
 function mapSeller(row: any | null): SellerProfile | null {
   if (!row) return null;
 
@@ -175,7 +192,14 @@ function mapCategory(row: SupabaseCategoryRow | null): MarketplaceCategory | nul
   };
 }
 
-function mapProduct(row: SupabaseProductRow): ProductWithRelations {
+export function mapProduct(row: SupabaseProductRow): ProductWithRelations {
+  const originalPrice =
+    typeof row.original_price === "number"
+      ? row.original_price
+      : typeof row.original_price === "string" && row.original_price.trim() !== ""
+      ? Number(row.original_price)
+      : undefined;
+
   return {
     id: row.id,
     title: row.title,
@@ -195,6 +219,7 @@ function mapProduct(row: SupabaseProductRow): ProductWithRelations {
     updatedAt: toDate(row.updated_at),
     seller: mapSeller(row.seller ?? null),
     category: mapCategory(row.category ?? null),
+    originalPrice,
   };
 }
 
@@ -259,6 +284,149 @@ function applyProductsSort(query: any, sort: ProductSort) {
     default:
       return query.order('created_at', { ascending: false, nullsLast: true });
   }
+}
+
+function sortProductsInMemory(items: ProductWithRelations[], sort: ProductSort) {
+  switch (sort) {
+    case 'price_asc':
+      return [...items].sort((a, b) => a.price - b.price);
+    case 'price_desc':
+      return [...items].sort((a, b) => b.price - a.price);
+    case 'views_desc':
+      return [...items].sort((a, b) => b.views - a.views);
+    case 'newest':
+    default:
+      return items;
+  }
+}
+
+type EdgeSearchProductRow = SupabaseProductRow & { rank?: number | string | null };
+
+type EdgeSearchResponse = {
+  items?: EdgeSearchProductRow[] | null;
+  totalCount?: number | string | null;
+  limit?: number | null;
+  offset?: number | null;
+};
+
+function toSupabaseRowFromEdge(row: EdgeSearchProductRow): SupabaseProductRow {
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description ?? null,
+    price: row.price ?? null,
+    original_price: row.original_price ?? null,
+    currency: row.currency ?? null,
+    condition: row.condition ?? null,
+    category_id: row.category_id ?? null,
+    seller_id: row.seller_id,
+    location: row.location ?? null,
+    images: row.images ?? null,
+    is_active: row.is_active ?? null,
+    is_sold: row.is_sold ?? null,
+    is_promoted: row.is_promoted ?? null,
+    views: row.views ?? null,
+    created_at: row.created_at ?? null,
+    updated_at: row.updated_at ?? null,
+    seller: row.seller ?? null,
+    category: row.category ?? null,
+  };
+}
+
+function parseCountValue(value: number | string | null | undefined, fallback: number) {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === 'string' && value.trim().length > 0) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return fallback;
+}
+
+export async function searchProducts(
+  filters: ProductFilters,
+  limit = 20,
+  offset = 0,
+  sort: ProductSort = 'newest'
+): Promise<{ items: ProductWithRelations[]; count: number }> {
+  const supabase = await getSupabase();
+
+  const searchTerm = filters.search?.trim();
+  if (!searchTerm) {
+    return getProductsWithCount({ ...filters, search: undefined }, limit, offset, sort);
+  }
+
+  const { data, error } = await supabase.functions.invoke('product-search', {
+    body: {
+      query: searchTerm,
+      categoryId: filters.category,
+      minPrice: filters.minPrice,
+      maxPrice: filters.maxPrice,
+      city: filters.location,
+      limit,
+      offset,
+    },
+  });
+
+  if (error) {
+    console.error('Failed to search products', error);
+    return { items: [], count: 0 };
+  }
+
+  const payload = (data ?? {}) as EdgeSearchResponse;
+  const baseRows = Array.isArray(payload.items) ? payload.items : [];
+
+  if (baseRows.length === 0) {
+    const parsedCount = parseCountValue(payload.totalCount ?? null, 0);
+    return { items: [], count: parsedCount };
+  }
+
+  const ids = baseRows
+    .map((row) => row.id)
+    .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+  if (ids.length === 0) {
+    return { items: [], count: parseCountValue(payload.totalCount ?? null, 0) };
+  }
+
+  const { data: detailData, error: detailError } = await supabase
+    .from('products')
+    .select(PRODUCT_SELECT)
+    .in('id', ids);
+
+  if (detailError) {
+    console.error('Failed to load product relations for search results', detailError);
+  }
+
+  const detailRows = Array.isArray(detailData) ? (detailData as SupabaseProductRow[]) : [];
+  const detailMap = new Map<string, ProductWithRelations>();
+  for (const row of detailRows) {
+    detailMap.set(row.id, mapProduct(row));
+  }
+
+  const fallbackMap = new Map<string, ProductWithRelations>();
+  for (const row of baseRows) {
+    fallbackMap.set(row.id, mapProduct(toSupabaseRowFromEdge(row)));
+  }
+
+  const orderedItems = ids
+    .map((id) => detailMap.get(id) ?? fallbackMap.get(id))
+    .filter((product): product is ProductWithRelations => Boolean(product));
+
+  const offsetValue = parseNumber(payload.offset ?? null) ?? offset;
+  const parsedCount = parseCountValue(
+    payload.totalCount ?? null,
+    orderedItems.length + offsetValue
+  );
+
+  const sortedItems = sortProductsInMemory(orderedItems, sort);
+
+  return { items: sortedItems, count: parsedCount };
 }
 
 export async function getProducts(

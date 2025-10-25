@@ -224,8 +224,14 @@ export default function SellForm({ user }: SellFormProps) {
           continue;
         }
 
-        setUploadedImages((prev) => [...prev, { url: payload.publicUrl, path: payload.path }]);
-        setFormData((prev) => ({ ...prev, images: [...prev.images, payload.publicUrl] }));
+        const { publicUrl, path } = payload;
+
+        if (!publicUrl || !path) {
+          continue;
+        }
+
+        setUploadedImages((prev) => [...prev, { url: publicUrl, path }]);
+        setFormData((prev) => ({ ...prev, images: [...prev.images, publicUrl] }));
 
         availableSlots -= 1;
         if (availableSlots <= 0) {

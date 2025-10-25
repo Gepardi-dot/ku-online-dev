@@ -19,6 +19,7 @@ import {
   getProducts,
   getCategories,
   getAvailableLocations,
+  searchProducts,
 } from '@/lib/services/products';
 import {
   DEFAULT_FILTER_VALUES,
@@ -90,21 +91,26 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
   const postedWithin = parsePostedWithinParam(params.postedWithin);
   const createdAfter = postedWithinToDate(postedWithin);
 
+  const trimmedSearch = params.search?.trim() ?? '';
+  const searchFilter = trimmedSearch ? trimmedSearch : undefined;
+  const shouldUseEdgeSearch = Boolean(searchFilter) && postedWithin === 'any';
+
+  const filters = {
+    category: params.category,
+    condition: params.condition,
+    location: params.location,
+    search: searchFilter,
+    minPrice,
+    maxPrice,
+    createdAfter,
+  };
+
+  const productPromise = shouldUseEdgeSearch
+    ? searchProducts(filters, 30, 0, sort).then((result) => result.items)
+    : getProducts(filters, 30, 0, sort);
+
   const [products, categories, locations] = await Promise.all([
-    getProducts(
-      {
-        category: params.category,
-        condition: params.condition,
-        location: params.location,
-        search: params.search,
-        minPrice,
-        maxPrice,
-        createdAfter,
-      },
-      30,
-      0,
-      sort,
-    ),
+    productPromise,
     getCategories(),
     getAvailableLocations(),
   ]);
@@ -215,7 +221,7 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
     data: { user },
   } = await supabase.auth.getUser();
 
-  const locale = getServerLocale();
+  const locale = await getServerLocale();
   const messages = translations[locale];
 
   return (

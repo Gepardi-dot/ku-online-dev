@@ -116,7 +116,7 @@ type AuthenticatedUser = {
 };
 
 async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
-  const cookieStore = cookies();
+  const cookieStore = await cookies();
   const supabase = await createServerClient(cookieStore);
   const {
     data: { user },
