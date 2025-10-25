@@ -4,16 +4,17 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Eye, Heart } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { MapPin, Eye } from 'lucide-react';
 import type { ProductWithRelations } from '@/lib/services/products';
 import { formatDistanceToNow } from 'date-fns';
+import FavoriteToggle from '@/components/product/favorite-toggle';
 
 interface ProductCardProps {
   product: ProductWithRelations;
+  viewerId?: string | null;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, viewerId }: ProductCardProps) {
   const formatPrice = (price: number, currency?: string | null) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -50,9 +51,7 @@ export default function ProductCard({ product }: ProductCardProps) {
           className="object-cover group-hover:scale-105 transition-transform duration-300"
         />
         <div className="absolute top-2 right-2">
-          <Button size="sm" variant="secondary" className="h-8 w-8 rounded-full p-0">
-            <Heart className="h-4 w-4" />
-          </Button>
+          <FavoriteToggle productId={product.id} userId={viewerId} size="sm" />
         </div>
         <div className="absolute top-2 left-2">
           <Badge className={`text-white ${getConditionColor(product.condition || 'New')}`}>

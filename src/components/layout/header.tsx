@@ -14,13 +14,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, Filter, PackagePlus, Bell, MessageCircle } from 'lucide-react';
+import { Search, Filter, PackagePlus } from 'lucide-react';
 import { Icons } from '@/components/icons';
 import LanguageSwitcher from '@/components/language-switcher';
 import AuthButton from '@/components/auth/auth-button';
 import type { User } from '@supabase/supabase-js';
 import { useLocale } from '@/providers/locale-provider';
-import { toast } from '@/hooks/use-toast';
+import NotificationMenu from './notification-menu';
+import MessagesMenu from './messages-menu';
+import FavoritesMenu from './favorites-menu';
 
 interface AppHeaderProps {
   user?: User | null;
@@ -87,13 +89,6 @@ export default function AppHeader({ user }: AppHeaderProps) {
     [updateQueryString, router],
   );
 
-  const comingSoon = useCallback(() => {
-    toast({
-      title: t('common.comingSoonTitle'),
-      description: t('common.comingSoonDescription'),
-    });
-  }, [t]);
-
   const currentCityLabel = useMemo(() => {
     const cityMap = messages.header.city;
     return cityMap[city] ?? cityMap.all;
@@ -154,12 +149,33 @@ export default function AppHeader({ user }: AppHeaderProps) {
           <div className="flex items-center space-x-2 sm:space-x-4">
             {user && (
               <>
-                <Button variant="ghost" size="sm" onClick={comingSoon} aria-label={t('header.notifications')}>
-                  <Bell className="h-4 w-4" aria-hidden="true" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={comingSoon} aria-label={t('header.messages')}>
-                  <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                </Button>
+                <FavoritesMenu
+                  userId={user.id}
+                  strings={{
+                    label: messages.header.favorites,
+                    empty: messages.header.favoritesEmpty,
+                    loginRequired: messages.header.loginRequired,
+                  }}
+                />
+                <NotificationMenu
+                  userId={user.id}
+                  strings={{
+                    label: t('header.notifications'),
+                    empty: messages.header.notificationsEmpty,
+                    markAll: messages.header.markAllRead,
+                    loginRequired: messages.header.loginRequired,
+                  }}
+                />
+                <MessagesMenu
+                  userId={user.id}
+                  strings={{
+                    label: t('header.messages'),
+                    empty: messages.header.messagesEmpty,
+                    loginRequired: messages.header.loginRequired,
+                    typePlaceholder: messages.header.typeMessage,
+                    send: messages.header.sendMessage,
+                  }}
+                />
                 <Button asChild>
                   <Link href="/sell">
                     <PackagePlus className="mr-2 h-4 w-4" aria-hidden="true" />
