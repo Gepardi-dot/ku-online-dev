@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 
 import { createClient } from '@/utils/supabase/server';
 
-import type { UpdateProfileFormState } from './form-state';
+import type { UpdateProfileFormState, UpdateProfileFormValues } from './form-state';
 
 function readField(formData: FormData, key: string): string {
   const value = formData.get(key);
@@ -15,11 +15,40 @@ function readField(formData: FormData, key: string): string {
   return value.trim();
 }
 
+function readBoolean(formData: FormData, key: string, fallback = false): boolean {
+  const value = formData.get(key);
+  if (typeof value === 'string') {
+    if (value === 'true') {
+      return true;
+    }
+    if (value === 'false') {
+      return false;
+    }
+  }
+
+  if (typeof value === 'boolean') {
+    return value;
+  }
+
+  return fallback;
+}
+
 function validateFields(formData: FormData) {
   const fullName = readField(formData, 'fullName');
   const phone = readField(formData, 'phone');
   const location = readField(formData, 'location');
   const bio = readField(formData, 'bio');
+  const preferredLanguage = readField(formData, 'preferredLanguage') || 'en';
+  const profileVisibility = readField(formData, 'profileVisibility') || 'public';
+  const showProfileOnMarketplace = readBoolean(
+    formData,
+    'showProfileOnMarketplace',
+    true,
+  );
+  const notifyMessages = readBoolean(formData, 'notifyMessages', true);
+  const notifyOffers = readBoolean(formData, 'notifyOffers', true);
+  const notifyUpdates = readBoolean(formData, 'notifyUpdates', true);
+  const marketingEmails = readBoolean(formData, 'marketingEmails', false);
 
   const fieldErrors: UpdateProfileFormState['fieldErrors'] = {};
 
@@ -46,6 +75,16 @@ function validateFields(formData: FormData) {
     fieldErrors.bio = ['Bio must be 500 characters or fewer.'];
   }
 
+  const allowedLanguages = new Set(['en', 'ar', 'ku']);
+  if (!allowedLanguages.has(preferredLanguage)) {
+    fieldErrors.preferredLanguage = ['Choose a supported language.'];
+  }
+
+  const allowedVisibility = new Set(['public', 'community', 'private']);
+  if (!allowedVisibility.has(profileVisibility)) {
+    fieldErrors.profileVisibility = ['Select a valid visibility option.'];
+  }
+
   return {
     fieldErrors,
     values: {
@@ -53,6 +92,13 @@ function validateFields(formData: FormData) {
       phone,
       location,
       bio,
+      preferredLanguage: preferredLanguage as UpdateProfileFormValues['preferredLanguage'],
+      profileVisibility: profileVisibility as UpdateProfileFormValues['profileVisibility'],
+      showProfileOnMarketplace,
+      notifyMessages,
+      notifyOffers,
+      notifyUpdates,
+      marketingEmails,
     },
   };
 }
@@ -92,6 +138,15 @@ export async function updateProfileAction(
     phone: values.phone || null,
     location: values.location || null,
     bio: values.bio || null,
+    preferred_language: values.preferredLanguage,
+    profile_visibility: values.profileVisibility,
+    show_profile_on_marketplace: values.showProfileOnMarketplace,
+    notify_messages: values.notifyMessages,
+    notify_offers: values.notifyOffers,
+    notify_updates: values.notifyUpdates,
+    marketing_emails: values.marketingEmails,
+    profile_completed:
+      Boolean(values.fullName) && Boolean(values.location) && Boolean(values.bio),
     updated_at: new Date().toISOString(),
   };
 
