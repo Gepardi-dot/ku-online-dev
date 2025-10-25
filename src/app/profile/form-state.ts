@@ -3,6 +3,13 @@ export type UpdateProfileFormValues = {
   phone: string | null;
   location: string | null;
   bio: string | null;
+  preferredLanguage: 'en' | 'ar' | 'ku';
+  profileVisibility: 'public' | 'community' | 'private';
+  showProfileOnMarketplace: boolean;
+  notifyMessages: boolean;
+  notifyOffers: boolean;
+  notifyUpdates: boolean;
+  marketingEmails: boolean;
 };
 
 export type UpdateProfileFormState = {
