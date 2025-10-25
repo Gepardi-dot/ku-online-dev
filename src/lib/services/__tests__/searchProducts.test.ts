@@ -22,8 +22,8 @@ declare global {
 }
 
 async function loadSearchProducts() {
-  const module = (await import('../products.js')) as { searchProducts: SearchProducts };
-  return module.searchProducts;
+  const mod = (await import('../products.js')) as { searchProducts: SearchProducts };
+  return mod.searchProducts;
 }
 
 test('searchProducts normalizes edge results and fetches relations', async (t) => {
