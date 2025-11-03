@@ -3,11 +3,8 @@ set role supabase_storage_admin;
 
 alter table storage.objects enable row level security;
 
+-- Keep the bucket private; reads are served through signed URLs.
 drop policy if exists "Public read product images" on storage.objects;
-create policy "Public read product images"
-    on storage.objects
-    for select
-    using (bucket_id = 'product-images');
 
 drop policy if exists "Authenticated upload product images" on storage.objects;
 create policy "Authenticated upload product images"
