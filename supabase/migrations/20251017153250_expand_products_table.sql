@@ -1,5 +1,16 @@
-alter table products
-  rename column name to title;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'products'
+      and column_name = 'name'
+  ) then
+    alter table products
+      rename column name to title;
+  end if;
+end $$;
 
 alter table products
   add column if not exists description text,
@@ -20,6 +31,10 @@ alter table products
   alter column price set default 0,
   alter column price set not null,
   alter column created_at set default now();
+
+alter table products
+  drop constraint if exists products_price_non_negative,
+  drop constraint if exists products_original_price_non_negative;
 
 alter table products
   add constraint products_price_non_negative check (price >= 0),

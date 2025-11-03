@@ -8,10 +8,12 @@ alter table public.users
     add column if not exists marketing_emails boolean default false;
 
 alter table public.users
+    drop constraint if exists users_profile_visibility_check,
     add constraint users_profile_visibility_check
         check (profile_visibility in ('public', 'community', 'private'));
 
 alter table public.users
+    drop constraint if exists users_preferred_language_check,
     add constraint users_preferred_language_check
         check (preferred_language in ('en', 'ar', 'ku'));
 
