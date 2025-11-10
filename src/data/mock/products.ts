@@ -60,7 +60,8 @@ export const mockProducts: ProductWithRelations[] = [
     categoryId: mockCategories[0]?.id ?? "mock-category-electronics",
     sellerId: sellers.ali.id,
     location: "Erbil",
-    images: [
+    imagePaths: [],
+    imageUrls: [
       "https://images.unsplash.com/photo-1695048138333-1ef92fd71a99?auto=format&fit=crop&w=800&q=80",
       "https://images.unsplash.com/photo-1695048138253-0dc8f63bbff8?auto=format&fit=crop&w=800&q=80",
     ],
@@ -84,7 +85,8 @@ export const mockProducts: ProductWithRelations[] = [
     categoryId: mockCategories[0]?.id ?? "mock-category-electronics",
     sellerId: sellers.ali.id,
     location: "Erbil",
-    images: [
+    imagePaths: [],
+    imageUrls: [
       "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80",
     ],
     isActive: true,
@@ -107,7 +109,8 @@ export const mockProducts: ProductWithRelations[] = [
     categoryId: mockCategories[1]?.id ?? "mock-category-home",
     sellerId: sellers.shan.id,
     location: "Sulaymaniyah",
-    images: [
+    imagePaths: [],
+    imageUrls: [
       "https://images.unsplash.com/photo-1505691723518-36a5ac3be353?auto=format&fit=crop&w=800&q=80",
     ],
     isActive: true,
@@ -130,7 +133,8 @@ export const mockProducts: ProductWithRelations[] = [
     categoryId: mockCategories[1]?.id ?? "mock-category-home",
     sellerId: sellers.shan.id,
     location: "Sulaymaniyah",
-    images: [
+    imagePaths: [],
+    imageUrls: [
       "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=800&q=80",
     ],
     isActive: true,
@@ -153,7 +157,8 @@ export const mockProducts: ProductWithRelations[] = [
     categoryId: mockCategories[2]?.id ?? "mock-category-vehicles",
     sellerId: sellers.dana.id,
     location: "Duhok",
-    images: [
+    imagePaths: [],
+    imageUrls: [
       "https://images.unsplash.com/photo-1618641986557-1ecd230959aa?auto=format&fit=crop&w=800&q=80",
     ],
     isActive: true,
@@ -176,7 +181,8 @@ export const mockProducts: ProductWithRelations[] = [
     categoryId: mockCategories[2]?.id ?? "mock-category-vehicles",
     sellerId: sellers.dana.id,
     location: "Erbil",
-    images: [
+    imagePaths: [],
+    imageUrls: [
       "https://images.unsplash.com/photo-1612544104630-0f8a1e24aab2?auto=format&fit=crop&w=800&q=80",
     ],
     isActive: true,

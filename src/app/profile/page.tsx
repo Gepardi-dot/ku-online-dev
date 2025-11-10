@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import EditProfileButton from '@/components/profile/EditProfileButton';
 import AppLayout from '@/components/layout/app-layout';
 import {
   Avatar,
@@ -34,7 +35,6 @@ import {
   Clock,
   Edit,
   Eye,
-  Globe,
   LayoutDashboard,
   MapPin,
   MessageCircle,
@@ -44,6 +44,7 @@ import {
   Star,
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/server';
+import { createTransformedSignedUrls } from '@/lib/storage';
 import ProductCard from '@/components/product-card-new';
 import { getProducts } from '@/lib/services/products';
 import ProfileSettingsForm from './profile-settings-form';
@@ -60,18 +61,6 @@ const ALLOWED_TABS = new Set([
   'messages',
   'settings',
 ]);
-
-const LANGUAGE_LABELS: Record<string, string> = {
-  en: 'English',
-  ar: 'Arabic',
-  ku: 'Kurdish',
-};
-
-const VISIBILITY_LABELS: Record<string, string> = {
-  public: 'Public',
-  community: 'Community only',
-  private: 'Private',
-};
 
 type ReviewRow = {
   id: string;
@@ -124,6 +113,24 @@ export default async function ProfilePage({
     redirect('/');
   }
 
+  type UserProfileRow = {
+    full_name: string | null;
+    avatar_url: string | null;
+    phone: string | null;
+    location: string | null;
+    bio: string | null;
+    rating: number | null;
+    total_ratings: number | null;
+    created_at: string | null;
+    response_rate: string | null;
+    is_verified: boolean | null;
+    profile_completed: boolean | null;
+    notify_messages: boolean | null;
+    notify_offers: boolean | null;
+    notify_updates: boolean | null;
+    marketing_emails: boolean | null;
+  };
+
   const { data: profileRow } = await supabase
     .from('users')
     .select(
@@ -138,18 +145,15 @@ export default async function ProfilePage({
         'created_at',
         'response_rate',
         'is_verified',
-        'profile_completed',
-        'preferred_language',
-        'profile_visibility',
-        'show_profile_on_marketplace',
-        'notify_messages',
-        'notify_offers',
-        'notify_updates',
-        'marketing_emails',
-      ].join(', '),
+      'profile_completed',
+      'notify_messages',
+      'notify_offers',
+      'notify_updates',
+      'marketing_emails',
+    ].join(', '),
     )
     .eq('id', user.id)
-    .maybeSingle();
+    .maybeSingle<UserProfileRow>();
 
   const listings = await getProducts({ sellerId: user.id }, 24, 0);
 
@@ -198,10 +202,6 @@ export default async function ProfilePage({
     responseRate: profileRow?.response_rate ?? '--',
     isVerified: Boolean(profileRow?.is_verified),
     profileCompleted: Boolean(profileRow?.profile_completed),
-    preferredLanguage: profileRow?.preferred_language ?? 'en',
-    profileVisibility: profileRow?.profile_visibility ?? 'public',
-    showProfileOnMarketplace:
-      profileRow?.show_profile_on_marketplace ?? true,
     notifyMessages: profileRow?.notify_messages ?? true,
     notifyOffers: profileRow?.notify_offers ?? true,
     notifyUpdates: profileRow?.notify_updates ?? true,
@@ -210,17 +210,34 @@ export default async function ProfilePage({
 
   const settingsInitialValues: UpdateProfileFormValues = {
     fullName: profileRow?.full_name ?? user.user_metadata?.full_name ?? profileData.fullName,
+    avatarUrl: profileRow?.avatar_url ?? user.user_metadata?.avatar_url ?? null,
     phone: profileRow?.phone ?? user.user_metadata?.phone ?? null,
     location: profileRow?.location ?? user.user_metadata?.location ?? null,
     bio: profileRow?.bio ?? null,
-    preferredLanguage: profileData.preferredLanguage,
-    profileVisibility: profileData.profileVisibility,
-    showProfileOnMarketplace: profileData.showProfileOnMarketplace,
     notifyMessages: profileData.notifyMessages,
     notifyOffers: profileData.notifyOffers,
     notifyUpdates: profileData.notifyUpdates,
     marketingEmails: profileData.marketingEmails,
   };
+
+  // Attempt to serve a short-lived transformed avatar URL for reliable loading
+  let avatarDisplayUrl: string | null = profileData.avatar;
+  try {
+    if (avatarDisplayUrl && avatarDisplayUrl.includes('/storage/v1/object/public/')) {
+      const idx = avatarDisplayUrl.indexOf('/storage/v1/object/public/');
+      const after = avatarDisplayUrl.substring(idx + '/storage/v1/object/public/'.length);
+      const firstSlash = after.indexOf('/');
+      if (firstSlash > 0) {
+        const path = after.substring(firstSlash + 1); // remove bucket name prefix
+        const signed = await createTransformedSignedUrls([path], { width: 128, resize: 'cover', quality: 85, format: 'webp' });
+        avatarDisplayUrl = signed[path] ?? avatarDisplayUrl;
+      }
+    }
+  } catch (e) {
+    // best-effort; keep original URL
+  }
+
+  // Visibility and language settings removed per product requirements.
 
   const joinedLabel = profileData.joinedDate
     ? formatDistanceToNow(new Date(profileData.joinedDate), { addSuffix: true })
@@ -246,10 +263,23 @@ export default async function ProfilePage({
   const totalViews = listings.reduce((acc, item) => acc + (item.views ?? 0), 0);
   const featuredListings = listings.slice(0, 3);
 
-  const languageLabel = LANGUAGE_LABELS[profileData.preferredLanguage] ?? 'English';
-  const visibilityLabel =
-    VISIBILITY_LABELS[profileData.profileVisibility] ?? 'Public';
-  const reviews = (recentReviews ?? []) as ReviewRow[];
+  const reviews: ReviewRow[] = (recentReviews ?? []).map((row: any) => {
+    const buyer = Array.isArray(row?.buyer)
+      ? (row.buyer[0] ?? null)
+      : row?.buyer ?? null;
+    return {
+      id: String(row.id),
+      rating: Number(row.rating),
+      comment: (row.comment as string) ?? null,
+      created_at: String(row.created_at),
+      buyer: buyer
+        ? {
+            full_name: (buyer.full_name as string) ?? null,
+            avatar_url: (buyer.avatar_url as string) ?? null,
+          }
+        : null,
+    };
+  });
 
   return (
     <AppLayout user={user}>
@@ -260,7 +290,7 @@ export default async function ProfilePage({
               <CardContent className="p-6">
                 <div className="text-center space-y-4">
                   <Avatar className="h-24 w-24 mx-auto">
-                    <AvatarImage src={profileData.avatar ?? undefined} />
+                    <AvatarImage src={avatarDisplayUrl ?? undefined} />
                     <AvatarFallback className="text-2xl">
                       {profileData.fullName[0]}
                     </AvatarFallback>
@@ -317,12 +347,7 @@ export default async function ProfilePage({
                   </div>
 
                   <div className="space-y-2">
-                    <Button asChild className="w-full">
-                      <Link href="/profile?tab=settings#profile-details">
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit Profile
-                      </Link>
-                    </Button>
+                    <EditProfileButton className="w-full" />
                     <Button asChild variant="outline" className="w-full">
                       <Link href="/profile?tab=settings">
                         <Settings className="mr-2 h-4 w-4" />
@@ -340,24 +365,6 @@ export default async function ProfilePage({
                 <CardDescription>Current visibility and notification defaults.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 text-sm">
-                <div className="flex items-start gap-3">
-                  <Globe className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium text-foreground">Profile visibility</p>
-                    <p className="text-muted-foreground">{visibilityLabel}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <LayoutDashboard className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium text-foreground">Marketplace listing</p>
-                    <p className="text-muted-foreground">
-                      {profileData.showProfileOnMarketplace
-                        ? 'Profile is discoverable in marketplace searches.'
-                        : 'Profile is hidden from public directories.'}
-                    </p>
-                  </div>
-                </div>
                 <Separator />
                 <div className="flex items-start gap-3">
                   <Bell className="mt-0.5 h-4 w-4 text-muted-foreground" />
@@ -379,19 +386,12 @@ export default async function ProfilePage({
                     </ul>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <Globe className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium text-foreground">Preferred language</p>
-                    <p className="text-muted-foreground">{languageLabel}</p>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </div>
 
           <div className="lg:col-span-2">
-            <Tabs defaultValue={activeTab} className="space-y-6">
+            <Tabs key={activeTab} defaultValue={activeTab} className="space-y-6">
               <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
                 <TabsTrigger value="overview">
                   <LayoutDashboard className="mr-2 h-4 w-4" />
@@ -462,17 +462,7 @@ export default async function ProfilePage({
                               </p>
                             </dd>
                           </div>
-                          <div>
-                            <dt className="font-medium text-muted-foreground">Visibility</dt>
-                            <dd className="mt-1 space-y-1">
-                              <p className="text-foreground">{visibilityLabel}</p>
-                              <p className="text-muted-foreground">
-                                {profileData.showProfileOnMarketplace
-                                  ? 'Your storefront appears in marketplace directories.'
-                                  : 'Hidden from marketplace discovery.'}
-                              </p>
-                            </dd>
-                          </div>
+                          
                         </dl>
                       </div>
 
@@ -506,12 +496,6 @@ export default async function ProfilePage({
                         <div className="rounded-lg border bg-background p-4 shadow-sm">
                           <p className="text-sm font-medium text-muted-foreground">Preferences</p>
                           <div className="mt-3 space-y-2 text-sm">
-                            <div className="flex items-center justify-between">
-                              <span className="flex items-center gap-2 text-muted-foreground">
-                                <Globe className="h-4 w-4" /> Language
-                              </span>
-                              <span className="font-medium text-foreground">{languageLabel}</span>
-                            </div>
                             <div className="flex items-center justify-between">
                               <span className="flex items-center gap-2 text-muted-foreground">
                                 <Bell className="h-4 w-4" /> Marketing email opt-in

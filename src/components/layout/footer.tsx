@@ -18,21 +18,21 @@ export default function AppFooter() {
                     <div>
                         <h3 className="text-white font-semibold mb-4">Customer Service</h3>
                         <ul className="space-y-2">
-                            <li><a href="#" className="hover:text-white transition">Help Center</a></li>
-                            <li><a href="#" className="hover:text-white transition">Contact Us</a></li>
-                            <li><a href="#" className="hover:text-white transition">Returns & Refunds</a></li>
-                            <li><a href="#" className="hover:text-white transition">Order Tracking</a></li>
-                            <li><a href="#" className="hover:text-white transition">Shipping Info</a></li>
+                            <li><a href="/faq" className="hover:text-white transition">Help Center</a></li>
+                            <li><a href="/faq" className="hover:text-white transition">Contact Us</a></li>
+                            <li><a href="/disputes-refunds" className="hover:text-white transition">Disputes & Refund Requests</a></li>
+                            <li><a href="/order-tracking" className="hover:text-white transition">Order Status & Tracking</a></li>
+                            <li><a href="/delivery-handover" className="hover:text-white transition">Delivery & Handover</a></li>
                         </ul>
                     </div>
                     
                     <div>
                         <h3 className="text-white font-semibold mb-4">Payment & Security</h3>
                         <ul className="space-y-2">
-                            <li><a href="#" className="hover:text-white transition">Secure Shopping</a></li>
-                            <li><a href="#" className="hover:text-white transition">Payment Methods</a></li>
-                            <li><a href="#" className="hover:text-white transition">Privacy Policy</a></li>
-                            <li><a href="#" className="hover:text-white transition">Terms of Use</a></li>
+                            <li><a href="/safety-fraud" className="hover:text-white transition">Secure Shopping</a></li>
+                            <li><a href="/fees-payments" className="hover:text-white transition">Fees & Payments</a></li>
+                            <li><a href="/privacy-policy" className="hover:text-white transition">Privacy Policy</a></li>
+                            <li><a href="/terms-of-use" className="hover:text-white transition">Terms of Use</a></li>
                         </ul>
                     </div>
                     

@@ -1,10 +1,10 @@
 ﻿import { Suspense } from 'react';
-import Link from 'next/link';
 import { cookies } from 'next/headers';
+import type { Metadata } from 'next';
 import { createClient } from '@/utils/supabase/server';
 import AppLayout from '@/components/layout/app-layout';
-import ProductCard from '@/components/product-card-new';
 import { ProductsFilterBar } from '@/components/products/filter-bar';
+import { ProductsExplorer } from '@/components/products/ProductsExplorer';
 import {
   getProductsWithCount,
   getCategories,
@@ -13,14 +13,10 @@ import {
   type ProductFilters,
 } from '@/lib/services/products';
 import {
-  DEFAULT_FILTER_VALUES,
-  parsePostedWithinParam,
-  parsePriceParam,
-  parseSortParam,
+  parseProductQueryParams,
   postedWithinToDate,
   type ProductsFilterValues,
 } from '@/lib/products/filter-params';
-import { Button } from '@/components/ui/button';
 
 interface ProductsSearchParams {
   page?: string;
@@ -47,101 +43,42 @@ interface ProductsContentProps {
 
 const PAGE_SIZE = 24;
 
-function buildQueryString(base: ProductsFilterValues, overrides: Record<string, string | number | undefined> = {}) {
-  const params = new URLSearchParams();
-
-  const entries: Record<string, string> = {
-    search: base.search.trim(),
-    category: base.category,
-    condition: base.condition,
-    location: base.location,
-    minPrice: base.minPrice.trim(),
-    maxPrice: base.maxPrice.trim(),
-  };
-
-  const sortValue = base.sort;
-  if (sortValue && sortValue !== 'newest') {
-    params.set('sort', sortValue);
-  }
-
-  const postedWithin = base.postedWithin;
-  if (postedWithin && postedWithin !== 'any') {
-    params.set('postedWithin', postedWithin);
-  }
-
-  for (const [key, value] of Object.entries(entries)) {
-    if (value) {
-      params.set(key, value);
-    }
-  }
-
-  for (const [key, value] of Object.entries(overrides)) {
-    if (value === undefined || value === '') {
-      params.delete(key);
-    } else {
-      params.set(key, String(value));
-    }
-  }
-
-  const query = params.toString();
-  return query ? `/products?${query}` : '/products';
+export async function generateMetadata({ searchParams }: { searchParams: Promise<ProductsSearchParams> }): Promise<Metadata> {
+  const params = await searchParams;
+  const { initialValues } = parseProductQueryParams(params as unknown as Record<string, string | undefined>);
+  const bits = [] as string[];
+  if (initialValues.search) bits.push(initialValues.search);
+  if (initialValues.category) bits.push('Filtered');
+  const title = bits.length ? `${bits.join(' • ')} – Products` : 'All Products';
+  return { title };
 }
 
 async function ProductsContent({ searchParams, categories, locations, viewerId }: ProductsContentProps) {
   const params = await searchParams;
-
-  const pageParam = params.page ? Number(params.page) : 1;
-  const currentPage = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
+  const { initialValues, filters, sort, postedWithin, page } = parseProductQueryParams(
+    params as unknown as Record<string, string | undefined>,
+  );
+  const currentPage = page;
   const offset = (currentPage - 1) * PAGE_SIZE;
-
-  const sort = parseSortParam(params.sort);
-  const minPrice = parsePriceParam(params.minPrice);
-  const maxPrice = parsePriceParam(params.maxPrice);
-  const postedWithin = parsePostedWithinParam(params.postedWithin);
   const createdAfter = postedWithinToDate(postedWithin);
 
-  const trimmedSearch = params.search?.trim() ?? '';
-  const filters: ProductFilters = {
-    category: params.category || undefined,
-    condition: params.condition || undefined,
-    location: params.location || undefined,
-    search: trimmedSearch ? trimmedSearch : undefined,
-    minPrice,
-    maxPrice,
+  const filtersWithDate: ProductFilters = {
+    ...filters,
     createdAfter,
   };
 
   const shouldUseEdgeSearch = Boolean(filters.search) && postedWithin === 'any';
   const { items, count } = shouldUseEdgeSearch
-    ? await searchProducts(filters, PAGE_SIZE, offset, sort)
-    : await getProductsWithCount(filters, PAGE_SIZE, offset, sort);
+    ? await searchProducts(filtersWithDate, PAGE_SIZE, offset, sort)
+    : await getProductsWithCount(filtersWithDate, PAGE_SIZE, offset, sort);
 
   const boundedPage = count === 0 ? 1 : Math.min(currentPage, Math.max(1, Math.ceil(count / PAGE_SIZE)));
   const displayOffset = boundedPage === currentPage ? offset : (boundedPage - 1) * PAGE_SIZE;
 
-  const initialValues: ProductsFilterValues = {
-    search: params.search ?? DEFAULT_FILTER_VALUES.search,
-    category: params.category ?? DEFAULT_FILTER_VALUES.category,
-    condition: params.condition ?? DEFAULT_FILTER_VALUES.condition,
-    location: params.location ?? DEFAULT_FILTER_VALUES.location,
-    minPrice: params.minPrice ?? DEFAULT_FILTER_VALUES.minPrice,
-    maxPrice: params.maxPrice ?? DEFAULT_FILTER_VALUES.maxPrice,
-    sort,
-    postedWithin,
-  };
-
-  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
   const showFrom = count === 0 ? 0 : displayOffset + 1;
   const showTo = count === 0 ? 0 : Math.min(displayOffset + items.length, count);
 
-  const prevPage = boundedPage > 1 ? boundedPage - 1 : null;
-  const nextPage = boundedPage < totalPages ? boundedPage + 1 : null;
-
-  const baseForQuery: ProductsFilterValues = {
-    ...initialValues,
-    minPrice: minPrice !== undefined ? String(minPrice) : '',
-    maxPrice: maxPrice !== undefined ? String(maxPrice) : '',
-  };
+  const baseForQuery: ProductsFilterValues = initialValues;
 
   return (
     <section className="py-12">
@@ -164,27 +101,14 @@ async function ProductsContent({ searchParams, categories, locations, viewerId }
             No listings available yet. Check back soon!
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-            {items.map((product) => (
-              <ProductCard key={product.id} product={product} viewerId={viewerId} />
-            ))}
-          </div>
-        )}
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between gap-2 pt-4">
-            <div className="text-sm text-muted-foreground">
-              Page {boundedPage} of {totalPages}
-            </div>
-            <div className="flex items-center gap-2">
-              <Button asChild variant="outline" size="sm" disabled={!prevPage}>
-                <Link href={prevPage ? buildQueryString(baseForQuery, { page: prevPage.toString() }) : '#'}>Previous</Link>
-              </Button>
-              <Button asChild variant="outline" size="sm" disabled={!nextPage}>
-                <Link href={nextPage ? buildQueryString(baseForQuery, { page: nextPage.toString() }) : '#'}>Next</Link>
-              </Button>
-            </div>
-          </div>
+          <ProductsExplorer
+            initialItems={items}
+            initialPage={boundedPage}
+            totalCount={count}
+            pageSize={PAGE_SIZE}
+            filterValues={baseForQuery}
+            viewerId={viewerId}
+          />
         )}
       </div>
     </section>

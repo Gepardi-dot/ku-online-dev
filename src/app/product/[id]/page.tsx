@@ -9,14 +9,18 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, Eye, Share2, Flag } from 'lucide-react';
+import { MapPin, Eye, Flag } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ChatButton from '@/components/chat/chat-button';
+import MarkSoldToggle from '@/components/product/mark-sold-toggle';
 import ReviewSystem from '@/components/reviews/review-system';
 import SimilarItems from '@/components/product/similar-items';
 import { formatDistanceToNow } from 'date-fns';
 import { getProductById, incrementProductViews } from '@/lib/services/products';
+import ProductImages from '@/components/product/product-images';
 import FavoriteToggle from '@/components/product/favorite-toggle';
+import ShareButton from '@/components/share-button';
+import Link from 'next/link';
 
 const placeholderReviews = [
   {
@@ -90,42 +94,52 @@ export default async function ProductPage({ params }: ProductPageProps) {
     }
   };
 
-  const images = product.images.length > 0 ? product.images : ['https://placehold.co/800x600?text=KU-ONLINE'];
+  const rawImages = product.imageUrls.length > 0 ? product.imageUrls : ['https://placehold.co/800x600?text=KU-ONLINE'];
   const seller = product.seller;
   const createdAtLabel = product.createdAt ? formatDistanceToNow(product.createdAt, { addSuffix: true }) : '';
   const sellerJoinedLabel = seller?.createdAt ? formatDistanceToNow(seller.createdAt, { addSuffix: true }) : null;
 
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.title,
+    description: product.description ?? undefined,
+    image: rawImages,
+    offers: {
+      '@type': 'Offer',
+      priceCurrency: product.currency ?? 'IQD',
+      price: product.price,
+      availability: product.isSold ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+    },
+    seller: seller
+      ? {
+          '@type': 'Person',
+          name: seller.fullName ?? seller.email ?? undefined,
+        }
+      : undefined,
+  };
+
+  // Build canonical URL for sharing
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  const shareUrl = base ? `${base}/product/${product.id}` : `/product/${product.id}`;
+
   return (
     <AppLayout user={user}>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <div className="space-y-4">
-              <div className="relative aspect-[4/3] rounded-lg overflow-hidden">
-                <Image
-                  src={images[0]}
-                  alt={product.title}
-                  fill
-                  className="object-cover"
-                  priority
-                />
-                <div className="absolute top-4 right-4 flex gap-2">
+              <div className="relative">
+                <div className="absolute top-4 right-4 z-10 flex gap-2">
                   <FavoriteToggle productId={product.id} userId={user?.id ?? null} />
-                  <Button size="sm" variant="secondary" className="h-8 w-8 rounded-full p-0">
-                    <Share2 className="h-4 w-4" />
-                  </Button>
+                  <ShareButton title={product.title} url={shareUrl} className="h-8 w-8 rounded-full p-0" />
                 </div>
+                <ProductImages images={rawImages} title={product.title} />
               </div>
-
-              {images.length > 1 && (
-                <div className="grid grid-cols-3 gap-2">
-                  {images.slice(1).map((image, index) => (
-                    <div key={image + index} className="relative aspect-[4/3] rounded-lg overflow-hidden">
-                      <Image src={image} alt={`${product.title} ${index + 2}`} fill className="object-cover" />
-                    </div>
-                  ))}
-                </div>
-              )}
             </div>
           </div>
 
@@ -145,8 +159,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   </div>
                 </div>
 
-                <div className="text-3xl font-bold text-primary">
-                  {formatPrice(product.price, product.currency)}
+                <div className="flex items-center gap-3">
+                  <div className="text-3xl font-bold text-primary">
+                    {formatPrice(product.price, product.currency)}
+                  </div>
+                  {product.isSold && (
+                    <Badge variant="secondary" className="bg-gray-700 text-white">Sold</Badge>
+                  )}
                 </div>
 
                 {(product.location || createdAtLabel) && (
@@ -179,13 +198,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <div>
                   <h3 className="font-semibold mb-3">Seller Information</h3>
                   <div className="flex items-start gap-3">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={seller?.avatar ?? undefined} />
-                      <AvatarFallback>{(seller?.fullName ?? seller?.email ?? 'U')[0]}</AvatarFallback>
-                    </Avatar>
+                    <Link href={seller?.id ? `/seller/${seller.id}` : '#'} prefetch className="shrink-0">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={seller?.avatar ?? undefined} />
+                        <AvatarFallback>{(seller?.fullName ?? seller?.email ?? 'U')[0]}</AvatarFallback>
+                      </Avatar>
+                    </Link>
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2">
-                        <h4 className="font-medium">{seller?.fullName ?? seller?.email ?? 'Seller'}</h4>
+                        <Link href={seller?.id ? `/seller/${seller.id}` : '#'} prefetch className="font-medium hover:underline">
+                          {seller?.fullName ?? seller?.email ?? 'Seller'}
+                        </Link>
                         <div className="flex items-center gap-1">
                           <span className="text-sm text-yellow-500">&#9733;</span>
                           <span className="text-sm">{seller?.rating ?? 'N/A'}</span>
@@ -209,8 +232,22 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     productId={product.id}
                     productTitle={product.title}
                     viewerId={user?.id ?? null}
-                    viewerName={user?.user_metadata?.full_name ?? user?.email ?? undefined}
                   />
+                  {user?.id === seller?.id && (
+                    <MarkSoldToggle
+                      productId={product.id}
+                      sellerId={seller?.id ?? ''}
+                      viewerId={user?.id ?? null}
+                      isSold={product.isSold}
+                    />
+                  )}
+                  {user?.id === seller?.id && (
+                    <Button asChild variant="secondary" className="w-full">
+                      <Link href={`/product/${product.id}/edit`} prefetch>
+                        Edit Listing
+                      </Link>
+                    </Button>
+                  )}
                   <Button variant="outline" className="w-full">
                     <Flag className="mr-2 h-4 w-4" />
                     Report Listing
@@ -227,8 +264,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
             productId={product.id}
             averageRating={seller?.rating ?? 0}
             totalReviews={seller?.totalRatings ?? 0}
-            reviews={placeholderReviews}
             canReview={Boolean(user && user.id !== seller?.id)}
+            viewerId={user?.id ?? null}
           />
         </div>
 

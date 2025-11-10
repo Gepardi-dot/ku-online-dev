@@ -3,7 +3,11 @@
 import { createClient } from '@/utils/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+import { getPublicEnv } from '@/lib/env-public';
+
 const supabase = createClient();
+const { NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET } = getPublicEnv();
+const STORAGE_BUCKET = NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'product-images';
 
 export interface FavoriteSummary {
   id: string;
@@ -15,7 +19,8 @@ export interface FavoriteSummary {
     title: string;
     price: number | null;
     currency: string | null;
-    images: string[];
+    imagePaths: string[];
+    imageUrls: string[];
     location: string | null;
   } | null;
 }
@@ -43,11 +48,45 @@ function mapFavoriteRow(row: any): FavoriteSummary {
           title: (row.product.title as string) ?? 'Untitled',
           price: priceValue,
           currency: (row.product.currency as string) ?? 'IQD',
-          images: imagesValue,
+          imagePaths: imagesValue,
+          imageUrls: imagesValue,
           location: (row.product.location as string) ?? null,
         }
       : null,
   };
+}
+
+async function hydrateFavoriteImages(favorites: FavoriteSummary[]) {
+  const paths = Array.from(
+    new Set(favorites.flatMap((favorite) => favorite.product?.imagePaths ?? [])),
+  ).filter(Boolean);
+
+  if (!paths.length) {
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/storage/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths, transform: { width: 96, resize: 'cover', quality: 70, format: 'webp' } }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to sign favorite images');
+    }
+    const payload = (await response.json().catch(() => ({}))) as { map?: Record<string, string> };
+    const map = payload.map ?? {};
+
+    favorites.forEach((favorite) => {
+      if (!favorite.product) return;
+      const urls = favorite.product.imagePaths
+        .map((path) => map[path])
+        .filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
+      favorite.product.imageUrls = urls;
+    });
+  } catch (error) {
+    console.error('Failed to hydrate favorite images', error);
+  }
 }
 
 export async function fetchFavoriteStatus(userId: string, productId: string) {
@@ -111,7 +150,9 @@ export async function listFavorites(userId: string, limit = 24): Promise<Favorit
     throw error;
   }
 
-  return (data ?? []).map((row) => mapFavoriteRow(row));
+  const favorites = (data ?? []).map((row) => mapFavoriteRow(row));
+  await hydrateFavoriteImages(favorites);
+  return favorites;
 }
 
 export async function countFavorites(userId: string): Promise<number> {

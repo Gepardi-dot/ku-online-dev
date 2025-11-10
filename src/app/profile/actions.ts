@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 
 import { createClient } from '@/utils/supabase/server';
+import { updateProfileSchema } from '@/lib/validation/schemas';
 
 import type { UpdateProfileFormState, UpdateProfileFormValues } from './form-state';
 
@@ -35,71 +36,58 @@ function readBoolean(formData: FormData, key: string, fallback = false): boolean
 
 function validateFields(formData: FormData) {
   const fullName = readField(formData, 'fullName');
+  const avatarUrl = readField(formData, 'avatarUrl');
   const phone = readField(formData, 'phone');
   const location = readField(formData, 'location');
   const bio = readField(formData, 'bio');
-  const preferredLanguage = readField(formData, 'preferredLanguage') || 'en';
-  const profileVisibility = readField(formData, 'profileVisibility') || 'public';
-  const showProfileOnMarketplace = readBoolean(
-    formData,
-    'showProfileOnMarketplace',
-    true,
-  );
   const notifyMessages = readBoolean(formData, 'notifyMessages', true);
   const notifyOffers = readBoolean(formData, 'notifyOffers', true);
   const notifyUpdates = readBoolean(formData, 'notifyUpdates', true);
   const marketingEmails = readBoolean(formData, 'marketingEmails', false);
 
+  const candidate = {
+    fullName,
+    avatarUrl: avatarUrl ? avatarUrl : null,
+    phone: phone ? phone : null,
+    location: location ? location : null,
+    bio: bio ? bio : null,
+    notifyMessages,
+    notifyOffers,
+    notifyUpdates,
+    marketingEmails,
+  };
+
+  const result = updateProfileSchema.safeParse(candidate);
+
   const fieldErrors: UpdateProfileFormState['fieldErrors'] = {};
 
-  if (!fullName) {
-    fieldErrors.fullName = ['Full name is required.'];
-  } else if (fullName.length < 2) {
-    fieldErrors.fullName = ['Full name must be at least 2 characters long.'];
-  } else if (fullName.length > 120) {
-    fieldErrors.fullName = ['Full name must be 120 characters or fewer.'];
-  }
-
-  if (phone) {
-    const phonePattern = /^[+0-9()\-\s]{6,20}$/;
-    if (!phonePattern.test(phone)) {
-      fieldErrors.phone = ['Enter a valid phone number.'];
+  if (!result.success) {
+    const flattened = result.error.flatten();
+    for (const [key, errors] of Object.entries(flattened.fieldErrors)) {
+      if (errors && errors.length > 0) {
+        fieldErrors[key as keyof UpdateProfileFormValues] = errors;
+      }
     }
-  }
-
-  if (location && location.length > 120) {
-    fieldErrors.location = ['Location must be 120 characters or fewer.'];
-  }
-
-  if (bio && bio.length > 500) {
-    fieldErrors.bio = ['Bio must be 500 characters or fewer.'];
-  }
-
-  const allowedLanguages = new Set(['en', 'ar', 'ku']);
-  if (!allowedLanguages.has(preferredLanguage)) {
-    fieldErrors.preferredLanguage = ['Choose a supported language.'];
-  }
-
-  const allowedVisibility = new Set(['public', 'community', 'private']);
-  if (!allowedVisibility.has(profileVisibility)) {
-    fieldErrors.profileVisibility = ['Select a valid visibility option.'];
-  }
-
-  return {
-    fieldErrors,
-    values: {
+    const fallbackValues: UpdateProfileFormValues = {
       fullName,
-      phone,
-      location,
-      bio,
-      preferredLanguage: preferredLanguage as UpdateProfileFormValues['preferredLanguage'],
-      profileVisibility: profileVisibility as UpdateProfileFormValues['profileVisibility'],
-      showProfileOnMarketplace,
+      avatarUrl: avatarUrl ? avatarUrl : null,
+      phone: phone ? phone : null,
+      location: location ? location : null,
+      bio: bio ? bio : null,
       notifyMessages,
       notifyOffers,
       notifyUpdates,
       marketingEmails,
-    },
+    };
+    return {
+      fieldErrors,
+      values: fallbackValues,
+    };
+  }
+
+  return {
+    fieldErrors: {},
+    values: result.data,
   };
 }
 
@@ -133,14 +121,11 @@ export async function updateProfileAction(
   }
 
   const updates = {
-    id: user.id,
     full_name: values.fullName,
+    avatar_url: values.avatarUrl || null,
     phone: values.phone || null,
     location: values.location || null,
     bio: values.bio || null,
-    preferred_language: values.preferredLanguage,
-    profile_visibility: values.profileVisibility,
-    show_profile_on_marketplace: values.showProfileOnMarketplace,
     notify_messages: values.notifyMessages,
     notify_offers: values.notifyOffers,
     notify_updates: values.notifyUpdates,
@@ -152,7 +137,8 @@ export async function updateProfileAction(
 
   const { error } = await supabase
     .from('users')
-    .upsert(updates, { onConflict: 'id' });
+    .update(updates)
+    .eq('id', user.id);
 
   if (error) {
     console.error('Failed to update profile settings', error);

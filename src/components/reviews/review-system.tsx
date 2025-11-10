@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Star, ThumbsUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,29 +17,43 @@ interface Review {
   buyerAvatar?: string;
   createdAt: string;
   isAnonymous: boolean;
+  helpfulCount?: number;
+  votedByMe?: boolean;
+  buyerId?: string;
 }
 
 interface ReviewSystemProps {
   sellerId: string;
   productId?: string;
-  averageRating: number;
-  totalReviews: number;
-  reviews: Review[];
+  averageRating?: number;
+  totalReviews?: number;
+  reviews?: Review[];
   canReview?: boolean;
+  viewerId?: string | null;
 }
 
-export default function ReviewSystem({ 
-  sellerId, 
-  productId, 
-  averageRating, 
-  totalReviews, 
-  reviews,
-  canReview = false 
+export default function ReviewSystem({
+  sellerId,
+  productId,
+  averageRating = 0,
+  totalReviews = 0,
+  reviews = [],
+  canReview = false,
+  viewerId = null,
 }: ReviewSystemProps) {
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [newRating, setNewRating] = useState(0);
   const [newComment, setNewComment] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [items, setItems] = useState<Review[]>(reviews);
+  const [avg, setAvg] = useState(averageRating);
+  const [count, setCount] = useState(totalReviews);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editRating, setEditRating] = useState(0);
+  const [editComment, setEditComment] = useState('');
+  const [editAnon, setEditAnon] = useState(false);
 
   const renderStars = (rating: number, interactive = false, onRate?: (rating: number) => void) => {
     return [...Array(5)].map((_, i) => (
@@ -53,23 +67,70 @@ export default function ReviewSystem({
     ));
   };
 
-  const handleSubmitReview = async () => {
-    // In real app, submit to backend
-    console.log('Submitting review:', {
-      sellerId,
-      productId,
-      rating: newRating,
-      comment: newComment,
-      isAnonymous
-    });
+  useEffect(() => {
+    const run = async () => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        params.set('sellerId', sellerId);
+        if (productId) params.set('productId', productId);
+        params.set('limit', '10');
+        const res = await fetch(`/api/reviews?${params.toString()}`);
+        const payload = await res.json();
+        if (res.ok) {
+          setItems(payload.items ?? []);
+          setAvg(Number(payload.average ?? averageRating));
+          setCount(Number(payload.total ?? totalReviews));
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sellerId, productId]);
 
-    setShowReviewDialog(false);
-    setNewRating(0);
-    setNewComment('');
-    setIsAnonymous(false);
+  const handleSubmitReview = async () => {
+    if (!newRating) return;
+    try {
+      const res = await fetch('/api/reviews', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sellerId, productId: productId ?? null, rating: newRating, comment: newComment, isAnonymous }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload?.error || 'Failed to submit');
+
+      // Optimistically add
+      setItems((prev) => [
+        {
+          id: payload.review?.id ?? String(Date.now()),
+          rating: newRating,
+          comment: newComment,
+          buyerName: isAnonymous ? 'Anonymous' : 'You',
+          buyerAvatar: undefined,
+          createdAt: new Date().toISOString(),
+          isAnonymous,
+        },
+        ...prev,
+      ]);
+      setCount((c) => c + 1);
+      setAvg((prev) => {
+        const total = (prev * count + newRating) / ((count + 1) || 1);
+        return total;
+      });
+
+      setShowReviewDialog(false);
+      setNewRating(0);
+      setNewComment('');
+      setIsAnonymous(false);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
@@ -89,9 +150,9 @@ export default function ReviewSystem({
                   <div>
                     <label className="text-sm font-medium">Rating</label>
                     <div className="flex items-center gap-1 mt-1">
-                      {renderStars(newRating, true, setNewRating)}
-                    </div>
-                  </div>
+          {renderStars(newRating, true, setNewRating)}
+          </div>
+        </div>
                   
                   <div>
                     <label className="text-sm font-medium">Comment</label>
@@ -115,13 +176,15 @@ export default function ReviewSystem({
                     </label>
                   </div>
                   
-                  <Button 
-                    onClick={handleSubmitReview} 
-                    disabled={newRating === 0}
-                    className="w-full"
-                  >
-                    Submit Review
-                  </Button>
+                  <div className="flex items-center justify-between gap-2">
+                    <Button
+                      onClick={handleSubmitReview}
+                      disabled={newRating === 0}
+                      className="w-full"
+                    >
+                      Submit Review
+                    </Button>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
@@ -132,24 +195,26 @@ export default function ReviewSystem({
         {/* Overall Rating */}
         <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
           <div className="text-center">
-            <div className="text-2xl font-bold">{averageRating.toFixed(1)}</div>
+            <div className="text-2xl font-bold">{Number(avg).toFixed(1)}</div>
             <div className="flex items-center gap-1">
-              {renderStars(Math.round(averageRating))}
+              {renderStars(Math.round(avg))}
             </div>
           </div>
           <div className="text-sm text-muted-foreground">
-            Based on {totalReviews} review{totalReviews !== 1 ? 's' : ''}
+            Based on {count} review{count !== 1 ? 's' : ''}
           </div>
         </div>
 
         {/* Individual Reviews */}
         <div className="space-y-4">
-          {reviews.length === 0 ? (
+          {loading ? (
+            <p className="text-center text-muted-foreground py-8">Loading reviews…</p>
+          ) : items.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
               No reviews yet. Be the first to review!
             </p>
           ) : (
-            reviews.map((review) => (
+            items.map((review) => (
               <div key={review.id} className="border-b pb-4 last:border-b-0">
                 <div className="flex items-start gap-3">
                   <Avatar className="h-8 w-8">
@@ -179,10 +244,29 @@ export default function ReviewSystem({
                       <p className="text-sm text-muted-foreground">{review.comment}</p>
                     )}
                     
-                    <div className="flex items-center gap-2 mt-2">
-                      <Button variant="ghost" size="sm" className="h-auto p-1">
+                    <div className="mt-2 flex items-center gap-2">
+                      <Button
+                        variant={review.votedByMe ? 'secondary' : 'ghost'}
+                        size="sm"
+                        className="h-auto px-2 py-1"
+                        onClick={async () => {
+                          try {
+                            const action = review.votedByMe ? 'remove' : 'add';
+                            const res = await fetch('/api/reviews/helpful', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ reviewId: review.id, action }),
+                            });
+                            const payload = await res.json();
+                            if (!res.ok) throw new Error(payload?.error || 'Failed');
+                            setItems((prev) => prev.map((r) => r.id === review.id ? { ...r, votedByMe: action === 'add', helpfulCount: payload.count } : r));
+                          } catch (e) {
+                            console.error(e);
+                          }
+                        }}
+                      >
                         <ThumbsUp className="h-3 w-3 mr-1" />
-                        Helpful
+                        Helpful {typeof review.helpfulCount === 'number' ? `(${review.helpfulCount})` : ''}
                       </Button>
                     </div>
                   </div>
@@ -193,5 +277,61 @@ export default function ReviewSystem({
         </div>
       </CardContent>
     </Card>
+
+    {/* Edit Review Dialog */}
+    {showEdit && editId && (
+      <Dialog open={showEdit} onOpenChange={setShowEdit}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit your review</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Rating</label>
+              <div className="mt-1 flex items-center gap-1">
+                {renderStars(editRating, true, setEditRating)}
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">Comment</label>
+              <Textarea value={editComment} onChange={(e) => setEditComment(e.target.value)} className="mt-1" />
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="editAnon" checked={editAnon} onChange={(e) => setEditAnon(e.target.checked)} />
+              <label htmlFor="editAnon" className="text-sm">Post anonymously</label>
+            </div>
+            <Button
+              className="w-full"
+              disabled={!editRating}
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/reviews', {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: editId, rating: editRating, comment: editComment, isAnonymous: editAnon }),
+                  });
+                  const payload = await res.json().catch(() => ({}));
+                  if (!res.ok) throw new Error(payload?.error || 'Failed');
+                  // Update local state and average
+                  setItems((prev) => prev.map((r) => r.id === editId ? { ...r, rating: editRating, comment: editComment, isAnonymous: editAnon } : r));
+                  // recompute average from items (simple and safe)
+                  setAvg((prev) => {
+                    const list = items.map((r) => r.id === editId ? { ...r, rating: editRating } : r);
+                    const total = list.reduce((a, b) => a + b.rating, 0);
+                    return list.length ? total / list.length : 0;
+                  });
+                  setShowEdit(false);
+                } catch (e) {
+                  console.error(e);
+                }
+              }}
+            >
+              Save changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )}
+    </>
   );
 }

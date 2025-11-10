@@ -3,19 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -H 0.0.0.0 -p 5000",
+    "dev": "node tools/scripts/dev-server.mjs",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 5000",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "build:test": "tsc --project tsconfig.test.json",
-    "test": "npm run build:test && node --test --loader ./tools/test-stubs/alias-loader.mjs dist-tests",
+    "test": "npm run build:test && node --test --loader ./tools/test-stubs/alias-loader.mjs \"dist-tests/**/*.test.js\"",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "supabase:apply": "node scripts/apply-supabase-schema.mjs",
     "supabase:policies": "node scripts/show-policies.mjs",
-    "tooling:status": "node scripts/check-tooling-status.mjs"
+    "tooling:status": "node scripts/check-tooling-status.mjs",
+    "check:env": "node scripts/check-env.mjs",
+    "ci": "npm run check:env && npm run typecheck && npm run lint && npm test && npm run build",
+    "e2e": "playwright test --reporter=line",
+    "e2e:install": "npx playwright install --with-deps"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.3",
@@ -39,6 +43,7 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toast": "^1.2.6",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@sentry/nextjs": "^10.22.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.57.4",
     "class-variance-authority": "^0.7.1",
@@ -57,15 +62,24 @@
     "react-dom": "^18.3.1",
     "react-hook-form": "^7.64.0",
     "recharts": "^3.2.1",
+    "sharp": "^0.33.5",
     "tailwind-merge": "^3.0.1",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^3.25.76"
+  },
+  "engines": {
+    "node": "20.x"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.21",
     "eslint": "^9.37.0",
     "eslint-config-next": "^15.5.4",
+    "kill-port": "^2.0.1",
+    "msw": "^2.11.6",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"

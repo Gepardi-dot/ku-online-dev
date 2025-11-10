@@ -1,8 +1,17 @@
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/utils/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
   try {
+    // In dev, redirect invalid host 0.0.0.0 to localhost to keep OAuth callbacks valid
+    if (process.env.NODE_ENV !== 'production') {
+      const host = request.headers.get('host') || '';
+      if (host.startsWith('0.0.0.0')) {
+        const url = new URL(request.url.replace('://0.0.0.0', '://localhost'));
+        return NextResponse.redirect(url);
+      }
+    }
+
     const { supabase, response } = createClient(request);
 
     // Refresh session if expired

@@ -25,9 +25,10 @@
   "include": [
     "next-env.d.ts",
     "next.config.ts",
+    "sentry.*.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
     ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "supabase", "tools"]
+  "exclude": ["node_modules", "supabase", "tools", "src/e2e"]
 }

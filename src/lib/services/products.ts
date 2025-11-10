@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
+import { createSignedUrls, createTransformedSignedUrls } from '@/lib/storage';
+import { MARKET_CITY_OPTIONS, getMarketCityLabel } from '@/data/market-cities';
 
 export interface SellerProfile {
   id: string;
@@ -38,7 +40,8 @@ export interface ProductWithRelations {
   categoryId: string | null;
   sellerId: string;
   location: string | null;
-  images: string[];
+  imagePaths: string[];
+  imageUrls: string[];
   isActive: boolean;
   isSold: boolean;
   isPromoted: boolean;
@@ -62,6 +65,7 @@ export interface ProductFilters {
   sellerId?: string;
   sort?: ProductSort;
   createdAfter?: string;
+  freeOnly?: boolean;
 }
 
 export const PRODUCT_SELECT = `*,
@@ -210,7 +214,8 @@ export function mapProduct(row: SupabaseProductRow): ProductWithRelations {
     categoryId: row.category_id,
     sellerId: row.seller_id,
     location: row.location,
-    images: normalizeImages(row.images),
+    imagePaths: normalizeImages(row.images),
+    imageUrls: normalizeImages(row.images),
     isActive: row.is_active ?? true,
     isSold: row.is_sold ?? false,
     isPromoted: row.is_promoted ?? false,
@@ -246,6 +251,11 @@ function buildProductsQuery(supabase: any, filters: ProductFilters = {}, options
   if (filters.location) {
     const locationTerm = `%${filters.location}%`;
     query = query.ilike('location', locationTerm);
+  }
+
+  if (filters.freeOnly) {
+    // Treat "free" listings as those with price exactly 0
+    query = query.eq('price', 0);
   }
 
   if (typeof filters.minPrice === 'number') {
@@ -361,12 +371,21 @@ export async function searchProducts(
     return getProductsWithCount({ ...filters, search: undefined }, limit, offset, sort);
   }
 
+  const term = searchTerm.toLowerCase();
+  const looksFree =
+    filters.freeOnly === true ||
+    term.includes('free') ||
+    term.includes('مجاني') ||
+    term.includes('مجانا') ||
+    term.includes('فري') ||
+    term.includes('بلاش');
+
   const { data, error } = await supabase.functions.invoke('product-search', {
     body: {
       query: searchTerm,
       categoryId: filters.category,
-      minPrice: filters.minPrice,
-      maxPrice: filters.maxPrice,
+      minPrice: looksFree ? 0 : filters.minPrice,
+      maxPrice: looksFree ? 0 : filters.maxPrice,
       city: filters.location,
       limit,
       offset,
@@ -425,7 +444,7 @@ export async function searchProducts(
   );
 
   const sortedItems = sortProductsInMemory(orderedItems, sort);
-
+  await hydrateProductImages(sortedItems, { transform: { width: 512, resize: 'cover', quality: 80, format: 'webp' } });
   return { items: sortedItems, count: parsedCount };
 }
 
@@ -449,7 +468,9 @@ export async function getProducts(
   }
 
   const rows = (data ?? []) as SupabaseProductRow[];
-  return rows.map((row) => mapProduct(row));
+  const products = rows.map((row) => mapProduct(row));
+  await hydrateProductImages(products, { transform: { width: 512, resize: 'cover', quality: 80, format: 'webp' } });
+  return products;
 }
 
 export async function getProductsWithCount(
@@ -472,14 +493,22 @@ export async function getProductsWithCount(
   }
 
   const rows = (data ?? []) as SupabaseProductRow[];
+  const items = rows.map((row) => mapProduct(row));
+  await hydrateProductImages(items, { transform: { width: 512, resize: 'cover', quality: 80, format: 'webp' } });
   return {
-    items: rows.map((row) => mapProduct(row)),
+    items,
     count: count ?? 0,
   };
 }
 
+const CURATED_CITY_LABELS = MARKET_CITY_OPTIONS
+  .filter((option) => option.value !== 'all')
+  .map((option) => option.label);
+
 export async function getAvailableLocations(limit = 50): Promise<string[]> {
   const supabase = await getSupabase();
+  const ordered = new Map<string, string>();
+  CURATED_CITY_LABELS.forEach((label) => ordered.set(label.toLowerCase(), label));
 
   const { data, error } = await supabase
     .from('products')
@@ -489,22 +518,54 @@ export async function getAvailableLocations(limit = 50): Promise<string[]> {
     .order('location', { ascending: true })
     .limit(limit);
 
-  if (error) {
-    console.error('Failed to load locations', error);
-    return [];
-  }
-
-  const uniqueValues = new Set<string>();
-  const rows = (data ?? []) as SupabaseLocationRow[];
-  for (const row of rows) {
-    const value = typeof row.location === 'string' ? row.location.trim() : '';
-    if (value) {
-      uniqueValues.add(value);
+  if (!error) {
+    const rows = (data ?? []) as SupabaseLocationRow[];
+    for (const row of rows) {
+      const value = typeof row.location === 'string' ? row.location.trim() : '';
+      if (!value) continue;
+      const label = getMarketCityLabel(value);
+      ordered.set(label.toLowerCase(), label);
     }
+  } else {
+    console.error('Failed to load locations', error);
   }
 
-  return Array.from(uniqueValues);
+  return Array.from(ordered.values());
 }
+
+type ImageTransformOptions = {
+  width?: number;
+  height?: number;
+  resize?: 'contain' | 'cover' | 'fill' | 'inside' | 'outside';
+  quality?: number;
+  format?: 'webp' | 'png' | 'jpeg';
+};
+
+async function hydrateProductImages(
+  products: ProductWithRelations[],
+  options?: { transform?: ImageTransformOptions },
+): Promise<void> {
+  const allPaths = Array.from(
+    new Set(products.flatMap((product) => product.imagePaths).filter(Boolean)),
+  );
+
+  if (!allPaths.length) {
+    return;
+  }
+
+  const signedMap = options?.transform
+    ? await createTransformedSignedUrls(allPaths, options.transform)
+    : await createSignedUrls(allPaths);
+
+  for (const product of products) {
+    const urls = product.imagePaths
+      .map((path) => signedMap[path])
+      .filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
+    product.imageUrls = urls;
+  }
+}
+
+// Cached wrappers are defined in products-cache.ts to avoid importing next/cache here.
 
 export async function getProductById(id: string): Promise<ProductWithRelations | null> {
   const supabase = await getSupabase();
@@ -522,7 +583,13 @@ export async function getProductById(id: string): Promise<ProductWithRelations |
     return null;
   }
 
-  return mapProduct(data as SupabaseProductRow);
+  const product = mapProduct(data as SupabaseProductRow);
+  const name = product.category?.name?.toLowerCase() ?? '';
+  const isHiRes = ['vehicle', 'vehicles', 'car', 'cars', 'auto', 'automotive', 'real estate', 'property', 'properties'].some((kw) => name.includes(kw));
+  const width = isHiRes ? 1920 : 1400;
+  const quality = isHiRes ? 88 : 85;
+  await hydrateProductImages([product], { transform: { width, resize: 'inside', quality, format: 'webp' } });
+  return product;
 }
 
 export async function getCategories(): Promise<MarketplaceCategory[]> {
@@ -545,6 +612,8 @@ export async function getCategories(): Promise<MarketplaceCategory[]> {
     .map((row) => mapCategory(row))
     .filter((category): category is MarketplaceCategory => Boolean(category));
 }
+
+// Cached wrappers are defined in products-cache.ts to avoid importing next/cache here.
 
 export async function createProduct(productData: {
   title: string;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import {
 } from '@/lib/products/filter-params';
 import type { ProductSort } from '@/lib/services/products';
 export type { ProductsFilterValues, PostedWithin } from '@/lib/products/filter-params';
+import { fromOption, fromOptionAll, toOption, toOptionAll } from '@/components/ui/selectEmptyValue';
 
 const PRICE_OPTION_VALUES = [
   '',
@@ -60,7 +61,6 @@ interface ProductsFilterBarProps {
   locations: string[];
   initialValues: ProductsFilterValues;
   targetPath?: string;
-  showSearchInput?: boolean;
   showCategorySelect?: boolean;
   priceInputMode?: 'input' | 'select';
 }
@@ -70,19 +70,23 @@ export function ProductsFilterBar({
   locations,
   initialValues,
   targetPath = '/products',
-  showSearchInput = true,
   showCategorySelect = true,
   priceInputMode = 'input',
 }: ProductsFilterBarProps) {
   const router = useRouter();
   const [values, setValues] = useState<ProductsFilterValues>(initialValues);
   const [isPending, startTransition] = useTransition();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setValues({ ...initialValues });
   }, [initialValues]);
 
   const applyFilters = (nextValues: ProductsFilterValues) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
     const params = new URLSearchParams();
 
     const trimmedSearch = nextValues.search.trim();
@@ -118,10 +122,31 @@ export function ProductsFilterBar({
       params.set('postedWithin', nextValues.postedWithin);
     }
 
+    if (nextValues.freeOnly) {
+      params.set('free', '1');
+    }
+
     const queryString = params.toString();
 
     startTransition(() => {
       router.replace(queryString ? `${targetPath}?${queryString}` : targetPath, { scroll: true });
+    });
+  };
+
+  const scheduleFilterUpdate = (nextValues: ProductsFilterValues) => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    debounceRef.current = setTimeout(() => {
+      applyFilters(nextValues);
+    }, 400);
+  };
+
+  const updateValuesWithDebounce = (updater: (prev: ProductsFilterValues) => ProductsFilterValues) => {
+    setValues((prev) => {
+      const next = updater(prev);
+      scheduleFilterUpdate(next);
+      return next;
     });
   };
 
@@ -164,35 +189,44 @@ export function ProductsFilterBar({
     handleImmediateChange({ postedWithin: value });
   };
 
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
   return (
     <form
       onSubmit={handleSubmit}
-      className={cn(
-        'grid gap-3 rounded-xl border bg-card p-4 shadow-sm',
-        'md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6',
-      )}
+      className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3 shadow-sm"
     >
-      {showSearchInput && (
-        <div className="lg:col-span-2">
-          <Input
-            value={values.search}
-            onChange={(event) => setValues((prev) => ({ ...prev, search: event.target.value }))}
-            placeholder="Search for products, brands, or keywords"
-          />
-        </div>
-      )}
-
       {showCategorySelect && (
-        <div>
+        <div className="flex-shrink-0">
           <Select
             value={values.category}
-            onValueChange={(value) => handleImmediateChange({ category: value })}
+            onValueChange={(value) => {
+              const id = fromOptionAll(value);
+              if (!id) {
+                handleImmediateChange({ category: '' });
+                return;
+              }
+              const selected = categories.find((c) => c.id === id);
+              const label = (selected?.name ?? '').toLowerCase();
+              const isFree = ['free', 'مجاني', 'مجانا', 'فري', 'بلاش'].some((kw) => label.includes(kw));
+              if (isFree) {
+                handleImmediateChange({ category: '', minPrice: '0', maxPrice: '0' });
+              } else {
+                handleImmediateChange({ category: id });
+              }
+            }}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-9 w-auto min-w-[8rem] whitespace-nowrap rounded-full px-3">
               <SelectValue placeholder="All categories" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All categories</SelectItem>
+              <SelectItem value="all">All categories</SelectItem>
               {categories.map((category) => (
                 <SelectItem key={category.id} value={category.id}>
                   {category.name}
@@ -203,17 +237,21 @@ export function ProductsFilterBar({
         </div>
       )}
 
-      <div>
+      <div className="flex-shrink-0">
         <Select
-          value={values.condition}
-          onValueChange={(value) => handleImmediateChange({ condition: value })}
+          value={toOption(values.condition)}
+          onValueChange={(value) =>
+            handleImmediateChange({
+              condition: fromOption(value) as ProductsFilterValues['condition'],
+            })
+          }
         >
-          <SelectTrigger>
+          <SelectTrigger className="h-9 w-auto min-w-[8rem] whitespace-nowrap rounded-full px-3">
             <SelectValue placeholder="Any condition" />
           </SelectTrigger>
           <SelectContent>
             {CONDITION_OPTIONS.map((option) => (
-              <SelectItem key={option.value || 'all'} value={option.value}>
+              <SelectItem key={option.value || 'any'} value={toOption(option.value)}>
                 {option.label}
               </SelectItem>
             ))}
@@ -221,43 +259,48 @@ export function ProductsFilterBar({
         </Select>
       </div>
 
-      <div>
-        <Select value={values.location} onValueChange={(value) => handleImmediateChange({ location: value })}>
-          <SelectTrigger>
-            <SelectValue placeholder="All cities" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All cities</SelectItem>
-            {locations.map((city) => (
-              <SelectItem key={city} value={city}>
-                {city}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {locations.length > 0 && (
+        <div className="flex-shrink-0">
+          <Select
+            value={values.location}
+            onValueChange={(value) => handleImmediateChange({ location: fromOptionAll(value) })}
+          >
+            <SelectTrigger className="h-9 w-auto min-w-[7.5rem] whitespace-nowrap rounded-full px-3">
+              <SelectValue placeholder="All Cities" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Cities</SelectItem>
+              {locations.map((city) => (
+                <SelectItem key={city} value={city}>
+                  {city}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {priceInputMode === 'select' ? (
-        <div className="grid grid-cols-2 gap-2">
-          <Select value={values.minPrice} onValueChange={handleMinPriceChange}>
-            <SelectTrigger>
+        <div className="flex flex-row gap-2 flex-shrink-0">
+          <Select value={values.minPrice} onValueChange={(v) => handleMinPriceChange(fromOption(v))}>
+            <SelectTrigger className="h-9 w-auto min-w-[7rem] whitespace-nowrap rounded-full px-3">
               <SelectValue placeholder="Min price" />
             </SelectTrigger>
             <SelectContent>
               {PRICE_OPTION_VALUES.map((option) => (
-                <SelectItem key={`min-${option || 'any'}`} value={option}>
+                <SelectItem key={`min-${option || 'any'}`} value={toOption(option)}>
                   {option ? `From ${formatPriceLabel(option)}` : 'No minimum'}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Select value={values.maxPrice} onValueChange={handleMaxPriceChange}>
-            <SelectTrigger>
+          <Select value={values.maxPrice} onValueChange={(v) => handleMaxPriceChange(fromOption(v))}>
+            <SelectTrigger className="h-9 w-auto min-w-[7rem] whitespace-nowrap rounded-full px-3">
               <SelectValue placeholder="Max price" />
             </SelectTrigger>
             <SelectContent>
               {PRICE_OPTION_VALUES.map((option) => (
-                <SelectItem key={`max-${option || 'any'}`} value={option}>
+                <SelectItem key={`max-${option || 'any'}`} value={toOption(option)}>
                   {option ? `Up to ${formatPriceLabel(option)}` : 'No maximum'}
                 </SelectItem>
               ))}
@@ -265,14 +308,17 @@ export function ProductsFilterBar({
           </Select>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-row gap-2">
           <Input
             type="number"
             inputMode="numeric"
             min="0"
             placeholder="Min price"
             value={values.minPrice}
-            onChange={(event) => setValues((prev) => ({ ...prev, minPrice: event.target.value }))}
+            onChange={(event) =>
+              updateValuesWithDebounce((prev) => ({ ...prev, minPrice: event.target.value }))
+            }
+            className="h-9 w-24 rounded-full px-3"
           />
           <Input
             type="number"
@@ -280,14 +326,17 @@ export function ProductsFilterBar({
             min="0"
             placeholder="Max price"
             value={values.maxPrice}
-            onChange={(event) => setValues((prev) => ({ ...prev, maxPrice: event.target.value }))}
+            onChange={(event) =>
+              updateValuesWithDebounce((prev) => ({ ...prev, maxPrice: event.target.value }))
+            }
+            className="h-9 w-24 rounded-full px-3"
           />
         </div>
       )}
 
-      <div>
+      <div className="flex-shrink-0">
         <Select value={values.postedWithin} onValueChange={(value) => handlePostedWithinChange(value as PostedWithin)}>
-          <SelectTrigger>
+          <SelectTrigger className="h-9 w-auto min-w-[7.5rem] whitespace-nowrap rounded-full px-3">
             <SelectValue placeholder="Listed within" />
           </SelectTrigger>
           <SelectContent>
@@ -300,9 +349,9 @@ export function ProductsFilterBar({
         </Select>
       </div>
 
-      <div>
+      <div className="flex-shrink-0">
         <Select value={values.sort} onValueChange={(value) => handleImmediateChange({ sort: value as ProductSort })}>
-          <SelectTrigger>
+          <SelectTrigger className="h-9 w-auto min-w-[6.5rem] whitespace-nowrap rounded-full px-3">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -315,11 +364,11 @@ export function ProductsFilterBar({
         </Select>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end lg:col-span-2 xl:col-span-1">
-        <Button type="submit" disabled={isPending}>
+      <div className="flex flex-row gap-2 ml-auto">
+        <Button type="submit" disabled={isPending} className="h-9 rounded-full px-4">
           Apply filters
         </Button>
-        <Button type="button" variant="outline" onClick={handleReset} disabled={isPending}>
+        <Button type="button" variant="outline" onClick={handleReset} disabled={isPending} className="h-9 rounded-full px-4">
           Reset
         </Button>
       </div>

@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Search, Filter, PackagePlus } from 'lucide-react';
 import { Icons } from '@/components/icons';
+import BrandLogo from '@/components/brand-logo';
 import LanguageSwitcher from '@/components/language-switcher';
 import AuthButton from '@/components/auth/auth-button';
 import type { User } from '@supabase/supabase-js';
@@ -95,13 +96,16 @@ export default function AppHeader({ user }: AppHeaderProps) {
   }, [city, messages.header.city]);
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/80 shadow-sm backdrop-blur-md">
+    <header className="sticky top-0 z-50 w-full bg-white/80 shadow-sm backdrop-blur-md pointer-events-auto">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center" aria-label="KU-ONLINE home">
-              <Icons.logo className="h-8 w-8" />
-              <span className="ml-2 text-2xl font-bold font-headline text-primary">KU-ONLINE</span>
+              {/* Visually double the logo without changing header height */}
+              <BrandLogo
+                className="h-16 w-16 overflow-visible transform scale-[2.5] origin-left -translate-x-[32px] translate-y-[16px]"
+                size={64}
+              />
             </Link>
           </div>
 

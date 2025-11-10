@@ -1,11 +1,9 @@
 export type UpdateProfileFormValues = {
   fullName: string;
+  avatarUrl?: string | null;
   phone: string | null;
   location: string | null;
   bio: string | null;
-  preferredLanguage: 'en' | 'ar' | 'ku';
-  profileVisibility: 'public' | 'community' | 'private';
-  showProfileOnMarketplace: boolean;
   notifyMessages: boolean;
   notifyOffers: boolean;
   notifyUpdates: boolean;
