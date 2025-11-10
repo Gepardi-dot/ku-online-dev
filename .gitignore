@@ -12,3 +12,4 @@ out/
 .vercel/
 .DS_Store
 .vercel
+.env*.local

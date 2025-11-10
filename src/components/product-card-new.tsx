@@ -42,17 +42,35 @@ export default function ProductCard({ product, viewerId }: ProductCardProps) {
   const createdAtLabel = product.createdAt ? formatDistanceToNow(product.createdAt, { addSuffix: true }) : '';
 
   return (
-    <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300">
-      <div className="relative aspect-[4/3] overflow-hidden">
-        <Image
-          src={product.images?.[0] || 'https://picsum.photos/400/300'}
-          alt={product.title}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
-        />
-        <div className="absolute top-2 right-2">
-          <FavoriteToggle productId={product.id} userId={viewerId} size="sm" />
-        </div>
+    <Link
+      href={`/product/${product.id}`}
+      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      prefetch
+    >
+      <Card className="overflow-hidden transition-all duration-300 group-hover:shadow-lg">
+        <div className="relative aspect-[4/3] overflow-hidden">
+          <Image
+            src={product.imageUrls?.[0] || 'https://picsum.photos/400/300'}
+            alt={product.title}
+            fill
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+          {product.isSold && (
+            <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
+              <span className="px-3 py-1 text-xs font-semibold uppercase tracking-wide bg-white/90 text-gray-900 rounded">
+                Sold
+              </span>
+            </div>
+          )}
+          <div
+            className="absolute top-2 right-2"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+            }}
+          >
+            <FavoriteToggle productId={product.id} userId={viewerId} size="sm" />
+          </div>
         <div className="absolute top-2 left-2">
           <Badge className={`text-white ${getConditionColor(product.condition || 'New')}`}>
             {product.condition || 'New'}
@@ -65,9 +83,9 @@ export default function ProductCard({ product, viewerId }: ProductCardProps) {
             </Badge>
           </div>
         )}
-      </div>
-      
-      <CardContent className="p-3">
+        </div>
+
+        <CardContent className="p-3">
         <div className="space-y-2">
           <h3 className="font-semibold text-sm line-clamp-2 leading-tight">
             {product.title}
@@ -95,7 +113,8 @@ export default function ProductCard({ product, viewerId }: ProductCardProps) {
             <span>{createdAtLabel}</span>
           </div>
         </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }

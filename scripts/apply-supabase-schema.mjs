@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import postgres from "postgres";
@@ -17,21 +17,25 @@ async function main() {
     prepare: false,
   });
 
-  const migrationPath = path.resolve(
-    "supabase",
-    "migrations",
-    "20241007160000_init_core.sql",
-  );
+  const migrationsDir = path.resolve("supabase", "migrations");
   const seedPath = path.resolve("supabase", "seed.sql");
 
-  const migrationSql = await readFile(migrationPath, { encoding: "utf8" });
-  const seedSql = await readFile(seedPath, { encoding: "utf8" });
+  // Apply all migration files in order
+  const files = (await readdir(migrationsDir))
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
+  for (const file of files) {
+    const full = path.join(migrationsDir, file);
+    const sqlText = await readFile(full, { encoding: "utf8" });
+    await sql.unsafe(sqlText);
+  }
 
-  await sql.unsafe(migrationSql);
+  // Then seed data
+  const seedSql = await readFile(seedPath, { encoding: "utf8" });
   await sql.unsafe(seedSql);
 
   await sql.end();
-  console.log("Supabase schema and seed applied successfully.");
+  console.log("Supabase migrations and seed applied successfully.");
 }
 
 main().catch((error) => {

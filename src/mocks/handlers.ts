@@ -7,8 +7,11 @@ const mockProducts = [
 
 export const handlers = [
   http.get("/api/products", () => HttpResponse.json(mockProducts)),
-  http.get("/api/products/:id", ({ params }) => {
-    const product = mockProducts.find((p) => p.id === params.id);
-    return HttpResponse.json(product ?? { error: "Not found" });
-  }),
+  http.get(
+    "/api/products/:id",
+    ({ params }: { params: Record<string, string> }) => {
+      const product = mockProducts.find((p) => p.id === params.id);
+      return HttpResponse.json(product ?? { error: "Not found" });
+    },
+  ),
 ];

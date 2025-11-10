@@ -1,9 +1,14 @@
 'use client';
 
 import { createClient } from '@/utils/supabase/client';
+import { sendMessageSchema, type SendMessageInput } from '@/lib/validation/schemas';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+import { getPublicEnv } from '@/lib/env-public';
+
 const supabase = createClient();
+const { NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET } = getPublicEnv();
+const STORAGE_BUCKET = NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'product-images';
 
 export interface MessageRecord {
   id: string;
@@ -29,7 +34,8 @@ export interface ConversationSummary {
     title: string;
     price: number | null;
     currency: string | null;
-    images: string[];
+    imagePaths: string[];
+    imageUrls: string[];
   } | null;
   seller?: {
     id: string;
@@ -82,7 +88,8 @@ function mapConversationRow(row: any): ConversationSummary {
           title: (row.product.title as string) ?? 'Untitled',
           price: priceValue,
           currency: (row.product.currency as string) ?? 'IQD',
-          images: imagesValue,
+          imagePaths: imagesValue,
+          imageUrls: imagesValue,
         }
       : null,
     seller: row.seller
@@ -100,6 +107,39 @@ function mapConversationRow(row: any): ConversationSummary {
         }
       : null,
   };
+}
+
+async function hydrateConversationImages(conversations: ConversationSummary[]) {
+  const paths = Array.from(
+    new Set(conversations.flatMap((conversation) => conversation.product?.imagePaths ?? [])),
+  ).filter(Boolean);
+
+  if (!paths.length) {
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/storage/sign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths, transform: { width: 96, resize: 'cover', quality: 70, format: 'webp' } }),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to sign conversation images');
+    }
+    const payload = (await response.json().catch(() => ({}))) as { map?: Record<string, string> };
+    const map = payload.map ?? {};
+
+    conversations.forEach((conversation) => {
+      if (!conversation.product) return;
+      const urls = conversation.product.imagePaths
+        .map((path) => map[path])
+        .filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
+      conversation.product.imageUrls = urls;
+    });
+  } catch (error) {
+    console.error('Failed to hydrate conversation images', error);
+  }
 }
 
 export async function getOrCreateConversation(sellerId: string, buyerId: string, productId?: string | null) {
@@ -132,7 +172,11 @@ export async function fetchConversation(conversationId: string): Promise<Convers
     throw error;
   }
 
-  return data ? mapConversationRow(data) : null;
+  const conversation = data ? mapConversationRow(data) : null;
+  if (conversation) {
+    await hydrateConversationImages([conversation]);
+  }
+  return conversation;
 }
 
 export async function listConversationsForUser(userId: string): Promise<ConversationSummary[]> {
@@ -145,13 +189,15 @@ export async function listConversationsForUser(userId: string): Promise<Conversa
        buyer:users!conversations_buyer_id_fkey(id, full_name, avatar_url)`
     )
     .or(`seller_id.eq.${userId},buyer_id.eq.${userId}`)
-    .order('updated_at', { ascending: false, nullsLast: false });
+    .order('updated_at', { ascending: false, nullsFirst: false });
 
   if (error) {
     throw error;
   }
 
-  return (data ?? []).map((row) => mapConversationRow(row));
+  const conversations = (data ?? []).map((row) => mapConversationRow(row));
+  await hydrateConversationImages(conversations);
+  return conversations;
 }
 
 export async function fetchMessages(conversationId: string): Promise<MessageRecord[]> {
@@ -168,19 +214,15 @@ export async function fetchMessages(conversationId: string): Promise<MessageReco
   return (data ?? []).map((row) => mapMessageRow(row));
 }
 
-export async function sendMessage(options: {
-  conversationId: string;
-  senderId: string;
-  receiverId: string | null;
-  productId?: string | null;
-  content: string;
-}): Promise<MessageRecord> {
+export async function sendMessage(options: SendMessageInput): Promise<MessageRecord> {
+  const parsed = sendMessageSchema.parse(options);
+
   const payload = {
-    conversation_id: options.conversationId,
-    sender_id: options.senderId,
-    receiver_id: options.receiverId,
-    product_id: options.productId ?? null,
-    content: options.content,
+    conversation_id: parsed.conversationId,
+    sender_id: parsed.senderId,
+    receiver_id: parsed.receiverId,
+    product_id: parsed.productId ?? null,
+    content: parsed.content,
   };
 
   const { data, error } = await supabase

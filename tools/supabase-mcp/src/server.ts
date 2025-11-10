@@ -4,9 +4,10 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
+// Support both tool-local vars and Next.js-style public envs for convenience
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET ?? "product-images";
 
 if (!SUPABASE_URL) {
@@ -74,7 +75,7 @@ const selectShape = {
       nullsFirst: z.boolean().optional(),
     })
     .optional(),
-} satisfies Record<string, z.ZodTypeAny>;
+} satisfies z.ZodRawShape;
 
 const selectSchema = z.object(selectShape);
 type SelectArgs = z.infer<typeof selectSchema>;
@@ -85,7 +86,7 @@ const insertShape = {
   table: z.string().min(1),
   values: z.union([z.array(recordValueSchema), recordValueSchema]),
   returning: z.enum(["representation", "minimal"]).default("representation"),
-} satisfies Record<string, z.ZodTypeAny>;
+} satisfies z.ZodRawShape;
 
 const insertSchema = z.object(insertShape);
 type InsertArgs = z.infer<typeof insertSchema>;
@@ -95,7 +96,7 @@ const updateShape = {
   values: recordValueSchema,
   filters: z.array(filterSchema).min(1),
   returning: z.enum(["representation", "minimal"]).default("representation"),
-} satisfies Record<string, z.ZodTypeAny>;
+} satisfies z.ZodRawShape;
 
 const updateSchema = z.object(updateShape);
 type UpdateArgs = z.infer<typeof updateSchema>;
@@ -104,7 +105,7 @@ const deleteShape = {
   table: z.string().min(1),
   filters: z.array(filterSchema).min(1),
   returning: z.enum(["representation", "minimal"]).default("representation"),
-} satisfies Record<string, z.ZodTypeAny>;
+} satisfies z.ZodRawShape;
 
 const deleteSchema = z.object(deleteShape);
 type DeleteArgs = z.infer<typeof deleteSchema>;
@@ -114,7 +115,7 @@ const storageShape = {
   base64: z.string().min(1),
   contentType: z.string().default("application/octet-stream"),
   upsert: z.boolean().default(false),
-} satisfies Record<string, z.ZodTypeAny>;
+} satisfies z.ZodRawShape;
 
 const storageSchema = z.object(storageShape);
 type StorageArgs = z.infer<typeof storageSchema>;
@@ -167,7 +168,7 @@ const server = new McpServer({
 
 server.registerTool("supabase.select", {
   description: "Run a SELECT query on the configured Supabase project.",
-  inputSchema: selectShape as z.ZodRawShape,
+  inputSchema: selectShape,
 }, async (args: SelectArgs) => {
   const client = getClient("anon");
 
@@ -199,7 +200,7 @@ server.registerTool("supabase.select", {
 
 server.registerTool("supabase.insert", {
   description: "Insert one or more rows using the Supabase service role.",
-  inputSchema: insertShape as z.ZodRawShape,
+  inputSchema: insertShape,
 }, async (args: InsertArgs) => {
   const payload = Array.isArray(args.values) ? args.values : [args.values];
   const baseQuery = adminClient.from(args.table).insert(payload);
@@ -218,7 +219,7 @@ server.registerTool("supabase.insert", {
 server.registerTool("supabase.update", {
   description:
     "Update rows in a table that match the provided filters using the service role.",
-  inputSchema: updateShape as z.ZodRawShape,
+  inputSchema: updateShape,
 }, async (args: UpdateArgs) => {
   const filtered = applyFilters(
     adminClient.from(args.table).update(args.values),
@@ -240,7 +241,7 @@ server.registerTool("supabase.update", {
 server.registerTool("supabase.delete", {
   description:
     "Delete rows in a table that match the provided filters using the service role.",
-  inputSchema: deleteShape as z.ZodRawShape,
+  inputSchema: deleteShape,
 }, async (args: DeleteArgs) => {
   const filtered = applyFilters(
     adminClient.from(args.table).delete(),
@@ -259,10 +260,35 @@ server.registerTool("supabase.delete", {
   return responseFromJSON(data ?? null);
 });
 
+const healthShape = {} satisfies z.ZodRawShape;
+const healthSchema = z.object(healthShape);
+type HealthArgs = z.infer<typeof healthSchema>;
+
+server.registerTool("supabase.health", {
+  description: "Lightweight health check for MCP Supabase connectivity.",
+  inputSchema: healthShape,
+}, async (_args: HealthArgs) => {
+  const { data: buckets, error: bucketsError } =
+    await adminClient.storage.listBuckets();
+
+  const bucketExists = Boolean(
+    buckets?.some((bucket) => bucket.name === STORAGE_BUCKET)
+  );
+
+  return responseFromJSON({
+    status: bucketsError ? "error" : "ok",
+    bucketExists,
+    bucket: STORAGE_BUCKET,
+    bucketsError: bucketsError?.message ?? null,
+    anonConfigured: Boolean(anonClient),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 server.registerTool("supabase.storageUpload", {
   description:
     "Upload a base64-encoded file to the configured storage bucket using the service role.",
-  inputSchema: storageShape as z.ZodRawShape,
+  inputSchema: storageShape,
 }, async (args: StorageArgs) => {
   const fileBuffer = Buffer.from(args.base64, "base64");
 

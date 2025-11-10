@@ -1,14 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User, LogOut, Phone, Mail } from 'lucide-react';
+import { User, LogOut, Phone, Mail, Settings, LayoutDashboard } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+
+import { getPublicEnv } from '@/lib/env-public';
 
 interface AuthButtonProps {
   user: any;
@@ -20,11 +23,15 @@ export default function AuthButton({ user }: AuthButtonProps) {
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
   const supabase = createClient();
+  const { NEXT_PUBLIC_SITE_URL } = getPublicEnv();
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      const origin = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
+      // Prefer configured site URL (dev: http://localhost:5000). Fallback to window origin.
+      let origin = NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+      // Normalize invalid host 0.0.0.0 for OAuth callbacks.
+      origin = origin.replace('://0.0.0.0', '://localhost');
 
       await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -71,7 +78,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await supabase.auth.signOut({ scope: 'global' });
     window.location.reload();
   };
 
@@ -99,6 +106,20 @@ export default function AuthButton({ user }: AuthButtonProps) {
               </p>
             </div>
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href="/profile?tab=overview" className="flex items-center">
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              My Profile
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/profile?tab=settings" className="flex items-center">
+              <Settings className="mr-2 h-4 w-4" />
+              Edit Profile
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>

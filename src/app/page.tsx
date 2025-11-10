@@ -1,6 +1,4 @@
-
 import { Suspense } from 'react';
-import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { ArrowRight } from 'lucide-react';
 
@@ -15,21 +13,18 @@ import {
 } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/utils/supabase/server';
-import {
-  getProducts,
-  getCategories,
-  getAvailableLocations,
-  searchProducts,
-} from '@/lib/services/products';
+import { getProducts, searchProducts } from '@/lib/services/products';
+import { getCachedCategories, getCachedLocations } from '@/lib/services/products-cache';
 import {
   DEFAULT_FILTER_VALUES,
-  parsePostedWithinParam,
-  parsePriceParam,
-  parseSortParam,
+  parseProductQueryParams,
   postedWithinToDate,
   type ProductsFilterValues,
+  createProductsSearchParams,
 } from '@/lib/products/filter-params';
+import ProductGridSkeleton from '@/components/products/ProductGridSkeleton';
 import { NewsletterSignup } from '@/components/marketing/newsletter-signup';
+import Link from 'next/link';
 import { getServerLocale } from '@/lib/locale/server';
 import { LocaleMessages, translations } from '@/lib/locale/dictionary';
 
@@ -84,63 +79,39 @@ function buildHomepageQuery(values: ProductsFilterValues) {
 
 async function ProductsList({ searchParams, messages, viewerId }: ProductsListProps) {
   const params = await searchParams;
-
-  const sort = parseSortParam(params.sort);
-  const minPrice = parsePriceParam(params.minPrice);
-  const maxPrice = parsePriceParam(params.maxPrice);
-  const postedWithin = parsePostedWithinParam(params.postedWithin);
+  const { initialValues, filters, sort, postedWithin } = parseProductQueryParams(
+    params as unknown as Record<string, string | undefined>,
+  );
+  const locale = await getServerLocale();
+  const isRTL = locale === 'ar' || locale === 'ku';
   const createdAfter = postedWithinToDate(postedWithin);
 
-  const trimmedSearch = params.search?.trim() ?? '';
-  const searchFilter = trimmedSearch ? trimmedSearch : undefined;
-  const shouldUseEdgeSearch = Boolean(searchFilter) && postedWithin === 'any';
-
-  const filters = {
-    category: params.category,
-    condition: params.condition,
-    location: params.location,
-    search: searchFilter,
-    minPrice,
-    maxPrice,
+  const filtersWithDate = {
+    ...filters,
     createdAfter,
   };
 
+  const shouldUseEdgeSearch = Boolean(filters.search) && postedWithin === 'any';
+
   const productPromise = shouldUseEdgeSearch
-    ? searchProducts(filters, 30, 0, sort).then((result) => result.items)
-    : getProducts(filters, 30, 0, sort);
+    ? searchProducts(filtersWithDate, 30, 0, sort).then((result) => result.items)
+    : getProducts(filtersWithDate, 30, 0, sort);
 
   const [products, categories, locations] = await Promise.all([
     productPromise,
-    getCategories(),
-    getAvailableLocations(),
+    getCachedCategories(),
+    getCachedLocations(),
   ]);
 
-  const initialValues: ProductsFilterValues = {
-    ...DEFAULT_FILTER_VALUES,
-    search: params.search ?? DEFAULT_FILTER_VALUES.search,
-    category: params.category ?? DEFAULT_FILTER_VALUES.category,
-    condition: params.condition ?? DEFAULT_FILTER_VALUES.condition,
-    location: params.location ?? DEFAULT_FILTER_VALUES.location,
-    minPrice: params.minPrice ?? DEFAULT_FILTER_VALUES.minPrice,
-    maxPrice: params.maxPrice ?? DEFAULT_FILTER_VALUES.maxPrice,
-    sort,
-    postedWithin,
-  };
-
-  const viewAllHref = buildHomepageQuery(initialValues).replace(/^\//, '/products');
+  const viewParams = createProductsSearchParams(initialValues);
+  const viewAllHref = viewParams.toString() ? `/products?${viewParams.toString()}` : '/products';
 
   return (
     <>
-      <section className="py-4 bg-white border-b">
-        <div className="container mx-auto px-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold">
-              {messages.homepage.categoriesLabel}
-            </h3>
-            <Link
-              href={viewAllHref}
-              className="text-sm font-medium text-primary hover:underline"
-            >
+      <section className="py-2 bg-white border-b">
+        <div className="container mx-auto px-4 space-y-2">
+          <div className="flex items-center justify-end">
+            <Link href={viewAllHref} className="text-sm font-medium text-primary hover:underline">
               {messages.homepage.viewAll}
             </Link>
           </div>
@@ -150,19 +121,45 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
               {messages.homepage.noCategories}
             </span>
           ) : (
-            <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
-              {categories.map((category) => {
-                const categoryHref = buildHomepageQuery({ ...initialValues, category: category.id });
+            <div className={`no-scrollbar flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory ${isRTL ? 'flex-row-reverse' : ''}`}>
+              {categories.map((category, idx) => {
+                const label = locale === 'ar' && category.nameAr
+                  ? category.nameAr
+                  : locale === 'ku' && category.nameKu
+                  ? category.nameKu
+                  : category.name;
+                const labelLc = (label ?? '').toLowerCase();
+                const isFree = ['free', 'مجاني', 'مجانا', 'فري', 'بلاش'].some((kw) => labelLc.includes(kw));
+                const params = isFree
+                  ? createProductsSearchParams({ ...initialValues, category: '', freeOnly: true })
+                  : createProductsSearchParams({ ...initialValues, category: category.id, freeOnly: false });
+                const qs = params.toString();
+                const categoryHref = qs ? `/products?${qs}` : '/products';
+
+                const swatches = [
+                  { iconBg: 'from-pink-500/10 to-rose-500/10', iconText: 'text-rose-600' },
+                  { iconBg: 'from-violet-500/10 to-indigo-500/10', iconText: 'text-violet-600' },
+                  { iconBg: 'from-emerald-500/10 to-teal-500/10', iconText: 'text-emerald-600' },
+                  { iconBg: 'from-amber-500/10 to-orange-500/10', iconText: 'text-amber-600' },
+                  { iconBg: 'from-sky-500/10 to-cyan-500/10', iconText: 'text-sky-600' },
+                  { iconBg: 'from-fuchsia-500/10 to-pink-500/10', iconText: 'text-fuchsia-600' },
+                ];
+                const color = swatches[idx % swatches.length];
+
                 return (
                   <Link
                     href={categoryHref}
                     key={category.id}
-                    className="inline-flex shrink-0 items-center gap-2 rounded-2xl border border-transparent bg-white px-4 py-2 text-sm font-medium text-muted-foreground shadow-sm ring-1 ring-gray-200 transition hover:-translate-y-0.5 hover:bg-primary/10 hover:text-primary"
+                    aria-label={label}
+                    className="snap-start inline-flex shrink-0 items-center gap-2 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-medium text-foreground/90 transition hover:bg-muted/60 active:scale-[0.99]"
                   >
-                    <span className="text-base leading-none">
-                      {category.icon ?? '🛍️'}
+                    <span
+                      className={`inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-gradient-to-br ${color.iconBg} ${color.iconText} text-base sm:text-lg shadow-sm`}
+                      aria-hidden="true"
+                    >
+                      {category.icon ?? '🏷️'}
                     </span>
-                    <span className="whitespace-nowrap">{category.name}</span>
+                    <span className="whitespace-nowrap hidden sm:inline">{label}</span>
                   </Link>
                 );
               })}
@@ -178,7 +175,6 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
             locations={locations}
             initialValues={initialValues}
             targetPath="/"
-            showSearchInput={false}
             showCategorySelect={false}
             priceInputMode="select"
           />
@@ -229,8 +225,8 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
       <div className="flex flex-col">
         <Suspense
           fallback={
-            <div className="container mx-auto px-4 py-12 text-center">
-              {messages.common.loading}
+            <div className="container mx-auto px-4 py-6">
+              <ProductGridSkeleton count={12} />
             </div>
           }
         >
@@ -238,19 +234,15 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
         </Suspense>
 
         <section className="py-12 bg-gray-50">
-          <div className="container mx-auto px-4">
-            <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
-              {messages.homepage.faqTitle}
-            </h2>
-            <div className="max-w-3xl mx-auto">
-              <Accordion type="single" collapsible className="w-full">
-                {messages.homepage.faq.map((item, index) => (
-                  <AccordionItem value={`faq-${index}`} key={item.question}>
-                    <AccordionTrigger>{item.question}</AccordionTrigger>
-                    <AccordionContent>{item.answer}</AccordionContent>
-                  </AccordionItem>
-                ))}
-              </Accordion>
+          <div className="container mx-auto px-4 text-center space-y-4">
+            <h2 className="text-2xl md:text-3xl font-bold">{messages.homepage.faqTitle}</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Buying and selling is arranged directly between users. Read our quick tips and safety guidance before you meet.
+            </p>
+            <div>
+              <Link href="/faq" className="inline-flex items-center rounded-full bg-primary px-5 py-2 text-primary-foreground font-semibold hover:bg-primary/90">
+                Read FAQs
+              </Link>
             </div>
           </div>
         </section>
@@ -270,3 +262,12 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
     </AppLayout>
   );
 }
+
+
+
+
+
+
+
+
+

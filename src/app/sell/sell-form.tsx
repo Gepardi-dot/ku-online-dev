@@ -5,6 +5,8 @@ import type { User } from '@supabase/supabase-js';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
+import { getPublicEnv } from '@/lib/env-public';
+import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,29 +15,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Upload, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { CONDITION_OPTIONS } from '@/lib/products/filter-params';
+import { createProductSchema } from '@/lib/validation/schemas';
+import { Switch } from '@/components/ui/switch';
+import { compressToWebp } from '@/lib/images/client-compress';
 
-const conditions = [
-  'New',
-  'Used - Like New',
-  'Used - Good',
-  'Used - Fair',
-];
-
-const cities = [
-  'Erbil',
-  'Sulaymaniyah',
-  'Duhok',
-  'Zaxo',
-  'Halabja',
-  'Soran',
-];
+const conditionOptions = CONDITION_OPTIONS.filter((option) => option.value);
+const cityOptions = MARKET_CITY_OPTIONS.filter((option) => option.value !== 'all');
 
 const MAX_IMAGES = 5;
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB (client compression reduces payload)
 const ACCEPTED_FILE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 const ACCEPTED_FILE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
 const ACCEPTED_FILE_LABELS = ['JPG', 'PNG', 'WebP', 'AVIF'];
 const ACCEPTED_FILES_DESCRIPTION = ACCEPTED_FILE_LABELS.join(', ');
+const { NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET } = getPublicEnv();
+const STORAGE_BUCKET = NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'product-images';
 
 type UploadedImage = {
   url: string;
@@ -65,6 +60,8 @@ export default function SellForm({ user }: SellFormProps) {
   const router = useRouter();
   const supabase = createClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [hasUnsaved, setHasUnsaved] = useState(false);
+  const [isFree, setIsFree] = useState(false);
 
   useEffect(() => {
     const loadCategories = async () => {
@@ -109,6 +106,18 @@ export default function SellForm({ user }: SellFormProps) {
     resolveUser();
   }, [currentUser, supabase]);
 
+  // Warn about unsaved changes on navigation/refresh
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasUnsaved) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsaved]);
+
   const determineExtension = (file: File) => {
     const nameExt = file.name.split('.').pop()?.toLowerCase();
     if (nameExt && ACCEPTED_FILE_EXTENSIONS.includes(nameExt)) {
@@ -126,6 +135,12 @@ export default function SellForm({ user }: SellFormProps) {
         return 'avif';
       default:
         return null;
+    }
+  };
+
+  const revokePreviewUrl = (url: string) => {
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
     }
   };
 
@@ -192,20 +207,30 @@ export default function SellForm({ user }: SellFormProps) {
           continue;
         }
 
-        const uploadFormData = new FormData();
-        uploadFormData.append('file', file);
-
-        let response: Response;
-        let payload: { error?: string; publicUrl?: string; path?: string } | null = null;
-
+        // Upload to compression endpoint; server stores optimized WebP and returns signed preview URL
+        let uploadResponse: Response;
+        let uploadPayload: { path?: string; signedUrl?: string | null; error?: string } | null = null;
         try {
-          response = await fetch('/api/uploads', {
-            method: 'POST',
-            body: uploadFormData,
-          });
-          payload = await response.json().catch(() => null);
+        // Only pre-compress extremely large files to avoid double lossy compression on normal photos
+        const shouldClientCompress = file.size > 10 * 1024 * 1024; // >10MB
+        let payloadFile: File = file;
+        if (shouldClientCompress) {
+          try {
+            const blob = await compressToWebp(file, { maxEdge: 1600, quality: 0.82 });
+            payloadFile = new File([blob], `${file.name.replace(/\.[^.]+$/, '') || 'upload'}.webp`, { type: 'image/webp' });
+          } catch (e) {
+            console.warn('Client compression failed, falling back to raw upload', e);
+          }
+        }
+        const fd = new FormData();
+        fd.append('file', payloadFile);
+        if (formData.categoryId) {
+          fd.append('categoryId', formData.categoryId);
+        }
+          uploadResponse = await fetch('/api/uploads', { method: 'POST', body: fd });
+          uploadPayload = await uploadResponse.json().catch(() => null);
         } catch (networkError) {
-          console.error('Network error while uploading image', networkError);
+          console.error('Failed to upload image', networkError);
           toast({
             title: 'Upload failed',
             description: `Could not upload ${file.name}. Check your connection and try again.`,
@@ -214,24 +239,17 @@ export default function SellForm({ user }: SellFormProps) {
           continue;
         }
 
-        if (!response.ok || !payload?.publicUrl || !payload?.path) {
-          const message = payload?.error ?? `Could not upload ${file.name}. Please try again.`;
-          toast({
-            title: 'Upload failed',
-            description: message,
-            variant: 'destructive',
-          });
+        if (!uploadResponse.ok || !uploadPayload?.path) {
+          const message = uploadPayload?.error ?? `Could not upload ${file.name}. Please try again.`;
+          toast({ title: 'Upload failed', description: message, variant: 'destructive' });
           continue;
         }
 
-        const { publicUrl, path } = payload;
+        const { path, signedUrl } = uploadPayload;
+        const previewUrl = typeof signedUrl === 'string' && signedUrl.length > 0 ? signedUrl : URL.createObjectURL(file);
 
-        if (!publicUrl || !path) {
-          continue;
-        }
-
-        setUploadedImages((prev) => [...prev, { url: publicUrl, path }]);
-        setFormData((prev) => ({ ...prev, images: [...prev.images, publicUrl] }));
+        setUploadedImages((prev) => [...prev, { url: previewUrl, path }]);
+        setFormData((prev) => ({ ...prev, images: [...prev.images, path] }));
 
         availableSlots -= 1;
         if (availableSlots <= 0) {
@@ -316,8 +334,9 @@ export default function SellForm({ user }: SellFormProps) {
       setUploadedImages((prev) => prev.filter((item) => item.path !== image.path));
       setFormData((prev) => ({
         ...prev,
-        images: prev.images.filter((url) => url !== image.url),
+        images: prev.images.filter((path) => path !== image.path),
       }));
+      revokePreviewUrl(image.url);
     } catch (error) {
       console.error('Failed to remove image', error);
       toast({
@@ -346,64 +365,52 @@ export default function SellForm({ user }: SellFormProps) {
         return;
       }
 
-      if (!formData.categoryId) {
+      // Require verified email before creating listings
+      const confirmed = (resolvedUser as any)?.email_confirmed_at;
+      if (!confirmed) {
         toast({
-          title: 'Category required',
-          description: 'Please choose a category for your listing.',
+          title: 'Verify your email',
+          description: 'Please verify your email address before creating a listing.',
           variant: 'destructive',
         });
         return;
       }
 
-      if (!formData.condition) {
+      const validation = createProductSchema.safeParse({
+        title: formData.title,
+        description: formData.description,
+        price: formData.price,
+        condition: formData.condition,
+        categoryId: formData.categoryId,
+        location: formData.location,
+        images: formData.images.length ? formData.images : uploadedImages.map((image) => image.path),
+        sellerId: resolvedUser.id,
+      });
+
+      if (!validation.success) {
+        const issue = validation.error.issues[0];
         toast({
-          title: 'Condition required',
-          description: 'Please select the condition of your product.',
+          title: 'Check your listing details',
+          description: issue?.message ?? 'Please review your listing before submitting.',
           variant: 'destructive',
         });
         return;
       }
 
-      if (!formData.location) {
-        toast({
-          title: 'Location required',
-          description: 'Please choose where the product is located.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      const priceValue = Number(formData.price);
-      if (!Number.isFinite(priceValue) || priceValue < 0) {
-        toast({
-          title: 'Invalid price',
-          description: 'Please enter a valid price for your listing.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      if (formData.images.length === 0) {
-        toast({
-          title: 'Add at least one image',
-          description: 'Upload a photo so buyers can see your product.',
-          variant: 'destructive',
-        });
-        return;
-      }
+      const payload = validation.data;
 
       const { error } = await supabase
         .from('products')
         .insert({
-          title: formData.title,
-          description: formData.description,
-          price: priceValue,
-          condition: formData.condition,
-          location: formData.location,
-          category_id: formData.categoryId,
-          seller_id: resolvedUser.id,
-          images: formData.images,
-          currency: 'IQD',
+          title: payload.title,
+          description: payload.description,
+          price: payload.price,
+          condition: payload.condition,
+          location: payload.location,
+          category_id: payload.categoryId,
+          seller_id: payload.sellerId,
+          images: payload.images,
+          currency: payload.currency ?? 'IQD',
           is_active: true,
         });
 
@@ -416,6 +423,19 @@ export default function SellForm({ user }: SellFormProps) {
         description: 'Your product has been listed successfully.',
       });
 
+      setFormData({
+        title: '',
+        description: '',
+        price: '',
+        condition: '',
+        categoryId: '',
+        location: '',
+        images: [],
+      });
+      setUploadedImages([]);
+      setIsFree(false);
+
+      setHasUnsaved(false);
       router.push('/');
     } catch (error) {
       console.error('Error creating listing:', error);
@@ -442,7 +462,7 @@ export default function SellForm({ user }: SellFormProps) {
               <Input
                 id="title"
                 value={formData.title}
-                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+                onChange={(e) => { setHasUnsaved(true); setFormData((prev) => ({ ...prev, title: e.target.value })); }}
                 placeholder="What are you selling?"
                 required
               />
@@ -453,7 +473,7 @@ export default function SellForm({ user }: SellFormProps) {
               <Textarea
                 id="description"
                 value={formData.description}
-                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                onChange={(e) => { setHasUnsaved(true); setFormData((prev) => ({ ...prev, description: e.target.value })); }}
                 placeholder="Describe your item..."
                 rows={4}
               />
@@ -461,16 +481,31 @@ export default function SellForm({ user }: SellFormProps) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="price">Price (IQD) *</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="price">Price (IQD) *</Label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Free</span>
+                    <Switch
+                      checked={isFree}
+                      onCheckedChange={(checked) => {
+                        setIsFree(checked);
+                        setHasUnsaved(true);
+                        setFormData((prev) => ({ ...prev, price: checked ? '0' : prev.price }));
+                      }}
+                      aria-label="Mark as free"
+                    />
+                  </div>
+                </div>
                 <Input
                   id="price"
                   type="number"
-                  value={formData.price}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, price: e.target.value }))}
+                  value={isFree ? '0' : formData.price}
+                  onChange={(e) => { setHasUnsaved(true); setFormData((prev) => ({ ...prev, price: e.target.value })); }}
                   placeholder="0"
                   min="0"
                   step="0.01"
                   required
+                  disabled={isFree}
                 />
               </div>
 
@@ -478,17 +513,17 @@ export default function SellForm({ user }: SellFormProps) {
                 <Label htmlFor="condition">Condition *</Label>
                 <Select
                   value={formData.condition}
-                  onValueChange={(value) => setFormData((prev) => ({ ...prev, condition: value }))}
+                  onValueChange={(value) => { setHasUnsaved(true); setFormData((prev) => ({ ...prev, condition: value })); }}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select condition" />
                   </SelectTrigger>
                   <SelectContent>
-                    {conditions.map((condition) => (
-                      <SelectItem key={condition} value={condition}>
-                        {condition}
-                      </SelectItem>
-                    ))}
+                  {conditionOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -497,16 +532,20 @@ export default function SellForm({ user }: SellFormProps) {
             <div>
               <Label htmlFor="location">Location *</Label>
               <Select
-                value={formData.location}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, location: value }))}
+                value={formData.location || 'all'}
+                onValueChange={(value) => {
+                  setHasUnsaved(true);
+                  setFormData((prev) => ({ ...prev, location: value === 'all' ? '' : value }));
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select your city" />
                 </SelectTrigger>
                 <SelectContent>
-                  {cities.map((city) => (
-                    <SelectItem key={city} value={city}>
-                      {city}
+                  <SelectItem value="all">All Cities</SelectItem>
+                  {cityOptions.map((city) => (
+                    <SelectItem key={city.value} value={city.label}>
+                      {city.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -564,7 +603,10 @@ export default function SellForm({ user }: SellFormProps) {
                   )}
                 </Button>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Supports {ACCEPTED_FILES_DESCRIPTION} up to 10MB each. Max {MAX_IMAGES} images.
+                  Supports {ACCEPTED_FILES_DESCRIPTION} up to 50MB each. Max {MAX_IMAGES} images.
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Tip: Cars and Property keep original resolution (up to 10MB per image) after upload.
                 </p>
                 <input
                   ref={fileInputRef}

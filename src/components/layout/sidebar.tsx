@@ -20,27 +20,44 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 import { Icons } from '@/components/icons';
+import BrandLogo from '@/components/brand-logo';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { createClient } from '@/utils/supabase/client';
 
-const categories = [
-  { name: 'Electronics', icon: Zap },
-  { name: 'Fashion', icon: Shirt },
-  { name: 'Home & Garden', icon: Armchair },
-  { name: 'Toys & Hobbies', icon: Sparkles },
-  { name: 'Beauty & Health', icon: HeartPulse },
-  { name: 'Sports & Outdoors', icon: Bike },
-  { name: 'Books & Media', icon: Book },
-  { name: 'Other', icon: MoreHorizontal },
-];
+type SidebarCategory = { id: string; name: string; icon?: string | null };
 
 export default function AppSidebar() {
   const pathname = usePathname();
   const [isCategoriesOpen, setIsCategoriesOpen] = React.useState(true);
+  const [categories, setCategories] = useState<SidebarCategory[]>([]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let mounted = true;
+    const load = async () => {
+      try {
+        const { data } = await supabase
+          .from('categories')
+          .select('id, name, icon')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .order('name', { ascending: true });
+        if (!mounted) return;
+        setCategories((data ?? []).map((row) => ({ id: row.id, name: row.name, icon: row.icon })));
+      } catch (e) {
+        // noop
+      }
+    };
+    load();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const isActive = (path: string) => pathname === path;
 
@@ -48,8 +65,7 @@ export default function AppSidebar() {
     <div className="flex flex-col h-full bg-background text-foreground">
       <header className="p-4 border-b">
         <Link href="/" className="flex items-center gap-2 font-semibold font-headline">
-          <Icons.logo className="h-8 w-8" />
-          <span className="text-xl font-bold text-primary">KU-ONLINE</span>
+          <BrandLogo className="h-12 w-12" size={48} />
         </Link>
       </header>
 
@@ -79,8 +95,10 @@ export default function AppSidebar() {
           </CollapsibleTrigger>
           <CollapsibleContent className="space-y-1 pl-4">
             {categories.map((category) => (
-              <Link key={category.name} href="#" className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:bg-accent">
-                <category.icon className="h-4 w-4" />
+              <Link key={category.id} href={`/?category=${category.id}`} className="flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:bg-accent">
+                <span className="h-4 w-4 text-sm">
+                  {category.icon ?? '🏷️'}
+                </span>
                 {category.name}
               </Link>
             ))}

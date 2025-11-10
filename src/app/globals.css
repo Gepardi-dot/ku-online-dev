@@ -35,3 +35,13 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Utilities */
+@layer utilities {
+  /* Hide scrollbars for horizontal scrollers where we provide our own affordances */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Ensure emoji render with a proper color emoji font even when a custom text font is used */
+  .emoji-font { font-family: 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Twemoji Mozilla',emoji,sans-serif; }
+}

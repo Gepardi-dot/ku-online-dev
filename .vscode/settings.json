@@ -20,5 +20,8 @@
     "fs",
     "http",
     "net"
-  ]
+  ],
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "workbench.view.alwaysShowHeaderActions": true,
+  "workbench.sideBar.location": "left"
 }

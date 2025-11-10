@@ -1,15 +1,12 @@
 -- Align Supabase schema, policies, and helper routines with the KU-ONLINE marketplace feature set.
 set search_path = public;
-
 -- Extensions -----------------------------------------------------------------
 create extension if not exists "pg_trgm";
-
 -- Users -----------------------------------------------------------------------
 alter table public.users
     add column if not exists response_rate numeric(5, 2),
     add column if not exists last_seen_at timestamptz,
     add column if not exists response_time_minutes integer;
-
 -- Conversations ----------------------------------------------------------------
 create table if not exists public.conversations (
     id uuid primary key default gen_random_uuid(),
@@ -22,14 +19,12 @@ create table if not exists public.conversations (
     updated_at timestamptz not null default timezone('utc', now()),
     constraint conversations_participants_unique unique (seller_id, buyer_id, product_id)
 );
-
 alter table public.messages
     drop constraint if exists messages_conversation_id_fkey,
     add constraint messages_conversation_id_fkey
         foreign key (conversation_id)
         references public.conversations(id)
         on delete cascade;
-
 -- Generated search document for full-text queries --------------------------------
 alter table public.products
     add column if not exists search_document tsvector
@@ -39,56 +34,39 @@ alter table public.products
                 coalesce(title, '') || ' ' || coalesce(description, '')
             )
         ) stored;
-
 -- Indexes ---------------------------------------------------------------------
 create index if not exists idx_products_is_active_created_at
     on public.products (is_active, created_at desc);
-
 create index if not exists idx_products_category_created_at
     on public.products (category_id, created_at desc);
-
 create index if not exists idx_products_price
     on public.products (price);
-
 create index if not exists idx_products_condition
     on public.products (condition, created_at desc);
-
 create index if not exists idx_products_location_trgm
     on public.products using gin (location gin_trgm_ops);
-
 create index if not exists idx_products_title_trgm
     on public.products using gin (title gin_trgm_ops);
-
 create index if not exists idx_products_search_document
     on public.products using gin (search_document);
-
 create index if not exists idx_conversations_seller
     on public.conversations (seller_id, updated_at desc);
-
 create index if not exists idx_conversations_buyer
     on public.conversations (buyer_id, updated_at desc);
-
 create index if not exists idx_conversations_product
     on public.conversations (product_id, updated_at desc);
-
 create index if not exists idx_messages_conversation_created_at
     on public.messages (conversation_id, created_at desc);
-
 create index if not exists idx_messages_sender
     on public.messages (sender_id, created_at desc);
-
 create index if not exists idx_messages_receiver
     on public.messages (receiver_id, created_at desc);
-
 create index if not exists idx_favorites_user_created
     on public.favorites (user_id, created_at desc);
-
 create index if not exists idx_notifications_user_created
     on public.notifications (user_id, created_at desc);
-
 create index if not exists idx_categories_is_active_sort
     on public.categories (is_active, sort_order, name);
-
 -- Updated-at helper -----------------------------------------------------------
 create or replace function public.touch_updated_at()
 returns trigger
@@ -99,25 +77,21 @@ begin
     return new;
 end;
 $$;
-
 drop trigger if exists trg_products_touch_updated_at on public.products;
 create trigger trg_products_touch_updated_at
     before update on public.products
     for each row
     execute procedure public.touch_updated_at();
-
 drop trigger if exists trg_users_touch_updated_at on public.users;
 create trigger trg_users_touch_updated_at
     before update on public.users
     for each row
     execute procedure public.touch_updated_at();
-
 drop trigger if exists trg_conversations_touch_updated_at on public.conversations;
 create trigger trg_conversations_touch_updated_at
     before update on public.conversations
     for each row
     execute procedure public.touch_updated_at();
-
 -- Auth <-> public.users synchronization ---------------------------------------
 create or replace function public.handle_auth_user_change()
 returns trigger
@@ -150,19 +124,16 @@ begin
     return new;
 end;
 $$;
-
 drop trigger if exists trg_on_auth_user_created on auth.users;
 create trigger trg_on_auth_user_created
     after insert on auth.users
     for each row
     execute procedure public.handle_auth_user_change();
-
 drop trigger if exists trg_on_auth_user_updated on auth.users;
 create trigger trg_on_auth_user_updated
     after update on auth.users
     for each row
     execute procedure public.handle_auth_user_change();
-
 -- Ratings maintenance ---------------------------------------------------------
 create or replace function public.recalculate_user_rating(target_user uuid)
 returns void
@@ -189,7 +160,6 @@ begin
     where id = target_user;
 end;
 $$;
-
 create or replace function public.handle_review_change()
 returns trigger
 language plpgsql
@@ -209,25 +179,21 @@ begin
     return null;
 end;
 $$;
-
 drop trigger if exists trg_reviews_after_insert on public.reviews;
 create trigger trg_reviews_after_insert
     after insert on public.reviews
     for each row
     execute procedure public.handle_review_change();
-
 drop trigger if exists trg_reviews_after_update on public.reviews;
 create trigger trg_reviews_after_update
     after update on public.reviews
     for each row
     execute procedure public.handle_review_change();
-
 drop trigger if exists trg_reviews_after_delete on public.reviews;
 create trigger trg_reviews_after_delete
     after delete on public.reviews
     for each row
     execute procedure public.handle_review_change();
-
 -- Conversation helpers --------------------------------------------------------
 create or replace function public.get_or_create_conversation(
     p_seller_id uuid,
@@ -261,9 +227,7 @@ begin
     return conversation_id;
 end;
 $$;
-
 grant execute on function public.get_or_create_conversation(uuid, uuid, uuid) to authenticated;
-
 create or replace function public.handle_new_message()
 returns trigger
 language plpgsql
@@ -296,13 +260,11 @@ begin
     return new;
 end;
 $$;
-
 drop trigger if exists trg_messages_after_insert on public.messages;
 create trigger trg_messages_after_insert
     after insert on public.messages
     for each row
     execute procedure public.handle_new_message();
-
 -- Full-text search RPC --------------------------------------------------------
 create or replace function public.search_products(
     search_term text,
@@ -397,28 +359,22 @@ begin
     offset greatest(offset_count, 0);
 end;
 $$;
-
 grant execute on function public.search_products(text, uuid, numeric, numeric, text, integer, integer) to authenticated;
-
 -- Row Level Security for conversations ---------------------------------------
 alter table public.conversations enable row level security;
-
 drop policy if exists "View own conversations" on public.conversations;
 create policy "View own conversations"
     on public.conversations
     for select
     using (auth.uid() = seller_id or auth.uid() = buyer_id);
-
 drop policy if exists "Create conversations" on public.conversations;
 create policy "Create conversations"
     on public.conversations
     for insert
     with check (auth.uid() = seller_id or auth.uid() = buyer_id);
-
 drop policy if exists "Update conversations" on public.conversations;
 create policy "Update conversations"
     on public.conversations
     for update
     using (auth.uid() = seller_id or auth.uid() = buyer_id)
     with check (auth.uid() = seller_id or auth.uid() = buyer_id);
-

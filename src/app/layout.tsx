@@ -24,8 +24,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const supabaseOrigin = (() => {
+    try {
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      return url ? new URL(url).origin : null;
+    } catch {
+      return null;
+    }
+  })();
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        {supabaseOrigin ? (
+          <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />
+        ) : null}
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+      </head>
       <body className={cn(ptSans.className, 'font-body antialiased min-h-screen bg-background font-sans')}>
         <LocaleProvider>
           <AnnouncementBar />

@@ -250,11 +250,18 @@ export default function FavoritesMenu({ userId, strings }: FavoritesMenuProps) {
               <div className="divide-y">
                 {favorites.map((favorite) => {
                   const product = favorite.product;
-                  const imageSrc = product?.images?.[0] ?? 'https://placehold.co/96x96?text=KU';
+                  const firstUrl = (product?.imageUrls ?? []).find((u) => typeof u === 'string' && u.trim().length > 0);
+                  const imageSrc: string | undefined = firstUrl && firstUrl.trim().length > 0 ? firstUrl : undefined;
                   return (
                     <div key={favorite.id} className="flex items-center gap-3 p-3">
                       <Link href={product ? `/product/${product.id}` : '#'} className="relative h-20 w-20 overflow-hidden rounded-lg">
-                        <Image src={imageSrc} alt={product?.title ?? 'Product'} fill className="object-cover" />
+                        {imageSrc ? (
+                          <Image src={imageSrc} alt={product?.title ?? 'Product'} fill className="object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center bg-muted text-[10px] text-muted-foreground">
+                            No image
+                          </div>
+                        )}
                       </Link>
                       <div className="flex-1 space-y-1">
                         <Link

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -11,12 +11,12 @@ import {
   fetchMessages,
   getOrCreateConversation,
   markConversationRead,
-  sendMessage,
   subscribeToConversation,
   type MessageRecord,
 } from '@/lib/services/messages-client';
 import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { createClient as createSupabaseClient } from '@/utils/supabase/client';
 
 interface ChatButtonProps {
   sellerId: string;
@@ -39,6 +39,11 @@ export default function ChatButton({
   const [newMessage, setNewMessage] = useState('');
   const [initializing, setInitializing] = useState(false);
   const [sending, setSending] = useState(false);
+  const [counterpartOnline, setCounterpartOnline] = useState(false);
+  const presenceChannelRef = useRef<import('@supabase/supabase-js').RealtimeChannel | null>(null);
+  const supabaseClientRef = useRef(createSupabaseClient());
+  const [counterpartTyping, setCounterpartTyping] = useState(false);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const counterpartName = sellerName;
 
@@ -126,8 +131,40 @@ export default function ChatButton({
       }
     });
 
+    // Presence: show whether counterpart is online in this conversation
+    try {
+      const supabase = supabaseClientRef.current;
+      const presence = supabase.channel(`presence:conv:${conversationId}`, {
+        config: { presence: { key: viewerId } },
+      });
+      presence.on('presence', { event: 'sync' }, () => {
+        const state = presence.presenceState();
+        const keys = Object.keys(state || {});
+        // counterpart considered online if someone other than viewerId is present
+        setCounterpartOnline(keys.some((k) => k !== viewerId));
+      });
+      presence.on('broadcast', { event: 'typing' }, (payload: any) => {
+        const from = payload?.payload?.userId;
+        if (from && from !== viewerId) {
+          setCounterpartTyping(true);
+          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+          typingTimeoutRef.current = setTimeout(() => setCounterpartTyping(false), 1500);
+        }
+      });
+      presence.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await presence.track({ online: true });
+        }
+      });
+      presenceChannelRef.current = presence;
+    } catch (_) {
+      // ignore presence errors in environments without realtime
+    }
+
     return () => {
       channel.unsubscribe();
+      presenceChannelRef.current?.unsubscribe();
+      presenceChannelRef.current = null;
     };
   }, [conversationId, viewerId, open]);
 
@@ -144,13 +181,16 @@ export default function ChatButton({
     setSending(true);
 
     try {
-      const message = await sendMessage({
-        conversationId,
-        senderId: viewerId,
-        receiverId: sellerId,
-        productId,
-        content: trimmed,
+      const res = await fetch('/api/messages/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId, receiverId: sellerId, productId, content: trimmed }),
       });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload?.message) {
+        throw new Error(payload?.error || 'Failed to send message');
+      }
+      const message: MessageRecord = payload.message as MessageRecord;
 
       setMessages((prev) => {
         if (prev.some((item) => item.id === message.id)) {
@@ -180,6 +220,18 @@ export default function ChatButton({
     },
     [handleSendMessage],
   );
+
+  // Broadcast "typing" with a short throttle
+  useEffect(() => {
+    const ch = presenceChannelRef.current;
+    if (!ch || !open || !viewerId) return;
+    let cancelled = false;
+    const id = setTimeout(() => {
+      if (cancelled) return;
+      ch.send({ type: 'broadcast', event: 'typing', payload: { userId: viewerId } });
+    }, 250);
+    return () => { cancelled = true; clearTimeout(id); };
+  }, [newMessage, open, viewerId]);
 
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
@@ -250,7 +302,18 @@ export default function ChatButton({
             </Avatar>
             <span className="flex flex-col">
               <span className="font-medium leading-tight">Chat with {counterpartName}</span>
-              <span className="text-xs text-muted-foreground">{productTitle}</span>
+              <span className="text-xs text-muted-foreground">
+                {productTitle}
+                {counterpartOnline && <>
+                  {' '}
+                  <span className="ml-2 inline-flex items-center gap-1 text-green-600">
+                    <span className="h-2 w-2 rounded-full bg-green-600" /> Online
+                  </span>
+                </>}
+                {counterpartTyping && (
+                  <span className="ml-2 text-xs italic text-muted-foreground">typing…</span>
+                )}
+              </span>
             </span>
           </DialogTitle>
         </DialogHeader>
