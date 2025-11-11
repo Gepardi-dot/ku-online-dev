@@ -103,7 +103,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
             <Link href="/" className="flex items-center" aria-label="KU-ONLINE home">
               {/* Visually double the logo without changing header height */}
               <BrandLogo
-                className="h-16 w-16 overflow-visible md:transform md:scale-[2.5] md:origin-left md:-translate-x-[32px] md:translate-y-[16px]"
+                className="h-16 w-16 overflow-visible transform scale-[2.5] origin-left -translate-x-[32px] translate-y-[16px]"
                 size={64}
               />
             </Link>
