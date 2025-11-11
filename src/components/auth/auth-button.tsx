@@ -28,8 +28,9 @@ export default function AuthButton({ user }: AuthButtonProps) {
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
-      // Prefer configured site URL (dev: http://localhost:5000). Fallback to window origin.
-      let origin = NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+      // Prefer the actual browser origin to avoid stale env values on Vercel.
+      // Fallback to NEXT_PUBLIC_SITE_URL only when window is not available (SSR/dev tools).
+      let origin = (typeof window !== 'undefined' ? window.location.origin : NEXT_PUBLIC_SITE_URL) || 'http://localhost:5000';
       // Normalize invalid host 0.0.0.0 for OAuth callbacks.
       origin = origin.replace('://0.0.0.0', '://localhost');
 
