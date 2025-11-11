@@ -66,6 +66,10 @@ if (sentryDsn) {
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
+// To avoid blank pages caused by a static CSP blocking Next.js inline runtime scripts,
+// gate the static CSP behind an explicit opt-in. In the future we can implement
+// a nonce-based CSP. For now, production defaults to no static CSP header.
+const enableStaticCsp = process.env.NEXT_ENABLE_STATIC_CSP === 'true';
 
 function buildContentSecurityPolicy(): string {
   const directiveMap = new Map<string, Set<string>>([
@@ -140,11 +144,13 @@ const securityHeaders = (() => {
         key: 'Strict-Transport-Security',
         value: 'max-age=63072000; includeSubDomains; preload',
       },
-      {
+    );
+    if (enableStaticCsp) {
+      headers.push({
         key: 'Content-Security-Policy',
         value: buildContentSecurityPolicy(),
-      },
-    );
+      });
+    }
   }
 
   return headers;
