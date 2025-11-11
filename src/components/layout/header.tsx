@@ -103,7 +103,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
             <Link href="/" className="flex items-center" aria-label="KU-ONLINE home">
               {/* Visually double the logo without changing header height */}
               <BrandLogo
-                className="h-16 w-16 overflow-visible transform scale-[2.5] origin-left -translate-x-[32px] translate-y-[16px]"
+                className="h-16 w-16 overflow-visible md:transform md:scale-[2.5] md:origin-left md:-translate-x-[32px] md:translate-y-[16px]"
                 size={64}
               />
             </Link>
@@ -153,14 +153,17 @@ export default function AppHeader({ user }: AppHeaderProps) {
           <div className="flex items-center space-x-2 sm:space-x-4">
             {user && (
               <>
-                <FavoritesMenu
-                  userId={user.id}
-                  strings={{
-                    label: messages.header.favorites,
-                    empty: messages.header.favoritesEmpty,
-                    loginRequired: messages.header.loginRequired,
-                  }}
-                />
+                {/* Hide Favorites on mobile; available in bottom nav */}
+                <div className="hidden md:block">
+                  <FavoritesMenu
+                    userId={user.id}
+                    strings={{
+                      label: messages.header.favorites,
+                      empty: messages.header.favoritesEmpty,
+                      loginRequired: messages.header.loginRequired,
+                    }}
+                  />
+                </div>
                 <NotificationMenu
                   userId={user.id}
                   strings={{
@@ -170,17 +173,21 @@ export default function AppHeader({ user }: AppHeaderProps) {
                     loginRequired: messages.header.loginRequired,
                   }}
                 />
-                <MessagesMenu
-                  userId={user.id}
-                  strings={{
-                    label: t('header.messages'),
-                    empty: messages.header.messagesEmpty,
-                    loginRequired: messages.header.loginRequired,
-                    typePlaceholder: messages.header.typeMessage,
-                    send: messages.header.sendMessage,
-                  }}
-                />
-                <Button asChild>
+                {/* Hide Messages on mobile; available in bottom nav */}
+                <div className="hidden md:block">
+                  <MessagesMenu
+                    userId={user.id}
+                    strings={{
+                      label: t('header.messages'),
+                      empty: messages.header.messagesEmpty,
+                      loginRequired: messages.header.loginRequired,
+                      typePlaceholder: messages.header.typeMessage,
+                      send: messages.header.sendMessage,
+                    }}
+                  />
+                </div>
+                {/* Hide Create Listing on mobile; use bottom nav SELL */}
+                <Button asChild className="hidden md:inline-flex">
                   <Link href="/sell">
                     <PackagePlus className="mr-2 h-4 w-4" aria-hidden="true" />
                     {t('header.createListing')}
