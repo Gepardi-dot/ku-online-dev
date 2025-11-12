@@ -241,7 +241,7 @@ export default function ReviewSystem({
                     </div>
                     
                     {review.comment && (
-                      <p className="text-sm text-muted-foreground">{review.comment}</p>
+                      <p dir="auto" className="text-sm text-muted-foreground bidi-auto">{review.comment}</p>
                     )}
                     
                     <div className="mt-2 flex items-center gap-2">

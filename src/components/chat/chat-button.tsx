@@ -274,7 +274,7 @@ export default function ChatButton({
                   isViewer ? 'bg-primary text-primary-foreground' : 'bg-muted'
                 }`}
               >
-                <p className="whitespace-pre-line">{message.content}</p>
+                <p dir="auto" className="whitespace-pre-line bidi-auto">{message.content}</p>
                 <p className={`mt-1 text-[11px] uppercase tracking-wide opacity-70 ${isViewer ? 'text-primary-foreground/80' : ''}`}>
                   {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
                 </p>

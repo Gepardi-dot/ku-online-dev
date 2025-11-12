@@ -90,7 +90,7 @@ export default function ProductCard({ product, viewerId }: ProductCardProps) {
 
         <CardContent className="p-3">
         <div className="space-y-2">
-          <h3 className="font-semibold text-sm line-clamp-2 leading-tight">
+          <h3 dir="auto" className="font-semibold text-sm line-clamp-2 leading-tight bidi-auto">
             {product.title}
           </h3>
           

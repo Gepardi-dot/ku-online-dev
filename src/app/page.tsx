@@ -83,7 +83,6 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
     params as unknown as Record<string, string | undefined>,
   );
   const locale = await getServerLocale();
-  const isRTL = locale === 'ar' || locale === 'ku';
   const createdAfter = postedWithinToDate(postedWithin);
 
   const filtersWithDate = {
@@ -121,7 +120,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
               {messages.homepage.noCategories}
             </span>
           ) : (
-            <div className={`no-scrollbar flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory ${isRTL ? 'flex-row-reverse' : ''}`}>
+            <div className={"no-scrollbar flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory"}>
               {categories.map((category, idx) => {
                 const label = locale === 'ar' && category.nameAr
                   ? category.nameAr
