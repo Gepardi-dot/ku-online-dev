@@ -1,377 +1,222 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  CONDITION_OPTIONS,
+  DEFAULT_FILTER_VALUES,
+  type ProductsFilterValues,
+  createProductsSearchParams,
+} from "@/lib/products/filter-params";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { cn } from '@/lib/utils';
-import {
-  CONDITION_OPTIONS,
-  DEFAULT_FILTER_VALUES,
-  POSTED_WITHIN_OPTIONS,
-  type PostedWithin,
-  type ProductsFilterValues,
-  SORT_OPTIONS,
-} from '@/lib/products/filter-params';
-import type { ProductSort } from '@/lib/services/products';
-export type { ProductsFilterValues, PostedWithin } from '@/lib/products/filter-params';
-import { fromOption, fromOptionAll, toOption, toOptionAll } from '@/components/ui/selectEmptyValue';
+} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import * as SliderPrimitive from "@radix-ui/react-slider";
+import { cn } from "@/lib/utils";
 
-const PRICE_OPTION_VALUES = [
-  '',
-  '25000',
-  '50000',
-  '100000',
-  '250000',
-  '500000',
-  '1000000',
-  '2000000',
-  '5000000',
-];
-
-function formatPriceLabel(value: string) {
-  if (!value) {
-    return 'Any';
-  }
-
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) {
-    return value;
-  }
-
-  const formatter = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'IQD',
-    maximumFractionDigits: 0,
-  });
-
-  return formatter.format(numeric);
-}
+type CategoryOption = { id: string; name: string };
 
 interface ProductsFilterBarProps {
-  categories: { id: string; name: string }[];
+  categories?: CategoryOption[];
   locations: string[];
-  initialValues: ProductsFilterValues;
+  initialValues?: ProductsFilterValues;
   targetPath?: string;
   showCategorySelect?: boolean;
-  priceInputMode?: 'input' | 'select';
+  priceInputMode?: "select" | "input"; // kept for compatibility only
+}
+
+const MAX_PRICE_DEFAULT = 2_000_000; // IQD default cap used for the range when no values present
+
+function useInitialState(initial?: ProductsFilterValues) {
+  const base = initial ?? DEFAULT_FILTER_VALUES;
+  const parse = (s: string | undefined) => {
+    const n = Number(s);
+    return Number.isFinite(n) && n >= 0 ? n : undefined;
+  };
+  const min = parse(base.minPrice);
+  const max = parse(base.maxPrice);
+  const maxCap = Math.max(MAX_PRICE_DEFAULT, max ?? 0);
+  return {
+    condition: base.condition ?? "",
+    location: base.location ?? "",
+    sort: base.sort ?? "newest",
+    minPrice: min,
+    maxPrice: max,
+    maxCap,
+  } as const;
+}
+
+function formatIQD(value: number) {
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "IQD",
+      maximumFractionDigits: 0,
+    })
+      .format(value)
+      .replace("IQD", "IQD");
+  } catch {
+    return `${value}`;
+  }
 }
 
 export function ProductsFilterBar({
-  categories,
   locations,
   initialValues,
-  targetPath = '/products',
-  showCategorySelect = true,
-  priceInputMode = 'input',
+  targetPath = "/products",
+  showCategorySelect = false, // API compatibility
 }: ProductsFilterBarProps) {
   const router = useRouter();
-  const [values, setValues] = useState<ProductsFilterValues>(initialValues);
-  const [isPending, startTransition] = useTransition();
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const init = useInitialState(initialValues);
 
-  useEffect(() => {
-    setValues({ ...initialValues });
-  }, [initialValues]);
+  const [condition, setCondition] = useState<string>(init.condition || "");
+  const [location, setLocation] = useState<string>(init.location || "");
+  const [sort, setSort] = useState<string>(init.sort || "newest");
+  const [price, setPrice] = useState<[number, number]>([
+    init.minPrice ?? 0,
+    init.maxPrice ?? init.maxCap,
+  ]);
 
-  const applyFilters = (nextValues: ProductsFilterValues) => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-      debounceRef.current = null;
-    }
-    const params = new URLSearchParams();
+  const isPriceDefault = price[0] <= 0 && price[1] >= init.maxCap;
 
-    const trimmedSearch = nextValues.search.trim();
-    if (trimmedSearch) {
-      params.set('search', trimmedSearch);
-    }
+  const priceLabel = useMemo(() => {
+    if (isPriceDefault) return "Price";
+    if (price[0] <= 0) return `≤ ${formatIQD(price[1])}`;
+    if (price[1] >= init.maxCap) return `≥ ${formatIQD(price[0])}`;
+    return `${formatIQD(price[0])} – ${formatIQD(price[1])}`;
+  }, [price, init.maxCap, isPriceDefault]);
 
-    if (nextValues.category) {
-      params.set('category', nextValues.category);
-    }
-
-    if (nextValues.condition) {
-      params.set('condition', nextValues.condition);
-    }
-
-    if (nextValues.location) {
-      params.set('location', nextValues.location);
-    }
-
-    if (nextValues.minPrice) {
-      params.set('minPrice', nextValues.minPrice);
-    }
-
-    if (nextValues.maxPrice) {
-      params.set('maxPrice', nextValues.maxPrice);
-    }
-
-    if (nextValues.sort && nextValues.sort !== 'newest') {
-      params.set('sort', nextValues.sort);
-    }
-
-    if (nextValues.postedWithin && nextValues.postedWithin !== 'any') {
-      params.set('postedWithin', nextValues.postedWithin);
-    }
-
-    if (nextValues.freeOnly) {
-      params.set('free', '1');
-    }
-
-    const queryString = params.toString();
-
-    startTransition(() => {
-      router.replace(queryString ? `${targetPath}?${queryString}` : targetPath, { scroll: true });
-    });
-  };
-
-  const scheduleFilterUpdate = (nextValues: ProductsFilterValues) => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    debounceRef.current = setTimeout(() => {
-      applyFilters(nextValues);
-    }, 400);
-  };
-
-  const updateValuesWithDebounce = (updater: (prev: ProductsFilterValues) => ProductsFilterValues) => {
-    setValues((prev) => {
-      const next = updater(prev);
-      scheduleFilterUpdate(next);
-      return next;
-    });
-  };
-
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    applyFilters(values);
-  };
-
-  const handleReset = () => {
-    const reset: ProductsFilterValues = { ...DEFAULT_FILTER_VALUES };
-    setValues(reset);
-    applyFilters(reset);
-  };
-
-  const handleImmediateChange = (partial: Partial<ProductsFilterValues>) => {
-    const nextValues = { ...values, ...partial };
-    setValues(nextValues);
-    applyFilters(nextValues);
-  };
-
-  const handleMinPriceChange = (value: string) => {
-    const nextValues = { ...values, minPrice: value };
-    if (value && nextValues.maxPrice && Number(value) > Number(nextValues.maxPrice)) {
-      nextValues.maxPrice = '';
-    }
-    setValues(nextValues);
-    applyFilters(nextValues);
-  };
-
-  const handleMaxPriceChange = (value: string) => {
-    const nextValues = { ...values, maxPrice: value };
-    if (value && nextValues.minPrice && Number(value) < Number(nextValues.minPrice)) {
-      nextValues.minPrice = '';
-    }
-    setValues(nextValues);
-    applyFilters(nextValues);
-  };
-
-  const handlePostedWithinChange = (value: PostedWithin) => {
-    handleImmediateChange({ postedWithin: value });
-  };
-
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
+  const apply = () => {
+    const base: ProductsFilterValues = {
+      ...(initialValues ?? DEFAULT_FILTER_VALUES),
+      condition: (condition as any) || "",
+      location: location || "",
+      minPrice: isPriceDefault ? "" : String(price[0] ?? ""),
+      maxPrice: isPriceDefault ? "" : String(price[1] ?? ""),
+      sort: (sort as any) || "newest",
+      // remove postedWithin to keep UI minimal
+      postedWithin: "any",
     };
-  }, []);
+    const params = createProductsSearchParams(base);
+    const query = params.toString();
+    router.push(`${targetPath}${query ? `?${query}` : ""}`);
+  };
+
+  const reset = () => {
+    setCondition("");
+    setLocation("");
+    setSort("newest");
+    setPrice([0, init.maxCap]);
+    const params = createProductsSearchParams({
+      ...(initialValues ?? DEFAULT_FILTER_VALUES),
+      condition: "",
+      location: "",
+      minPrice: "",
+      maxPrice: "",
+      sort: "newest",
+      postedWithin: "any",
+    });
+    const q = params.toString();
+    router.push(`${targetPath}${q ? `?${q}` : ""}`);
+  };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3 shadow-sm"
-    >
-      {showCategorySelect && (
-        <div className="flex-shrink-0">
-          <Select
-            value={values.category}
-            onValueChange={(value) => {
-              const id = fromOptionAll(value);
-              if (!id) {
-                handleImmediateChange({ category: '' });
-                return;
-              }
-              const selected = categories.find((c) => c.id === id);
-              const label = (selected?.name ?? '').toLowerCase();
-              const isFree = ['free', 'مجاني', 'مجانا', 'فري', 'بلاش'].some((kw) => label.includes(kw));
-              if (isFree) {
-                handleImmediateChange({ category: '', minPrice: '0', maxPrice: '0' });
-              } else {
-                handleImmediateChange({ category: id });
-              }
-            }}
-          >
-            <SelectTrigger className="h-9 w-auto min-w-[8rem] whitespace-nowrap rounded-full px-3">
-              <SelectValue placeholder="All categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category.id} value={category.id}>
-                  {category.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      <div className="flex-shrink-0">
-        <Select
-          value={toOption(values.condition)}
-          onValueChange={(value) =>
-            handleImmediateChange({
-              condition: fromOption(value) as ProductsFilterValues['condition'],
-            })
-          }
-        >
-          <SelectTrigger className="h-9 w-auto min-w-[8rem] whitespace-nowrap rounded-full px-3">
-            <SelectValue placeholder="Any condition" />
+    <div className="rounded-xl border bg-background px-3 py-2 shadow-sm">
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Condition */}
+        <Select value={condition} onValueChange={(v) => setCondition(v)}>
+          <SelectTrigger className="h-9 w-[130px] rounded-full text-sm">
+            <SelectValue placeholder="Condition" />
           </SelectTrigger>
-          <SelectContent>
-            {CONDITION_OPTIONS.map((option) => (
-              <SelectItem key={option.value || 'any'} value={toOption(option.value)}>
-                {option.label}
-              </SelectItem>
+          <SelectContent align="start">
+            <SelectItem value="">Condition</SelectItem>
+            {CONDITION_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value || "all"} value={opt.value}>{opt.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-      </div>
 
-      {locations.length > 0 && (
-        <div className="flex-shrink-0">
-          <Select
-            value={values.location}
-            onValueChange={(value) => handleImmediateChange({ location: fromOptionAll(value) })}
-          >
-            <SelectTrigger className="h-9 w-auto min-w-[7.5rem] whitespace-nowrap rounded-full px-3">
-              <SelectValue placeholder="All Cities" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Cities</SelectItem>
-              {locations.map((city) => (
-                <SelectItem key={city} value={city}>
-                  {city}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-
-      {priceInputMode === 'select' ? (
-        <div className="flex flex-row gap-2 flex-shrink-0">
-          <Select value={values.minPrice} onValueChange={(v) => handleMinPriceChange(fromOption(v))}>
-            <SelectTrigger className="h-9 w-auto min-w-[7rem] whitespace-nowrap rounded-full px-3">
-              <SelectValue placeholder="Min price" />
-            </SelectTrigger>
-            <SelectContent>
-              {PRICE_OPTION_VALUES.map((option) => (
-                <SelectItem key={`min-${option || 'any'}`} value={toOption(option)}>
-                  {option ? `From ${formatPriceLabel(option)}` : 'No minimum'}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={values.maxPrice} onValueChange={(v) => handleMaxPriceChange(fromOption(v))}>
-            <SelectTrigger className="h-9 w-auto min-w-[7rem] whitespace-nowrap rounded-full px-3">
-              <SelectValue placeholder="Max price" />
-            </SelectTrigger>
-            <SelectContent>
-              {PRICE_OPTION_VALUES.map((option) => (
-                <SelectItem key={`max-${option || 'any'}`} value={toOption(option)}>
-                  {option ? `Up to ${formatPriceLabel(option)}` : 'No maximum'}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ) : (
-        <div className="flex flex-row gap-2">
-          <Input
-            type="number"
-            inputMode="numeric"
-            min="0"
-            placeholder="Min price"
-            value={values.minPrice}
-            onChange={(event) =>
-              updateValuesWithDebounce((prev) => ({ ...prev, minPrice: event.target.value }))
-            }
-            className="h-9 w-24 rounded-full px-3"
-          />
-          <Input
-            type="number"
-            inputMode="numeric"
-            min="0"
-            placeholder="Max price"
-            value={values.maxPrice}
-            onChange={(event) =>
-              updateValuesWithDebounce((prev) => ({ ...prev, maxPrice: event.target.value }))
-            }
-            className="h-9 w-24 rounded-full px-3"
-          />
-        </div>
-      )}
-
-      <div className="flex-shrink-0">
-        <Select value={values.postedWithin} onValueChange={(value) => handlePostedWithinChange(value as PostedWithin)}>
-          <SelectTrigger className="h-9 w-auto min-w-[7.5rem] whitespace-nowrap rounded-full px-3">
-            <SelectValue placeholder="Listed within" />
+        {/* City */}
+        <Select value={location} onValueChange={(v) => setLocation(v)}>
+          <SelectTrigger className="h-9 w-[120px] rounded-full text-sm">
+            <SelectValue placeholder="City" />
           </SelectTrigger>
-          <SelectContent>
-            {POSTED_WITHIN_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
+          <SelectContent align="start">
+            <SelectItem value="">City</SelectItem>
+            {locations.map((loc) => (
+              <SelectItem key={loc} value={loc}>{loc}</SelectItem>
             ))}
           </SelectContent>
         </Select>
-      </div>
 
-      <div className="flex-shrink-0">
-        <Select value={values.sort} onValueChange={(value) => handleImmediateChange({ sort: value as ProductSort })}>
-          <SelectTrigger className="h-9 w-auto min-w-[6.5rem] whitespace-nowrap rounded-full px-3">
+        {/* Price slider in a compact popover */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="h-9 rounded-full px-3 text-sm">
+              {priceLabel}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="start">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Price range</span>
+                <span className="font-medium">{priceLabel}</span>
+              </div>
+              <div className="px-1 py-2">
+                <SliderPrimitive.Root
+                  value={price as unknown as number[]}
+                  onValueChange={(val) => setPrice([val[0], val[1]] as [number, number])}
+                  min={0}
+                  max={init.maxCap}
+                  step={1000}
+                  className={cn("relative flex w-full touch-none select-none items-center")}
+                >
+                  <SliderPrimitive.Track className="relative h-2 w-full grow overflow-hidden rounded-full bg-secondary">
+                    <SliderPrimitive.Range className="absolute h-full bg-primary" />
+                  </SliderPrimitive.Track>
+                  <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+                  <SliderPrimitive.Thumb className="block h-5 w-5 rounded-full border-2 border-primary bg-background ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2" />
+                </SliderPrimitive.Root>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setPrice([0, init.maxCap])}>Reset</Button>
+                <Button size="sm" onClick={apply}>Apply</Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
+
+        {/* Sort */}
+        <Select value={sort} onValueChange={(v) => setSort(v)}>
+          <SelectTrigger className="h-9 w-[140px] rounded-full text-sm">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
-            {SORT_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
+          <SelectContent align="start">
+            <SelectItem value="newest">Newest</SelectItem>
+            <SelectItem value="price_asc">Price: Low to High</SelectItem>
+            <SelectItem value="price_desc">Price: High to Low</SelectItem>
+            <SelectItem value="views_desc">Most Viewed</SelectItem>
           </SelectContent>
         </Select>
-      </div>
 
-      <div className="flex flex-row gap-2 ml-auto">
-        <Button type="submit" disabled={isPending} className="h-9 rounded-full px-4">
-          Apply filters
-        </Button>
-        <Button type="button" variant="outline" onClick={handleReset} disabled={isPending} className="h-9 rounded-full px-4">
-          Reset
-        </Button>
+        <div className="ml-auto flex items-center gap-2">
+          <Button size="sm" variant="secondary" className="rounded-full" onClick={apply}>
+            Apply
+          </Button>
+          <Button size="sm" variant="ghost" className="rounded-full" onClick={reset}>
+            Reset
+          </Button>
+        </div>
       </div>
-    </form>
+    </div>
   );
 }
+
+export default ProductsFilterBar;
+
