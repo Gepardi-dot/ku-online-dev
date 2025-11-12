@@ -135,14 +135,14 @@ export function ProductsFilterBar({
   const locationUiValue = location === "" ? CLEAR_VALUE : location;
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white/80 backdrop-blur px-3 py-2 shadow-sm">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="rounded-xl border border-gray-200 bg-white/70 backdrop-blur px-2.5 py-1.5 shadow-sm">
+      <div className="flex flex-wrap items-center gap-1.5">
         {/* Condition */}
         <Select
           value={conditionUiValue}
           onValueChange={(v) => setCondition(v === CLEAR_VALUE ? "" : v)}
         >
-          <SelectTrigger className="h-9 rounded-full text-sm px-3 bg-white border border-gray-200">
+          <SelectTrigger className="h-8 rounded-full text-xs px-2.5 bg-white border border-gray-200 w-auto min-w-[88px] shrink-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent align="start">
@@ -160,7 +160,7 @@ export function ProductsFilterBar({
           value={locationUiValue}
           onValueChange={(v) => setLocation(v === CLEAR_VALUE ? "" : v)}
         >
-          <SelectTrigger className="h-9 rounded-full text-sm px-3 bg-white border border-gray-200">
+          <SelectTrigger className="h-8 rounded-full text-xs px-2.5 bg-white border border-gray-200 w-auto min-w-[64px] shrink-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent align="start">
@@ -176,11 +176,11 @@ export function ProductsFilterBar({
         {/* Price slider in a compact popover */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" className="h-9 rounded-full px-3 text-sm border border-gray-200 bg-white">
+            <Button variant="outline" className="h-8 rounded-full px-2.5 text-xs border-gray-200 bg-white w-auto shrink-0">
               {priceChipLabel}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-80" align="start">
+          <PopoverContent className="w-[min(90vw,20rem)]" align="start">
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Price range</span>
@@ -212,7 +212,7 @@ export function ProductsFilterBar({
 
         {/* Sort */}
         <Select value={sort} onValueChange={(v) => setSort(v)}>
-          <SelectTrigger className="h-9 rounded-full text-sm px-3 bg-white border border-gray-200">
+          <SelectTrigger className="h-8 rounded-full text-xs px-2.5 bg-white border border-gray-200 w-auto min-w-[92px] shrink-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent align="start">
@@ -223,11 +223,11 @@ export function ProductsFilterBar({
           </SelectContent>
         </Select>
 
-        <div className="ml-auto flex items-center gap-2">
-          <Button size="sm" className="rounded-full" onClick={apply}>
+        <div className="ml-auto flex items-center gap-1.5">
+          <Button size="sm" className="h-8 text-xs px-3 rounded-full" onClick={apply}>
             Apply
           </Button>
-          <Button size="sm" variant="ghost" className="rounded-full" onClick={reset}>
+          <Button size="sm" variant="ghost" className="h-8 text-xs px-2 rounded-full" onClick={reset}>
             Reset
           </Button>
         </div>
