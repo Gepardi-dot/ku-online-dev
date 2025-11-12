@@ -105,7 +105,6 @@ export default function MobileNav() {
                     typePlaceholder: messages.header.typeMessage,
                     send: messages.header.sendMessage,
                   }}
-                  compactTrigger
                   triggerClassName="text-muted-foreground hover:text-foreground"
                 />
                 <span className="text-xs">{t(item.labelKey)}</span>
@@ -131,7 +130,6 @@ export default function MobileNav() {
                     empty: messages.header.favoritesEmpty,
                     loginRequired: messages.header.loginRequired,
                   }}
-                  compactTrigger
                   triggerClassName="text-muted-foreground hover:text-foreground"
                 />
                 <span className="text-xs">{t(item.labelKey)}</span>
