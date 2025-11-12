@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { cn } from "@/lib/utils";
 import { COLOR_OPTIONS, type ColorToken } from "@/data/colors";
+import { Check } from 'lucide-react';
 
 type CategoryOption = { id: string; name: string };
 
@@ -188,8 +189,15 @@ export function ProductsFilterBar({
         {/* Color */}
         <Popover open={colorOpen} onOpenChange={setColorOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="h-8 rounded-full px-2.5 text-xs border-gray-200 bg-white w-auto shrink-0">
-              {color ? (COLOR_OPTIONS.find((c) => c.token === color as ColorToken)?.label ?? 'Color') : 'Color'}
+            <Button variant="outline" className="h-8 rounded-full px-2.5 text-xs border-gray-200 bg-white w-auto shrink-0 inline-flex items-center gap-2">
+              {color && (
+                <span
+                  className="inline-block h-3.5 w-3.5 rounded-full border shadow-sm"
+                  style={{ backgroundColor: COLOR_OPTIONS.find((c) => c.token === (color as ColorToken))?.hex || '#fff' }}
+                  aria-hidden="true"
+                />
+              )}
+              Color
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[min(92vw,22rem)]" align="start">
@@ -200,11 +208,15 @@ export function ProductsFilterBar({
                 title="All colors"
                 aria-label="All colors"
                 className={
-                  'relative h-8 w-8 rounded-full border bg-[conic-gradient(at_60%_40%,#000,#fff,#E53935,#1E90FF,#43A047,#D4AF37,#8E24AA,#00897B)] hover:opacity-90 transition ' +
+                  'group relative h-9 w-9 rounded-full border bg-[conic-gradient(at_60%_40%,#000,#fff,#E53935,#1E90FF,#43A047,#D4AF37,#8E24AA,#00897B)] shadow-sm hover:opacity-95 transition transform hover:scale-105 active:scale-95 ' +
                   (color === '' ? 'ring-2 ring-primary' : '')
                 }
                 onClick={() => { setColor(''); setColorOpen(false); }}
               >
+                <span className="absolute inset-0 rounded-full bg-white/0 group-hover:bg-white/5 transition" />
+                {color === '' && (
+                  <Check className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground p-0.5" />
+                )}
                 <span className="sr-only">All colors</span>
               </button>
               {COLOR_OPTIONS.map((opt) => (
@@ -214,12 +226,16 @@ export function ProductsFilterBar({
                   title={opt.label}
                   aria-label={opt.label}
                   className={
-                    'relative h-8 w-8 rounded-full border shadow-sm hover:opacity-90 transition ' +
-                    (color === opt.token ? 'ring-2 ring-primary' : '')
+                    'group relative h-9 w-9 rounded-full border shadow-sm transition transform hover:scale-105 active:scale-95 ' +
+                    (color === opt.token ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground/20')
                   }
                   style={{ backgroundColor: opt.hex }}
                   onClick={() => { setColor(opt.token); setColorOpen(false); }}
                 >
+                  <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-black/10 mix-blend-overlay opacity-40 group-hover:opacity-50 transition" />
+                  {color === opt.token && (
+                    <Check className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground p-0.5" />
+                  )}
                   <span className="sr-only">{opt.label}</span>
                 </button>
               ))}
