@@ -74,7 +74,7 @@ export default function MobileNav() {
               <Link
                 key={item.key}
                 href={item.href}
-                className="relative -mt-6 z-10 flex h-16 w-32 flex-none flex-col items-center justify-center gap-1 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
+                className="relative -mt-6 z-10 flex h-16 w-[calc(8rem-4mm)] flex-none flex-col items-center justify-center gap-1 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
                 aria-label={t(item.labelKey)}
               >
                 <Icon className="h-6 w-6" aria-hidden="true" />
@@ -103,6 +103,8 @@ export default function MobileNav() {
                     typePlaceholder: messages.header.typeMessage,
                     send: messages.header.sendMessage,
                   }}
+                  compactTrigger
+                  triggerClassName="text-muted-foreground hover:text-foreground"
                 />
                 <span className="text-xs">{t(item.labelKey)}</span>
               </div>
