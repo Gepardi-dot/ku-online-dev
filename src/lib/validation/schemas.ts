@@ -42,6 +42,12 @@ export const createProductSchema = z
       .min(1, 'Add at least one image.')
       .max(5, 'You can upload up to 5 images.'),
     sellerId: z.string().uuid(),
+    color: z
+      .string()
+      .trim()
+      .max(32)
+      .optional()
+      .transform((v) => (v && v.length > 0 ? v : undefined)),
   })
   .transform((value) => ({
     ...value,

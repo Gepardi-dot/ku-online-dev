@@ -51,6 +51,7 @@ export default function SellForm({ user }: SellFormProps) {
     condition: '',
     categoryId: '',
     location: '',
+    color: '',
     images: [] as string[],
   });
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
@@ -383,6 +384,7 @@ export default function SellForm({ user }: SellFormProps) {
         condition: formData.condition,
         categoryId: formData.categoryId,
         location: formData.location,
+        color: formData.color || undefined,
         images: formData.images.length ? formData.images : uploadedImages.map((image) => image.path),
         sellerId: resolvedUser.id,
       });
@@ -411,6 +413,7 @@ export default function SellForm({ user }: SellFormProps) {
           seller_id: payload.sellerId,
           images: payload.images,
           currency: payload.currency ?? 'IQD',
+          color_token: payload.color ?? null,
           is_active: true,
         });
 
@@ -430,6 +433,7 @@ export default function SellForm({ user }: SellFormProps) {
         condition: '',
         categoryId: '',
         location: '',
+        color: '',
         images: [],
       });
       setUploadedImages([]);
@@ -527,6 +531,42 @@ export default function SellForm({ user }: SellFormProps) {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div>
+              <Label htmlFor="color">Color (optional)</Label>
+              <Select
+                value={formData.color || 'none'}
+                onValueChange={(value) => { setHasUnsaved(true); setFormData((prev) => ({ ...prev, color: value === 'none' ? '' : value })); }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a color" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">All colors</SelectItem>
+                  <SelectItem value="black">Black</SelectItem>
+                  <SelectItem value="white">White</SelectItem>
+                  <SelectItem value="gray">Gray</SelectItem>
+                  <SelectItem value="silver">Silver</SelectItem>
+                  <SelectItem value="gold">Gold</SelectItem>
+                  <SelectItem value="blue">Blue</SelectItem>
+                  <SelectItem value="red">Red</SelectItem>
+                  <SelectItem value="green">Green</SelectItem>
+                  <SelectItem value="yellow">Yellow</SelectItem>
+                  <SelectItem value="orange">Orange</SelectItem>
+                  <SelectItem value="purple">Purple</SelectItem>
+                  <SelectItem value="pink">Pink</SelectItem>
+                  <SelectItem value="brown">Brown</SelectItem>
+                  <SelectItem value="beige">Beige</SelectItem>
+                  <SelectItem value="navy">Navy</SelectItem>
+                  <SelectItem value="teal">Teal</SelectItem>
+                  <SelectItem value="rose">Rose</SelectItem>
+                  <SelectItem value="graphite">Graphite</SelectItem>
+                  <SelectItem value="midnight">Midnight</SelectItem>
+                  <SelectItem value="starlight">Starlight</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div>

@@ -37,6 +37,7 @@ export interface ProductWithRelations {
   price: number;
   currency: string | null;
   condition: string | null;
+  colorToken?: string | null;
   categoryId: string | null;
   sellerId: string;
   location: string | null;
@@ -58,6 +59,7 @@ export type ProductSort = 'newest' | 'price_asc' | 'price_desc' | 'views_desc';
 export interface ProductFilters {
   category?: string;
   condition?: string;
+  color?: string;
   minPrice?: number;
   maxPrice?: number;
   location?: string;
@@ -103,6 +105,7 @@ export type SupabaseProductRow = {
   original_price?: number | string | null;
   currency: string | null;
   condition: string | null;
+  color_token?: string | null;
   category_id: string | null;
   seller_id: string;
   location: string | null;
@@ -211,6 +214,7 @@ export function mapProduct(row: SupabaseProductRow): ProductWithRelations {
     price: typeof row.price === "number" ? row.price : row.price ? Number(row.price) : 0,
     currency: row.currency ?? "IQD",
     condition: row.condition,
+    colorToken: row.color_token ?? null,
     categoryId: row.category_id,
     sellerId: row.seller_id,
     location: row.location,
@@ -251,6 +255,10 @@ function buildProductsQuery(supabase: any, filters: ProductFilters = {}, options
   if (filters.location) {
     const locationTerm = `%${filters.location}%`;
     query = query.ilike('location', locationTerm);
+  }
+
+  if (filters.color) {
+    query = query.eq('color_token', filters.color);
   }
 
   if (filters.freeOnly) {
