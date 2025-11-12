@@ -133,19 +133,19 @@ export function ProductsFilterBar({
   const locationUiValue = location === "" ? CLEAR_VALUE : location;
 
   return (
-    <div className="rounded-xl border bg-background px-3 py-2 shadow-sm">
+    <div className="px-0 py-0">
       <div className="flex flex-wrap items-center gap-2">
         {/* Condition */}
         <Select
           value={conditionUiValue}
           onValueChange={(v) => setCondition(v === CLEAR_VALUE ? "" : v)}
         >
-          <SelectTrigger className="h-9 w-[130px] rounded-full text-sm">
+          <SelectTrigger className="h-9 w-[128px] rounded-full text-sm bg-white/70 backdrop-blur border-gray-200">
             <SelectValue />
           </SelectTrigger>
           <SelectContent align="start">
             <SelectItem value={CLEAR_VALUE}>Condition</SelectItem>
-            {CONDITION_OPTIONS.map((opt) => (
+            {CONDITION_OPTIONS.filter((opt) => opt.value !== "").map((opt) => (
               <SelectItem key={opt.value || "all"} value={opt.value || CLEAR_VALUE}>
                 {opt.label}
               </SelectItem>
@@ -158,7 +158,7 @@ export function ProductsFilterBar({
           value={locationUiValue}
           onValueChange={(v) => setLocation(v === CLEAR_VALUE ? "" : v)}
         >
-          <SelectTrigger className="h-9 w-[120px] rounded-full text-sm">
+          <SelectTrigger className="h-9 w-[108px] rounded-full text-sm bg-white/70 backdrop-blur border-gray-200">
             <SelectValue />
           </SelectTrigger>
           <SelectContent align="start">
@@ -174,7 +174,7 @@ export function ProductsFilterBar({
         {/* Price slider in a compact popover */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="h-9 rounded-full px-3 text-sm">
+            <Button variant="ghost" className="h-9 rounded-full px-3 text-sm border border-gray-200 bg-white/70 backdrop-blur">
               {priceLabel}
             </Button>
           </PopoverTrigger>
@@ -210,7 +210,7 @@ export function ProductsFilterBar({
 
         {/* Sort */}
         <Select value={sort} onValueChange={(v) => setSort(v)}>
-          <SelectTrigger className="h-9 w-[140px] rounded-full text-sm">
+          <SelectTrigger className="h-9 w-[136px] rounded-full text-sm bg-white/70 backdrop-blur border-gray-200">
             <SelectValue />
           </SelectTrigger>
           <SelectContent align="start">
@@ -222,7 +222,7 @@ export function ProductsFilterBar({
         </Select>
 
         <div className="ml-auto flex items-center gap-2">
-          <Button size="sm" variant="secondary" className="rounded-full" onClick={apply}>
+          <Button size="sm" className="rounded-full" onClick={apply}>
             Apply
           </Button>
           <Button size="sm" variant="ghost" className="rounded-full" onClick={reset}>
