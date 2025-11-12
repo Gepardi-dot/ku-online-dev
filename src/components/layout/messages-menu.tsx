@@ -28,6 +28,7 @@ import {
 } from '@/lib/services/messages-client';
 import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface MessagesMenuStrings {
   label: string;
@@ -40,9 +41,11 @@ interface MessagesMenuStrings {
 interface MessagesMenuProps {
   userId?: string | null;
   strings: MessagesMenuStrings;
+  compactTrigger?: boolean;
+  triggerClassName?: string;
 }
 
-export default function MessagesMenu({ userId, strings }: MessagesMenuProps) {
+export default function MessagesMenu({ userId, strings, compactTrigger = false, triggerClassName }: MessagesMenuProps) {
   const [open, setOpen] = useState(false);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -412,8 +415,13 @@ export default function MessagesMenu({ userId, strings }: MessagesMenuProps) {
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative" aria-label={strings.label}>
-          <MessageCircle className="h-4 w-4" />
+        <Button
+          variant="ghost"
+          size={compactTrigger ? 'icon' : 'sm'}
+          className={cn('relative', compactTrigger ? 'h-6 w-6 p-0' : undefined, triggerClassName)}
+          aria-label={strings.label}
+        >
+          <MessageCircle className={compactTrigger ? 'h-6 w-6' : 'h-4 w-4'} />
           {indicator}
         </Button>
       </SheetTrigger>
