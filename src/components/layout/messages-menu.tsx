@@ -416,19 +416,34 @@ export default function MessagesMenu({ userId, strings, compactTrigger = false, 
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size={compactTrigger ? 'icon' : 'sm'}
-          className={cn('relative', compactTrigger ? 'h-6 w-6 p-0' : undefined, triggerClassName)}
-          aria-label={strings.label}
-        >
-          {triggerIcon ? (
-            <span className="inline-flex items-center justify-center h-full w-full">{triggerIcon}</span>
-          ) : (
-            <MessageCircle className={compactTrigger ? 'h-6 w-6' : 'h-4 w-4'} />
-          )}
-          {indicator}
-        </Button>
+        {compactTrigger ? (
+          <button
+            type="button"
+            className={cn('relative inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0 bg-transparent text-current', triggerClassName)}
+            aria-label={strings.label}
+          >
+            {triggerIcon ? (
+              <span className="inline-flex items-center justify-center h-full w-full">{triggerIcon}</span>
+            ) : (
+              <MessageCircle className="h-full w-full" strokeWidth={2} />
+            )}
+            {indicator}
+          </button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn('relative', triggerClassName)}
+            aria-label={strings.label}
+          >
+            {triggerIcon ? (
+              <span className="inline-flex items-center justify-center">{triggerIcon}</span>
+            ) : (
+              <MessageCircle className={'h-4 w-4'} />
+            )}
+            {indicator}
+          </Button>
+        )}
       </SheetTrigger>
       <SheetContent className="w-full sm:max-w-xl">
         <SheetHeader>

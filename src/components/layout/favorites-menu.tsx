@@ -226,19 +226,34 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          size={compactTrigger ? 'icon' : 'sm'}
-          className={`relative ${compactTrigger ? 'h-6 w-6 p-0' : ''} ${triggerClassName ?? ''}`}
-          aria-label={strings.label}
-        >
-          {triggerIcon ? (
-            <span className="inline-flex items-center justify-center">{triggerIcon}</span>
-          ) : (
-            <Heart className={compactTrigger ? 'h-6 w-6' : 'h-4 w-4'} />
-          )}
-          {indicator}
-        </Button>
+        {compactTrigger ? (
+          <button
+            type="button"
+            className={`relative inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0 bg-transparent text-current ${triggerClassName ?? ''}`}
+            aria-label={strings.label}
+          >
+            {triggerIcon ? (
+              <span className="inline-flex items-center justify-center h-full w-full">{triggerIcon}</span>
+            ) : (
+              <Heart className="h-full w-full" strokeWidth={2} />
+            )}
+            {indicator}
+          </button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`relative ${triggerClassName ?? ''}`}
+            aria-label={strings.label}
+          >
+            {triggerIcon ? (
+              <span className="inline-flex items-center justify-center">{triggerIcon}</span>
+            ) : (
+              <Heart className={'h-4 w-4'} />
+            )}
+            {indicator}
+          </Button>
+        )}
       </SheetTrigger>
       <SheetContent className="w-full sm:max-w-lg">
         <SheetHeader>
