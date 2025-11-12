@@ -10,11 +10,13 @@ export type ColorToken =
   | 'yellow'
   | 'orange'
   | 'purple'
+  | 'violet'
   | 'pink'
   | 'brown'
   | 'beige'
   | 'navy'
   | 'teal'
+  | 'turquoise'
   | 'rose'
   | 'graphite'
   | 'midnight'
@@ -39,11 +41,13 @@ export const COLOR_OPTIONS: ColorOption[] = [
   { token: 'yellow', hex: '#FDD835', label: 'Yellow' },
   { token: 'orange', hex: '#FB8C00', label: 'Orange' },
   { token: 'purple', hex: '#8E24AA', label: 'Purple' },
+  { token: 'violet', hex: '#7F00FF', label: 'Violet' },
   { token: 'pink', hex: '#E91E63', label: 'Pink' },
   { token: 'brown', hex: '#795548', label: 'Brown' },
   { token: 'beige', hex: '#E6D8B9', label: 'Beige' },
   { token: 'navy', hex: '#001F3F', label: 'Navy' },
   { token: 'teal', hex: '#00897B', label: 'Teal' },
+  { token: 'turquoise', hex: '#40E0D0', label: 'Turquoise' },
   { token: 'rose', hex: '#F8BBD0', label: 'Rose' },
   { token: 'graphite', hex: '#4A4A4A', label: 'Graphite' },
   { token: 'midnight', hex: '#0A0F29', label: 'Midnight' },
@@ -52,4 +56,3 @@ export const COLOR_OPTIONS: ColorOption[] = [
 ];
 
 export const COLOR_TOKENS = COLOR_OPTIONS.map((c) => c.token);
-
