@@ -193,24 +193,34 @@ export function ProductsFilterBar({
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[min(92vw,22rem)]" align="start">
-            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-8 sm:grid-cols-10 gap-2 p-1">
+              {/* All colors */}
               <button
                 type="button"
-                className={"flex items-center gap-2 rounded-md border px-2 py-1 text-sm hover:bg-accent"}
+                title="All colors"
+                aria-label="All colors"
+                className={
+                  'relative h-8 w-8 rounded-full border bg-[conic-gradient(at_60%_40%,#000,#fff,#E53935,#1E90FF,#43A047,#D4AF37,#8E24AA,#00897B)] hover:opacity-90 transition ' +
+                  (color === '' ? 'ring-2 ring-primary' : '')
+                }
                 onClick={() => { setColor(''); setColorOpen(false); }}
               >
-                <span className="inline-block h-4 w-4 rounded-full border" />
-                All colors
+                <span className="sr-only">All colors</span>
               </button>
               {COLOR_OPTIONS.map((opt) => (
                 <button
                   key={opt.token}
                   type="button"
-                  className={"flex items-center gap-2 rounded-md border px-2 py-1 text-sm hover:bg-accent"}
+                  title={opt.label}
+                  aria-label={opt.label}
+                  className={
+                    'relative h-8 w-8 rounded-full border shadow-sm hover:opacity-90 transition ' +
+                    (color === opt.token ? 'ring-2 ring-primary' : '')
+                  }
+                  style={{ backgroundColor: opt.hex }}
                   onClick={() => { setColor(opt.token); setColorOpen(false); }}
                 >
-                  <span className="inline-block h-4 w-4 rounded-full border" style={{ backgroundColor: opt.hex }} />
-                  {opt.label}
+                  <span className="sr-only">{opt.label}</span>
                 </button>
               ))}
             </div>
