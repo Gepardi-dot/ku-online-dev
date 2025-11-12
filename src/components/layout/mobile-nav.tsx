@@ -111,6 +111,7 @@ export default function MobileNav() {
                   }}
                   compactTrigger
                   triggerClassName="text-muted-foreground hover:text-foreground h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0"
+                  triggerIcon={<MessageSquare className="h-[calc(var(--nav-icon-size)*1.05)] w-[calc(var(--nav-icon-size)*1.05)]" strokeWidth={1.6} />}
                 />
                 <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
               </div>
@@ -137,7 +138,7 @@ export default function MobileNav() {
                   }}
                   compactTrigger
                   triggerClassName="text-muted-foreground hover:text-foreground h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0"
-                  triggerIcon={<ShoppingBag className="h-full w-full" />}
+                  triggerIcon={<ShoppingBag className="h-[calc(var(--nav-icon-size)*1.05)] w-[calc(var(--nav-icon-size)*1.05)] translate-y-[1px]" strokeWidth={1.6} />}
                 />
                 <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
               </div>
