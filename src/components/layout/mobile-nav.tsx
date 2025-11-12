@@ -64,7 +64,10 @@ export default function MobileNav() {
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm">
-      <nav className="flex items-center justify-between gap-1 px-2 h-16">
+      <nav
+        className="grid grid-cols-5 items-center h-16 px-2"
+        style={{ ['--nav-icon-size' as any]: 'calc(24px + 2mm)' }}
+      >
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive =
@@ -79,8 +82,8 @@ export default function MobileNav() {
                 className="relative -mt-6 z-10 flex h-16 w-[calc(8rem-4mm)] flex-none flex-col items-center justify-center gap-1 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
                 aria-label={t(item.labelKey)}
               >
-                <Icon className="h-6 w-6" aria-hidden="true" />
-                <span>{t(item.labelKey)}</span>
+                <Icon className="h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]" aria-hidden="true" />
+                <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
               </Link>
             );
           }
@@ -91,7 +94,7 @@ export default function MobileNav() {
               <div
                 key={item.key}
                 className={cn(
-                  "flex flex-1 h-full flex-col items-center justify-center gap-1 text-sm font-medium",
+                  "grid place-items-center h-full text-sm font-medium",
                   pathname.startsWith("/profile") ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
                 aria-label={t(item.labelKey)}
@@ -106,9 +109,9 @@ export default function MobileNav() {
                     send: messages.header.sendMessage,
                   }}
                   compactTrigger
-                  triggerClassName="text-muted-foreground hover:text-foreground"
+                  triggerClassName="text-muted-foreground hover:text-foreground h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0"
                 />
-                <span className="text-xs">{t(item.labelKey)}</span>
+                <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
               </div>
             );
           }
@@ -119,7 +122,7 @@ export default function MobileNav() {
               <div
                 key={item.key}
                 className={cn(
-                  "flex flex-1 h-full flex-col items-center justify-center gap-1 text-sm font-medium",
+                  "grid place-items-center h-full text-sm font-medium",
                   "text-muted-foreground hover:text-foreground",
                 )}
                 aria-label={t(item.labelKey)}
@@ -132,10 +135,10 @@ export default function MobileNav() {
                     loginRequired: messages.header.loginRequired,
                   }}
                   compactTrigger
-                  triggerClassName="text-muted-foreground hover:text-foreground h-[calc(24px+2mm)] w-[calc(24px+2mm)] p-0"
-                  triggerIcon={<ShoppingBag className="h-[calc(24px+2mm)] w-[calc(24px+2mm)] translate-y-[2mm]" />}
+                  triggerClassName="text-muted-foreground hover:text-foreground h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0"
+                  triggerIcon={<ShoppingBag className="h-full w-full" />}
                 />
-                <span className="text-xs">{t(item.labelKey)}</span>
+                <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
               </div>
             );
           }
@@ -145,15 +148,15 @@ export default function MobileNav() {
               key={item.key}
               href={item.href}
               className={cn(
-                "flex flex-1 h-full flex-col items-center justify-center gap-1 text-sm font-medium transition-colors",
+                "grid place-items-center h-full text-sm font-medium transition-colors",
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
               )}
               aria-label={t(item.labelKey)}
             >
-              <span className="relative inline-flex">
-                <Icon className="h-6 w-6" aria-hidden="true" />
+              <span className="inline-grid place-items-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]">
+                <Icon className="h-full w-full" aria-hidden="true" />
               </span>
-              <span className="text-xs">{t(item.labelKey)}</span>
+              <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
             </Link>
           );
         })}
