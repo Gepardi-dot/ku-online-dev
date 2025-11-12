@@ -147,7 +147,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div>
-                  <h1 className="text-2xl font-bold">{product.title}</h1>
+                  <h1 dir="auto" className="text-2xl font-bold bidi-auto">{product.title}</h1>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge className={`text-white ${getConditionColor(product.condition)}`}>
                       {product.condition ?? 'Unknown'}
