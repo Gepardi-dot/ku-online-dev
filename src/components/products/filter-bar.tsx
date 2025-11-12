@@ -135,7 +135,7 @@ export function ProductsFilterBar({
   const locationUiValue = location === "" ? CLEAR_VALUE : location;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white/70 backdrop-blur px-2.5 py-1.5 shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white/70 backdrop-blur px-2.5 py-1.5 shadow-sm w-full md:w-fit md:mx-auto">
       <div className="flex flex-wrap items-center gap-1.5">
         {/* Condition */}
         <Select
@@ -223,7 +223,7 @@ export function ProductsFilterBar({
           </SelectContent>
         </Select>
 
-        <div className="ml-auto flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5">
           <Button size="sm" className="h-8 text-xs px-3 rounded-full" onClick={apply}>
             Apply
           </Button>
