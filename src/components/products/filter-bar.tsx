@@ -19,6 +19,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { cn } from "@/lib/utils";
+import { COLOR_OPTIONS, type ColorToken } from "@/data/colors";
 
 type CategoryOption = { id: string; name: string };
 
@@ -85,6 +86,8 @@ export function ProductsFilterBar({
     init.maxPrice ?? init.maxCap,
   ]);
   const [priceOpen, setPriceOpen] = useState(false);
+  const [color, setColor] = useState<string>(initialValues?.color ?? "");
+  const [colorOpen, setColorOpen] = useState(false);
 
   const isPriceDefault = price[0] <= 0 && price[1] >= init.maxCap;
 
@@ -100,10 +103,12 @@ export function ProductsFilterBar({
   const apply = () => {
     // Close any open popovers so UI doesn't linger after navigation
     setPriceOpen(false);
+    setColorOpen(false);
     const base: ProductsFilterValues = {
       ...(initialValues ?? DEFAULT_FILTER_VALUES),
       condition: (condition as any) || "",
       location: location || "",
+      color: color || "",
       minPrice: isPriceDefault ? "" : String(price[0] ?? ""),
       maxPrice: isPriceDefault ? "" : String(price[1] ?? ""),
       sort: (sort as any) || "newest",
@@ -117,14 +122,17 @@ export function ProductsFilterBar({
 
   const reset = () => {
     setPriceOpen(false);
+    setColorOpen(false);
     setCondition("");
     setLocation("");
     setSort("newest");
     setPrice([0, init.maxCap]);
+    setColor("");
     const params = createProductsSearchParams({
       ...(initialValues ?? DEFAULT_FILTER_VALUES),
       condition: "",
       location: "",
+      color: "",
       minPrice: "",
       maxPrice: "",
       sort: "newest",
@@ -176,6 +184,38 @@ export function ProductsFilterBar({
             ))}
           </SelectContent>
         </Select>
+
+        {/* Color */}
+        <Popover open={colorOpen} onOpenChange={setColorOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="h-8 rounded-full px-2.5 text-xs border-gray-200 bg-white w-auto shrink-0">
+              {color ? (COLOR_OPTIONS.find((c) => c.token === color as ColorToken)?.label ?? 'Color') : 'Color'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[min(92vw,22rem)]" align="start">
+            <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+              <button
+                type="button"
+                className={"flex items-center gap-2 rounded-md border px-2 py-1 text-sm hover:bg-accent"}
+                onClick={() => { setColor(''); setColorOpen(false); }}
+              >
+                <span className="inline-block h-4 w-4 rounded-full border" />
+                All colors
+              </button>
+              {COLOR_OPTIONS.map((opt) => (
+                <button
+                  key={opt.token}
+                  type="button"
+                  className={"flex items-center gap-2 rounded-md border px-2 py-1 text-sm hover:bg-accent"}
+                  onClick={() => { setColor(opt.token); setColorOpen(false); }}
+                >
+                  <span className="inline-block h-4 w-4 rounded-full border" style={{ backgroundColor: opt.hex }} />
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Price slider in a compact popover */}
         <Popover open={priceOpen} onOpenChange={setPriceOpen}>

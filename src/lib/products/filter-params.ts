@@ -17,6 +17,7 @@ export interface ProductsFilterValues {
   search: string;
   category: string;
   condition: '' | ConditionValue;
+  color: string;
   location: string;
   minPrice: string;
   maxPrice: string;
@@ -29,6 +30,7 @@ export const DEFAULT_FILTER_VALUES: ProductsFilterValues = {
   search: '',
   category: '',
   condition: '',
+  color: '',
   location: '',
   minPrice: '',
   maxPrice: '',
@@ -141,6 +143,7 @@ export function parseProductQueryParams(
   const search = data.search ?? '';
   const category = data.category;
   const condition = data.condition;
+  const color = data.color ?? '';
   const location = data.location ?? '';
   const sort = parseSortParam(data.sort);
   const postedWithin = parsePostedWithinParam(data.postedWithin);
@@ -162,6 +165,7 @@ export function parseProductQueryParams(
     search,
     category: validCategory,
     condition: validCondition ?? '',
+    color,
     location,
     minPrice: minPrice !== undefined ? String(minPrice) : '',
     maxPrice: maxPrice !== undefined ? String(maxPrice) : '',
@@ -173,6 +177,7 @@ export function parseProductQueryParams(
   const filters: ProductFilters = {
     category: validCategory || undefined,
     condition: validCondition,
+    color: color || undefined,
     location: location || undefined,
     search: search ? search : undefined,
     minPrice,
@@ -212,6 +217,10 @@ export function createProductsSearchParams(
 
   if (base.location) {
     params.set('location', base.location);
+  }
+
+  if (base.color) {
+    params.set('color', base.color);
   }
 
   if (base.minPrice.trim()) {
