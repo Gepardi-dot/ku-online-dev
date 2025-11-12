@@ -32,9 +32,11 @@ interface FavoritesMenuStrings {
 interface FavoritesMenuProps {
   userId?: string | null;
   strings: FavoritesMenuStrings;
+  compactTrigger?: boolean;
+  triggerClassName?: string;
 }
 
-export default function FavoritesMenu({ userId, strings }: FavoritesMenuProps) {
+export default function FavoritesMenu({ userId, strings, compactTrigger = false, triggerClassName }: FavoritesMenuProps) {
   const [open, setOpen] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteSummary[]>([]);
   const [count, setCount] = useState(0);
@@ -223,8 +225,13 @@ export default function FavoritesMenu({ userId, strings }: FavoritesMenuProps) {
   return (
     <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative" aria-label={strings.label}>
-          <Heart className="h-4 w-4" />
+        <Button
+          variant="ghost"
+          size={compactTrigger ? 'icon' : 'sm'}
+          className={`${triggerClassName ?? ''} relative ${compactTrigger ? 'h-6 w-6 p-0' : ''}`}
+          aria-label={strings.label}
+        >
+          <Heart className={compactTrigger ? 'h-6 w-6' : 'h-4 w-4'} />
           {indicator}
         </Button>
       </SheetTrigger>

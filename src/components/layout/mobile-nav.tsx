@@ -11,6 +11,7 @@ import { createClient } from "@/utils/supabase/client";
 import { countFavorites } from "@/lib/services/favorites-client";
 import { countUnreadMessages } from "@/lib/services/messages-client";
 import MessagesMenu from "./messages-menu";
+import FavoritesMenu from "./favorites-menu";
 
 type NavItem = {
   key: "home" | "favorites" | "sell" | "messages" | "profile";
@@ -112,6 +113,32 @@ export default function MobileNav() {
             );
           }
 
+          // Custom handling for Products: open favorites/watchlist sheet
+          if (item.key === "favorites") {
+            return (
+              <div
+                key={item.key}
+                className={cn(
+                  "flex flex-1 h-full flex-col items-center justify-center gap-1 text-sm font-medium",
+                  "text-muted-foreground hover:text-foreground",
+                )}
+                aria-label={t(item.labelKey)}
+              >
+                <FavoritesMenu
+                  userId={userId}
+                  strings={{
+                    label: messages.header.favorites,
+                    empty: messages.header.favoritesEmpty,
+                    loginRequired: messages.header.loginRequired,
+                  }}
+                  compactTrigger
+                  triggerClassName="text-muted-foreground hover:text-foreground"
+                />
+                <span className="text-xs">{t(item.labelKey)}</span>
+              </div>
+            );
+          }
+
           return (
             <Link
               key={item.key}
@@ -124,11 +151,6 @@ export default function MobileNav() {
             >
               <span className="relative inline-flex">
                 <Icon className="h-6 w-6" aria-hidden="true" />
-                {item.key === "favorites" && favoritesCount > 0 && (
-                  <span className="absolute -top-1 -right-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] text-white">
-                    {favoritesCount > 9 ? "9+" : favoritesCount}
-                  </span>
-                )}
               </span>
               <span className="text-xs">{t(item.labelKey)}</span>
             </Link>
