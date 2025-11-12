@@ -22,7 +22,8 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   { key: "home", href: "/", labelKey: "nav.home", icon: Home },
-  { key: "favorites", href: "/profile", labelKey: "nav.products", icon: ShoppingBag },
+  // Products should route to the products list directly
+  { key: "favorites", href: "/products", labelKey: "nav.products", icon: ShoppingBag },
   { key: "sell", href: "/sell", labelKey: "nav.sell", icon: PackagePlus, highlight: true },
   { key: "messages", href: "/profile?tab=messages", labelKey: "nav.messages", icon: MessageSquare },
   { key: "profile", href: "/profile", labelKey: "nav.profile", icon: User },
