@@ -87,10 +87,12 @@ export function ProductsFilterBar({
 
   const isPriceDefault = price[0] <= 0 && price[1] >= init.maxCap;
 
-  const priceLabel = useMemo(() => {
-    if (isPriceDefault) return "Price";
-    if (price[0] <= 0) return `≤ ${formatIQD(price[1])}`;
-    if (price[1] >= init.maxCap) return `≥ ${formatIQD(price[0])}`;
+  // Chip label stays compact and neutral across locales
+  const priceChipLabel = "Price tag";
+  const priceDetailLabel = useMemo(() => {
+    if (isPriceDefault) return "All prices";
+    if (price[0] <= 0) return `Up to ${formatIQD(price[1])}`;
+    if (price[1] >= init.maxCap) return `From ${formatIQD(price[0])}`;
     return `${formatIQD(price[0])} – ${formatIQD(price[1])}`;
   }, [price, init.maxCap, isPriceDefault]);
 
@@ -133,14 +135,14 @@ export function ProductsFilterBar({
   const locationUiValue = location === "" ? CLEAR_VALUE : location;
 
   return (
-    <div className="px-0 py-0">
+    <div className="rounded-2xl border border-gray-200 bg-white/80 backdrop-blur px-3 py-2 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         {/* Condition */}
         <Select
           value={conditionUiValue}
           onValueChange={(v) => setCondition(v === CLEAR_VALUE ? "" : v)}
         >
-          <SelectTrigger className="h-9 w-[128px] rounded-full text-sm bg-white/70 backdrop-blur border-gray-200">
+          <SelectTrigger className="h-9 rounded-full text-sm px-3 bg-white border border-gray-200">
             <SelectValue />
           </SelectTrigger>
           <SelectContent align="start">
@@ -158,7 +160,7 @@ export function ProductsFilterBar({
           value={locationUiValue}
           onValueChange={(v) => setLocation(v === CLEAR_VALUE ? "" : v)}
         >
-          <SelectTrigger className="h-9 w-[108px] rounded-full text-sm bg-white/70 backdrop-blur border-gray-200">
+          <SelectTrigger className="h-9 rounded-full text-sm px-3 bg-white border border-gray-200">
             <SelectValue />
           </SelectTrigger>
           <SelectContent align="start">
@@ -174,15 +176,15 @@ export function ProductsFilterBar({
         {/* Price slider in a compact popover */}
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="ghost" className="h-9 rounded-full px-3 text-sm border border-gray-200 bg-white/70 backdrop-blur">
-              {priceLabel}
+            <Button variant="ghost" className="h-9 rounded-full px-3 text-sm border border-gray-200 bg-white">
+              {priceChipLabel}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-80" align="start">
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Price range</span>
-                <span className="font-medium">{priceLabel}</span>
+                <span className="font-medium">{priceDetailLabel}</span>
               </div>
               <div className="px-1 py-2">
                 <SliderPrimitive.Root
@@ -210,7 +212,7 @@ export function ProductsFilterBar({
 
         {/* Sort */}
         <Select value={sort} onValueChange={(v) => setSort(v)}>
-          <SelectTrigger className="h-9 w-[136px] rounded-full text-sm bg-white/70 backdrop-blur border-gray-200">
+          <SelectTrigger className="h-9 rounded-full text-sm px-3 bg-white border border-gray-200">
             <SelectValue />
           </SelectTrigger>
           <SelectContent align="start">
