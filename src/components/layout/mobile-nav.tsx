@@ -65,7 +65,7 @@ export default function MobileNav() {
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm">
       <nav
-        className="grid grid-cols-5 items-center h-16 px-2"
+        className="flex items-end justify-between h-20 px-3 pb-2 pt-1"
         style={{ ['--nav-icon-size' as any]: 'calc(24px + 2mm)' }}
       >
         {NAV_ITEMS.map((item) => {
@@ -76,15 +76,16 @@ export default function MobileNav() {
 
           if (item.highlight) {
             return (
-              <Link
-                key={item.key}
-                href={item.href}
-                className="relative -mt-6 z-10 flex h-16 w-[calc(8rem-4mm)] flex-none flex-col items-center justify-center gap-1 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
-                aria-label={t(item.labelKey)}
-              >
-                <Icon className="h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]" aria-hidden="true" />
-                <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
-              </Link>
+              <div key={item.key} className="flex flex-1 items-center justify-center">
+                <Link
+                  href={item.href}
+                  className="relative -translate-y-3 z-10 flex h-16 w-[calc(8rem-4mm)] flex-none flex-col items-center justify-center gap-1 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
+                  aria-label={t(item.labelKey)}
+                >
+                  <Icon className="h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]" aria-hidden="true" />
+                  <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
+                </Link>
+              </div>
             );
           }
 
@@ -94,7 +95,7 @@ export default function MobileNav() {
               <div
                 key={item.key}
                 className={cn(
-                  "grid place-items-center h-full text-sm font-medium",
+                  "flex flex-1 flex-col items-center justify-end gap-1 text-sm font-medium",
                   pathname.startsWith("/profile") ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
                 aria-label={t(item.labelKey)}
@@ -122,7 +123,7 @@ export default function MobileNav() {
               <div
                 key={item.key}
                 className={cn(
-                  "grid place-items-center h-full text-sm font-medium",
+                  "flex flex-1 flex-col items-center justify-end gap-1 text-sm font-medium",
                   "text-muted-foreground hover:text-foreground",
                 )}
                 aria-label={t(item.labelKey)}
@@ -148,12 +149,12 @@ export default function MobileNav() {
               key={item.key}
               href={item.href}
               className={cn(
-                "grid place-items-center h-full text-sm font-medium transition-colors",
+                "flex flex-1 flex-col items-center justify-end gap-1 text-sm font-medium transition-colors",
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
               )}
               aria-label={t(item.labelKey)}
             >
-              <span className="inline-grid place-items-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]">
+              <span className="inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]">
                 <Icon className="h-full w-full" aria-hidden="true" />
               </span>
               <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
