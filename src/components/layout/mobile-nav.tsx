@@ -58,7 +58,7 @@ export default function MobileNav() {
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm">
-      <nav className="flex justify-around items-center h-16">
+      <nav className="flex items-center justify-between gap-1 px-2 h-16">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive =
@@ -70,7 +70,7 @@ export default function MobileNav() {
               <Link
                 key={item.key}
                 href={item.href}
-                className="relative -mt-6 flex h-16 w-[calc(8rem+3mm)] flex-col items-center justify-center gap-1 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
+                className="relative -mt-6 z-10 flex h-16 w-[calc(8rem+3mm)] flex-none flex-col items-center justify-center gap-1 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
                 aria-label={t(item.labelKey)}
               >
                 <Icon className="h-6 w-6" aria-hidden="true" />
@@ -84,7 +84,7 @@ export default function MobileNav() {
               key={item.key}
               href={item.href}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 w-full h-full text-sm font-medium transition-colors",
+                "flex flex-1 h-full flex-col items-center justify-center gap-1 text-sm font-medium transition-colors",
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
               )}
               aria-label={t(item.labelKey)}
