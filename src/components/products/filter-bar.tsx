@@ -66,6 +66,8 @@ function formatIQD(value: number) {
   }
 }
 
+const CLEAR_VALUE = "__ALL__";
+
 export function ProductsFilterBar({
   locations,
   initialValues,
@@ -126,31 +128,45 @@ export function ProductsFilterBar({
     router.push(`${targetPath}${q ? `?${q}` : ""}`);
   };
 
+  // Map empty selections to a non-empty sentinel value for Radix Select
+  const conditionUiValue = condition === "" ? CLEAR_VALUE : condition;
+  const locationUiValue = location === "" ? CLEAR_VALUE : location;
+
   return (
     <div className="rounded-xl border bg-background px-3 py-2 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
         {/* Condition */}
-        <Select value={condition} onValueChange={(v) => setCondition(v)}>
+        <Select
+          value={conditionUiValue}
+          onValueChange={(v) => setCondition(v === CLEAR_VALUE ? "" : v)}
+        >
           <SelectTrigger className="h-9 w-[130px] rounded-full text-sm">
-            <SelectValue placeholder="Condition" />
+            <SelectValue />
           </SelectTrigger>
           <SelectContent align="start">
-            <SelectItem value="">Condition</SelectItem>
+            <SelectItem value={CLEAR_VALUE}>Condition</SelectItem>
             {CONDITION_OPTIONS.map((opt) => (
-              <SelectItem key={opt.value || "all"} value={opt.value}>{opt.label}</SelectItem>
+              <SelectItem key={opt.value || "all"} value={opt.value || CLEAR_VALUE}>
+                {opt.label}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
 
         {/* City */}
-        <Select value={location} onValueChange={(v) => setLocation(v)}>
+        <Select
+          value={locationUiValue}
+          onValueChange={(v) => setLocation(v === CLEAR_VALUE ? "" : v)}
+        >
           <SelectTrigger className="h-9 w-[120px] rounded-full text-sm">
-            <SelectValue placeholder="City" />
+            <SelectValue />
           </SelectTrigger>
           <SelectContent align="start">
-            <SelectItem value="">City</SelectItem>
+            <SelectItem value={CLEAR_VALUE}>City</SelectItem>
             {locations.map((loc) => (
-              <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+              <SelectItem key={loc} value={loc}>
+                {loc}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
@@ -219,4 +235,3 @@ export function ProductsFilterBar({
 }
 
 export default ProductsFilterBar;
-
