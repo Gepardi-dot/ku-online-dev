@@ -229,11 +229,11 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
         <Button
           variant="ghost"
           size={compactTrigger ? 'icon' : 'sm'}
-          className={`${triggerClassName ?? ''} relative ${compactTrigger ? 'h-6 w-6 p-0' : ''}`}
+          className={`relative ${compactTrigger ? 'h-6 w-6 p-0' : ''} ${triggerClassName ?? ''}`}
           aria-label={strings.label}
         >
           {triggerIcon ? (
-            <span className={compactTrigger ? 'h-6 w-6' : 'h-4 w-4'}>{triggerIcon}</span>
+            <span className="inline-flex items-center justify-center">{triggerIcon}</span>
           ) : (
             <Heart className={compactTrigger ? 'h-6 w-6' : 'h-4 w-4'} />
           )}

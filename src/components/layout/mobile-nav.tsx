@@ -132,8 +132,8 @@ export default function MobileNav() {
                     loginRequired: messages.header.loginRequired,
                   }}
                   compactTrigger
-                  triggerClassName="text-muted-foreground hover:text-foreground"
-                  triggerIcon={<ShoppingBag className="h-6 w-6" />}
+                  triggerClassName="text-muted-foreground hover:text-foreground h-[calc(24px+2mm)] w-[calc(24px+2mm)] p-0"
+                  triggerIcon={<ShoppingBag className="h-[calc(24px+2mm)] w-[calc(24px+2mm)] translate-y-[2mm]" />}
                 />
                 <span className="text-xs">{t(item.labelKey)}</span>
               </div>
