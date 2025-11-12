@@ -70,7 +70,7 @@ export default function MobileNav() {
               <Link
                 key={item.key}
                 href={item.href}
-                className="relative -mt-6 flex h-16 w-16 flex-col items-center justify-center gap-1 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
+                className="relative -mt-6 flex h-16 w-32 flex-col items-center justify-center gap-1 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
                 aria-label={t(item.labelKey)}
               >
                 <Icon className="h-6 w-6" aria-hidden="true" />
