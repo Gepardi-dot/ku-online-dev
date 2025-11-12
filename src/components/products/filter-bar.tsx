@@ -84,6 +84,7 @@ export function ProductsFilterBar({
     init.minPrice ?? 0,
     init.maxPrice ?? init.maxCap,
   ]);
+  const [priceOpen, setPriceOpen] = useState(false);
 
   const isPriceDefault = price[0] <= 0 && price[1] >= init.maxCap;
 
@@ -97,6 +98,8 @@ export function ProductsFilterBar({
   }, [price, init.maxCap, isPriceDefault]);
 
   const apply = () => {
+    // Close any open popovers so UI doesn't linger after navigation
+    setPriceOpen(false);
     const base: ProductsFilterValues = {
       ...(initialValues ?? DEFAULT_FILTER_VALUES),
       condition: (condition as any) || "",
@@ -113,6 +116,7 @@ export function ProductsFilterBar({
   };
 
   const reset = () => {
+    setPriceOpen(false);
     setCondition("");
     setLocation("");
     setSort("newest");
@@ -174,7 +178,7 @@ export function ProductsFilterBar({
         </Select>
 
         {/* Price slider in a compact popover */}
-        <Popover>
+        <Popover open={priceOpen} onOpenChange={setPriceOpen}>
           <PopoverTrigger asChild>
             <Button variant="outline" className="h-8 rounded-full px-2.5 text-xs border-gray-200 bg-white w-auto shrink-0">
               {priceChipLabel}
@@ -203,8 +207,8 @@ export function ProductsFilterBar({
                 </SliderPrimitive.Root>
               </div>
               <div className="flex justify-end gap-2">
-                <Button size="sm" variant="ghost" onClick={() => setPrice([0, init.maxCap])}>Reset</Button>
-                <Button size="sm" onClick={apply}>Apply</Button>
+                <Button size="sm" variant="ghost" onClick={() => { setPrice([0, init.maxCap]); setPriceOpen(false); }}>Reset</Button>
+                <Button size="sm" onClick={() => { apply(); setPriceOpen(false); }}>Apply</Button>
               </div>
             </div>
           </PopoverContent>
