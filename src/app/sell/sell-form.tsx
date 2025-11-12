@@ -544,27 +544,21 @@ export default function SellForm({ user }: SellFormProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">All colors</SelectItem>
+                  <SelectItem value="orange">Orange</SelectItem>
                   <SelectItem value="black">Black</SelectItem>
                   <SelectItem value="white">White</SelectItem>
-                  <SelectItem value="gray">Gray</SelectItem>
-                  <SelectItem value="silver">Silver</SelectItem>
-                  <SelectItem value="gold">Gold</SelectItem>
                   <SelectItem value="blue">Blue</SelectItem>
+                  <SelectItem value="yellow">Yellow</SelectItem>
                   <SelectItem value="red">Red</SelectItem>
                   <SelectItem value="green">Green</SelectItem>
-                  <SelectItem value="yellow">Yellow</SelectItem>
-                  <SelectItem value="orange">Orange</SelectItem>
-                  <SelectItem value="purple">Purple</SelectItem>
                   <SelectItem value="pink">Pink</SelectItem>
                   <SelectItem value="brown">Brown</SelectItem>
+                  <SelectItem value="turquoise">Turquoise</SelectItem>
+                  <SelectItem value="violet">Violet</SelectItem>
+                  <SelectItem value="gray">Gray</SelectItem>
+                  <SelectItem value="gold">Gold</SelectItem>
+                  <SelectItem value="silver">Silver</SelectItem>
                   <SelectItem value="beige">Beige</SelectItem>
-                  <SelectItem value="navy">Navy</SelectItem>
-                  <SelectItem value="teal">Teal</SelectItem>
-                  <SelectItem value="rose">Rose</SelectItem>
-                  <SelectItem value="graphite">Graphite</SelectItem>
-                  <SelectItem value="midnight">Midnight</SelectItem>
-                  <SelectItem value="starlight">Starlight</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>

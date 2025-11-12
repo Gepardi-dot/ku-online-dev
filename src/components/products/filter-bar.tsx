@@ -208,37 +208,46 @@ export function ProductsFilterBar({
                 title="All colors"
                 aria-label="All colors"
                 className={
-                  'group relative h-9 w-9 rounded-full border bg-[conic-gradient(at_60%_40%,#000,#fff,#E53935,#1E90FF,#43A047,#D4AF37,#8E24AA,#00897B)] shadow-sm hover:opacity-95 transition transform hover:scale-105 active:scale-95 ' +
+                  'group relative h-9 w-9 rounded-md border bg-[conic-gradient(at_60%_40%,#000,#fff,#E53935,#1E90FF,#43A047,#D4AF37,#7F00FF,#40E0D0)] shadow-sm hover:opacity-95 transition transform hover:scale-105 active:scale-95 ' +
                   (color === '' ? 'ring-2 ring-primary' : '')
                 }
                 onClick={() => { setColor(''); setColorOpen(false); }}
               >
-                <span className="absolute inset-0 rounded-full bg-white/0 group-hover:bg-white/5 transition" />
+                <span className="absolute inset-0 rounded-md bg-white/0 group-hover:bg-white/5 transition" />
                 {color === '' && (
                   <Check className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground p-0.5" />
                 )}
                 <span className="sr-only">All colors</span>
               </button>
-              {COLOR_OPTIONS.map((opt) => (
+              {(
+                [
+                  'orange','black','white','blue','yellow','red','green','pink','brown','turquoise','violet','gray','gold','silver','beige',
+                ] as const
+              ).map((token) => {
+                const opt = COLOR_OPTIONS.find((c) => c.token === token as any) ||
+                  (token === 'turquoise' ? { token: 'turquoise', hex: '#40E0D0', label: 'Turquoise' } :
+                   token === 'violet' ? { token: 'violet', hex: '#7F00FF', label: 'Violet' } : undefined);
+                if (!opt) return null;
+                return (
                 <button
                   key={opt.token}
                   type="button"
                   title={opt.label}
                   aria-label={opt.label}
                   className={
-                    'group relative h-9 w-9 rounded-full border shadow-sm transition transform hover:scale-105 active:scale-95 ' +
+                    'group relative h-9 w-9 rounded-md border shadow-sm transition transform hover:scale-105 active:scale-95 ' +
                     (color === opt.token ? 'ring-2 ring-primary' : 'hover:ring-1 hover:ring-muted-foreground/20')
                   }
                   style={{ backgroundColor: opt.hex }}
                   onClick={() => { setColor(opt.token); setColorOpen(false); }}
                 >
-                  <span className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-br from-white/30 to-black/10 mix-blend-overlay opacity-40 group-hover:opacity-50 transition" />
+                  <span className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-br from-white/25 to-black/10 mix-blend-overlay opacity-40 group-hover:opacity-50 transition" />
                   {color === opt.token && (
                     <Check className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground p-0.5" />
                   )}
                   <span className="sr-only">{opt.label}</span>
                 </button>
-              ))}
+              );})}
             </div>
           </PopoverContent>
         </Popover>
