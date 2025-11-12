@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Heart, Loader2, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,9 +34,10 @@ interface FavoritesMenuProps {
   strings: FavoritesMenuStrings;
   compactTrigger?: boolean;
   triggerClassName?: string;
+  triggerIcon?: ReactNode;
 }
 
-export default function FavoritesMenu({ userId, strings, compactTrigger = false, triggerClassName }: FavoritesMenuProps) {
+export default function FavoritesMenu({ userId, strings, compactTrigger = false, triggerClassName, triggerIcon }: FavoritesMenuProps) {
   const [open, setOpen] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteSummary[]>([]);
   const [count, setCount] = useState(0);
@@ -231,7 +232,11 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
           className={`${triggerClassName ?? ''} relative ${compactTrigger ? 'h-6 w-6 p-0' : ''}`}
           aria-label={strings.label}
         >
-          <Heart className={compactTrigger ? 'h-6 w-6' : 'h-4 w-4'} />
+          {triggerIcon ? (
+            <span className={compactTrigger ? 'h-6 w-6' : 'h-4 w-4'}>{triggerIcon}</span>
+          ) : (
+            <Heart className={compactTrigger ? 'h-6 w-6' : 'h-4 w-4'} />
+          )}
           {indicator}
         </Button>
       </SheetTrigger>
