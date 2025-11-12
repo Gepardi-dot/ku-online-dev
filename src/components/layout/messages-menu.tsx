@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { MessageCircle, Loader2, ArrowRight, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,9 +43,10 @@ interface MessagesMenuProps {
   strings: MessagesMenuStrings;
   compactTrigger?: boolean;
   triggerClassName?: string;
+  triggerIcon?: ReactNode;
 }
 
-export default function MessagesMenu({ userId, strings, compactTrigger = false, triggerClassName }: MessagesMenuProps) {
+export default function MessagesMenu({ userId, strings, compactTrigger = false, triggerClassName, triggerIcon }: MessagesMenuProps) {
   const [open, setOpen] = useState(false);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -421,7 +422,11 @@ export default function MessagesMenu({ userId, strings, compactTrigger = false, 
           className={cn('relative', compactTrigger ? 'h-6 w-6 p-0' : undefined, triggerClassName)}
           aria-label={strings.label}
         >
-          <MessageCircle className={compactTrigger ? 'h-6 w-6' : 'h-4 w-4'} />
+          {triggerIcon ? (
+            <span className="inline-flex items-center justify-center h-full w-full">{triggerIcon}</span>
+          ) : (
+            <MessageCircle className={compactTrigger ? 'h-6 w-6' : 'h-4 w-4'} />
+          )}
           {indicator}
         </Button>
       </SheetTrigger>
