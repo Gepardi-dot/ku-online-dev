@@ -25,6 +25,7 @@ import {
 import ProductGridSkeleton from '@/components/products/ProductGridSkeleton';
 import { NewsletterSignup } from '@/components/marketing/newsletter-signup';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getServerLocale } from '@/lib/locale/server';
 import { LocaleMessages, translations } from '@/lib/locale/dictionary';
 
@@ -145,6 +146,11 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                 ];
                 const color = swatches[idx % swatches.length];
 
+                // Decide how to render the icon: PNG from public/ or emoji fallback
+                const iconPath = typeof category.icon === 'string' ? category.icon.trim() : '';
+                const isLocalImage = iconPath && !iconPath.startsWith('http') && /\.(png|webp|jpg|jpeg|gif|svg)$/i.test(iconPath);
+                const normalizedSrc = isLocalImage ? (iconPath.startsWith('/') ? iconPath : `/${iconPath}`) : '';
+
                 return (
                   <Link
                     href={categoryHref}
@@ -153,10 +159,21 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                     className="snap-start inline-flex shrink-0 items-center gap-2 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-medium text-foreground/90 transition hover:bg-muted/60 active:scale-[0.99]"
                   >
                     <span
-                      className={`inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-gradient-to-br ${color.iconBg} ${color.iconText} text-base sm:text-lg shadow-sm`}
+                      className={`relative inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-gradient-to-br ${color.iconBg} shadow-sm overflow-hidden`}
                       aria-hidden="true"
                     >
-                      {category.icon ?? '🏷️'}
+                      {isLocalImage ? (
+                        <Image
+                          src={normalizedSrc}
+                          alt=""
+                          fill
+                          sizes="(max-width: 640px) 28px, 32px"
+                          className="object-contain"
+                          priority={false}
+                        />
+                      ) : (
+                        <span className={`${color.iconText} text-base sm:text-lg`}>{category.icon ?? '🏷️'}</span>
+                      )}
                     </span>
                     <span className="whitespace-nowrap hidden sm:inline">{label}</span>
                   </Link>
