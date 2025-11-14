@@ -28,22 +28,23 @@ import Link from 'next/link';
 import Image from 'next/image';
 // Optional local mapping from category names to PNG paths in public/
 const CATEGORY_ICON_MAP: Record<string, string> = {
-  'electronics': '/icons/categories/electronics.png',
-  'smartphones': '/icons/categories/smartphones.png',
-  'phones': '/icons/categories/smartphones.png',
-  'mobile phones': '/icons/categories/smartphones.png',
-  'fashion': '/icons/categories/fashion.png',
-  'home & garden': '/icons/categories/home-garden.png',
-  'home and garden': '/icons/categories/home-garden.png',
-  'sports': '/icons/categories/sports.png',
-  'cars': '/icons/categories/cars.png',
-  'vehicles': '/icons/categories/cars.png',
-  'kids & toys': '/icons/categories/kids-toys.png',
-  'kids and toys': '/icons/categories/kids-toys.png',
-  'toys': '/icons/categories/kids-toys.png',
-  'services': '/icons/categories/services.png',
-  'real estate': '/icons/categories/real-estate.png',
-  'property': '/icons/categories/real-estate.png',
+  // Root-level public/ assets (place files directly under /public)
+  electronics: '/electronics.png',
+  smartphones: '/smartphones.png',
+  phones: '/smartphones.png',
+  'mobile phones': '/smartphones.png',
+  fashion: '/fashion.png',
+  'home & garden': '/home-garden.png',
+  'home and garden': '/home-garden.png',
+  sports: '/sports.png',
+  cars: '/cars.png',
+  vehicles: '/cars.png',
+  'kids & toys': '/kids-toys.png',
+  'kids and toys': '/kids-toys.png',
+  toys: '/kids-toys.png',
+  services: '/services.png',
+  'real estate': '/real-estate.png',
+  property: '/real-estate.png',
 };
 import { getServerLocale } from '@/lib/locale/server';
 import { LocaleMessages, translations } from '@/lib/locale/dictionary';
