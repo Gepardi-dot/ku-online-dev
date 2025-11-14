@@ -26,6 +26,25 @@ import ProductGridSkeleton from '@/components/products/ProductGridSkeleton';
 import { NewsletterSignup } from '@/components/marketing/newsletter-signup';
 import Link from 'next/link';
 import Image from 'next/image';
+// Optional local mapping from category names to PNG paths in public/
+const CATEGORY_ICON_MAP: Record<string, string> = {
+  'electronics': '/icons/categories/electronics.png',
+  'smartphones': '/icons/categories/smartphones.png',
+  'phones': '/icons/categories/smartphones.png',
+  'mobile phones': '/icons/categories/smartphones.png',
+  'fashion': '/icons/categories/fashion.png',
+  'home & garden': '/icons/categories/home-garden.png',
+  'home and garden': '/icons/categories/home-garden.png',
+  'sports': '/icons/categories/sports.png',
+  'cars': '/icons/categories/cars.png',
+  'vehicles': '/icons/categories/cars.png',
+  'kids & toys': '/icons/categories/kids-toys.png',
+  'kids and toys': '/icons/categories/kids-toys.png',
+  'toys': '/icons/categories/kids-toys.png',
+  'services': '/icons/categories/services.png',
+  'real estate': '/icons/categories/real-estate.png',
+  'property': '/icons/categories/real-estate.png',
+};
 import { getServerLocale } from '@/lib/locale/server';
 import { LocaleMessages, translations } from '@/lib/locale/dictionary';
 
@@ -147,7 +166,8 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                 const color = swatches[idx % swatches.length];
 
                 // Decide how to render the icon: PNG from public/ or emoji fallback
-                const iconPath = typeof category.icon === 'string' ? category.icon.trim() : '';
+                const mapped = CATEGORY_ICON_MAP[(category.name || '').toLowerCase()] ?? '';
+                const iconPath = (typeof category.icon === 'string' && category.icon.trim()) || mapped;
                 const isLocalImage = iconPath && !iconPath.startsWith('http') && /\.(png|webp|jpg|jpeg|gif|svg)$/i.test(iconPath);
                 const normalizedSrc = isLocalImage ? (iconPath.startsWith('/') ? iconPath : `/${iconPath}`) : '';
 
