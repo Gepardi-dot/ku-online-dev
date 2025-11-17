@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { getPublicEnv } from '@/lib/env-public';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
+import { mapCategoriesForUi, type RawCategoryRow } from '@/data/category-labels';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -83,7 +84,10 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
-      if (!error) setCategories(data ?? []);
+      if (!error) {
+        const mapped = mapCategoriesForUi((data ?? []) as RawCategoryRow[]);
+        setCategories(mapped);
+      }
     };
     loadCategories();
   }, [supabase]);

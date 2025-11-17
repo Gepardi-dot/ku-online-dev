@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { getPublicEnv } from '@/lib/env-public';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
+import { mapCategoriesForUi, type RawCategoryRow } from '@/data/category-labels';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -83,7 +84,8 @@ export default function SellForm({ user }: SellFormProps) {
         return;
       }
 
-      setCategories(data ?? []);
+      const mapped = mapCategoriesForUi((data ?? []) as RawCategoryRow[]);
+      setCategories(mapped);
     };
 
     loadCategories();
@@ -441,8 +443,16 @@ export default function SellForm({ user }: SellFormProps) {
 
       setHasUnsaved(false);
       router.push('/');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating listing:', error);
+      if (error && typeof error === 'object') {
+        console.error('Error creating listing details:', {
+          message: (error as any).message,
+          details: (error as any).details,
+          hint: (error as any).hint,
+          code: (error as any).code,
+        });
+      }
       toast({
         title: 'Failed to create listing',
         description: 'Please review your details and try again.',

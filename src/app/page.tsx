@@ -26,26 +26,108 @@ import ProductGridSkeleton from '@/components/products/ProductGridSkeleton';
 import { NewsletterSignup } from '@/components/marketing/newsletter-signup';
 import Link from 'next/link';
 import Image from 'next/image';
-// Optional local mapping from category names to PNG paths in public/
-const CATEGORY_ICON_MAP: Record<string, string> = {
-  // Root-level public/ assets (place files directly under /public)
-  electronics: '/electronics.png',
-  smartphones: '/smartphones.png',
-  phones: '/smartphones.png',
-  'mobile phones': '/smartphones.png',
-  fashion: '/fashion.png',
-  'home & garden': '/home-garden.png',
-  'home and garden': '/home-garden.png',
-  sports: '/sports.png',
-  cars: '/cars.png',
-  vehicles: '/cars.png',
-  'kids & toys': '/kids-toys.png',
-  'kids and toys': '/kids-toys.png',
-  toys: '/kids-toys.png',
-  services: '/services.png',
-  'real estate': '/real-estate.png',
-  property: '/real-estate.png',
+
+type CategoryUiConfig = {
+  key: string;
+  label: string;
+  icon: string;
+  matchNames: string[];
 };
+
+const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
+  {
+    key: 'smartphones-ipads',
+    label: 'Smartphones and iPads',
+    icon: '/Smartphones and ipads.png',
+    matchNames: ['smartphones and ipads', 'smartphones', 'smartphone'],
+  },
+  {
+    key: 'fashion',
+    label: 'Fashion',
+    icon: '/Fashion (2) (1).png',
+    matchNames: ['fashion'],
+  },
+  {
+    key: 'electronics',
+    label: 'Electronics',
+    icon: '/Electronics (1).png',
+    matchNames: ['electronics'],
+  },
+  {
+    key: 'sports',
+    label: 'Sports',
+    icon: '/Sports (2) (1).png',
+    matchNames: ['sports'],
+  },
+  {
+    key: 'home-appliance',
+    label: 'Home Appliance',
+    icon: '/Home appliance.png',
+    matchNames: ['home appliance', 'home & garden', 'home and garden'],
+  },
+  {
+    key: 'kids-toys',
+    label: 'Kids & Toys',
+    icon: '/Kids & Toys (1).png',
+    matchNames: ['kids & toys', 'kids and toys', 'toys'],
+  },
+  {
+    key: 'furniture',
+    label: 'Furniture',
+    icon: '/Furniture (1).png',
+    matchNames: ['furniture'],
+  },
+  {
+    key: 'services',
+    label: 'Services',
+    icon: '/Services (1).png',
+    matchNames: ['services'],
+  },
+  {
+    key: 'cars',
+    label: 'Cars',
+    icon: '/Cars (2) (1).png',
+    matchNames: ['cars', 'motors', 'vehicles'],
+  },
+  {
+    key: 'property',
+    label: 'Property',
+    icon: '/Property.png',
+    matchNames: ['property', 'real estate'],
+  },
+  {
+    key: 'free',
+    label: 'Free',
+    icon: '/Free (2) (1).png',
+    matchNames: ['free'],
+  },
+  {
+    key: 'others',
+    label: 'Others',
+    icon: '/Others (2) (1).png',
+    matchNames: ['others'],
+  },
+];
+
+const CATEGORY_ICON_MAP: Record<string, string> = CATEGORY_UI_CONFIG.reduce(
+  (acc, config) => {
+    for (const name of config.matchNames) {
+      acc[name.toLowerCase()] = config.icon;
+    }
+    return acc;
+  },
+  {} as Record<string, string>,
+);
+
+const CATEGORY_LABEL_MAP: Record<string, string> = CATEGORY_UI_CONFIG.reduce(
+  (acc, config) => {
+    for (const name of config.matchNames) {
+      acc[name.toLowerCase()] = config.label;
+    }
+    return acc;
+  },
+  {} as Record<string, string>,
+);
 import { getServerLocale } from '@/lib/locale/server';
 import { LocaleMessages, translations } from '@/lib/locale/dictionary';
 
@@ -117,37 +199,44 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
     ? searchProducts(filtersWithDate, 30, 0, sort).then((result) => result.items)
     : getProducts(filtersWithDate, 30, 0, sort);
 
-  const [products, categories, locations] = await Promise.all([
+  const [products, categoriesRaw, locations] = await Promise.all([
     productPromise,
     getCachedCategories(),
     getCachedLocations(),
   ]);
+
+  // Map backend categories to a unique, ordered set based on CATEGORY_UI_CONFIG.
+  // This guarantees we only show each logical category (e.g. Cars) once even if
+  // multiple backend rows (Cars, Motors, Vehicles) map to the same concept.
+  const categories = CATEGORY_UI_CONFIG.map((config) => {
+    const match = categoriesRaw.find((category) => {
+      const nameLc = (category.name || '').toLowerCase();
+      return config.matchNames.some((matchName) => matchName === nameLc);
+    });
+    return match ?? null;
+  }).filter((category): category is (typeof categoriesRaw)[number] => Boolean(category));
 
   const viewParams = createProductsSearchParams(initialValues);
   const viewAllHref = viewParams.toString() ? `/products?${viewParams.toString()}` : '/products';
 
   return (
     <>
-      <section className="py-2 bg-white border-b">
-        <div className="container mx-auto px-4 space-y-2">
-          <div className="flex items-center justify-end">
-            <Link href={viewAllHref} className="text-sm font-medium text-primary hover:underline">
-              {messages.homepage.viewAll}
-            </Link>
-          </div>
-
+      <section className="py-1 bg-gradient-to-b from-white to-[#fff4e5]">
+        <div className="container mx-auto px-4 space-y-1">
           {categories.length === 0 ? (
             <span className="text-sm text-muted-foreground">
               {messages.homepage.noCategories}
             </span>
           ) : (
-            <div className={"no-scrollbar flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory"}>
+            <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory md:flex-wrap md:overflow-visible md:snap-none">
               {categories.map((category, idx) => {
+                const baseName = category.name ?? '';
+                const baseNameLc = baseName.toLowerCase();
                 const label = locale === 'ar' && category.nameAr
                   ? category.nameAr
                   : locale === 'ku' && category.nameKu
                   ? category.nameKu
-                  : category.name;
+                  : CATEGORY_LABEL_MAP[baseNameLc] ?? baseName;
                 const labelLc = (label ?? '').toLowerCase();
                 const isFree = ['free', 'مجاني', 'مجانا', 'فري', 'بلاش'].some((kw) => labelLc.includes(kw));
                 const params = isFree
@@ -165,11 +254,24 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                   { iconBg: 'from-fuchsia-500/10 to-pink-500/10', iconText: 'text-fuchsia-600' },
                 ];
                 const color = swatches[idx % swatches.length];
+                const categoryKey = (category.name || '').toLowerCase();
+                const isCars = categoryKey.includes('car');
+                const isFashion = categoryKey.includes('fashion');
+                const isSports = categoryKey.includes('sport');
+                const isKidsToys = categoryKey.includes('kids') || categoryKey.includes('toy');
+                const isFreeLabel = labelLc.includes('free');
+                const isCarsOrFashion = isCars || isFashion;
+                const needsExtraZoom = isFashion || isSports || isFreeLabel;
 
                 // Decide how to render the icon: PNG from public/ or emoji fallback
                 const mapped = CATEGORY_ICON_MAP[(category.name || '').toLowerCase()] ?? '';
-                const iconPath = (typeof category.icon === 'string' && category.icon.trim()) || mapped;
-                const isLocalImage = iconPath && !iconPath.startsWith('http') && /\.(png|webp|jpg|jpeg|gif|svg)$/i.test(iconPath);
+                const rawIcon = typeof category.icon === 'string' ? category.icon.trim() : '';
+                const isDbImage = rawIcon && /\.(png|webp|jpg|jpeg|gif|svg)$/i.test(rawIcon);
+                const iconPath = isDbImage ? rawIcon : mapped;
+                const isLocalImage =
+                  iconPath &&
+                  !/^https?:\/\//i.test(iconPath) &&
+                  /\.(png|webp|jpg|jpeg|gif|svg)$/i.test(iconPath);
                 const normalizedSrc = isLocalImage ? (iconPath.startsWith('/') ? iconPath : `/${iconPath}`) : '';
 
                 return (
@@ -177,10 +279,10 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                     href={categoryHref}
                     key={category.id}
                     aria-label={label}
-                    className="snap-start inline-flex shrink-0 items-center gap-2 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-medium text-foreground/90 transition hover:bg-muted/60 active:scale-[0.99]"
+                    className="snap-start inline-flex shrink-0 items-center gap-2 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-medium text-foreground/90 transition hover:bg-muted/60 active:scale-[0.99] md:snap-normal"
                   >
                     <span
-                      className={`relative inline-flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-gradient-to-br ${color.iconBg} shadow-sm overflow-hidden`}
+                      className="relative inline-flex h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 lg:h-16 lg:w-16 items-center justify-center overflow-hidden bg-white rounded-[18px]"
                       aria-hidden="true"
                     >
                       {isLocalImage ? (
@@ -188,9 +290,18 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                           src={normalizedSrc}
                           alt=""
                           fill
-                          sizes="(max-width: 640px) 28px, 32px"
-                          className="object-contain"
+                          sizes="(max-width: 640px) 80px, 96px"
+                          className={
+                            isKidsToys
+                              ? 'object-cover scale-[2.3] -translate-y-0.5'
+                              : needsExtraZoom
+                              ? 'object-cover scale-[2.2]'
+                              : isCarsOrFashion
+                              ? 'object-cover scale-[1.9]'
+                              : 'object-cover scale-[1.8]'
+                          }
                           priority={false}
+                          quality={95}
                         />
                       ) : (
                         <span className={`${color.iconText} text-base sm:text-lg`}>{category.icon ?? '🏷️'}</span>
@@ -205,8 +316,8 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
         </div>
       </section>
 
-      <section id="products" className="pt-6 pb-12 bg-accent">
-        <div className="container mx-auto px-4 space-y-6">
+      <section id="products" className="pt-2 pb-10 bg-accent">
+        <div className="container mx-auto px-4 space-y-3">
           <ProductsFilterBar
             categories={categories}
             locations={locations}
@@ -216,7 +327,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
             priceInputMode="select"
           />
 
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-2">
             <h2 className="text-2xl md:text-3xl font-bold">
               {messages.homepage.latest}
             </h2>

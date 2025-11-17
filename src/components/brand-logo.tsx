@@ -8,8 +8,8 @@ type BrandLogoProps = HTMLAttributes<HTMLDivElement> & {
   src?: string; // override path if needed
 };
 
-export default function BrandLogo({ className, size = 36, src = "/ku-online-logo.png", ...rest }: BrandLogoProps) {
-  // Expects the PNG to be placed at `public/ku-online-logo.png`.
+export default function BrandLogo({ className, size = 36, src = "/KU-LOGO.png", ...rest }: BrandLogoProps) {
+  // Expects the PNG to be placed at `public/KU-LOGO.png`.
   // Uses object-contain to keep the aspect ratio of the provided artwork.
   return (
     <div className={cn("relative", className)} style={{ width: size, height: size }} {...rest}>

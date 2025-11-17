@@ -25,8 +25,8 @@ const MAX_EDGE_PX = Number.parseInt(process.env.UPLOAD_MAX_EDGE ?? '1600');
 const WEBP_QUALITY = Number.parseInt(process.env.UPLOAD_WEBP_QUALITY ?? '82');
 const MIN_MASTER_BYTES = Number.parseInt(process.env.UPLOAD_WEBP_MIN_BYTES ?? '80000'); // ~80KB floor
 
-// Accept up to 10MB as input; we compress to WebP before storing
-const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB per request (client-side compression keeps payloads small)
+// Accept up to 50MB as input; we compress to WebP before storing
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 const UPLOAD_RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 10 } as const;
 const UPLOAD_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 30 } as const;
 const DELETE_RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 20 } as const;
@@ -95,7 +95,6 @@ async function ensureStorageBucket(): Promise<void> {
 
     if (!existingBucket && isNotFoundError(fetchError)) {
       const { error: createError } = await supabaseAdmin.storage.createBucket(STORAGE_BUCKET, {
-        // Public is required for avatars which use stable public URLs
         public: true,
       });
 
@@ -106,7 +105,6 @@ async function ensureStorageBucket(): Promise<void> {
       if (!createError) {
         return;
       }
-      // If the bucket already exists, fall through to the update logic below.
     } else if (fetchError && !isNotFoundError(fetchError)) {
       throw fetchError;
     } else if (existingBucket?.public) {
@@ -154,11 +152,10 @@ async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
   return user ? { id: user.id } : null;
 }
 
-// We always convert to WebP on upload; extension/content type below reflect that
 function determineIncomingType(file: File): 'jpg' | 'png' | 'webp' | 'avif' | null {
   const nameExtension = file.name.split('.').pop()?.toLowerCase();
   if (nameExtension && ACCEPTED_FILE_EXTENSIONS.includes(nameExtension)) {
-    return (nameExtension === 'jpeg' ? 'jpg' : (nameExtension as any));
+    return nameExtension === 'jpeg' ? 'jpg' : (nameExtension as any);
   }
   const type = file.type.toLowerCase();
   switch (type) {
@@ -266,7 +263,7 @@ export const POST = withSentryRoute(async (request: Request) => {
   }
 
   if (fileEntry.size > MAX_FILE_SIZE_BYTES) {
-    return NextResponse.json({ error: 'File exceeds the maximum allowed size of 5MB.' }, { status: 413 });
+    return NextResponse.json({ error: 'File exceeds the maximum allowed size of 50MB.' }, { status: 413 });
   }
 
   const incomingType = determineIncomingType(fileEntry);
@@ -281,15 +278,17 @@ export const POST = withSentryRoute(async (request: Request) => {
   const arrayBuffer = await fileEntry.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
 
-  // Process with sharp: normally downscale; for high-res categories keep original size within 10MB budget
+  // Process with sharp: normally downscale; for high-res categories keep original size within 10MB budget.
+  // If sharp fails (e.g. missing native bindings), gracefully fall back to uploading the original buffer.
   let processed: Buffer;
+  let storeAsWebp = true;
+
   try {
     const base = sharp(buffer, { limitInputPixels: 10000 * 10000 }).rotate();
     const meta = await base.metadata().catch(() => ({} as sharp.Metadata));
     const isHiRes = await isHighResCategory(categoryId);
 
     if (!isHiRes) {
-      // Standard path: downscale + compress with quality floor
       processed = await encodeWebp(buffer, { maxEdge: MAX_EDGE_PX, quality: WEBP_QUALITY });
       const px = (meta.width ?? 0) * (meta.height ?? 0);
       const largePhoto = (meta.width ?? 0) > 1200 || (meta.height ?? 0) > 1200 || px > 1_000_000;
@@ -300,7 +299,6 @@ export const POST = withSentryRoute(async (request: Request) => {
         }
       }
     } else {
-      // High-res categories: keep original dimensions; adjust quality until <= 10MB; if needed, gently downscale
       const TEN_MB = 10 * 1024 * 1024;
       let q = Math.min(90, Math.max(75, WEBP_QUALITY + 3));
       const encodeFull = async (quality: number, edge?: number) =>
@@ -310,36 +308,49 @@ export const POST = withSentryRoute(async (request: Request) => {
           .webp({ quality: Math.max(60, Math.min(95, Math.round(quality))), effort: 5 })
           .toBuffer();
 
-      processed = await encodeFull(q); // try full original dimensions
-      // Reduce quality incrementally to meet size budget
+      processed = await encodeFull(q);
       while (processed.length > TEN_MB && q > 60) {
         q -= 5;
         processed = await encodeFull(q);
       }
-      // If still too large, gently downscale dimensions in 10–15% steps
       if (processed.length > TEN_MB) {
         let edge = Math.max(meta.width ?? 0, meta.height ?? 0);
-        if (!edge || !Number.isFinite(edge)) edge = MAX_EDGE_PX * 2; // fallback
+        if (!edge || !Number.isFinite(edge)) edge = MAX_EDGE_PX * 2;
         while (processed.length > TEN_MB && edge > 1800) {
           edge = Math.round(edge * 0.85);
           processed = await encodeFull(q, edge);
         }
-        // Final safety: ensure we’re under limit
         if (processed.length > TEN_MB) {
           processed = await encodeFull(Math.max(60, q - 5), Math.min(edge, 1800));
         }
       }
     }
   } catch (err) {
-    console.error('Image processing failed', err);
-    return NextResponse.json({ error: 'Could not process image.' }, { status: 400 });
+    console.error('Image processing failed, falling back to original buffer', err);
+    processed = buffer;
+    storeAsWebp = false;
   }
 
-  const extension = 'webp';
+  const { extension, contentType } = (() => {
+    if (storeAsWebp) {
+      return { extension: 'webp', contentType: 'image/webp' };
+    }
+    switch (incomingType) {
+      case 'jpg':
+        return { extension: 'jpg', contentType: 'image/jpeg' };
+      case 'png':
+        return { extension: 'png', contentType: 'image/png' };
+      case 'webp':
+        return { extension: 'webp', contentType: 'image/webp' };
+      case 'avif':
+        return { extension: 'avif', contentType: 'image/avif' };
+      default:
+        return { extension: 'bin', contentType: 'application/octet-stream' };
+    }
+  })();
+
   const fileName = `${Date.now()}-${randomUUID()}.${extension}`;
   const filePath = `${user.id}/${fileName}`;
-
-  const contentType = 'image/webp';
 
   let { error } = await uploadToBucketOnce(filePath, processed, {
     contentType,
@@ -391,7 +402,7 @@ export const DELETE = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`upload-delete:ip:${clientIdentifier}`, UPLOAD_RATE_LIMIT_PER_IP);
+    const ipRate = checkRateLimit(`upload-delete:ip:${clientIdentifier}`, DELETE_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter, 'Too many delete attempts from this network. Please try again later.');
     }
@@ -422,29 +433,13 @@ export const DELETE = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Missing file path.' }, { status: 400 });
   }
 
-  if (!path.startsWith(`${user.id}/`)) {
-    return NextResponse.json({ error: 'You are not allowed to delete this file.' }, { status: 403 });
-  }
-
-  let { error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).remove([path]);
-
-  if (isBucketMissingError(error)) {
-    console.warn('Bucket missing during delete attempt, retrying after ensuring bucket exists');
-    bucketInitialization = null;
-
-    try {
-      await ensureStorageBucket();
-    } catch (retryError) {
-      console.error('Failed to initialize storage bucket during delete retry', retryError);
-      return NextResponse.json({ error: 'Storage bucket is not configured.' }, { status: 500 });
-    }
-
-    ({ error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).remove([path]));
-  }
+  const { error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).remove([path]);
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+    console.error('Failed to delete file from Supabase storage', error);
+    return NextResponse.json({ error: error.message ?? 'Unknown storage error.' }, { status: 400 });
   }
 
   return NextResponse.json({ success: true });
 });
+
