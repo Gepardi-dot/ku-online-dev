@@ -171,18 +171,20 @@ async function main() {
       );
   `);
 
+  // Canonical marketplace categories used across the app.
   const desiredCategories = [
-    { name: 'Smartphones', icon: '📱', sort: 1 },
-    { name: 'Electronics', icon: '💻', sort: 2 },
-    { name: 'Home & Garden', icon: '🏡', sort: 3 },
-    { name: 'Fashion', icon: '👗', sort: 4 },
-    { name: 'Sports', icon: '⚽', sort: 5 },
-    { name: 'Cars', icon: '🚗', sort: 6 },
-    { name: 'Kids & Toys', icon: '🧸', sort: 7 },
-    { name: 'Services', icon: '🛠️', sort: 8 },
-    { name: 'Motors', icon: '🚙', sort: 9 },
-    { name: 'Free', icon: '🎁', sort: 10 },
-    { name: 'Others', icon: '📦', sort: 11 },
+    { name: 'Smartphones and iPads', icon: '📱', sort: 1 },
+    { name: 'Fashion', icon: '👗', sort: 2 },
+    { name: 'Electronics', icon: '💻', sort: 3 },
+    { name: 'Sports', icon: '🏀', sort: 4 },
+    { name: 'Home Appliance', icon: '🏠', sort: 5 },
+    { name: 'Kids & Toys', icon: '🧸', sort: 6 },
+    { name: 'Furniture', icon: '🛋️', sort: 7 },
+    { name: 'Services', icon: '🧰', sort: 8 },
+    { name: 'Cars', icon: '🚗', sort: 9 },
+    { name: 'Property', icon: '🏡', sort: 10 },
+    { name: 'Free', icon: '🎁', sort: 11 },
+    { name: 'Others', icon: '📦', sort: 12 },
   ];
 
   for (const entry of desiredCategories) {
@@ -217,3 +219,4 @@ main().catch(async (error) => {
   await sql.end({ timeout: 5 }).catch(() => {});
   process.exit(1);
 });
+

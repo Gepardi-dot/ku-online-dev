@@ -25,7 +25,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     getProducts({}, 20, 0, 'newest'),
   ]);
 
-  for (const category of categories) {
+  const visibleCategories = categories.filter((category) => {
+    const name = (category.name || '').toLowerCase();
+    return name !== 'smartphones' && name !== 'motors';
+  });
+
+  for (const category of visibleCategories) {
     entries.push({
       url: `${SITE_URL}/products?category=${encodeURIComponent(category.id)}`,
       changeFrequency: 'weekly',
