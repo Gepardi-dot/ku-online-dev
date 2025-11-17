@@ -36,6 +36,7 @@ const uploadOriginAllowList = buildOriginAllowList([
   process.env.SITE_URL ?? null,
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
   'https://ku-online.vercel.app',
+  'https://ku-online-dev.vercel.app',
   'http://localhost:5000',
 ]);
 
