@@ -402,7 +402,7 @@ export const DELETE = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`upload-delete:ip:${clientIdentifier}`, DELETE_RATE_LIMIT_PER_IP);
+    const ipRate = checkRateLimit(`upload-delete:ip:${clientIdentifier}`, UPLOAD_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter, 'Too many delete attempts from this network. Please try again later.');
     }
@@ -442,4 +442,3 @@ export const DELETE = withSentryRoute(async (request: Request) => {
 
   return NextResponse.json({ success: true });
 });
-
