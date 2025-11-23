@@ -35,40 +35,43 @@ export const GET = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Failed to load conversations' }, { status: 500 });
   }
 
-  const conversations = (data ?? []).map((row) => ({
-    id: String(row.id),
-    productId: row.product_id ? String(row.product_id) : null,
-    sellerId: String(row.seller_id),
-    buyerId: String(row.buyer_id),
-    lastMessage: (row.last_message as string | null) ?? null,
-    lastMessageAt: (row.last_message_at as string | null) ?? null,
-    updatedAt: (row.updated_at as string | null) ?? null,
-    product: row.product
-      ? {
-          id: String(row.product.id),
-          title: (row.product.title as string) ?? 'Untitled',
-          price: row.product.price as number | null,
-          currency: (row.product.currency as string) ?? 'IQD',
-          imagePaths: (row.product.images as string[]) ?? [],
-          imageUrls: (row.product.images as string[]) ?? [],
-        }
-      : null,
-    seller: row.seller
-      ? {
-          id: String((row.seller as any).id),
-          fullName: ((row.seller as any).full_name as string | null) ?? null,
-          avatarUrl: ((row.seller as any).avatar_url as string | null) ?? null,
-        }
-      : null,
-    buyer: row.buyer
-      ? {
-          id: String((row.buyer as any).id),
-          fullName: ((row.buyer as any).full_name as string | null) ?? null,
-          avatarUrl: ((row.buyer as any).avatar_url as string | null) ?? null,
-        }
-      : null,
-  }));
+  const conversations = (data ?? []).map((row) => {
+    const productRecord = Array.isArray(row.product) ? row.product[0] : row.product;
+
+    return {
+      id: String(row.id),
+      productId: row.product_id ? String(row.product_id) : null,
+      sellerId: String(row.seller_id),
+      buyerId: String(row.buyer_id),
+      lastMessage: (row.last_message as string | null) ?? null,
+      lastMessageAt: (row.last_message_at as string | null) ?? null,
+      updatedAt: (row.updated_at as string | null) ?? null,
+      product: productRecord
+        ? {
+            id: String(productRecord.id),
+            title: (productRecord.title as string) ?? 'Untitled',
+            price: productRecord.price as number | null,
+            currency: (productRecord.currency as string) ?? 'IQD',
+            imagePaths: (productRecord.images as string[]) ?? [],
+            imageUrls: (productRecord.images as string[]) ?? [],
+          }
+        : null,
+      seller: row.seller
+        ? {
+            id: String((row.seller as any).id),
+            fullName: ((row.seller as any).full_name as string | null) ?? null,
+            avatarUrl: ((row.seller as any).avatar_url as string | null) ?? null,
+          }
+        : null,
+      buyer: row.buyer
+        ? {
+            id: String((row.buyer as any).id),
+            fullName: ((row.buyer as any).full_name as string | null) ?? null,
+            avatarUrl: ((row.buyer as any).avatar_url as string | null) ?? null,
+          }
+        : null,
+    };
+  });
 
   return NextResponse.json({ conversations });
 }, 'messages-conversation-list');
-

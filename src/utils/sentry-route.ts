@@ -1,6 +1,6 @@
 import { wrapRouteHandlerWithSentry } from '@sentry/nextjs';
 
-type RouteHandler = (request: Request, context?: Record<string, unknown>) => Promise<Response> | Response;
+type RouteHandler = (request: any, context?: any) => Promise<Response> | Response;
 
 const SENTRY_ENABLED = Boolean(process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN);
 
