@@ -228,7 +228,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
               {messages.homepage.noCategories}
             </span>
           ) : (
-            <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory md:flex-wrap md:overflow-visible md:snap-none">
+            <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory lg:gap-1 lg:overflow-visible lg:justify-center">
               {categories.map((category, idx) => {
                 const baseName = category.name ?? '';
                 const baseNameLc = baseName.toLowerCase();
@@ -259,6 +259,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                 const isFashion = categoryKey.includes('fashion');
                 const isSports = categoryKey.includes('sport');
                 const isKidsToys = categoryKey.includes('kids') || categoryKey.includes('toy');
+                const isFurniture = categoryKey.includes('furniture');
                 const isFreeLabel = labelLc.includes('free');
                 const isCarsOrFashion = isCars || isFashion;
                 const needsExtraZoom = isFashion || isSports || isFreeLabel;
@@ -279,7 +280,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                     href={categoryHref}
                     key={category.id}
                     aria-label={label}
-                    className="snap-start inline-flex shrink-0 items-center gap-2 rounded-lg px-2 py-1.5 text-xs sm:text-sm font-medium text-foreground/90 transition hover:bg-muted/60 active:scale-[0.99] md:snap-normal"
+                    className="snap-start inline-flex shrink-0 w-24 lg:w-20 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs sm:text-sm font-medium text-foreground/90 transition hover:bg-muted/60 active:scale-[0.99] md:snap-normal"
                   >
                     <span
                       className="relative inline-flex h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 lg:h-16 lg:w-16 items-center justify-center overflow-hidden bg-white rounded-[18px]"
@@ -294,6 +295,8 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                           className={
                             isKidsToys
                               ? 'object-cover scale-[2.3] -translate-y-0.5'
+                              : isFurniture
+                              ? 'object-cover scale-[2.1] -translate-y-0.5'
                               : needsExtraZoom
                               ? 'object-cover scale-[2.2]'
                               : isCarsOrFashion
@@ -307,7 +310,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                         <span className={`${color.iconText} text-base sm:text-lg`}>{category.icon ?? '🏷️'}</span>
                       )}
                     </span>
-                    <span className="whitespace-nowrap hidden sm:inline">{label}</span>
+                    <span className="mt-1 text-center leading-tight">{label}</span>
                   </Link>
                 );
               })}

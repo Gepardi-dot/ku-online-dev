@@ -23,22 +23,44 @@ export default function ProductImages({ images, title }: ProductImagesProps) {
   }, []);
 
   return (
-    <div className="space-y-4">
-      <div className="relative w-full rounded-lg overflow-hidden bg-white min-h-[260px] sm:min-h-[360px] md:min-h-[420px] max-h-[75vh] cursor-zoom-in" onClick={() => openAt(0)}>
-        <Image src={hero} alt={title} fill sizes="100vw" className="object-contain" priority />
-      </div>
-
+    <div className="space-y-4 lg:space-y-0 lg:grid lg:grid-cols-[80px,minmax(0,1fr)] lg:gap-4 lg:items-start">
+      {/* Thumbnails column on the left (desktop) / below (mobile) */}
       {gallery.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+        <div className="mt-2 lg:mt-0 grid grid-cols-3 gap-2 lg:flex lg:flex-col lg:gap-2 lg:max-h-[420px] lg:overflow-y-auto">
           {gallery.map((img, i) => (
-            <button key={img + i} type="button" className="relative aspect-square sm:aspect-[4/3] rounded-lg overflow-hidden bg-white cursor-zoom-in" onClick={() => openAt(i + 1)}>
-              <Image src={img} alt={`${title} ${i + 2}`} fill sizes="(max-width: 640px) 33vw, 20vw" className="object-contain" />
+            <button
+              key={img + i}
+              type="button"
+              className="relative aspect-square sm:aspect-[4/3] lg:aspect-square rounded-lg overflow-hidden bg-white cursor-zoom-in"
+              onClick={() => openAt(i + 1)}
+            >
+              <Image
+                src={img}
+                alt={`${title} ${i + 2}`}
+                fill
+                sizes="(max-width: 640px) 33vw, 20vw"
+                className="object-contain"
+              />
             </button>
           ))}
         </div>
       )}
 
-      <Lightbox images={[hero, ...gallery]} index={index} open={open} onOpenChange={setOpen} title={title} />
+      {/* Hero image on the right */}
+      <div
+        className="relative w-full rounded-lg overflow-hidden bg-white min-h-[260px] sm:min-h-[360px] md:min-h-[420px] max-h-[75vh] cursor-zoom-in"
+        onClick={() => openAt(0)}
+      >
+        <Image src={hero} alt={title} fill sizes="100vw" className="object-contain" priority />
+      </div>
+
+      <Lightbox
+        images={[hero, ...gallery]}
+        index={index}
+        open={open}
+        onOpenChange={setOpen}
+        title={title}
+      />
     </div>
   );
 }

@@ -28,7 +28,7 @@ const schema = z.object({
 const RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 120 } as const;
 const RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 40 } as const;
 
-export const POST = withSentryRoute(async (request: Request) => {
+const handler: (request: Request) => Promise<Response> = async (request: Request) => {
   const originHeader = request.headers.get('origin');
   if (originHeader && !isOriginAllowed(originHeader, originAllowList)) {
     return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
@@ -63,6 +63,68 @@ export const POST = withSentryRoute(async (request: Request) => {
     const res = NextResponse.json({ error: 'Message rate limit reached. Please try again shortly.' }, { status: 429 });
     res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));
     return res;
+  }
+
+  // Prevent messaging if either party has blocked the other.
+  const { data: blockRows, error: blockError } = await supabase
+    .from('blocked_users')
+    .select('id')
+    .or(`and(user_id.eq.${user.id},blocked_user_id.eq.${receiverId}),and(user_id.eq.${receiverId},blocked_user_id.eq.${user.id})`)
+    .limit(1);
+
+  if (blockError) {
+    console.error('Failed to check blocked users', blockError);
+    return NextResponse.json({ error: 'Unable to send message right now.' }, { status: 503 });
+  }
+
+  if (blockRows && blockRows.length > 0) {
+    return NextResponse.json(
+      { error: 'Messages cannot be sent because one of you has blocked the other.' },
+      { status: 403 },
+    );
+  }
+
+  // Lightweight spam checks before writing to the database.
+  const lowerContent = content.toLowerCase();
+  const linkMatches = lowerContent.match(/https?:\/\/|www\./g) ?? [];
+  if (linkMatches.length > 5) {
+    return NextResponse.json(
+      { error: 'Messages with that many links are not allowed.' },
+      { status: 400 },
+    );
+  }
+
+  const repeatedCharsMatch = lowerContent.match(/(.)\1{10,}/);
+  if (repeatedCharsMatch) {
+    return NextResponse.json(
+      { error: 'Message looks like spam (too many repeated characters).' },
+      { status: 400 },
+    );
+  }
+
+  const spamPhrases = ['make money fast', 'free crypto', 'visit my channel', 'whatsapp me on', 'telegram me on'];
+  if (spamPhrases.some((phrase) => lowerContent.includes(phrase))) {
+    return NextResponse.json(
+      { error: 'Message was blocked because it looks like spam.' },
+      { status: 400 },
+    );
+  }
+
+  // Block obvious high-frequency duplicates from the same sender.
+  const spamWindowStart = new Date(Date.now() - 5 * 60_000).toISOString();
+  const { data: recentDuplicates, error: recentError } = await supabase
+    .from('messages')
+    .select('id')
+    .eq('sender_id', user.id)
+    .eq('content', content)
+    .gte('created_at', spamWindowStart)
+    .limit(5);
+
+  if (!recentError && (recentDuplicates?.length ?? 0) >= 5) {
+    return NextResponse.json(
+      { error: 'You have sent this message too many times in a short period.' },
+      { status: 429 },
+    );
   }
 
   let conversationId = incomingConv ?? null;
@@ -109,5 +171,6 @@ export const POST = withSentryRoute(async (request: Request) => {
   };
 
   return NextResponse.json({ message });
-});
+};
 
+export const POST = withSentryRoute(handler, 'messages-send');

@@ -17,6 +17,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { createClient as createSupabaseClient } from '@/utils/supabase/client';
+import { useLocale } from '@/providers/locale-provider';
 
 interface ChatButtonProps {
   sellerId: string;
@@ -33,6 +34,7 @@ export default function ChatButton({
   productTitle,
   viewerId,
 }: ChatButtonProps) {
+  const { t, locale } = useLocale();
   const [open, setOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageRecord[]>([]);
@@ -44,6 +46,16 @@ export default function ChatButton({
   const supabaseClientRef = useRef(createSupabaseClient());
   const [counterpartTyping, setCounterpartTyping] = useState(false);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [messageTranslations, setMessageTranslations] = useState<
+    Record<
+      string,
+      {
+        translated?: string;
+        loading: boolean;
+        showing: boolean;
+      }
+    >
+  >({});
 
   const counterpartName = sellerName;
 
@@ -188,7 +200,15 @@ export default function ChatButton({
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok || !payload?.message) {
-        throw new Error(payload?.error || 'Failed to send message');
+        const description = typeof payload?.error === 'string'
+          ? payload.error
+          : 'Please try sending your message again.';
+        toast({
+          title: 'Message not sent',
+          description,
+          variant: 'destructive',
+        });
+        return;
       }
       const message: MessageRecord = payload.message as MessageRecord;
 
@@ -244,6 +264,65 @@ export default function ChatButton({
     [],
   );
 
+  const handleToggleTranslation = useCallback(
+    async (message: MessageRecord) => {
+      setMessageTranslations((previous) => {
+        const existing = previous[message.id];
+        if (existing && existing.translated && !existing.loading) {
+          return {
+            ...previous,
+            [message.id]: { ...existing, showing: !existing.showing },
+          };
+        }
+        return {
+          ...previous,
+          [message.id]: { translated: existing?.translated, loading: true, showing: true },
+        };
+      });
+
+      try {
+        const response = await fetch('/api/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: message.content,
+            targetLocale: locale,
+          }),
+        });
+        const data = (await response.json().catch(() => ({}))) as {
+          translatedText?: string;
+        };
+        if (!response.ok || typeof data.translatedText !== 'string') {
+          throw new Error('Failed to translate');
+        }
+        setMessageTranslations((previous) => ({
+          ...previous,
+          [message.id]: {
+            translated: data.translatedText,
+            loading: false,
+            showing: true,
+          },
+        }));
+      } catch (error) {
+        console.error('Failed to translate message', error);
+        toast({
+          title: t('common.loading'),
+          description: 'Could not translate this message. Please try again.',
+          variant: 'destructive',
+        });
+        setMessageTranslations((previous) => ({
+          ...previous,
+          [message.id]: {
+            translated: previous[message.id]?.translated,
+            loading: false,
+            showing: false,
+          },
+        }));
+      }
+    },
+    [locale, t],
+  );
+
   const renderMessages = () => {
     if (initializing) {
       return (
@@ -267,6 +346,13 @@ export default function ChatButton({
       <div className="space-y-3">
         {messages.map((message) => {
           const isViewer = message.senderId === viewerId;
+          const translationState = messageTranslations[message.id];
+          const showTranslated =
+            !isViewer && translationState?.translated && translationState.showing;
+          const contentToShow = showTranslated
+            ? translationState?.translated ?? message.content
+            : message.content;
+          const isTranslating = Boolean(translationState?.loading);
           return (
             <div key={message.id} className={`flex ${isViewer ? 'justify-end' : 'justify-start'}`}>
               <div
@@ -274,10 +360,31 @@ export default function ChatButton({
                   isViewer ? 'bg-primary text-primary-foreground' : 'bg-muted'
                 }`}
               >
-                <p dir="auto" className="whitespace-pre-line bidi-auto">{message.content}</p>
-                <p className={`mt-1 text-[11px] uppercase tracking-wide opacity-70 ${isViewer ? 'text-primary-foreground/80' : ''}`}>
-                  {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+                <p dir="auto" className="whitespace-pre-line bidi-auto">
+                  {contentToShow}
                 </p>
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <p
+                    className={`text-[11px] uppercase tracking-wide opacity-70 ${
+                      isViewer ? 'text-primary-foreground/80' : ''
+                    }`}
+                  >
+                    {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+                  </p>
+                  {!isViewer && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleTranslation(message)}
+                      className="text-[11px] underline-offset-2 hover:underline text-muted-foreground"
+                    >
+                      {isTranslating
+                        ? t('common.loading')
+                        : showTranslated
+                        ? t('common.showOriginal')
+                        : t('common.translate')}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           );
@@ -291,7 +398,7 @@ export default function ChatButton({
       <DialogTrigger asChild>
         <Button variant="outline" className="w-full">
           <MessageCircle className="mr-2 h-4 w-4" />
-          Chat with Seller
+          {t('product.chatWithSellerButton')}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[480px]">
@@ -301,7 +408,9 @@ export default function ChatButton({
               <AvatarFallback>{sellerName ? sellerName[0] : 'U'}</AvatarFallback>
             </Avatar>
             <span className="flex flex-col">
-              <span className="font-medium leading-tight">Chat with {counterpartName}</span>
+              <span className="font-medium leading-tight">
+                {t('product.chatWithSellerButton')} {counterpartName}
+              </span>
               <span className="text-xs text-muted-foreground">
                 {productTitle}
                 {counterpartOnline && <>

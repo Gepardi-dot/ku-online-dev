@@ -1,7 +1,6 @@
 'use client';
-
-import { createClient } from '@/utils/supabase/client';
 import { sendMessageSchema, type SendMessageInput } from '@/lib/validation/schemas';
+import { createClient } from '@/utils/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { getPublicEnv } from '@/lib/env-public';
@@ -143,36 +142,31 @@ async function hydrateConversationImages(conversations: ConversationSummary[]) {
 }
 
 export async function getOrCreateConversation(sellerId: string, buyerId: string, productId?: string | null) {
-  const { data, error } = await supabase.rpc('get_or_create_conversation', {
-    p_seller_id: sellerId,
-    p_buyer_id: buyerId,
-    p_product_id: productId ?? null,
+  const response = await fetch('/api/messages/conversations/create-or-get', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sellerId, buyerId, productId: productId ?? null }),
   });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error('Failed to open conversation');
   }
 
-  return data as string;
+  const payload = (await response.json()) as { id: string };
+  return payload.id;
 }
 
 export async function fetchConversation(conversationId: string): Promise<ConversationSummary | null> {
-  const { data, error } = await supabase
-    .from('conversations')
-    .select(
-      `id, product_id, seller_id, buyer_id, last_message, last_message_at, updated_at,
-       product:products(id, title, price, currency, images),
-       seller:users!conversations_seller_id_fkey(id, full_name, avatar_url),
-       buyer:users!conversations_buyer_id_fkey(id, full_name, avatar_url)`
-    )
-    .eq('id', conversationId)
-    .maybeSingle();
+  const response = await fetch(`/api/messages/conversations/${conversationId}`, {
+    method: 'GET',
+  });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error('Failed to load conversation');
   }
 
-  const conversation = data ? mapConversationRow(data) : null;
+  const payload = (await response.json()) as { conversation: ConversationSummary | null };
+  const conversation = payload.conversation;
   if (conversation) {
     await hydrateConversationImages([conversation]);
   }
@@ -180,89 +174,81 @@ export async function fetchConversation(conversationId: string): Promise<Convers
 }
 
 export async function listConversationsForUser(userId: string): Promise<ConversationSummary[]> {
-  const { data, error } = await supabase
-    .from('conversations')
-    .select(
-      `id, product_id, seller_id, buyer_id, last_message, last_message_at, updated_at,
-       product:products(id, title, price, currency, images),
-       seller:users!conversations_seller_id_fkey(id, full_name, avatar_url),
-       buyer:users!conversations_buyer_id_fkey(id, full_name, avatar_url)`
-    )
-    .or(`seller_id.eq.${userId},buyer_id.eq.${userId}`)
-    .order('updated_at', { ascending: false, nullsFirst: false });
+  try {
+    const response = await fetch(`/api/messages/conversations?userId=${encodeURIComponent(userId)}`, {
+      method: 'GET',
+    });
 
-  if (error) {
-    throw error;
+    if (!response.ok) {
+      // Log and fall back to an empty list so the UI can still open.
+      const body = await response.text().catch(() => '');
+      console.error('Failed to load conversations', response.status, body);
+      return [];
+    }
+
+    const payload = (await response.json()) as { conversations: ConversationSummary[] };
+    const conversations = payload.conversations ?? [];
+    await hydrateConversationImages(conversations);
+    return conversations;
+  } catch (error) {
+    console.error('Failed to load conversations', error);
+    return [];
   }
-
-  const conversations = (data ?? []).map((row) => mapConversationRow(row));
-  await hydrateConversationImages(conversations);
-  return conversations;
 }
 
 export async function fetchMessages(conversationId: string): Promise<MessageRecord[]> {
-  const { data, error } = await supabase
-    .from('messages')
-    .select('id, conversation_id, sender_id, receiver_id, product_id, content, is_read, created_at')
-    .eq('conversation_id', conversationId)
-    .order('created_at', { ascending: true });
+  const response = await fetch(`/api/messages/conversations/${conversationId}/messages`, {
+    method: 'GET',
+  });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error('Failed to load messages');
   }
 
-  return (data ?? []).map((row) => mapMessageRow(row));
+  const payload = (await response.json()) as { messages: MessageRecord[] };
+  return payload.messages ?? [];
 }
 
 export async function sendMessage(options: SendMessageInput): Promise<MessageRecord> {
   const parsed = sendMessageSchema.parse(options);
 
-  const payload = {
-    conversation_id: parsed.conversationId,
-    sender_id: parsed.senderId,
-    receiver_id: parsed.receiverId,
-    product_id: parsed.productId ?? null,
-    content: parsed.content,
-  };
+  const response = await fetch('/api/messages/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(parsed),
+  });
 
-  const { data, error } = await supabase
-    .from('messages')
-    .insert(payload)
-    .select('id, conversation_id, sender_id, receiver_id, product_id, content, is_read, created_at')
-    .single();
-
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error('Failed to send message');
   }
 
-  return mapMessageRow(data);
+  const payload = (await response.json()) as { message: MessageRecord };
+  return payload.message;
 }
 
 export async function markConversationRead(conversationId: string, userId: string) {
-  const { error } = await supabase
-    .from('messages')
-    .update({ is_read: true })
-    .eq('conversation_id', conversationId)
-    .eq('receiver_id', userId)
-    .eq('is_read', false);
+  const response = await fetch(`/api/messages/conversations/${conversationId}/read`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId }),
+  });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error('Failed to mark conversation as read');
   }
 }
 
 export async function countUnreadMessages(userId: string): Promise<number> {
-  const { count, error } = await supabase
-    .from('messages')
-    .select('id', { head: true, count: 'exact' })
-    .eq('receiver_id', userId)
-    .eq('is_read', false);
+  const response = await fetch(`/api/messages/unread-count?userId=${encodeURIComponent(userId)}`, {
+    method: 'GET',
+  });
 
-  if (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error('Failed to load unread count');
   }
 
-  return count ?? 0;
+  const payload = (await response.json()) as { count: number };
+  return payload.count ?? 0;
 }
 
 export function subscribeToConversation(

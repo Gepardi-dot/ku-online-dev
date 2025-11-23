@@ -1,7 +1,14 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { MessageCircle, Loader2, ArrowRight, Send } from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { MessageCircle, Loader2, ArrowRight, Send } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -425,7 +432,7 @@ export default function MessagesMenu({ userId, strings, compactTrigger = false, 
             {triggerIcon ? (
               <span className="inline-flex items-center justify-center h-full w-full">{triggerIcon}</span>
             ) : (
-              <MessageCircle className="h-full w-full" strokeWidth={2} />
+              <MessageCircle className="h-full w-full" />
             )}
             {indicator}
           </button>
@@ -439,7 +446,7 @@ export default function MessagesMenu({ userId, strings, compactTrigger = false, 
             {triggerIcon ? (
               <span className="inline-flex items-center justify-center">{triggerIcon}</span>
             ) : (
-              <MessageCircle className={'h-4 w-4'} />
+              <MessageCircle className="h-6 w-6" />
             )}
             {indicator}
           </Button>

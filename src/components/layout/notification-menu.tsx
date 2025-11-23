@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Bell, Loader2 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Bell, Loader2 } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -179,8 +179,13 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative" aria-label={strings.label}>
-          <Bell className="h-4 w-4" />
+        <Button
+          variant="ghost"
+          size="sm"
+          className="relative"
+          aria-label={strings.label}
+        >
+          <Bell className="h-6 w-6" />
           {indicator}
         </Button>
       </PopoverTrigger>
