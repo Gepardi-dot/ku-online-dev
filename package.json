@@ -9,7 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "build:test": "tsc --project tsconfig.test.json",
-    "test": "npm run build:test && node --test --loader ./tools/test-stubs/alias-loader.mjs \"dist-tests/**/*.test.js\"",
+    "test": "node tools/scripts/run-tests.mjs",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
