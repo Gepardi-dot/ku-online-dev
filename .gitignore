@@ -13,3 +13,7 @@ out/
 .DS_Store
 .vercel
 .env*.local
+.cursor/
+push_*.log
+*.err
+ku-online/

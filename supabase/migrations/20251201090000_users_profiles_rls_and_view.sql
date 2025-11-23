@@ -4,6 +4,7 @@ set search_path = public;
 alter table public.users enable row level security;
 
 drop policy if exists "Users can view profiles" on public.users;
+drop policy if exists "User can view own profile" on public.users;
 
 create policy "User can view own profile"
   on public.users
