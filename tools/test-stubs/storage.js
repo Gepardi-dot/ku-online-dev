@@ -14,3 +14,7 @@ export async function createSignedUrl(path) {
   }
   return path;
 }
+
+export async function createTransformedSignedUrls(paths, _options) {
+  return createSignedUrls(paths);
+}
