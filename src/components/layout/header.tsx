@@ -100,55 +100,73 @@ export default function AppHeader({ user }: AppHeaderProps) {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center" aria-label="KU-ONLINE home">
-              {/* Visually double the logo without changing header height */}
+            {/* Mobile / small-screen logo (original behavior) */}
+            <Link
+              href="/"
+              className="flex items-center md:hidden"
+              aria-label="KU-ONLINE home"
+            >
               <BrandLogo
-                className="h-16 w-16 overflow-visible transform scale-[2.5] origin-left -translate-x-[32px] translate-y-[16px]"
+                className="h-16 w-16 overflow-visible transform scale-[2.5] translate-y-[12px]"
                 size={64}
               />
             </Link>
           </div>
 
-          <form className="hidden md:flex flex-1 max-w-2xl mx-6" onSubmit={handleSearchSubmit}>
-            <div className="relative w-full">
-              <Input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                placeholder={t('header.searchPlaceholder')}
-                aria-label={t('header.searchPlaceholder')}
-                className="w-full rounded-full border-gray-300 pr-44 focus:border-primary focus:ring-primary focus:ring-2"
+          {/* Desktop: logo anchored next to the search bar */}
+          <div className="hidden md:flex flex-1 max-w-2xl mx-4 items-center relative">
+            <Link
+              href="/"
+              aria-label="KU-ONLINE home"
+              className="absolute -left-[4.56rem] top-[calc(50%+7px)] -translate-y-1/2"
+            >
+              <BrandLogo
+                className="h-16 w-16 overflow-visible transform scale-[2.3]"
+                size={64}
               />
-              <div className="absolute right-0 top-0 h-full flex items-center">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="rounded-full h-full px-4 border-l">
-                      <Filter className="h-5 w-5 mr-2" aria-hidden="true" />
-                      <span className="truncate max-w-[7.5rem]">{currentCityLabel}</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end">
-                    <DropdownMenuLabel>{t('header.filterLabel')}</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuRadioGroup value={city} onValueChange={handleCitySelection}>
-                      {CITY_KEYS.map((item) => (
-                        <DropdownMenuRadioItem key={item} value={item}>
-                          {messages.header.city[item]}
-                        </DropdownMenuRadioItem>
-                      ))}
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button
-                  type="submit"
-                  className="h-full rounded-r-full px-5 bg-primary hover:bg-accent-foreground"
-                  aria-label={t('header.searchButton')}
-                >
-                  <Search className="h-5 w-5" aria-hidden="true" />
-                </Button>
+            </Link>
+
+            <form className="flex-1" onSubmit={handleSearchSubmit}>
+              <div className="relative w-full">
+                <Input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder={t('header.searchPlaceholder')}
+                  aria-label={t('header.searchPlaceholder')}
+                  className="w-full rounded-full border-gray-300 pr-44 focus:border-primary focus:ring-primary focus:ring-2"
+                />
+                <div className="absolute right-0 top-0 h-full flex items-center">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="rounded-full h-full px-4 border-l">
+                        <Filter className="h-5 w-5 mr-2" aria-hidden="true" />
+                        <span className="truncate max-w-[7.5rem]">{currentCityLabel}</span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-56" align="end">
+                      <DropdownMenuLabel>{t('header.filterLabel')}</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuRadioGroup value={city} onValueChange={handleCitySelection}>
+                        {CITY_KEYS.map((item) => (
+                          <DropdownMenuRadioItem key={item} value={item}>
+                            {messages.header.city[item]}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuRadioGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button
+                    type="submit"
+                    className="h-full rounded-r-full px-5 bg-primary hover:bg-accent-foreground"
+                    aria-label={t('header.searchButton')}
+                  >
+                    <Search className="h-5 w-5" aria-hidden="true" />
+                  </Button>
+                </div>
               </div>
-            </div>
-          </form>
+            </form>
+          </div>
 
           <div className="flex items-center space-x-2 sm:space-x-4">
             {user && (
@@ -189,7 +207,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
                 {/* Hide Create Listing on mobile; use bottom nav SELL */}
                 <Button asChild className="hidden md:inline-flex">
                   <Link href="/sell">
-                    <PackagePlus className="mr-2 h-4 w-4" aria-hidden="true" />
+                    <PackagePlus className="mr-2 h-5 w-5" aria-hidden="true" />
                     {t('header.createListing')}
                   </Link>
                 </Button>

@@ -9,18 +9,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, Eye, Flag } from 'lucide-react';
+import { MapPin, Eye } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ChatButton from '@/components/chat/chat-button';
 import MarkSoldToggle from '@/components/product/mark-sold-toggle';
 import ReviewSystem from '@/components/reviews/review-system';
 import SimilarItems from '@/components/product/similar-items';
+import { ReportListingDialog } from '@/components/reports/ReportListingDialog';
 import { formatDistanceToNow } from 'date-fns';
 import { getProductById, incrementProductViews } from '@/lib/services/products';
 import ProductImages from '@/components/product/product-images';
 import FavoriteToggle from '@/components/product/favorite-toggle';
 import ShareButton from '@/components/share-button';
 import Link from 'next/link';
+import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 
 const placeholderReviews = [
   {
@@ -53,6 +55,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
   }
 
   const cookieStore = await cookies();
+  const locale = await getServerLocale();
+  const t = (key: string) => serverTranslate(locale, key);
   const supabase = await createClient(cookieStore);
 
   const [{ data: { user } = { user: null } }, product] = await Promise.all([
@@ -150,11 +154,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <h1 dir="auto" className="text-2xl font-bold bidi-auto">{product.title}</h1>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge className={`text-white ${getConditionColor(product.condition)}`}>
-                      {product.condition ?? 'Unknown'}
+                      {product.condition ?? t('product.conditionUnknown')}
                     </Badge>
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Eye className="h-4 w-4" />
-                      {product.views} views
+                      {product.views} {t('product.viewsLabel')}
                     </div>
                   </div>
                 </div>
@@ -164,7 +168,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     {formatPrice(product.price, product.currency)}
                   </div>
                   {product.isSold && (
-                    <Badge variant="secondary" className="bg-gray-700 text-white">Sold</Badge>
+                    <Badge variant="secondary" className="bg-gray-700 text-white">
+                      {t('product.soldBadge')}
+                    </Badge>
                   )}
                 </div>
 
@@ -185,7 +191,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <>
                     <Separator />
                     <div>
-                      <h3 className="font-semibold mb-2">Description</h3>
+                      <h3 className="font-semibold mb-2">
+                        {t('product.descriptionTitle')}
+                      </h3>
                       <p className="text-sm text-muted-foreground leading-relaxed">
                         {product.description}
                       </p>
@@ -196,7 +204,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <Separator />
 
                 <div>
-                  <h3 className="font-semibold mb-3">Seller Information</h3>
+                  <h3 className="font-semibold mb-3">
+                    {t('product.sellerInformationTitle')}
+                  </h3>
                   <div className="flex items-start gap-3">
                     <Link href={seller?.id ? `/seller/${seller.id}` : '#'} prefetch className="shrink-0">
                       <Avatar className="h-12 w-12">
@@ -218,8 +228,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
                         </div>
                       </div>
                       <div className="text-sm text-muted-foreground space-y-1">
-                        {seller?.location && <p>Based in {seller.location}</p>}
-                        {sellerJoinedLabel && <p>Member since {sellerJoinedLabel}</p>}
+                        {seller?.location && (
+                          <p>
+                            {t('product.basedInPrefix')} {seller.location}
+                          </p>
+                        )}
+                        {sellerJoinedLabel && (
+                          <p>
+                            {t('product.memberSincePrefix')} {sellerJoinedLabel}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -227,7 +245,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
                 <div className="space-y-3 pt-4">
                   <ChatButton
-                    sellerId={seller?.id ?? ''}
+                    sellerId={seller?.id ?? product.sellerId}
                     sellerName={seller?.fullName ?? seller?.email ?? 'Seller'}
                     productId={product.id}
                     productTitle={product.title}
@@ -244,14 +262,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   {user?.id === seller?.id && (
                     <Button asChild variant="secondary" className="w-full">
                       <Link href={`/product/${product.id}/edit`} prefetch>
-                        Edit Listing
+                        {t('product.editListing')}
                       </Link>
                     </Button>
                   )}
-                  <Button variant="outline" className="w-full">
-                    <Flag className="mr-2 h-4 w-4" />
-                    Report Listing
-                  </Button>
+                  <ReportListingDialog productId={product.id} sellerId={seller?.id ?? null} />
                 </div>
               </CardContent>
             </Card>
@@ -260,7 +275,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
         <div className="mt-8">
           <ReviewSystem
-            sellerId={seller?.id ?? ''}
+            sellerId={seller?.id ?? product.sellerId}
             productId={product.id}
             averageRating={seller?.rating ?? 0}
             totalReviews={seller?.totalRatings ?? 0}
@@ -274,7 +289,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <div className="mt-8">
               <Card>
                 <CardContent className="p-6 text-center text-muted-foreground">
-                  Loading similar items...
+                  {t('product.loadingSimilar')}
                 </CardContent>
               </Card>
             </div>

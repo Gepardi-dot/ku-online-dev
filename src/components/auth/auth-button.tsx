@@ -22,6 +22,8 @@ export default function AuthButton({ user }: AuthButtonProps) {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [otpError, setOtpError] = useState<string | null>(null);
   const supabase = createClient();
   const { NEXT_PUBLIC_SITE_URL } = getPublicEnv();
 
@@ -48,21 +50,48 @@ export default function AuthButton({ user }: AuthButtonProps) {
 
   const handlePhoneLogin = async () => {
     setIsLoading(true);
+    setPhoneError(null);
     try {
+      const raw = phone.trim();
+      if (!raw) {
+        setPhoneError('Please enter your phone number.');
+        return;
+      }
+
+      // Normalise international numbers like 0044... to +44...
+      let normalized = raw;
+      if (normalized.startsWith('00')) {
+        normalized = `+${normalized.slice(2)}`;
+      }
+
+      // Basic E.164-style validation; Supabase/Twilio expect international format.
+      if (!/^\+?[0-9]{7,15}$/.test(normalized)) {
+        setPhoneError('Enter a valid phone number in international format (e.g. +9647501234567).');
+        return;
+      }
+
+      setPhone(normalized);
+
       const { error } = await supabase.auth.signInWithOtp({
-        phone,
+        phone: normalized,
+        options: { channel: 'sms' },
       });
       if (!error) {
         setShowOtpInput(true);
+      } else {
+        setPhoneError(error.message ?? 'Could not send verification code. Please try again.');
       }
     } catch (error) {
       console.error('Error sending OTP:', error);
+      setPhoneError('Could not send verification code. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleOtpVerification = async () => {
     setIsLoading(true);
+    setOtpError(null);
     try {
       const { error } = await supabase.auth.verifyOtp({
         phone,
@@ -71,11 +100,15 @@ export default function AuthButton({ user }: AuthButtonProps) {
       });
       if (!error) {
         window.location.reload();
+      } else {
+        setOtpError(error.message ?? 'Invalid or expired code. Please try again.');
       }
     } catch (error) {
       console.error('Error verifying OTP:', error);
+      setOtpError('Invalid or expired code. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleLogout = async () => {
@@ -167,6 +200,11 @@ export default function AuthButton({ user }: AuthButtonProps) {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
+              {phoneError && (
+                <p className="text-xs text-destructive">
+                  {phoneError}
+                </p>
+              )}
               <Button onClick={handlePhoneLogin} disabled={isLoading || !phone} className="w-full">
                 <Phone className="mr-2 h-4 w-4" />
                 Send Verification Code
@@ -183,6 +221,11 @@ export default function AuthButton({ user }: AuthButtonProps) {
                 onChange={(e) => setOtp(e.target.value)}
                 maxLength={6}
               />
+              {otpError && (
+                <p className="text-xs text-destructive">
+                  {otpError}
+                </p>
+              )}
               <Button onClick={handleOtpVerification} disabled={isLoading || otp.length !== 6} className="w-full">
                 Verify Code
               </Button>

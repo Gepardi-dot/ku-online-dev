@@ -247,9 +247,11 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
             aria-label={strings.label}
           >
             {triggerIcon ? (
-              <span className="inline-flex items-center justify-center">{triggerIcon}</span>
+              <span className="inline-flex items-center justify-center">
+                {triggerIcon}
+              </span>
             ) : (
-              <Heart className={'h-4 w-4'} />
+              <Heart className="h-6 w-6" strokeWidth={2.2} />
             )}
             {indicator}
           </Button>

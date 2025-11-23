@@ -15,10 +15,9 @@ values
     ('00000000-0000-0000-0000-00000000000c', 'Others', 'Miscellaneous categories', 12)
 on conflict (id) do nothing;
 
-insert into public.users (id, name, email, full_name, is_verified, response_rate, last_seen_at)
+insert into public.users (id, email, full_name, is_verified, response_rate, last_seen_at)
 values (
     '00000000-0000-0000-0000-0000000000aa',
-    'Demo Seller',
     'demo@sellku.app',
     'Demo Seller',
     true,
