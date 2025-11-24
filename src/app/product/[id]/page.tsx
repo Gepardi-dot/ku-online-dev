@@ -100,6 +100,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   const rawImages = product.imageUrls.length > 0 ? product.imageUrls : ['https://placehold.co/800x600?text=KU-ONLINE'];
   const seller = product.seller;
+  const sellerId = seller?.id ?? product.sellerId;
+  const viewerId = user?.id ?? null;
+  const isOwner = Boolean(viewerId && sellerId && viewerId === sellerId);
   const createdAtLabel = product.createdAt ? formatDistanceToNow(product.createdAt, { addSuffix: true }) : '';
   const sellerJoinedLabel = seller?.createdAt ? formatDistanceToNow(seller.createdAt, { addSuffix: true }) : null;
 
@@ -249,17 +252,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     sellerName={seller?.fullName ?? seller?.email ?? 'Seller'}
                     productId={product.id}
                     productTitle={product.title}
-                    viewerId={user?.id ?? null}
+                    viewerId={viewerId}
                   />
-                  {user?.id === seller?.id && (
+                  {isOwner && (
                     <MarkSoldToggle
                       productId={product.id}
-                      sellerId={seller?.id ?? ''}
-                      viewerId={user?.id ?? null}
+                      sellerId={sellerId ?? ''}
+                      viewerId={viewerId}
                       isSold={product.isSold}
                     />
                   )}
-                  {user?.id === seller?.id && (
+                  {isOwner && (
                     <Button asChild variant="secondary" className="w-full">
                       <Link href={`/product/${product.id}/edit`} prefetch>
                         {t('product.editListing')}
