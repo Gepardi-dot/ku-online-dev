@@ -1,7 +1,6 @@
 
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
-import Image from 'next/image';
 import AppLayout from '@/components/layout/app-layout';
 import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
@@ -19,8 +18,7 @@ import { ReportListingDialog } from '@/components/reports/ReportListingDialog';
 import { formatDistanceToNow } from 'date-fns';
 import { getProductById, incrementProductViews } from '@/lib/services/products';
 import ProductImages from '@/components/product/product-images';
-import FavoriteToggle from '@/components/product/favorite-toggle';
-import ShareButton from '@/components/share-button';
+import { getProductFavoriteCount } from '@/lib/services/favorites-analytics';
 import Link from 'next/link';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 
@@ -106,6 +104,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const createdAtLabel = product.createdAt ? formatDistanceToNow(product.createdAt, { addSuffix: true }) : '';
   const sellerJoinedLabel = seller?.createdAt ? formatDistanceToNow(seller.createdAt, { addSuffix: true }) : null;
 
+  const favoriteCount = await getProductFavoriteCount(product.id);
+
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'Product',
@@ -141,11 +141,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
           <div className="lg:col-span-2">
             <div className="space-y-4">
               <div className="relative">
-                <div className="absolute top-4 right-4 z-10 flex gap-2">
-                  <FavoriteToggle productId={product.id} userId={user?.id ?? null} />
-                  <ShareButton title={product.title} url={shareUrl} className="h-8 w-8 rounded-full p-0" />
-                </div>
-                <ProductImages images={rawImages} title={product.title} />
+                <ProductImages
+                  images={rawImages}
+                  title={product.title}
+                  productId={product.id}
+                  viewerId={viewerId}
+                  initialFavoriteCount={favoriteCount}
+                  shareUrl={shareUrl}
+                />
               </div>
             </div>
           </div>
