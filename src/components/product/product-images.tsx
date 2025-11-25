@@ -99,6 +99,22 @@ export default function ProductImages({
     setZoomOrigin({ x: clampedX, y: clampedY });
   };
 
+  const handleHeroClick: React.MouseEventHandler<HTMLDivElement> = (event) => {
+    if (!inlineZoomed) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      if (rect.width && rect.height) {
+        const x = ((event.clientX - rect.left) / rect.width) * 100;
+        const y = ((event.clientY - rect.top) / rect.height) * 100;
+        const clampedX = Math.min(100, Math.max(0, x));
+        const clampedY = Math.min(100, Math.max(0, y));
+        setZoomOrigin({ x: clampedX, y: clampedY });
+      }
+      setInlineZoomed(true);
+    } else {
+      setInlineZoomed(false);
+    }
+  };
+
   const formatFavoriteCount = (count: number) => {
     if (count >= 10_000) {
       return `${Math.round(count / 1000)}K`;
@@ -120,13 +136,7 @@ export default function ProductImages({
         className={`relative w-full rounded-lg overflow-hidden bg-white min-h-[260px] sm:min-h-[360px] md:min-h-[420px] max-h-[75vh] group ${
           inlineZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'
         } ${hasGallery ? 'lg:order-2' : ''}`}
-        onClick={() => {
-          if (inlineZoomed) {
-            setInlineZoomed(false);
-            return;
-          }
-          openAt(activeIndex);
-        }}
+        onClick={handleHeroClick}
         onMouseMove={handleHeroMouseMove}
       >
         <Image
@@ -136,7 +146,7 @@ export default function ProductImages({
           sizes="100vw"
           className="object-contain"
           style={{
-            transform: inlineZoomed ? 'scale(1.35)' : 'scale(1)',
+            transform: inlineZoomed ? 'scale(2)' : 'scale(1)',
             transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
             transition: 'transform 150ms ease-out, transform-origin 50ms linear',
           }}
@@ -148,9 +158,9 @@ export default function ProductImages({
             className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/80 text-gray-700 shadow-sm transition opacity-0 group-hover:opacity-100 hover:bg-white"
             onClick={(e) => {
               e.stopPropagation();
-              setInlineZoomed((prev) => !prev);
+              openAt(activeIndex);
             }}
-            aria-label={inlineZoomed ? 'Exit zoom' : 'Zoom in'}
+            aria-label="View full size"
           >
             <Maximize2 className="h-4 w-4" />
           </button>
