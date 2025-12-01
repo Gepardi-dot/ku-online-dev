@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { countFavorites } from "@/lib/services/favorites-client";
 import { countUnreadMessages } from "@/lib/services/messages-client";
+import { toast } from "@/hooks/use-toast";
 import MessagesMenu from "./messages-menu";
 import FavoritesMenu from "./favorites-menu";
 
@@ -27,7 +28,7 @@ const NAV_ITEMS: NavItem[] = [
   { key: "favorites", href: "/products", labelKey: "nav.products", icon: ShoppingBag },
   { key: "sell", href: "/sell", labelKey: "nav.sell", icon: PackagePlus, highlight: true },
   { key: "messages", href: "/profile?tab=messages", labelKey: "nav.messages", icon: MessageSquare },
-  { key: "profile", href: "/profile", labelKey: "nav.profile", icon: User },
+  { key: "profile", href: "/profile?tab=overview", labelKey: "nav.profile", icon: User },
 ];
 
 export default function MobileNav() {
@@ -46,10 +47,7 @@ export default function MobileNav() {
       setUserId(uid);
       if (!uid) return;
       try {
-        const [fav, unread] = await Promise.all([
-          countFavorites(uid),
-          countUnreadMessages(uid),
-        ]);
+        const [fav, unread] = await Promise.all([countFavorites(uid), countUnreadMessages(uid)]);
         if (!mounted) return;
         setFavoritesCount(fav);
         setUnreadCount(unread);
@@ -63,10 +61,13 @@ export default function MobileNav() {
   }, []);
 
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm">
+    <div
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm"
+      data-mobile-nav
+    >
       <nav
         className="flex items-end justify-between h-20 px-3 pb-2 pt-1"
-        style={{ ['--nav-icon-size' as any]: 'calc(24px + 2mm)' }}
+        style={{ ["--nav-icon-size" as any]: "calc(24px + 2mm)" }}
       >
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
@@ -103,7 +104,7 @@ export default function MobileNav() {
                 <MessagesMenu
                   userId={userId}
                   strings={{
-                    label: t('header.messages'),
+                    label: t("header.messages"),
                     empty: messages.header.messagesEmpty,
                     loginRequired: messages.header.loginRequired,
                     typePlaceholder: messages.header.typeMessage,
@@ -142,6 +143,45 @@ export default function MobileNav() {
                 />
                 <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
               </div>
+            );
+          }
+
+          // Custom handling for Profile: go to profile when signed in,
+          // otherwise show a login-required hint.
+          if (item.key === "profile") {
+            const baseClass = cn(
+              "flex flex-1 flex-col items-center justify-end gap-1 text-sm font-medium transition-colors",
+              pathname.startsWith("/profile") ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            );
+
+            if (!userId) {
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  className={baseClass}
+                  aria-label={t(item.labelKey)}
+                  onClick={() =>
+                    toast({
+                      title: messages.header.loginRequired,
+                    })
+                  }
+                >
+                  <span className="inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]">
+                    <Icon className="h-full w-full" aria-hidden="true" />
+                  </span>
+                  <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
+                </button>
+              );
+            }
+
+            return (
+              <Link key={item.key} href={item.href} className={baseClass} aria-label={t(item.labelKey)}>
+                <span className="inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]">
+                  <Icon className="h-full w-full" aria-hidden="true" />
+                </span>
+                <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
+              </Link>
             );
           }
 

@@ -1,15 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Heart, Loader2, Trash } from 'lucide-react';
+import { Heart, Loader2, Trash, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
+import { Dialog, DialogClose, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -22,6 +16,7 @@ import {
 } from '@/lib/services/favorites-client';
 import { favoritesEvents } from '@/components/product/favorite-toggle';
 import { toast } from '@/hooks/use-toast';
+import BrandLogo from '@/components/brand-logo';
 
 interface FavoritesMenuStrings {
   label: string;
@@ -37,11 +32,19 @@ interface FavoritesMenuProps {
   triggerIcon?: ReactNode;
 }
 
-export default function FavoritesMenu({ userId, strings, compactTrigger = false, triggerClassName, triggerIcon }: FavoritesMenuProps) {
+export default function FavoritesMenu({
+  userId,
+  strings,
+  compactTrigger = false,
+  triggerClassName,
+  triggerIcon,
+}: FavoritesMenuProps) {
   const [open, setOpen] = useState(false);
   const [favorites, setFavorites] = useState<FavoriteSummary[]>([]);
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [topOffset, setTopOffset] = useState<number | null>(null);
+  const [cardHeight, setCardHeight] = useState<number>(360);
   const recentMutationsRef = useRef(new Set<string>());
 
   const canLoad = Boolean(userId);
@@ -67,10 +70,7 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
     }
     setLoading(true);
     try {
-      const [items, total] = await Promise.all([
-        listFavorites(userId, 30),
-        countFavorites(userId),
-      ]);
+      const [items, total] = await Promise.all([listFavorites(userId, 30), countFavorites(userId)]);
       setFavorites(items);
       setCount(total);
     } catch (error) {
@@ -86,7 +86,7 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
   }, [userId]);
 
   useEffect(() => {
-    refreshCount();
+    void refreshCount();
   }, [refreshCount]);
 
   useEffect(() => {
@@ -105,14 +105,14 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
       }
 
       if (open) {
-        loadFavorites();
+        void loadFavorites();
       }
     });
 
     return () => {
       channel.unsubscribe();
     };
-  }, [userId, refreshCount, open, loadFavorites]);
+  }, [userId, open, loadFavorites]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -131,7 +131,7 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
         }, 2000);
       }
       if (open) {
-        loadFavorites();
+        void loadFavorites();
       }
     };
 
@@ -140,6 +140,45 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
       window.removeEventListener(favoritesEvents.eventName, handler);
     };
   }, [loadFavorites, open]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      const announcement = document.querySelector<HTMLElement>('[data-announcement-bar]');
+      const header = document.getElementById('ku-main-header');
+      const mobileNav = document.querySelector<HTMLElement>('[data-mobile-nav]');
+
+      let offsetTop = 16;
+
+      if (announcement) {
+        offsetTop += announcement.getBoundingClientRect().height;
+      }
+      if (header) {
+        offsetTop += header.getBoundingClientRect().height;
+      }
+
+      const viewportHeight = window.innerHeight || 0;
+      const navHeight = mobileNav ? mobileNav.getBoundingClientRect().height : 0;
+
+      const extraGap = 24;
+      let available = viewportHeight - offsetTop - navHeight - extraGap;
+
+      if (!Number.isFinite(available) || available <= 0) {
+        available = 360;
+      }
+
+      const clamped = Math.max(280, Math.min(380, available));
+
+      setTopOffset(offsetTop);
+      setCardHeight(clamped);
+    };
+
+    handleResize();
+    window.addEventListener('resize', handleResize);
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
@@ -151,7 +190,7 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
           return;
         }
         setOpen(true);
-        loadFavorites();
+        void loadFavorites();
       } else {
         setOpen(false);
       }
@@ -207,7 +246,7 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
 
   const formatPrice = useCallback((price: number | null, currency: string | null) => {
     if (price === null) {
-      return '—';
+      return '�?"';
     }
     try {
       return new Intl.NumberFormat('en-US', {
@@ -223,9 +262,11 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
     }
   }, []);
 
+  const cardPaddingTop = Math.max(0, (topOffset ?? 120) + 8 - 24);
+
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
-      <SheetTrigger asChild>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
         {compactTrigger ? (
           <button
             type="button"
@@ -256,71 +297,131 @@ export default function FavoritesMenu({ userId, strings, compactTrigger = false,
             {indicator}
           </Button>
         )}
-      </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle>{strings.label}</SheetTitle>
-        </SheetHeader>
-        {!canLoad ? (
-          <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
-            {strings.loginRequired}
+      </DialogTrigger>
+
+      <DialogContent className="!top-0 !left-0 !h-screen !w-full !max-w-none !translate-x-0 !translate-y-0 !border-none !bg-transparent !p-0 !shadow-none flex items-start justify-center">
+        <DialogTitle className="sr-only">{strings.label}</DialogTitle>
+        <div
+          className="relative flex min-h-[340px] w-full max-w-2xl items-start justify-center px-4 pb-6 sm:px-6"
+          style={{ paddingTop: cardPaddingTop }}
+        >
+          {/* Soft glow behind card */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <div className="h-[60vh] w-[60vw] rounded-full bg-white/15 blur-3xl" />
           </div>
-        ) : (
-          <ScrollArea className="mt-4 h-[360px] rounded-lg border">
-            {loading ? (
-              <div className="flex h-full items-center justify-center text-muted-foreground">
-                <Loader2 className="h-5 w-5 animate-spin" />
+
+          {/* KU-ONLINE watermark logo */}
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <BrandLogo size={560} />
+          </div>
+
+          {/* Glass card */}
+          {!canLoad ? (
+            <div className="relative z-10 flex w-full max-w-xl items-center justify-center rounded-[32px] border border-white/60 bg-[rgba(255,250,245,0.35)] px-6 py-10 text-center text-sm text-[#777777] shadow-[0_24px_80px_rgba(15,23,42,0.25)] backdrop-blur">
+              <DialogClose
+                type="button"
+                className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-[rgba(255,250,245,0.95)] text-[#2D2D2D] shadow-[0_10px_30px_rgba(15,23,42,0.25)] transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                aria-label="Close favorites"
+              >
+                <X className="h-4 w-4" />
+              </DialogClose>
+              {strings.loginRequired}
+            </div>
+          ) : (
+            <div
+              className="relative z-10 mx-auto flex w-full max-w-xl flex-col rounded-[32px] border border-white/60 bg-[rgba(255,250,245,0.4)] p-4 sm:p-5 shadow-[0_24px_80px_rgba(15,23,42,0.25)] backdrop-blur"
+              style={{ height: cardHeight }}
+            >
+              <DialogClose
+                type="button"
+                className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-[rgba(255,250,245,0.95)] text-[#2D2D2D] shadow-[0_10px_30px_rgba(15,23,42,0.25)] transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+                aria-label="Close favorites"
+              >
+                <X className="h-4 w-4" />
+              </DialogClose>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#2D2D2D]">{strings.label}</p>
+                  <p className="text-xs text-[#777777]">
+                    {favorites.length > 0
+                      ? `${favorites.length} ${favorites.length === 1 ? 'listing' : 'listings'} saved`
+                      : strings.empty}
+                  </p>
+                </div>
               </div>
-            ) : favorites.length === 0 ? (
-              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
-                {strings.empty}
-              </div>
-            ) : (
-              <div className="divide-y">
-                {favorites.map((favorite) => {
-                  const product = favorite.product;
-                  const firstUrl = (product?.imageUrls ?? []).find((u) => typeof u === 'string' && u.trim().length > 0);
-                  const imageSrc: string | undefined = firstUrl && firstUrl.trim().length > 0 ? firstUrl : undefined;
-                  return (
-                    <div key={favorite.id} className="flex items-center gap-3 p-3">
-                      <Link href={product ? `/product/${product.id}` : '#'} className="relative h-20 w-20 overflow-hidden rounded-lg">
-                        {imageSrc ? (
-                          <Image src={imageSrc} alt={product?.title ?? 'Product'} fill className="object-cover" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-muted text-[10px] text-muted-foreground">
-                            No image
+
+              <div className="flex-1 overflow-hidden">
+                {loading ? (
+                  <div className="flex h-full items-center justify-center text-muted-foreground">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </div>
+                ) : favorites.length === 0 ? (
+                  <div className="flex h-full items-center justify-center px-6 text-center text-sm text-muted-foreground">
+                    {strings.empty}
+                  </div>
+                ) : (
+                  <ScrollArea className="h-full rounded-[24px] border border-white/60 bg-[rgba(255,255,255,0.85)]">
+                    <div className="divide-y">
+                      {favorites.map((favorite) => {
+                        const product = favorite.product;
+                        const firstUrl = (product?.imageUrls ?? []).find(
+                          (u) => typeof u === 'string' && u.trim().length > 0,
+                        );
+                        const imageSrc: string | undefined =
+                          firstUrl && firstUrl.trim().length > 0 ? firstUrl : undefined;
+                        return (
+                          <div key={favorite.id} className="flex items-center gap-3 p-3">
+                            <Link
+                              href={product ? `/product/${product.id}` : '#'}
+                              className="relative h-20 w-20 overflow-hidden rounded-xl"
+                            >
+                              {imageSrc ? (
+                                <Image
+                                  src={imageSrc}
+                                  alt={product?.title ?? 'Product'}
+                                  fill
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center bg-muted text-[10px] text-muted-foreground">
+                                  No image
+                                </div>
+                              )}
+                            </Link>
+                            <div className="flex-1 space-y-1">
+                              <Link
+                                href={product ? `/product/${product.id}` : '#'}
+                                className="text-sm font-semibold text-[#2D2D2D] hover:underline"
+                              >
+                                {product?.title ?? 'Listing removed'}
+                              </Link>
+                              <p className="text-xs text-muted-foreground">
+                                {formatPrice(product?.price ?? null, product?.currency ?? null)}
+                              </p>
+                              {product?.location && (
+                                <p className="text-xs text-muted-foreground">{product.location}</p>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive"
+                              onClick={() => void handleRemove(favorite)}
+                              aria-label="Remove from favorites"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
                           </div>
-                        )}
-                      </Link>
-                      <div className="flex-1 space-y-1">
-                        <Link
-                          href={product ? `/product/${product.id}` : '#'}
-                          className="text-sm font-semibold hover:underline"
-                        >
-                          {product?.title ?? 'Listing removed'}
-                        </Link>
-                        <p className="text-xs text-muted-foreground">
-                          {formatPrice(product?.price ?? null, product?.currency ?? null)}
-                        </p>
-                        {product?.location && <p className="text-xs text-muted-foreground">{product.location}</p>}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive"
-                        onClick={() => handleRemove(favorite)}
-                        aria-label="Remove from favorites"
-                      >
-                        <Trash className="h-4 w-4" />
-                      </Button>
+                        );
+                      })}
                     </div>
-                  );
-                })}
+                  </ScrollArea>
+                )}
               </div>
-            )}
-          </ScrollArea>
-        )}
-      </SheetContent>
-    </Sheet>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

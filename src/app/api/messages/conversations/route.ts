@@ -1,10 +1,15 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient as createServerClient } from '@/utils/supabase/server';
+import { getEnv } from '@/lib/env';
 
 export const runtime = 'nodejs';
+
+const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = getEnv();
+const supabaseAdmin = createAdminClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 export const GET = withSentryRoute(async (request: Request) => {
   const { searchParams } = new URL(request.url);
@@ -20,22 +25,57 @@ export const GET = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from('conversations')
     .select(
       `id, product_id, seller_id, buyer_id, last_message, last_message_at, updated_at,
        product:products(id, title, price, currency, images),
-       seller:public_user_profiles!inner(id, full_name, avatar_url),
-       buyer:public_user_profiles!inner(id, full_name, avatar_url)`,
+       seller:public_user_profiles!conversations_seller_id_fkey(id, full_name, avatar_url),
+       buyer:public_user_profiles!conversations_buyer_id_fkey(id, full_name, avatar_url)`,
     )
     .or(`seller_id.eq.${user.id},buyer_id.eq.${user.id}`)
     .order('updated_at', { ascending: false, nullsFirst: false });
 
   if (error) {
-    return NextResponse.json({ error: 'Failed to load conversations' }, { status: 500 });
+    console.error('Conversations query failed', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
+    return NextResponse.json(
+      {
+        error: 'Failed to load conversations',
+        code: error.code ?? null,
+        message: error.message ?? null,
+        details: error.details ?? null,
+      },
+      { status: 500 },
+    );
   }
 
-  const conversations = (data ?? []).map((row) => {
+  const rows = data ?? [];
+
+  // Derive which conversations have unread messages for this user so
+  // the UI can visually distinguish unread threads.
+  let unreadByConversation = new Set<string>();
+  if (rows.length > 0) {
+    const conversationIds = rows.map((row) => String(row.id));
+    const { data: unreadRows, error: unreadError } = await supabaseAdmin
+      .from('messages')
+      .select('conversation_id')
+      .in('conversation_id', conversationIds)
+      .eq('receiver_id', user.id)
+      .eq('is_read', false);
+
+    if (unreadError) {
+      console.error('Unread messages query failed', unreadError);
+    } else {
+      unreadByConversation = new Set((unreadRows ?? []).map((row: any) => String(row.conversation_id)));
+    }
+  }
+
+  const conversations = rows.map((row) => {
     const productRecord = Array.isArray(row.product) ? row.product[0] : row.product;
 
     return {
@@ -46,6 +86,7 @@ export const GET = withSentryRoute(async (request: Request) => {
       lastMessage: (row.last_message as string | null) ?? null,
       lastMessageAt: (row.last_message_at as string | null) ?? null,
       updatedAt: (row.updated_at as string | null) ?? null,
+      hasUnread: unreadByConversation.has(String(row.id)),
       product: productRecord
         ? {
             id: String(productRecord.id),

@@ -40,7 +40,10 @@ export function AnnouncementBar() {
   const tagline = t("announcement.tagline")
 
   return (
-    <div className="bg-primary text-primary-foreground pointer-events-none">
+    <div
+      className="relative z-[70] bg-primary text-primary-foreground pointer-events-none"
+      data-announcement-bar
+    >
       <Marquee className="text-sm font-medium">
         {Array.from({ length: 4 }).map((_, index) => (
           <span className="mx-4 whitespace-nowrap" key={index}>

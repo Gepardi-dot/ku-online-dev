@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Bell, Loader2 } from "lucide-react";
-import { Button } from '@/components/ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow } from 'date-fns';
+import Image from "next/image";
+import { ArrowRight, Bell, Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
+import { formatDistanceToNow } from "date-fns";
 import {
   countUnreadNotifications,
   fetchNotifications,
@@ -14,8 +15,10 @@ import {
   markNotificationRead,
   subscribeToNotifications,
   type NotificationRecord,
-} from '@/lib/services/notifications-client';
-import { toast } from '@/hooks/use-toast';
+} from "@/lib/services/notifications-client";
+import { listFavorites } from "@/lib/services/favorites-client";
+import { toast } from "@/hooks/use-toast";
+import { useLocale } from "@/providers/locale-provider";
 
 interface NotificationMenuStrings {
   label: string;
@@ -29,11 +32,20 @@ interface NotificationMenuProps {
   strings: NotificationMenuStrings;
 }
 
+type ProductMeta = {
+  thumbUrl?: string;
+  title?: string | null;
+  price?: number | null;
+  currency?: string | null;
+};
+
 export default function NotificationMenu({ userId, strings }: NotificationMenuProps) {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [productMeta, setProductMeta] = useState<Record<string, ProductMeta>>({});
+  const { locale, t } = useLocale();
 
   const canLoad = Boolean(userId);
 
@@ -47,7 +59,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
       const count = await countUnreadNotifications(userId);
       setUnreadCount(count);
     } catch (error) {
-      console.error('Failed to count notifications', error);
+      console.error("Failed to count notifications", error);
     }
   }, [userId]);
 
@@ -63,11 +75,11 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
       setNotifications(items);
       refreshCount();
     } catch (error) {
-      console.error('Failed to load notifications', error);
+      console.error("Failed to load notifications", error);
       toast({
-        title: 'Unable to fetch notifications',
-        description: 'Please try again shortly.',
-        variant: 'destructive',
+        title: "Unable to fetch notifications",
+        description: "Please try again shortly.",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -75,8 +87,49 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
   }, [userId, refreshCount]);
 
   useEffect(() => {
-    refreshCount();
+    void refreshCount();
   }, [refreshCount]);
+
+  // Hydrate product thumbnails and basic info for listing notifications.
+  useEffect(() => {
+    if (!userId) return;
+
+    const listingIds = notifications
+      .filter((notification) => notification.type === "listing" && notification.relatedId)
+      .map((notification) => notification.relatedId as string);
+
+    const missing = listingIds.filter((id) => !productMeta[id]);
+    if (!missing.length) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const favorites = await listFavorites(userId, 100);
+        const nextMap: Record<string, ProductMeta> = {};
+        favorites.forEach((favorite) => {
+          const product = favorite.product;
+          if (!product?.id || nextMap[product.id]) return;
+          const firstUrl = product.imageUrls?.[0];
+          nextMap[product.id] = {
+            thumbUrl: firstUrl,
+            title: product.title,
+            price: product.price ?? null,
+            currency: product.currency ?? null,
+          };
+        });
+        if (!cancelled && Object.keys(nextMap).length) {
+          setProductMeta((prev) => ({ ...prev, ...nextMap }));
+        }
+      } catch {
+        // Silent failure; bell still works with initials fallback.
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [notifications, productMeta, userId]);
 
   useEffect(() => {
     if (!userId) {
@@ -86,7 +139,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
     const channel = subscribeToNotifications(userId, (notification, eventType) => {
       setNotifications((prev) => {
         const next = prev.filter((item) => item.id !== notification.id);
-        if (eventType !== 'DELETE') {
+        if (eventType !== "DELETE") {
           next.unshift(notification);
         }
         return next
@@ -95,10 +148,10 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
       });
 
       setUnreadCount((prev) => {
-        if (!notification.isRead && eventType === 'INSERT') {
+        if (!notification.isRead && eventType === "INSERT") {
           return prev + 1;
         }
-        if (notification.isRead && eventType === 'UPDATE') {
+        if (notification.isRead && eventType === "UPDATE") {
           return Math.max(0, prev - 1);
         }
         return prev;
@@ -120,7 +173,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
           return;
         }
         setOpen(true);
-        loadNotifications();
+        void loadNotifications();
       } else {
         setOpen(false);
       }
@@ -136,11 +189,11 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
       setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })));
       setUnreadCount(0);
     } catch (error) {
-      console.error('Failed to mark notifications read', error);
+      console.error("Failed to mark notifications read", error);
       toast({
-        title: 'Could not mark notifications as read',
-        description: 'Please try again.',
-        variant: 'destructive',
+        title: "Could not mark notifications as read",
+        description: "Please try again.",
+        variant: "destructive",
       });
     }
   }, [userId]);
@@ -158,7 +211,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
         );
         setUnreadCount((prev) => Math.max(0, prev - 1));
       } catch (error) {
-        console.error('Failed to mark notification read', error);
+        console.error("Failed to mark notification read", error);
       }
     },
     [userId],
@@ -168,7 +221,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
     if (!unreadCount) {
       return null;
     }
-    const displayCount = unreadCount > 9 ? '9+' : String(unreadCount);
+    const displayCount = unreadCount > 9 ? "9+" : String(unreadCount);
     return (
       <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-semibold text-destructive-foreground">
         {displayCount}
@@ -179,12 +232,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="relative"
-          aria-label={strings.label}
-        >
+        <Button variant="ghost" size="sm" className="relative" aria-label={strings.label}>
           <Bell className="h-6 w-6" />
           {indicator}
         </Button>
@@ -210,31 +258,89 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
               notifications.map((notification) => {
                 const timeAgo = notification.createdAt
                   ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
-                  : '';
+                  : "";
+
+                const isListing = notification.type === "listing";
+                const rawName = notification.content ?? "";
+                const productId = notification.relatedId ?? undefined;
+                const meta = productId ? productMeta[productId] : undefined;
+                const productName = (meta?.title ?? rawName) || "";
+                const productInitial = productName.trim().charAt(0).toUpperCase() || "•";
+                const thumbUrl = meta?.thumbUrl;
+                const price = meta?.price;
+                const currency = meta?.currency ?? "IQD";
+                const formattedPrice =
+                  typeof price === "number" ? `${price.toLocaleString(locale)} ${currency}` : null;
+
                 return (
                   <button
                     key={notification.id}
                     type="button"
-                    onClick={() => handleNotificationClick(notification)}
+                    onClick={() => void handleNotificationClick(notification)}
                     className={`w-full rounded-md px-3 py-2 text-left text-sm transition hover:bg-muted ${
-                      notification.isRead ? 'text-muted-foreground' : 'bg-primary/5'
+                      notification.isRead ? "text-muted-foreground" : isListing ? "bg-rose-50" : "bg-primary/5"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium">{notification.title}</p>
-                        {notification.content && (
-                          <p className="mt-1 text-xs text-muted-foreground">{notification.content}</p>
-                        )}
+                    {isListing ? (
+                      <div className="flex items-center gap-3">
+                        <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-white text-xs font-semibold text-foreground shadow-sm">
+                          {thumbUrl ? (
+                            <Image
+                              src={thumbUrl}
+                              alt={productName || "Listing image"}
+                              fill
+                              sizes="48px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              {productInitial}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="space-y-0.5 min-w-0">
+                              {productName && (
+                                <p className="truncate text-sm font-semibold text-[#2D2D2D]">{productName}</p>
+                              )}
+                              {formattedPrice && (
+                                <p className="truncate text-xs text-[#E67E22]">{formattedPrice}</p>
+                              )}
+                            </div>
+                            {timeAgo && (
+                              <span className="shrink-0 text-[11px] text-muted-foreground">{timeAgo}</span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="inline-flex items-center rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                            {t("product.soldBadge")}
+                          </span>
+                          <ArrowRight className="h-4 w-4 text-[#777777]" />
+                        </div>
                       </div>
-                      {timeAgo && <span className="text-xs text-muted-foreground">{timeAgo}</span>}
-                    </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <Badge variant="outline" className="text-[10px] uppercase">
-                        {notification.type}
-                      </Badge>
-                      {!notification.isRead && <span className="text-[10px] font-medium text-primary">New</span>}
-                    </div>
+                    ) : (
+                      <>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="font-medium">{notification.title}</p>
+                            {notification.content && (
+                              <p className="mt-1 text-xs text-muted-foreground">{notification.content}</p>
+                            )}
+                          </div>
+                          {timeAgo && <span className="text-xs text-muted-foreground">{timeAgo}</span>}
+                        </div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Badge variant="outline" className="text-[10px] uppercase">
+                            {notification.type}
+                          </Badge>
+                          {!notification.isRead && (
+                            <span className="text-[10px] font-medium text-primary">New</span>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </button>
                 );
               })
