@@ -242,7 +242,9 @@ function buildProductsQuery(supabase: any, filters: ProductFilters = {}, options
     ? supabase.from('products').select(PRODUCT_SELECT, { count: 'exact' as const })
     : supabase.from('products').select(PRODUCT_SELECT);
 
-  query = query.eq('is_active', true);
+  query = query
+    .eq('is_active', true)
+    .not('seller_id', 'is', null);
 
   if (filters.category) {
     query = query.eq('category_id', filters.category);

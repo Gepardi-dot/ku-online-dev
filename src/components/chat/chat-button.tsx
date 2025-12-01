@@ -41,6 +41,7 @@ export default function ChatButton({
   const [newMessage, setNewMessage] = useState('');
   const [initializing, setInitializing] = useState(false);
   const [sending, setSending] = useState(false);
+  const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
   const [counterpartOnline, setCounterpartOnline] = useState(false);
   const presenceChannelRef = useRef<import('@supabase/supabase-js').RealtimeChannel | null>(null);
   const supabaseClientRef = useRef(createSupabaseClient());
@@ -229,7 +230,48 @@ export default function ChatButton({
     } finally {
       setSending(false);
     }
-  }, [conversationId, viewerId, sellerId, productId, newMessage, sending]);
+    }, [conversationId, viewerId, sellerId, productId, newMessage, sending]);
+
+  const handleDeleteMessage = useCallback(
+    async (messageId: string) => {
+      if (!viewerId) {
+        return;
+      }
+
+      setDeletingMessageId(messageId);
+
+      try {
+        const res = await fetch(`/api/messages/${encodeURIComponent(messageId)}`, {
+          method: 'DELETE',
+        });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok || !payload?.ok) {
+          const description =
+            typeof payload?.error === 'string'
+              ? payload.error
+              : 'We could not delete this message. Please try again.';
+          toast({
+            title: 'Message not deleted',
+            description,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        setMessages((previous) => previous.filter((item) => item.id !== messageId));
+      } catch (error) {
+        console.error('Failed to delete message', error);
+        toast({
+          title: 'Message not deleted',
+          description: 'We could not delete this message. Please try again.',
+          variant: 'destructive',
+        });
+      } finally {
+        setDeletingMessageId((current) => (current === messageId ? null : current));
+      }
+    },
+    [viewerId],
+  );
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLInputElement>) => {
@@ -363,27 +405,39 @@ export default function ChatButton({
                 <p dir="auto" className="whitespace-pre-line bidi-auto">
                   {contentToShow}
                 </p>
-                <div className="mt-1 flex items-center justify-between gap-2">
-                  <p
+                  <div className="mt-1 flex items-center justify-between gap-2">
+                    <p
                     className={`text-[11px] uppercase tracking-wide opacity-70 ${
                       isViewer ? 'text-primary-foreground/80' : ''
                     }`}
                   >
                     {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
                   </p>
-                  {!isViewer && (
-                    <button
-                      type="button"
-                      onClick={() => handleToggleTranslation(message)}
-                      className="text-[11px] underline-offset-2 hover:underline text-muted-foreground"
-                    >
-                      {isTranslating
-                        ? t('common.loading')
-                        : showTranslated
-                        ? t('common.showOriginal')
-                        : t('common.translate')}
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {!isViewer && (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTranslation(message)}
+                        className="text-[11px] underline-offset-2 hover:underline text-muted-foreground"
+                      >
+                        {isTranslating
+                          ? t('common.loading')
+                          : showTranslated
+                          ? t('common.showOriginal')
+                          : t('common.translate')}
+                      </button>
+                    )}
+                    {isViewer && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteMessage(message.id)}
+                        className="text-[11px] underline-offset-2 hover:underline text-muted-foreground"
+                        disabled={deletingMessageId === message.id}
+                      >
+                        {deletingMessageId === message.id ? t('common.loading') : 'Delete'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

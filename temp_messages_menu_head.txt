@@ -1,0 +1,60 @@
+"use client";
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { MessageCircle, Loader2, ArrowRight, Send } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import Link from 'next/link';
+import {
+  countUnreadMessages,
+  fetchMessages,
+  fetchConversation,
+  listConversationsForUser,
+  markConversationRead,
+  sendMessage,
+  subscribeToConversation,
+  subscribeToIncomingMessages,
+  type ConversationSummary,
+  type MessageRecord,
+} from '@/lib/services/messages-client';
+import { toast } from '@/hooks/use-toast';
+import { formatDistanceToNow } from 'date-fns';
+import { cn } from '@/lib/utils';
+
+interface MessagesMenuStrings {
+  label: string;
+  empty: string;
+  loginRequired: string;
+  typePlaceholder: string;
+  send: string;
+}
+
+interface MessagesMenuProps {
+  userId?: string | null;
+  strings: MessagesMenuStrings;
+  compactTrigger?: boolean;
+  triggerClassName?: string;
+  triggerIcon?: ReactNode;
+}
+
+export default function MessagesMenu({ userId, strings, compactTrigger = false, triggerClassName, triggerIcon }: MessagesMenuProps) {
+  const [open, setOpen] = useState(false);
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<MessageRecord[]>([]);

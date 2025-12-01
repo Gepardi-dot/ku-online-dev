@@ -49,6 +49,7 @@ import ProductCard from '@/components/product-card-new';
 import { getProducts } from '@/lib/services/products';
 import ProfileSettingsForm from './profile-settings-form';
 import type { UpdateProfileFormValues } from './form-state';
+import ProfileMessages from '@/components/profile/ProfileMessages';
 
 type ProfilePageSearchParams = {
   tab?: string;
@@ -655,18 +656,16 @@ export default async function ProfilePage({
                 </Card>
               </TabsContent>
 
-              <TabsContent value="messages" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Messages</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                      Your conversations will appear here.
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
+                <TabsContent value="messages" className="space-y-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Messages</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ProfileMessages userId={user.id} />
+                    </CardContent>
+                  </Card>
+                </TabsContent>
 
               <TabsContent value="settings" className="space-y-6">
                 <Card>

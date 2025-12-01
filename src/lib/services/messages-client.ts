@@ -28,6 +28,7 @@ export interface ConversationSummary {
   lastMessage: string | null;
   lastMessageAt: string | null;
   updatedAt: string | null;
+  hasUnread?: boolean;
   product?: {
     id: string;
     title: string;
@@ -249,6 +250,15 @@ export async function countUnreadMessages(userId: string): Promise<number> {
 
   const payload = (await response.json()) as { count: number };
   return payload.count ?? 0;
+}
+
+export async function deleteConversation(conversationId: string): Promise<void> {
+  const response = await fetch(`/api/messages/conversations/${conversationId}`, { method: 'DELETE' });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    console.error('Failed to delete conversation', response.status, body);
+    throw new Error('Failed to delete conversation');
+  }
 }
 
 export function subscribeToConversation(

@@ -34,6 +34,8 @@ export async function fetchNotifications(userId: string, limit = 20): Promise<No
     .from('notifications')
     .select('id, user_id, title, content, type, related_id, is_read, created_at')
     .eq('user_id', userId)
+    .neq('type', 'message')
+    .neq('type', 'favorite')
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -73,6 +75,8 @@ export async function countUnreadNotifications(userId: string): Promise<number> 
     .from('notifications')
     .select('id', { head: true, count: 'exact' })
     .eq('user_id', userId)
+    .neq('type', 'message')
+    .neq('type', 'favorite')
     .eq('is_read', false);
 
   if (error) {
@@ -102,6 +106,9 @@ export function subscribeToNotifications(
           return;
         }
         const record = mapNotificationRow(source);
+        if (record.type === 'message' || record.type === 'favorite') {
+          return;
+        }
         handler(record, payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE');
       },
     )

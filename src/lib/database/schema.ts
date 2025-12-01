@@ -107,7 +107,7 @@ export const messages = pgTable('messages', {
   receiverId: uuid('receiver_id').references(() => users.id, { onDelete: 'set null' }),
   productId: uuid('product_id').references(() => products.id, { onDelete: 'set null' }),
   content: text('content').notNull(),
-  messageType: text('message_type').default('text'), // text, image, offer
+  messageType: text('message_type').default('text'), // text, image
   isRead: boolean('is_read').default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });

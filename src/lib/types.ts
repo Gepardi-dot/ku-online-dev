@@ -55,7 +55,7 @@ export interface Message {
   receiverId: string;
   productId?: string;
   content: string;
-  messageType: 'text' | 'image' | 'offer';
+  messageType: 'text' | 'image';
   isRead: boolean;
   createdAt: string;
 }
