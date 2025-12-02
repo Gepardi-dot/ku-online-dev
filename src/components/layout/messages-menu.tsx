@@ -73,6 +73,8 @@ export default function MessagesMenu({
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageRecord[]>([]);
+  const [oldestCursor, setOldestCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -93,7 +95,9 @@ export default function MessagesMenu({
     if (typeof window === "undefined") return;
 
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
+      const width = window.innerWidth || 0;
+      const isSmallViewport = width < 768;
+      setIsMobile(isSmallViewport);
 
       // Compute layout offsets so the glass card sits neatly
       // between the top chrome (announcement + header) and
@@ -116,14 +120,16 @@ export default function MessagesMenu({
 
       // Reserve some extra gap above the nav so the card
       // never visually collides with it.
-      const extraGap = 24;
+      const extraGap = isSmallViewport ? 8 : 24;
       let available = viewportHeight - offsetTop - navHeight - extraGap;
 
       // Clamp the card height so it stays elegant on all screens.
       if (!Number.isFinite(available) || available <= 0) {
         available = 420;
       }
-      const clamped = Math.max(320, Math.min(420, available));
+      const minHeight = isSmallViewport ? 440 : 320;
+      const maxHeight = isSmallViewport ? Math.min(640, viewportHeight - offsetTop - extraGap) : 420;
+      const clamped = Math.max(minHeight, Math.min(maxHeight, available));
 
       setTopOffset(offsetTop);
       setCardHeight(clamped);
@@ -183,18 +189,31 @@ export default function MessagesMenu({
   }, [userId]);
 
   const loadMessages = useCallback(
-    async (conversationId: string | null) => {
+    async (conversationId: string | null, options?: { before?: string; append?: boolean }) => {
       if (!conversationId || !userId) {
         setMessages([]);
+        setHasMore(false);
+        setOldestCursor(null);
         return;
       }
 
       setLoadingMessages(true);
       try {
-        const history = await fetchMessages(conversationId);
-        setMessages(history);
+        const history = await fetchMessages(conversationId, { limit: 60, before: options?.before });
+
+        setMessages((previous) => (options?.append ? [...history, ...previous] : history));
+
+        const oldest = history[0]?.createdAt ?? null;
+        setOldestCursor(options?.append ? oldest ?? oldestCursor : oldest);
+        setHasMore(history.length >= 60);
 
         await markConversationRead(conversationId, userId);
+
+        setConversations((previous) =>
+          previous.map((conversation) =>
+            conversation.id === conversationId ? { ...conversation, hasUnread: false } : conversation,
+          ),
+        );
 
         const newlyRead = history.filter(
           (item) => !item.isRead && item.receiverId === userId,
@@ -213,7 +232,7 @@ export default function MessagesMenu({
         setLoadingMessages(false);
       }
     },
-    [userId],
+    [userId, oldestCursor],
   );
 
   // --- Initial unread + conversations when opened ---
@@ -237,6 +256,8 @@ export default function MessagesMenu({
     if (!userId) return;
 
     const channel = subscribeToIncomingMessages(userId, (message) => {
+      const shouldFlagUnread = !(open && message.conversationId === activeConversationId);
+
       // Keep contact list up to date
       setConversations((previous) => {
         const existing = previous.find((item) => item.id === message.conversationId);
@@ -248,6 +269,7 @@ export default function MessagesMenu({
           ...existing,
           lastMessage: message.content,
           lastMessageAt: message.createdAt,
+          hasUnread: shouldFlagUnread ? true : false,
         };
 
         const others = previous.filter((item) => item.id !== message.conversationId);
@@ -255,7 +277,7 @@ export default function MessagesMenu({
       });
 
       // Only bump unread when this thread isn't focused / open
-      if (!open || message.conversationId !== activeConversationId) {
+      if (shouldFlagUnread) {
         setUnreadCount((previous) => previous + 1);
       }
 
@@ -264,12 +286,13 @@ export default function MessagesMenu({
         void fetchConversation(message.conversationId)
           .then((summary) => {
             if (!summary) return;
+            const summaryWithUnread = shouldFlagUnread ? { ...summary, hasUnread: true } : summary;
 
             setConversations((previous) => {
-              if (previous.some((item) => item.id === summary.id)) {
+              if (previous.some((item) => item.id === summaryWithUnread.id)) {
                 return previous;
               }
-              return [summary, ...previous];
+              return [summaryWithUnread, ...previous];
             });
           })
           .catch((error) => {
@@ -329,6 +352,8 @@ export default function MessagesMenu({
   useEffect(() => {
     if (!activeConversationId || !open) {
       setMessages([]);
+      setHasMore(false);
+      setOldestCursor(null);
       return;
     }
     void loadMessages(activeConversationId);
@@ -360,11 +385,13 @@ export default function MessagesMenu({
     const displayCount = unreadCount > 9 ? "9+" : String(unreadCount);
 
     return (
-      <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-[#E67E22] px-1 text-[10px] font-semibold text-white">
+      <span className="pointer-events-none absolute -top-1 -right-1 inline-flex h-5 min-w-[1.1rem] items-center justify-center rounded-full border-2 border-white bg-[#E67E22] px-1 text-[10px] font-semibold text-white shadow-sm">
         {displayCount}
       </span>
     );
   }, [unreadCount]);
+  const chipClass =
+    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E4E4E4] bg-white text-[#1F1C1C] transition hover:border-[#E67E22] hover:text-[#E67E22] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/50 focus-visible:ring-offset-2";
 
   // --- Event handlers ---
 
@@ -534,6 +561,11 @@ export default function MessagesMenu({
   };
 
   const renderMessages = () => {
+    const handleLoadMore = () => {
+      if (!activeConversationId || !hasMore || !oldestCursor) return;
+      void loadMessages(activeConversationId, { before: oldestCursor, append: true });
+    };
+
     if (!activeConversationId) {
       return (
         <div className="flex h-full items-center justify-center text-sm text-[#777777]">
@@ -560,6 +592,18 @@ export default function MessagesMenu({
 
     return (
       <div className="space-y-3">
+        {hasMore && oldestCursor && (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              className="text-[11px] text-[#E67E22] underline-offset-2 hover:underline"
+              onClick={handleLoadMore}
+              disabled={loadingMessages}
+            >
+              {loadingMessages ? 'Loading…' : 'Load earlier messages'}
+            </button>
+          </div>
+        )}
         {messages.map((message) => {
           const isViewer = message.senderId === userId;
           const timestamp = formatDistanceToNow(new Date(message.createdAt), {
@@ -747,10 +791,9 @@ export default function MessagesMenu({
             {indicator}
           </button>
         ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn("relative", triggerClassName)}
+          <button
+            type="button"
+            className={cn(chipClass, triggerClassName)}
             aria-label={strings.label}
           >
             {triggerIcon ? (
@@ -759,7 +802,7 @@ export default function MessagesMenu({
               <MessageCircle className="h-6 w-6" />
             )}
             {indicator}
-          </Button>
+          </button>
         )}
       </DialogTrigger>
 

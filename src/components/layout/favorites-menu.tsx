@@ -238,7 +238,7 @@ export default function FavoritesMenu({
     }
     const display = count > 9 ? '9+' : String(count);
     return (
-      <span className="absolute -right-1 -top-1 flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+      <span className="pointer-events-none absolute -top-1 -right-1 inline-flex h-5 min-w-[1.1rem] items-center justify-center rounded-full border-2 border-white bg-[#E67E22] px-1 text-[10px] font-semibold text-white shadow-sm">
         {display}
       </span>
     );
@@ -263,6 +263,8 @@ export default function FavoritesMenu({
   }, []);
 
   const cardPaddingTop = Math.max(0, (topOffset ?? 120) + 8 - 24);
+  const ebayTriggerClass =
+    'relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E4E4E4] bg-white text-[#1F1C1C] transition hover:border-[#E67E22] hover:text-[#E67E22] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/50 focus-visible:ring-offset-2';
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -281,21 +283,18 @@ export default function FavoritesMenu({
             {indicator}
           </button>
         ) : (
-          <Button
-            variant="ghost"
-            size="sm"
-            className={`relative ${triggerClassName ?? ''}`}
+          <button
+            type="button"
+            className={`${ebayTriggerClass} ${triggerClassName ?? ''}`}
             aria-label={strings.label}
           >
             {triggerIcon ? (
-              <span className="inline-flex items-center justify-center">
-                {triggerIcon}
-              </span>
+              <span className="inline-flex items-center justify-center">{triggerIcon}</span>
             ) : (
-              <Heart className="h-6 w-6" strokeWidth={2.2} />
+              <Heart className="h-6 w-6" strokeWidth={1.8} />
             )}
             {indicator}
-          </Button>
+          </button>
         )}
       </DialogTrigger>
 
