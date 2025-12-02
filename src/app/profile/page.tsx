@@ -49,8 +49,6 @@ import ProductCard from '@/components/product-card-new';
 import { getProducts } from '@/lib/services/products';
 import ProfileSettingsForm from './profile-settings-form';
 import type { UpdateProfileFormValues } from './form-state';
-import ProfileMessages from '@/components/profile/ProfileMessages';
-
 type ProfilePageSearchParams = {
   tab?: string;
 };
@@ -59,7 +57,6 @@ const ALLOWED_TABS = new Set([
   'overview',
   'listings',
   'reviews',
-  'messages',
   'settings',
 ]);
 
@@ -156,16 +153,18 @@ export default async function ProfilePage({
     .eq('id', user.id)
     .maybeSingle<UserProfileRow>();
 
-  const listings = await getProducts({ sellerId: user.id }, 24, 0);
+  const listings = await getProducts({ sellerId: user.id, includeInactive: true }, 24, 0);
+  const activeListings = listings.filter((listing) => listing.isActive && !listing.isSold);
+  const activeListingIds = activeListings.map((listing) => listing.id);
 
   let watchersCount = 0;
-  if (listings.length > 0) {
+  if (activeListingIds.length > 0) {
     const { count, error: favoritesError } = await supabase
       .from('favorites')
       .select('id', { count: 'exact', head: true })
       .in(
         'product_id',
-        listings.map((listing) => listing.id),
+        activeListingIds,
       );
 
     if (favoritesError) {
@@ -261,8 +260,9 @@ export default async function ProfilePage({
     (completionChecks.filter(Boolean).length / completionChecks.length) * 100,
   );
 
-  const totalViews = listings.reduce((acc, item) => acc + (item.views ?? 0), 0);
-  const featuredListings = listings.slice(0, 3);
+  const totalViews = activeListings.reduce((acc, item) => acc + (item.views ?? 0), 0);
+  const featuredListingsSource = activeListings.length > 0 ? activeListings : listings;
+  const featuredListings = featuredListingsSource.slice(0, 3);
 
   const reviews: ReviewRow[] = (recentReviews ?? []).map((row: any) => {
     const buyer = Array.isArray(row?.buyer)
@@ -393,7 +393,7 @@ export default async function ProfilePage({
 
           <div className="lg:col-span-2">
             <Tabs key={activeTab} defaultValue={activeTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
                 <TabsTrigger value="overview">
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Overview
@@ -405,10 +405,6 @@ export default async function ProfilePage({
                 <TabsTrigger value="reviews">
                   <Star className="mr-2 h-4 w-4" />
                   Reviews
-                </TabsTrigger>
-                <TabsTrigger value="messages">
-                  <MessageCircle className="mr-2 h-4 w-4" />
-                  Messages
                 </TabsTrigger>
                 <TabsTrigger value="settings">
                   <Settings className="mr-2 h-4 w-4" />
@@ -522,7 +518,7 @@ export default async function ProfilePage({
                       <InsightTile
                         icon={<Package className="h-5 w-5 text-primary" />}
                         label="Active listings"
-                        value={listings.length.toLocaleString()}
+                        value={activeListings.length.toLocaleString()}
                       />
                       <InsightTile
                         icon={<Eye className="h-5 w-5 text-primary" />}
@@ -655,17 +651,6 @@ export default async function ProfilePage({
                   </CardContent>
                 </Card>
               </TabsContent>
-
-                <TabsContent value="messages" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Messages</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ProfileMessages userId={user.id} />
-                    </CardContent>
-                  </Card>
-                </TabsContent>
 
               <TabsContent value="settings" className="space-y-6">
                 <Card>

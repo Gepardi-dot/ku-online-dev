@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User, LogOut, Phone, Mail, Settings, LayoutDashboard } from 'lucide-react';
+import { User, LogOut, Phone, Mail, LayoutDashboard } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -129,7 +129,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuContent className="w-56 mt-2" align="end" sideOffset={8} forceMount>
           <DropdownMenuItem className="font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">
@@ -145,12 +145,6 @@ export default function AuthButton({ user }: AuthButtonProps) {
             <Link href="/profile?tab=overview" className="flex items-center">
               <LayoutDashboard className="mr-2 h-4 w-4" />
               My Profile
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/profile?tab=settings" className="flex items-center">
-              <Settings className="mr-2 h-4 w-4" />
-              Edit Profile
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />

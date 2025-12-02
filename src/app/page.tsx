@@ -128,6 +128,8 @@ const CATEGORY_LABEL_MAP: Record<string, string> = CATEGORY_UI_CONFIG.reduce(
   },
   {} as Record<string, string>,
 );
+const CATEGORY_BLUR_PLACEHOLDER =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP4BwQACfsD/QwZk48AAAAASUVORK5CYII=';
 import { getServerLocale } from '@/lib/locale/server';
 import { LocaleMessages, translations } from '@/lib/locale/dictionary';
 
@@ -303,8 +305,11 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                               ? 'object-cover scale-[1.9]'
                               : 'object-cover scale-[1.8]'
                           }
-                          priority={false}
-                          quality={95}
+                          priority={idx < 4}
+                          loading={idx < 4 ? 'eager' : 'lazy'}
+                          quality={82}
+                          placeholder="blur"
+                          blurDataURL={CATEGORY_BLUR_PLACEHOLDER}
                         />
                       ) : (
                         <span className={`${color.iconText} text-base sm:text-lg`}>{category.icon ?? '🏷️'}</span>

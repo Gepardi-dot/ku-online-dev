@@ -41,6 +41,8 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messagesState, setMessagesState] = useState<MessageRecord[]>([]);
+  const [oldestCursor, setOldestCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
   const [loadingConversations, setLoadingConversations] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
@@ -97,17 +99,27 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
   }, [userId]);
 
   const loadMessages = useCallback(
-    async (conversationId: string | null) => {
+    async (conversationId: string | null, options?: { before?: string; append?: boolean }) => {
       if (!conversationId || !userId) {
         setMessagesState([]);
+        setOldestCursor(null);
+        setHasMore(false);
         return;
       }
 
       setLoadingMessages(true);
       try {
-        const history = await fetchMessages(conversationId);
-        setMessagesState(history);
+        const history = await fetchMessages(conversationId, { limit: 60, before: options?.before });
+        setMessagesState((previous) => (options?.append ? [...history, ...previous] : history));
+        const oldest = history[0]?.createdAt ?? null;
+        setOldestCursor(options?.append ? oldest ?? oldestCursor : oldest);
+        setHasMore(history.length >= 60);
         await markConversationRead(conversationId, userId);
+        setConversations((previous) =>
+          previous.map((conversation) =>
+            conversation.id === conversationId ? { ...conversation, hasUnread: false } : conversation,
+          ),
+        );
       } catch (error) {
         console.error("Failed to load messages", error);
         toast({
@@ -119,7 +131,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         setLoadingMessages(false);
       }
     },
-    [userId],
+    [userId, oldestCursor],
   );
 
   useEffect(() => {
@@ -139,6 +151,8 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     }
 
     const channel = subscribeToIncomingMessages(userId, (message) => {
+      const shouldFlagUnread = message.conversationId !== activeConversationId;
+
       setConversations((previous) => {
         const existing = previous.find((item) => item.id === message.conversationId);
         if (!existing) {
@@ -148,6 +162,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
           ...existing,
           lastMessage: message.content,
           lastMessageAt: message.createdAt,
+          hasUnread: shouldFlagUnread ? true : false,
         };
         const others = previous.filter((item) => item.id !== message.conversationId);
         return [updated, ...others];
@@ -159,11 +174,12 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
             if (!summary) {
               return;
             }
+            const summaryWithUnread = shouldFlagUnread ? { ...summary, hasUnread: true } : summary;
             setConversations((previous) => {
-              if (previous.some((item) => item.id === summary.id)) {
+              if (previous.some((item) => item.id === summaryWithUnread.id)) {
                 return previous;
               }
-              return [summary, ...previous];
+              return [summaryWithUnread, ...previous];
             });
           })
           .catch((error) => {
@@ -175,11 +191,13 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     return () => {
       channel.unsubscribe();
     };
-  }, [userId]);
+  }, [userId, activeConversationId]);
 
   useEffect(() => {
     if (!activeConversationId) {
       setMessagesState([]);
+      setOldestCursor(null);
+      setHasMore(false);
       return;
     }
     void loadMessages(activeConversationId);
@@ -441,8 +459,25 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
       );
     }
 
+    const handleLoadMore = () => {
+      if (!activeConversationId || !hasMore || !oldestCursor) return;
+      void loadMessages(activeConversationId, { before: oldestCursor, append: true });
+    };
+
     return (
       <div className="space-y-3">
+        {hasMore && oldestCursor ? (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={handleLoadMore}
+              className="text-[11px] text-primary underline-offset-2 hover:underline"
+              disabled={loadingMessages}
+            >
+              {loadingMessages ? t("common.loading") : "Load earlier messages"}
+            </button>
+          </div>
+        ) : null}
         {messagesState.map((message) => {
           const isViewer = message.senderId === userId;
           const translationState = messageTranslations[message.id];

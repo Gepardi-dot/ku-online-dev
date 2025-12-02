@@ -59,6 +59,7 @@ async function main() {
         preferred text;
         avatar text;
         safe_name text;
+        avatar_changed boolean := true;
     begin
         full_name := coalesce(
             new.raw_user_meta_data->>'full_name',
@@ -70,7 +71,7 @@ async function main() {
             new.raw_user_meta_data->>'user_name',
             new.raw_user_meta_data->>'username'
         );
-        avatar := new.raw_user_meta_data->>'avatar_url';
+        avatar := nullif(new.raw_user_meta_data->>'avatar_url', '');
 
         safe_name := coalesce(
             nullif(full_name, ''),
@@ -79,6 +80,10 @@ async function main() {
             split_part(new.email, '@', 1),
             'Customer'
         );
+
+        if tg_op = 'UPDATE' then
+            avatar_changed := coalesce(new.raw_user_meta_data->>'avatar_url', '') is distinct from coalesce(old.raw_user_meta_data->>'avatar_url', '');
+        end if;
 
         insert into public.users (
             id,
@@ -93,7 +98,7 @@ async function main() {
             new.id,
             new.email,
             nullif(full_name, ''),
-            nullif(avatar, ''),
+            avatar,
             safe_name,
             timezone('utc', now()),
             timezone('utc', now())
@@ -101,7 +106,10 @@ async function main() {
         on conflict (id) do update
         set email = excluded.email,
             full_name = coalesce(nullif(excluded.full_name, ''), public.users.full_name),
-            avatar_url = coalesce(nullif(excluded.avatar_url, ''), public.users.avatar_url),
+            avatar_url = case
+                when avatar_changed then excluded.avatar_url
+                else public.users.avatar_url
+            end,
             name = coalesce(
                 nullif(excluded.name, ''),
                 public.users.name,
@@ -219,4 +227,3 @@ main().catch(async (error) => {
   await sql.end({ timeout: 5 }).catch(() => {});
   process.exit(1);
 });
-

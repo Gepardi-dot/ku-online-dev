@@ -68,6 +68,7 @@ export interface ProductFilters {
   sort?: ProductSort;
   createdAfter?: string;
   freeOnly?: boolean;
+  includeInactive?: boolean;
 }
 
 export const PRODUCT_SELECT = `*,
@@ -242,9 +243,11 @@ function buildProductsQuery(supabase: any, filters: ProductFilters = {}, options
     ? supabase.from('products').select(PRODUCT_SELECT, { count: 'exact' as const })
     : supabase.from('products').select(PRODUCT_SELECT);
 
-  query = query
-    .eq('is_active', true)
-    .not('seller_id', 'is', null);
+  const includeInactive = Boolean(filters.includeInactive);
+  query = query.not('seller_id', 'is', null);
+  if (!includeInactive) {
+    query = query.eq('is_active', true);
+  }
 
   if (filters.category) {
     query = query.eq('category_id', filters.category);

@@ -197,10 +197,24 @@ export async function listConversationsForUser(userId: string): Promise<Conversa
   }
 }
 
-export async function fetchMessages(conversationId: string): Promise<MessageRecord[]> {
-  const response = await fetch(`/api/messages/conversations/${conversationId}/messages`, {
-    method: 'GET',
-  });
+export async function fetchMessages(
+  conversationId: string,
+  options?: { limit?: number; before?: string },
+): Promise<MessageRecord[]> {
+  const search = new URLSearchParams();
+  if (typeof options?.limit === 'number' && Number.isFinite(options.limit)) {
+    search.set('limit', String(options.limit));
+  }
+  if (options?.before) {
+    search.set('before', options.before);
+  }
+  const params = search.toString();
+  const response = await fetch(
+    `/api/messages/conversations/${conversationId}/messages${params ? `?${params}` : ''}`,
+    {
+      method: 'GET',
+    },
+  );
 
   if (!response.ok) {
     throw new Error('Failed to load messages');

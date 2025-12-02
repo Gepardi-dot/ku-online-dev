@@ -7,7 +7,7 @@ import { createClient as createServerClient } from '@/utils/supabase/server';
 export const runtime = 'nodejs';
 
 export const GET = withSentryRoute(
-  async (_request: NextRequest, context: { params: Promise<{ id: string }> }) => {
+  async (request: NextRequest, context: { params: Promise<{ id: string }> }) => {
     const { id: conversationId } = await context.params;
 
     if (!conversationId) {
@@ -38,17 +38,28 @@ export const GET = withSentryRoute(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { data, error } = await supabase
+    const searchParams = new URL(request.url).searchParams;
+    const limitParam = Number(searchParams.get('limit'));
+    const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 10), 200) : 50;
+    const before = searchParams.get('before');
+
+    let query = supabase
       .from('messages')
       .select('id, conversation_id, sender_id, receiver_id, product_id, content, is_read, created_at')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
+      .eq('conversation_id', conversationId);
+
+    if (before) {
+      query = query.lt('created_at', before);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(limit);
 
     if (error) {
       return NextResponse.json({ error: 'Failed to load messages' }, { status: 500 });
     }
 
-    const messages = (data ?? []).map((row) => ({
+    const messages = (data ?? [])
+      .map((row) => ({
       id: String(row.id),
       conversationId: String(row.conversation_id),
       senderId: row.sender_id ? String(row.sender_id) : null,
@@ -57,7 +68,8 @@ export const GET = withSentryRoute(
       content: (row.content as string) ?? '',
       isRead: Boolean(row.is_read),
       createdAt: String(row.created_at),
-    }));
+      }))
+      .reverse(); // ensure chronological order in UI
 
     return NextResponse.json({ messages });
   },
