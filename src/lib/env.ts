@@ -31,7 +31,11 @@ export function getEnv(): ServerEnv {
 
   if (!result.success) {
     const errors = result.error.flatten().fieldErrors;
-    console.error('Invalid environment variables', errors);
+    if (process.env.NODE_ENV === 'test') {
+      console.warn('Invalid environment variables in test environment', errors);
+    } else {
+      console.error('Invalid environment variables', errors);
+    }
     throw new Error('Invalid or missing environment variables');
   }
 
