@@ -234,22 +234,24 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
               onPointerLeave={() => { draggingRef.current = false; }}
               onPointerCancel={() => { draggingRef.current = false; }}
             >
-              <img
+              <NextImage
                 src={cropImageUrl}
                 alt="Crop"
-                className="select-none"
+                fill
+                unoptimized
                 draggable={false}
-                onLoad={(e) => {
-                  const img = e.currentTarget as HTMLImageElement;
-                  setImgSize({ w: img.naturalWidth, h: img.naturalHeight });
-                }}
+                className="select-none"
+                sizes="288px"
                 style={{
                   position: 'absolute',
                   left: '50%',
                   top: '50%',
                   transform: `translate(calc(-50% + ${offset.x}px), calc(-50% + ${offset.y}px)) scale(${zoom})`,
                   maxWidth: 'none',
-                  cursor: draggingRef.current ? 'grabbing' as const : 'grab',
+                  cursor: draggingRef.current ? ('grabbing' as const) : 'grab',
+                }}
+                onLoadingComplete={(img) => {
+                  setImgSize({ w: img.naturalWidth, h: img.naturalHeight });
                 }}
                 onPointerDown={(ev) => {
                   draggingRef.current = true;

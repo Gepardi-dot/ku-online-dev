@@ -17,6 +17,7 @@ import {
   postedWithinToDate,
   type ProductsFilterValues,
 } from '@/lib/products/filter-params';
+import { type Locale } from '@/lib/locale/dictionary';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 
 interface ProductsSearchParams {
@@ -40,7 +41,7 @@ interface ProductsContentProps {
   categories: { id: string; name: string }[];
   locations: string[];
   viewerId?: string | null;
-  locale: string;
+  locale: Locale;
 }
 
 const PAGE_SIZE = 24;
