@@ -5,13 +5,27 @@ import { cn } from '@/lib/utils';
 import { AnnouncementBar } from '@/components/layout/announcement-bar';
 import AppFooter from '@/components/layout/footer';
 import MobileNav from '@/components/layout/mobile-nav';
-import { PT_Sans } from 'next/font/google';
+import { Noto_Kufi_Arabic, Noto_Sans_Arabic, PT_Sans } from 'next/font/google';
 import { LocaleProvider } from '@/providers/locale-provider';
 
 const ptSans = PT_Sans({
   subsets: ['latin'],
   weight: ['400', '700'],
   display: 'swap',
+});
+
+const notoKufiArabic = Noto_Kufi_Arabic({
+  subsets: ['arabic'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-arabic',
+});
+
+const notoSansKurdish = Noto_Sans_Arabic({
+  subsets: ['arabic'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-kurdish',
 });
 
 export const metadata: Metadata = {
@@ -40,7 +54,14 @@ export default function RootLayout({
         ) : null}
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
       </head>
-      <body className={cn(ptSans.className, 'font-body antialiased min-h-screen bg-background font-sans')}>
+      <body
+        className={cn(
+          ptSans.className,
+          notoKufiArabic.variable,
+          notoSansKurdish.variable,
+          'font-body antialiased min-h-screen bg-background font-sans',
+        )}
+      >
         <LocaleProvider>
           <AnnouncementBar />
           <div className="pb-16 md:pb-0">{children}</div>

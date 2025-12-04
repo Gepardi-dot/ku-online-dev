@@ -236,7 +236,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button type="button" className={ebayTriggerClass} aria-label={strings.label}>
-          <Bell className="h-6 w-6" />
+          <Bell className="h-6 w-6" strokeWidth={1.6} />
           {indicator}
         </button>
       </PopoverTrigger>

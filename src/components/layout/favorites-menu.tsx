@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Heart, Loader2, Trash, X } from 'lucide-react';
+import { Heart, Loader2, Share2, Trash, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -266,6 +266,42 @@ export default function FavoritesMenu({
   const ebayTriggerClass =
     'relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E4E4E4] bg-white text-[#1F1C1C] transition hover:border-[#E67E22] hover:text-[#E67E22] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/50 focus-visible:ring-offset-2';
 
+  const handleShare = useCallback(async (favorite: FavoriteSummary) => {
+    const product = favorite.product;
+    if (!product) return;
+
+    const shareUrl =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/product/${product.id}`
+        : `/product/${product.id}`;
+
+    try {
+      if (typeof navigator !== 'undefined' && (navigator as any).share) {
+        await (navigator as any).share({
+          title: product.title,
+          text: product.title,
+          url: shareUrl,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(shareUrl);
+      toast({ title: 'Link copied', description: 'Share this listing with your friends.' });
+    } catch (error) {
+      console.error('Failed to share favorite', error);
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+        toast({ title: 'Link copied', description: 'Share this listing with your friends.' });
+      } catch {
+        toast({
+          title: 'Unable to share',
+          description: 'Please copy the link manually.',
+          variant: 'destructive',
+        });
+      }
+    }
+  }, []);
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -278,7 +314,7 @@ export default function FavoritesMenu({
             {triggerIcon ? (
               <span className="inline-flex items-center justify-center h-full w-full">{triggerIcon}</span>
             ) : (
-              <Heart className="h-full w-full" strokeWidth={2} />
+              <Heart className="h-full w-full" strokeWidth={1.6} />
             )}
             {indicator}
           </button>
@@ -291,7 +327,7 @@ export default function FavoritesMenu({
             {triggerIcon ? (
               <span className="inline-flex items-center justify-center">{triggerIcon}</span>
             ) : (
-              <Heart className="h-6 w-6" strokeWidth={1.8} />
+              <Heart className="h-6 w-6" strokeWidth={1.5} />
             )}
             {indicator}
           </button>
@@ -401,15 +437,27 @@ export default function FavoritesMenu({
                                 <p className="text-xs text-muted-foreground">{product.location}</p>
                               )}
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive"
-                              onClick={() => void handleRemove(favorite)}
-                              aria-label="Remove from favorites"
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-[#E67E22] hover:text-[#c8651d]"
+                                onClick={() => void handleShare(favorite)}
+                                disabled={!product}
+                                aria-label="Share listing"
+                              >
+                                <Share2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive"
+                                onClick={() => void handleRemove(favorite)}
+                                aria-label="Remove from favorites"
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         );
                       })}

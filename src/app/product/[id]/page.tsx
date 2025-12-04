@@ -21,6 +21,7 @@ import ProductImages from '@/components/product/product-images';
 import { getProductFavoriteCount } from '@/lib/services/favorites-analytics';
 import Link from 'next/link';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
+import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
 
 const placeholderReviews = [
   {
@@ -70,15 +71,22 @@ export default async function ProductPage({ params }: ProductPageProps) {
     console.error('Failed to increment product views', error);
   });
 
+  const numberLocale = locale === 'ku' ? 'ku-Arab-IQ' : locale === 'ar' ? 'ar-IQ' : 'en-US';
+  const numberFormatter = new Intl.NumberFormat(numberLocale);
+  const formatNumber = (value: number) => numberFormatter.format(value);
+
+  const currencyLabel = locale === 'ar' || locale === 'ku' ? 'دينار' : 'IQD';
+
   const formatPrice = (price: number, currency: string | null) => {
-    const formatter = new Intl.NumberFormat('en-US', {
+    const formatter = new Intl.NumberFormat(numberLocale, {
       style: 'currency',
       currency: currency ?? 'IQD',
+      currencyDisplay: 'code',
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     });
 
-    return formatter.format(price).replace('IQD', 'IQD');
+    return formatter.format(price).replace(/IQD/g, currencyLabel).trim();
   };
 
   const getConditionColor = (condition: string | null | undefined) => {
@@ -101,8 +109,18 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const sellerId = seller?.id ?? product.sellerId;
   const viewerId = user?.id ?? null;
   const isOwner = Boolean(viewerId && sellerId && viewerId === sellerId);
-  const createdAtLabel = product.createdAt ? formatDistanceToNow(product.createdAt, { addSuffix: true }) : '';
-  const sellerJoinedLabel = seller?.createdAt ? formatDistanceToNow(seller.createdAt, { addSuffix: true }) : null;
+  const daysSince = (date: Date | null | undefined) => (date ? Math.max(0, Math.floor((Date.now() - date.getTime()) / 86_400_000)) : null);
+  const createdDays = daysSince(product.createdAt);
+  const createdAtLabel = createdDays !== null
+    ? t('product.daysAgo').replace('{days}', formatNumber(createdDays))
+    : '';
+  const joinedDays = daysSince(seller?.createdAt ?? null);
+  const sellerJoinedLabel = joinedDays !== null
+    ? t('product.daysAgo').replace('{days}', formatNumber(joinedDays))
+    : null;
+  const sellerDisplayNameRaw = seller?.fullName ?? seller?.name ?? seller?.email ?? '';
+  const sellerDisplayName = sellerDisplayNameRaw.trim() || 'Seller';
+  const sellerInitial = sellerDisplayName.charAt(0).toUpperCase();
 
   const favoriteCount = await getProductFavoriteCount(product.id);
 
@@ -121,7 +139,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     seller: seller
       ? {
           '@type': 'Person',
-          name: seller.fullName ?? seller.email ?? undefined,
+          name: seller.fullName ?? seller.name ?? seller.email ?? undefined,
         }
       : undefined,
   };
@@ -129,6 +147,18 @@ export default async function ProductPage({ params }: ProductPageProps) {
   // Build canonical URL for sharing
   const base = process.env.NEXT_PUBLIC_SITE_URL ?? '';
   const shareUrl = base ? `${base}/product/${product.id}` : `/product/${product.id}`;
+
+  const cityLabels = MARKET_CITY_OPTIONS.reduce<Record<string, string>>((acc, option) => {
+    const key = option.value.toLowerCase();
+    acc[key] = serverTranslate(locale, `header.city.${key}`);
+    return acc;
+  }, {});
+
+  const getCityLabel = (value: string | null | undefined) => {
+    if (!value) return value ?? '';
+    const normalized = value.trim().toLowerCase();
+    return cityLabels[normalized] ?? value;
+  };
 
   return (
     <AppLayout user={user}>
@@ -150,6 +180,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   shareUrl={shareUrl}
                 />
               </div>
+
+              <ReviewSystem
+                sellerId={seller?.id ?? product.sellerId}
+                productId={product.id}
+                averageRating={seller?.rating ?? 0}
+                totalReviews={seller?.totalRatings ?? 0}
+                canReview={Boolean(user && user.id !== seller?.id)}
+                viewerId={user?.id ?? null}
+                variant="compact"
+                maxVisibleReviews={1}
+              />
             </div>
           </div>
 
@@ -164,7 +205,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     </Badge>
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Eye className="h-4 w-4" />
-                      {product.views} {t('product.viewsLabel')}
+                      {formatNumber(product.views)} {t('product.viewsLabel')}
                     </div>
                   </div>
                 </div>
@@ -185,7 +226,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     {product.location && (
                       <>
                         <MapPin className="h-4 w-4" />
-                        {product.location}
+                        {getCityLabel(product.location)}
                       </>
                     )}
                     {product.location && createdAtLabel && <span>&bull;</span>}
@@ -217,26 +258,30 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     <Link href={seller?.id ? `/seller/${seller.id}` : '#'} prefetch className="shrink-0">
                       <Avatar className="h-12 w-12">
                         <AvatarImage src={seller?.avatar ?? undefined} />
-                        <AvatarFallback>{(seller?.fullName ?? seller?.email ?? 'U')[0]}</AvatarFallback>
+                        <AvatarFallback>{sellerInitial}</AvatarFallback>
                       </Avatar>
                     </Link>
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Link href={seller?.id ? `/seller/${seller.id}` : '#'} prefetch className="font-medium hover:underline">
-                          {seller?.fullName ?? seller?.email ?? 'Seller'}
+                        <Link
+                          href={seller?.id ? `/seller/${seller.id}` : '#'}
+                          prefetch
+                          className="font-medium hover:underline whitespace-nowrap truncate"
+                        >
+                          {sellerDisplayName}
                         </Link>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 whitespace-nowrap">
                           <span className="text-sm text-yellow-500">&#9733;</span>
-                          <span className="text-sm">{seller?.rating ?? 'N/A'}</span>
+                          <span className="text-sm">{seller?.rating != null ? formatNumber(seller.rating) : t('product.ratingNA')}</span>
                           <span className="text-sm text-muted-foreground">
-                            ({seller?.totalRatings ?? 0} reviews)
+                            ({formatNumber(seller?.totalRatings ?? 0)} {t('product.reviewsLabel')})
                           </span>
                         </div>
                       </div>
                       <div className="text-sm text-muted-foreground space-y-1">
                         {seller?.location && (
                           <p>
-                            {t('product.basedInPrefix')} {seller.location}
+                            {t('product.basedInPrefix')} {getCityLabel(seller.location)}
                           </p>
                         )}
                         {sellerJoinedLabel && (
@@ -250,13 +295,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 </div>
 
                 <div className="space-y-3 pt-4">
-                  <ChatButton
-                    sellerId={seller?.id ?? product.sellerId}
-                    sellerName={seller?.fullName ?? seller?.email ?? 'Seller'}
-                    productId={product.id}
-                    productTitle={product.title}
-                    viewerId={viewerId}
-                  />
+                  {!isOwner && (
+                    <ChatButton
+                      sellerId={seller?.id ?? product.sellerId}
+                      sellerName={sellerDisplayName}
+                      productId={product.id}
+                      productTitle={product.title}
+                      viewerId={viewerId}
+                    />
+                  )}
                   {isOwner && (
                     <MarkSoldToggle
                       productId={product.id}
@@ -277,17 +324,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
               </CardContent>
             </Card>
           </div>
-        </div>
-
-        <div className="mt-8">
-          <ReviewSystem
-            sellerId={seller?.id ?? product.sellerId}
-            productId={product.id}
-            averageRating={seller?.rating ?? 0}
-            totalReviews={seller?.totalRatings ?? 0}
-            canReview={Boolean(user && user.id !== seller?.id)}
-            viewerId={user?.id ?? null}
-          />
         </div>
 
         <Suspense

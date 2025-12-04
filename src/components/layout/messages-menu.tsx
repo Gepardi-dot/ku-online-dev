@@ -786,7 +786,7 @@ export default function MessagesMenu({
                 {triggerIcon}
               </span>
             ) : (
-              <MessageCircle className="h-full w-full" />
+              <MessageCircle className="h-full w-full" strokeWidth={1.6} />
             )}
             {indicator}
           </button>
@@ -799,7 +799,7 @@ export default function MessagesMenu({
             {triggerIcon ? (
               <span className="inline-flex items-center justify-center">{triggerIcon}</span>
             ) : (
-              <MessageCircle className="h-6 w-6" />
+              <MessageCircle className="h-6 w-6" strokeWidth={1.6} />
             )}
             {indicator}
           </button>

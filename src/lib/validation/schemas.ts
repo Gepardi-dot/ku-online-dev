@@ -85,6 +85,7 @@ export const updateProfileSchema = z.object({
   notifyOffers: z.boolean(),
   notifyUpdates: z.boolean(),
   marketingEmails: z.boolean(),
+  preferredLanguage: z.enum(['en', 'ar', 'ku']).default('en'),
 });
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

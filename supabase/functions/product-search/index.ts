@@ -106,7 +106,8 @@ serve(async (req) => {
     const countQuery = supabase
       .from("products")
       .select("id", { count: "exact", head: true })
-      .eq("is_active", true);
+      .eq("is_active", true)
+      .eq("is_sold", false);
 
     if (query && query.trim().length > 0) {
       countQuery.textSearch("search_document", query, {

@@ -197,3 +197,38 @@ export const PATCH = withSentryRoute(async (request: Request) => {
   if (error) return NextResponse.json({ error: 'Failed to update review' }, { status: 500 });
   return NextResponse.json({ ok: true });
 });
+
+export const DELETE = withSentryRoute(async (request: Request) => {
+  const origin = request.headers.get('origin');
+  if (origin && !isOriginAllowed(origin, originAllowList)) {
+    return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
+  }
+
+  const body = (await request.json().catch(() => ({}))) as { id?: string };
+  if (!body.id) {
+    return NextResponse.json({ error: 'id required' }, { status: 400 });
+  }
+
+  const cookieStore = await cookies();
+  const supabase = await createClient(cookieStore);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
+  const { error: deleteError } = await supabase
+    .from('reviews')
+    .delete()
+    .eq('id', body.id)
+    .eq('buyer_id', user.id);
+
+  if (deleteError) {
+    return NextResponse.json({ error: 'Failed to delete review' }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+});

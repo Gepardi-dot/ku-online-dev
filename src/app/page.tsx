@@ -30,6 +30,8 @@ import Image from 'next/image';
 type CategoryUiConfig = {
   key: string;
   label: string;
+  labelAr?: string;
+  labelKu?: string;
   icon: string;
   matchNames: string[];
 };
@@ -38,72 +40,96 @@ const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
   {
     key: 'smartphones-ipads',
     label: 'Smartphones and iPads',
+    labelAr: 'الهواتف والأيباد',
+    labelKu: 'مۆبایل و ئایپاد',
     icon: '/Smartphones and ipads.png',
     matchNames: ['smartphones and ipads', 'smartphones', 'smartphone'],
   },
   {
     key: 'fashion',
     label: 'Fashion',
+    labelAr: 'أزياء',
+    labelKu: 'فەشن',
     icon: '/Fashion (2) (1).png',
     matchNames: ['fashion'],
   },
   {
     key: 'electronics',
     label: 'Electronics',
+    labelAr: 'إلكترونيات',
+    labelKu: 'ئێلێکترۆنیات',
     icon: '/Electronics (1).png',
     matchNames: ['electronics'],
   },
   {
     key: 'sports',
     label: 'Sports',
+    labelAr: 'رياضة',
+    labelKu: 'وەرزشی',
     icon: '/Sports (2) (1).png',
     matchNames: ['sports'],
   },
   {
     key: 'home-appliance',
     label: 'Home Appliance',
+    labelAr: 'أجهزة منزلية',
+    labelKu: 'کەرەساتی ماڵەوە',
     icon: '/Home appliance.png',
     matchNames: ['home appliance', 'home & garden', 'home and garden'],
   },
   {
     key: 'kids-toys',
     label: 'Kids & Toys',
+    labelAr: 'ألعاب الأطفال',
+    labelKu: 'مانگا و یارییه‌کان',
     icon: '/Kids & Toys (1).png',
     matchNames: ['kids & toys', 'kids and toys', 'toys'],
   },
   {
     key: 'furniture',
     label: 'Furniture',
+    labelAr: 'أثاث',
+    labelKu: 'کاڵای خانووبەرە',
     icon: '/Furniture (1).png',
     matchNames: ['furniture'],
   },
   {
     key: 'services',
     label: 'Services',
+    labelAr: 'خدمات',
+    labelKu: 'خزمەتگوزاری',
     icon: '/Services (1).png',
     matchNames: ['services'],
   },
   {
     key: 'cars',
     label: 'Cars',
+    labelAr: 'سيارات',
+    labelKu: 'ئۆتۆمبێل',
     icon: '/Cars (2) (1).png',
     matchNames: ['cars', 'motors', 'vehicles'],
   },
   {
     key: 'property',
     label: 'Property',
+    labelAr: 'عقارات',
+    labelKu: 'جایداد',
     icon: '/Property.png',
     matchNames: ['property', 'real estate'],
   },
   {
     key: 'free',
     label: 'Free',
+    labelAr: 'مجاني',
+    labelKu: 'بێبەرامبەر',
     icon: '/Free (2) (1).png',
     matchNames: ['free'],
   },
   {
     key: 'others',
     label: 'Others',
+    labelAr: 'أخرى',
+    labelKu: 'هیتر',
     icon: '/Others (2) (1).png',
     matchNames: ['others'],
   },
@@ -119,14 +145,14 @@ const CATEGORY_ICON_MAP: Record<string, string> = CATEGORY_UI_CONFIG.reduce(
   {} as Record<string, string>,
 );
 
-const CATEGORY_LABEL_MAP: Record<string, string> = CATEGORY_UI_CONFIG.reduce(
+const CATEGORY_LABEL_MAP: Record<string, CategoryUiConfig> = CATEGORY_UI_CONFIG.reduce(
   (acc, config) => {
     for (const name of config.matchNames) {
-      acc[name.toLowerCase()] = config.label;
+      acc[name.toLowerCase()] = config;
     }
     return acc;
   },
-  {} as Record<string, string>,
+  {} as Record<string, CategoryUiConfig>,
 );
 const CATEGORY_BLUR_PLACEHOLDER =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP4BwQACfsD/QwZk48AAAAASUVORK5CYII=';
@@ -234,11 +260,14 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
               {categories.map((category, idx) => {
                 const baseName = category.name ?? '';
                 const baseNameLc = baseName.toLowerCase();
-                const label = locale === 'ar' && category.nameAr
-                  ? category.nameAr
-                  : locale === 'ku' && category.nameKu
-                  ? category.nameKu
-                  : CATEGORY_LABEL_MAP[baseNameLc] ?? baseName;
+                const configForCategory = CATEGORY_LABEL_MAP[baseNameLc];
+                const localizedLabel =
+                  locale === 'ar'
+                    ? category.nameAr || configForCategory?.labelAr || configForCategory?.label || baseName
+                    : locale === 'ku'
+                      ? category.nameKu || configForCategory?.labelKu || configForCategory?.label || baseName
+                      : configForCategory?.label || baseName;
+                const label = localizedLabel;
                 const labelLc = (label ?? '').toLowerCase();
                 const isFree = ['free', 'مجاني', 'مجانا', 'فري', 'بلاش'].some((kw) => labelLc.includes(kw));
                 const params = isFree
@@ -262,9 +291,9 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                 const isSports = categoryKey.includes('sport');
                 const isKidsToys = categoryKey.includes('kids') || categoryKey.includes('toy');
                 const isFurniture = categoryKey.includes('furniture');
-                const isFreeLabel = labelLc.includes('free');
+                const isFreeLabel = labelLc.includes('free') || labelLc.includes('مجاني') || labelLc.includes('بێبەرامبەر');
                 const isCarsOrFashion = isCars || isFashion;
-                const needsExtraZoom = isFashion || isSports || isFreeLabel;
+                const needsExtraZoom = isFashion || isSports;
 
                 // Decide how to render the icon: PNG from public/ or emoji fallback
                 const mapped = CATEGORY_ICON_MAP[(category.name || '').toLowerCase()] ?? '';
@@ -297,8 +326,10 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                           className={
                             isKidsToys
                               ? 'object-cover scale-[2.3] -translate-y-0.5'
-                              : isFurniture
+                            : isFurniture
                               ? 'object-cover scale-[2.1] -translate-y-0.5'
+                            : isFreeLabel
+                              ? 'object-cover scale-[2] translate-y-0.5'
                               : needsExtraZoom
                               ? 'object-cover scale-[2.2]'
                               : isCarsOrFashion

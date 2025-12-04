@@ -113,7 +113,7 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
           </div>
           <div className="flex items-center gap-2">
             <Button type="button" variant="secondary" disabled={avatarUploading} onClick={() => avatarInputRef.current?.click()}>
-              {avatarUploading ? 'Uploading…' : 'Upload avatar'}
+              {avatarUploading ? 'Uploading...' : 'Upload avatar'}
             </Button>
             <input id="avatar-file-input" ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
               const file = e.target.files?.[0];
@@ -400,7 +400,7 @@ function SubmitButton() {
 
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? 'Saving…' : 'Save changes'}
+      {pending ? 'Saving...' : 'Save changes'}
     </Button>
   );
 }

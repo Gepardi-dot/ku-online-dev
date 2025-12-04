@@ -36,6 +36,22 @@
   }
 }
 
+/* Arabic locale font swap to Noto Kufi Arabic */
+html[lang="ar"] body,
+html[lang="ar"] .font-body,
+html[lang="ar"] .font-headline,
+html[lang="ar"] .font-sans {
+  font-family: var(--font-arabic), "PT Sans", "Segoe UI", "Tahoma", sans-serif;
+}
+
+/* Kurdish locale font swap to Noto Sans (Arabic script with Kurdish coverage) */
+html[lang="ku"] body,
+html[lang="ku"] .font-body,
+html[lang="ku"] .font-headline,
+html[lang="ku"] .font-sans {
+  font-family: var(--font-kurdish), "PT Sans", "Segoe UI", "Tahoma", sans-serif;
+}
+
 /* Utilities */
 @layer utilities {
   /* Hide scrollbars for horizontal scrollers where we provide our own affordances */

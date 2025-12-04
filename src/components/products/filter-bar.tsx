@@ -21,6 +21,7 @@ import * as SliderPrimitive from "@radix-ui/react-slider";
 import { cn } from "@/lib/utils";
 import { COLOR_OPTIONS, type ColorToken } from "@/data/colors";
 import { Check } from 'lucide-react';
+import { useLocale } from "@/providers/locale-provider";
 
 type CategoryOption = { id: string; name: string };
 
@@ -77,6 +78,7 @@ export function ProductsFilterBar({
   showCategorySelect = false, // API compatibility
 }: ProductsFilterBarProps) {
   const router = useRouter();
+  const { t, messages } = useLocale();
   const init = useInitialState(initialValues);
 
   const [condition, setCondition] = useState<string>(init.condition || "");
@@ -92,14 +94,36 @@ export function ProductsFilterBar({
 
   const isPriceDefault = price[0] <= 0 && price[1] >= init.maxCap;
 
+  const conditionLabels: Record<string, string> = {
+    'new': t("filters.conditionNew"),
+    'used - like new': t("filters.conditionLikeNew"),
+    'used - good': t("filters.conditionGood"),
+    'used - fair': t("filters.conditionFair"),
+  };
+
+  const getConditionLabel = (value: string) => {
+    const normalized = value.trim().toLowerCase();
+    return conditionLabels[normalized] ?? value;
+  };
+
+  const cityLabels = messages.header.city;
+  const getCityLabel = (city: string) =>
+    cityLabels[city.toLowerCase() as keyof typeof cityLabels] ?? city;
+
   // Chip label stays compact and neutral across locales
-  const priceChipLabel = "Price tag";
+  const priceChipLabel = t("filters.priceTag");
   const priceDetailLabel = useMemo(() => {
-    if (isPriceDefault) return "All prices";
-    if (price[0] <= 0) return `Up to ${formatIQD(price[1])}`;
-    if (price[1] >= init.maxCap) return `From ${formatIQD(price[0])}`;
-    return `${formatIQD(price[0])} – ${formatIQD(price[1])}`;
-  }, [price, init.maxCap, isPriceDefault]);
+    if (isPriceDefault) return messages.filters.allPrices;
+    if (price[0] <= 0) {
+      return messages.filters.upTo.replace("{amount}", formatIQD(price[1]));
+    }
+    if (price[1] >= init.maxCap) {
+      return messages.filters.from.replace("{amount}", formatIQD(price[0]));
+    }
+    return messages.filters.between
+      .replace("{from}", formatIQD(price[0]))
+      .replace("{to}", formatIQD(price[1]));
+  }, [isPriceDefault, messages.filters, price, init.maxCap]);
 
   const apply = () => {
     // Close any open popovers so UI doesn't linger after navigation
@@ -156,13 +180,13 @@ export function ProductsFilterBar({
           onValueChange={(v) => setCondition(v === CLEAR_VALUE ? "" : v)}
         >
           <SelectTrigger className="h-8 rounded-full text-xs px-2.5 bg-white border border-gray-200 w-auto min-w-[88px] shrink-0">
-            <SelectValue />
+            <SelectValue placeholder={t("filters.condition")} />
           </SelectTrigger>
           <SelectContent align="start">
-            <SelectItem value={CLEAR_VALUE}>Condition</SelectItem>
+            <SelectItem value={CLEAR_VALUE}>{t("filters.conditionAll")}</SelectItem>
             {CONDITION_OPTIONS.filter((opt) => opt.value !== "").map((opt) => (
               <SelectItem key={opt.value || "all"} value={opt.value || CLEAR_VALUE}>
-                {opt.label}
+                {getConditionLabel(opt.value)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -174,13 +198,13 @@ export function ProductsFilterBar({
           onValueChange={(v) => setLocation(v === CLEAR_VALUE ? "" : v)}
         >
           <SelectTrigger className="h-8 rounded-full text-xs px-2.5 bg-white border border-gray-200 w-auto min-w-[64px] shrink-0">
-            <SelectValue />
+            <SelectValue placeholder={t("filters.city")} />
           </SelectTrigger>
           <SelectContent align="start">
-            <SelectItem value={CLEAR_VALUE}>City</SelectItem>
+            <SelectItem value={CLEAR_VALUE}>{t("filters.cityAll")}</SelectItem>
             {locations.map((loc) => (
               <SelectItem key={loc} value={loc}>
-                {loc}
+                {getCityLabel(loc)}
               </SelectItem>
             ))}
           </SelectContent>
@@ -197,7 +221,7 @@ export function ProductsFilterBar({
                   aria-hidden="true"
                 />
               )}
-              Color
+              {t("filters.color")}
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-[min(92vw,22rem)]" align="start">
@@ -205,8 +229,8 @@ export function ProductsFilterBar({
               {/* All colors */}
               <button
                 type="button"
-                title="All colors"
-                aria-label="All colors"
+                title={messages.filters.allColors}
+                aria-label={messages.filters.allColors}
                 className={
                   'group relative h-9 w-9 rounded-md border bg-[conic-gradient(at_60%_40%,#000,#fff,#E53935,#1E90FF,#43A047,#D4AF37,#7F00FF,#40E0D0)] shadow-sm hover:opacity-95 transition transform hover:scale-105 active:scale-95 ' +
                   (color === '' ? 'ring-2 ring-primary' : '')
@@ -217,7 +241,7 @@ export function ProductsFilterBar({
                 {color === '' && (
                   <Check className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground p-0.5" />
                 )}
-                <span className="sr-only">All colors</span>
+                <span className="sr-only">{messages.filters.allColors}</span>
               </button>
               {(
                 [
@@ -262,7 +286,7 @@ export function ProductsFilterBar({
           <PopoverContent className="w-[min(90vw,20rem)]" align="start">
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Price range</span>
+                <span className="text-muted-foreground">{t("filters.priceRange")}</span>
                 <span className="font-medium">{priceDetailLabel}</span>
               </div>
               <div className="px-1 py-2">
@@ -282,8 +306,12 @@ export function ProductsFilterBar({
                 </SliderPrimitive.Root>
               </div>
               <div className="flex justify-end gap-2">
-                <Button size="sm" variant="ghost" onClick={() => { setPrice([0, init.maxCap]); setPriceOpen(false); }}>Reset</Button>
-                <Button size="sm" onClick={() => { apply(); setPriceOpen(false); }}>Apply</Button>
+                <Button size="sm" variant="ghost" onClick={() => { setPrice([0, init.maxCap]); setPriceOpen(false); }}>
+                  {t("filters.reset")}
+                </Button>
+                <Button size="sm" onClick={() => { apply(); setPriceOpen(false); }}>
+                  {t("filters.apply")}
+                </Button>
               </div>
             </div>
           </PopoverContent>
@@ -292,22 +320,22 @@ export function ProductsFilterBar({
         {/* Sort */}
         <Select value={sort} onValueChange={(v) => setSort(v)}>
           <SelectTrigger className="h-8 rounded-full text-xs px-2.5 bg-white border border-gray-200 w-auto min-w-[92px] shrink-0">
-            <SelectValue />
+            <SelectValue placeholder={t("filters.sortNewest")} />
           </SelectTrigger>
           <SelectContent align="start">
-            <SelectItem value="newest">Newest</SelectItem>
-            <SelectItem value="price_asc">Price: Low to High</SelectItem>
-            <SelectItem value="price_desc">Price: High to Low</SelectItem>
-            <SelectItem value="views_desc">Most Viewed</SelectItem>
+            <SelectItem value="newest">{t("filters.sortNewest")}</SelectItem>
+            <SelectItem value="price_asc">{t("filters.sortPriceAsc")}</SelectItem>
+            <SelectItem value="price_desc">{t("filters.sortPriceDesc")}</SelectItem>
+            <SelectItem value="views_desc">{t("filters.sortMostViewed")}</SelectItem>
           </SelectContent>
         </Select>
 
         <div className="flex items-center gap-1.5">
           <Button size="sm" className="h-8 text-xs px-3 rounded-full" onClick={apply}>
-            Apply
+            {t("filters.apply")}
           </Button>
           <Button size="sm" variant="ghost" className="h-8 text-xs px-2 rounded-full" onClick={reset}>
-            Reset
+            {t("filters.reset")}
           </Button>
         </div>
       </div>

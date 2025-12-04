@@ -50,6 +50,7 @@ Local .env.local
   SUPABASE_SERVICE_ROLE_KEY
   NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET=product-images
   NEXT_PUBLIC_SITE_URL=http://localhost:5000
+  OPENAI_API_KEY=<openai-key-for-embeddings>
   ADMIN_REVALIDATE_TOKEN=<your-admin-revalidate-token>
 
 Vercel (Dev/Preview/Prod)
@@ -58,6 +59,7 @@ Vercel (Dev/Preview/Prod)
   SUPABASE_SERVICE_ROLE_KEY
   NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET
   NEXT_PUBLIC_SITE_URL
+  OPENAI_API_KEY
   ADMIN_REVALIDATE_TOKEN
 ```
 
@@ -101,6 +103,16 @@ column for relevance scoring and `totalCount` reports how many listings match th
   `totalCount`.
 - Server-side normalization now hydrates seller/category relations for search results so UI components receive
   `ProductWithRelations` objects regardless of the data source.
+
+### Smart recommendations
+
+- The `20241205163000_add_product_embeddings.sql` migration enables the `vector` extension, adds a `products.embedding` column,
+  and registers the `recommend_products` RPC that blends cosine similarity with category, price, and engagement filters.
+- Deploy `supabase/functions/recommend-products` (via `supabase functions deploy recommend-products --project-ref <project-ref>`) so the backend can serve cached recommendations without exposing the service role key to the client.
+- Populate embeddings with `node scripts/backfill-product-embeddings.mjs` (requires `OPENAI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`,
+  `SUPABASE_SERVICE_ROLE_KEY`). Re-run it whenever bulk imports happen or wire it into your ingestion pipeline.
+- Once vectors exist, product pages automatically render the "Recommended for You" carousel powered by the new RPC. If no
+  embeddings are available yet, the UI falls back to simple category-based suggestions.
 
 ### Smoke tests
 

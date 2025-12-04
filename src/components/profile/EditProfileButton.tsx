@@ -8,10 +8,9 @@ export default function EditProfileButton({ className = '' }: { className?: stri
   return (
     <Button
       className={className}
-      onClick={() => router.push('/profile?tab=settings#profile-details')}
+      onClick={() => router.push('/profile?tab=profile#profile-details')}
     >
       Edit Profile
     </Button>
   );
 }
-

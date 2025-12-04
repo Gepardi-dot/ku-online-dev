@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { useLocale } from '@/providers/locale-provider';
+import { cn } from '@/lib/utils';
 
 interface Review {
   id: string;
@@ -31,6 +32,8 @@ interface ReviewSystemProps {
   reviews?: Review[];
   canReview?: boolean;
   viewerId?: string | null;
+  variant?: 'default' | 'compact';
+  maxVisibleReviews?: number;
 }
 
 function renderStars(
@@ -57,8 +60,11 @@ export default function ReviewSystem({
   reviews = [],
   canReview = false,
   viewerId = null,
+  variant = 'default',
+  maxVisibleReviews,
 }: ReviewSystemProps) {
   const { t, messages } = useLocale();
+  const isCompact = variant === 'compact';
 
   const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [newRating, setNewRating] = useState(0);
@@ -231,17 +237,32 @@ export default function ReviewSystem({
     count === 1
       ? t('reviews.basedOnSingle')
       : messages.reviews.basedOnMultiple.replace('{count}', String(count));
+  const visibleReviews =
+    typeof maxVisibleReviews === 'number' ? items.slice(0, maxVisibleReviews) : items;
+  const hasHiddenReviews =
+    typeof maxVisibleReviews === 'number' ? count > maxVisibleReviews : false;
+  const showingTopLabel =
+    typeof maxVisibleReviews === 'number'
+      ? (messages.reviews.showingTop ?? 'Showing top {count} reviews').replace(
+          '{count}',
+          String(maxVisibleReviews),
+        )
+      : '';
 
   return (
     <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+      <Card className={cn(isCompact && 'border border-muted/50 shadow-sm text-sm')}>
+        <CardHeader className={cn(isCompact ? 'px-4 py-3' : '')}>
+          <CardTitle className={cn('flex items-center justify-between', isCompact && 'text-base')}>
             <span>{t('reviews.title')}</span>
             {canReview && (
               <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(isCompact && 'h-8 px-2 text-xs')}
+                  >
                     {t('reviews.writeReview')}
                   </Button>
                 </DialogTrigger>
@@ -298,11 +319,11 @@ export default function ReviewSystem({
             )}
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className={cn('space-y-4', isCompact && 'px-4 pb-4 pt-0 space-y-3')}>
           {/* Overall Rating */}
-          <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+          <div className={cn('flex items-center gap-4 p-4 bg-muted rounded-lg', isCompact && 'p-3 rounded-md')}>
             <div className="text-center">
-              <div className="text-2xl font-bold">
+              <div className={cn('text-2xl font-bold', isCompact && 'text-xl')}>
                 {Number(avg || 0).toFixed(1)}
               </div>
               <div className="flex items-center gap-1">
@@ -313,21 +334,24 @@ export default function ReviewSystem({
           </div>
 
           {/* Individual Reviews */}
-          <div className="space-y-4">
+          <div className={cn('space-y-4', isCompact && 'max-h-64 overflow-y-auto pr-1')}>
             {loading ? (
-              <p className="text-center text-muted-foreground py-8">
+              <p className={cn('text-center text-muted-foreground py-8', isCompact && 'py-4 text-xs')}>
                 {t('reviews.loading')}
               </p>
             ) : items.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
+              <p className={cn('text-center text-muted-foreground py-8', isCompact && 'py-4 text-xs')}>
                 {t('reviews.empty')}
               </p>
             ) : (
-              items.map((review) => {
+              visibleReviews.map((review) => {
                 const isViewer = viewerId && review.buyerId === viewerId;
 
                 return (
-                  <div key={review.id} className="border-b pb-4 last:border-b-0">
+                  <div
+                    key={review.id}
+                    className={cn('border-b pb-4 last:border-b-0', isCompact && 'pb-3')}
+                  >
                     <div className="flex items-start gap-3">
                       <Avatar className="h-8 w-8">
                         {!review.isAnonymous && review.buyerAvatar && (
@@ -354,7 +378,7 @@ export default function ReviewSystem({
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-1 mb-2">
+                        <div className={cn('flex items-center gap-1 mb-2', isCompact && 'mb-1')}>
                           {renderStars(review.rating)}
                         </div>
 
@@ -367,11 +391,11 @@ export default function ReviewSystem({
                           </p>
                         )}
 
-                        <div className="mt-2 flex items-center gap-2">
+                        <div className={cn('mt-2 flex items-center gap-2', isCompact && 'mt-1 text-xs')}>
                           <Button
                             variant={review.votedByMe ? 'secondary' : 'ghost'}
                             size="sm"
-                            className="h-auto px-2 py-1"
+                            className={cn('h-auto px-2 py-1', isCompact && 'h-7 text-xs')}
                             onClick={() => handleToggleHelpful(review)}
                           >
                             <ThumbsUp className="h-3 w-3 mr-1" />
@@ -396,6 +420,11 @@ export default function ReviewSystem({
                   </div>
                 );
               })
+            )}
+            {hasHiddenReviews && showingTopLabel && (
+              <p className={cn('text-xs text-muted-foreground', isCompact && 'text-[11px]')}>
+                {showingTopLabel}
+              </p>
             )}
           </div>
         </CardContent>

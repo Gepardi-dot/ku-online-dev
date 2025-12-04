@@ -8,6 +8,7 @@ import { MapPin, Eye } from 'lucide-react';
 import type { ProductWithRelations } from '@/lib/services/products';
 import { formatDistanceToNow } from 'date-fns';
 import FavoriteToggle from '@/components/product/favorite-toggle';
+import { useLocale } from '@/providers/locale-provider';
 
 interface ProductCardProps {
   product: ProductWithRelations;
@@ -15,6 +16,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, viewerId }: ProductCardProps) {
+  const { t } = useLocale();
+
   const formatPrice = (price: number, currency?: string | null) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -39,7 +42,23 @@ export default function ProductCard({ product, viewerId }: ProductCardProps) {
     }
   };
 
+  const conditionLabels: Record<string, string> = {
+    'new': t('filters.conditionNew'),
+    'used - like new': t('filters.conditionLikeNew'),
+    'used - good': t('filters.conditionGood'),
+    'used - fair': t('filters.conditionFair'),
+  };
+
+  const getConditionLabel = (value?: string | null) => {
+    if (!value) return t('filters.conditionNew');
+    const normalized = value.trim().toLowerCase();
+    return conditionLabels[normalized] ?? value;
+  };
+
   const createdAtLabel = product.createdAt ? formatDistanceToNow(product.createdAt, { addSuffix: true }) : '';
+  const sellerDisplayNameRaw = product.seller?.fullName ?? product.seller?.name ?? product.seller?.email ?? '';
+  const sellerDisplayName = sellerDisplayNameRaw.trim() || 'Seller';
+  const conditionLabel = getConditionLabel(product.condition || 'New');
 
   return (
     <Link
@@ -61,7 +80,7 @@ export default function ProductCard({ product, viewerId }: ProductCardProps) {
           {product.isSold && (
             <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
               <span className="px-3 py-1 text-xs font-semibold uppercase tracking-wide bg-white/90 text-gray-900 rounded">
-                Sold
+                {t('product.soldBadge')}
               </span>
             </div>
           )}
@@ -76,7 +95,7 @@ export default function ProductCard({ product, viewerId }: ProductCardProps) {
           </div>
         <div className="absolute top-2 left-2">
           <Badge className={`text-white ${getConditionColor(product.condition || 'New')}`}>
-            {product.condition || 'New'}
+            {conditionLabel}
           </Badge>
         </div>
         {product.isPromoted && (
@@ -112,7 +131,7 @@ export default function ProductCard({ product, viewerId }: ProductCardProps) {
           )}
           
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{product.seller?.fullName ?? 'Seller'}</span>
+            <span>{sellerDisplayName}</span>
             <span>{createdAtLabel}</span>
           </div>
         </div>
