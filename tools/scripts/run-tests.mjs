@@ -37,6 +37,8 @@ if (testFiles.length === 0) {
   process.exit(0);
 }
 
+process.env.NODE_ENV = process.env.NODE_ENV || 'test';
+
 const nodeArgs = ['--test', '--loader', './tools/test-stubs/alias-loader.mjs', ...testFiles];
 const nodeResult = spawnSync(process.execPath, nodeArgs, { stdio: 'inherit' });
 
