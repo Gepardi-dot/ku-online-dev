@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle2, RotateCcw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { createClient } from '@/utils/supabase/client';
+import { useLocale } from '@/providers/locale-provider';
 
 interface MarkSoldToggleProps {
   productId: string;
@@ -19,12 +20,13 @@ export default function MarkSoldToggle({ productId, sellerId, viewerId, isSold }
   const [localSold, setLocalSold] = useState(isSold);
   const router = useRouter();
   const supabase = createClient();
+  const { t } = useLocale();
 
   const canToggle = Boolean(viewerId && viewerId === sellerId);
 
   const handleClick = useCallback(async () => {
     if (!canToggle) {
-      toast({ title: 'Only the seller can update this listing.' });
+      toast({ title: t('product.toggleSoldNotAllowed') });
       return;
     }
     if (loading) return;
@@ -38,15 +40,19 @@ export default function MarkSoldToggle({ productId, sellerId, viewerId, isSold }
         .eq('seller_id', sellerId);
       if (error) throw error;
       setLocalSold(next);
-      toast({ title: next ? 'Marked as sold' : 'Marked as available' });
+      toast({ title: next ? t('product.markedSold') : t('product.markedAvailable') });
       router.refresh();
     } catch (err) {
       console.error('Failed to toggle sold status', err);
-      toast({ title: 'Failed to update', description: 'Please try again in a moment.', variant: 'destructive' });
+      toast({
+        title: t('product.toggleSoldFailed'),
+        description: t('product.toggleSoldFailedHint'),
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
-  }, [canToggle, loading, localSold, productId, router, sellerId, supabase]);
+  }, [canToggle, loading, localSold, productId, router, sellerId, supabase, t]);
 
   return (
     <Button
@@ -63,8 +69,7 @@ export default function MarkSoldToggle({ productId, sellerId, viewerId, isSold }
       ) : (
         <CheckCircle2 className="mr-2 h-4 w-4" />
       )}
-      {localSold ? 'Mark as Available' : 'Mark as Sold'}
+      {localSold ? t('product.markAsAvailable') : t('product.markAsSold')}
     </Button>
   );
 }
-

@@ -29,10 +29,10 @@ export default function LanguageSwitcher() {
         <Button
           variant="ghost"
           size="sm"
-          className="inline-flex items-center gap-2 rounded-full border border-[#E4E4E4] bg-white px-3 py-1 text-sm font-medium text-[#1F1C1C] hover:border-[#E67E22] hover:text-[#E67E22] focus-visible:ring-2 focus-visible:ring-[#E67E22]/40 focus-visible:ring-offset-2"
+          className="inline-flex items-center gap-2 rounded-full border border-[#E4E4E4] bg-white px-3.5 py-1.5 text-sm font-medium text-[#1F1C1C] hover:border-[#E67E22] hover:text-[#E67E22] focus-visible:ring-2 focus-visible:ring-[#E67E22]/40 focus-visible:ring-offset-2"
         >
-          <Globe className="h-4 w-4" aria-hidden="true" />
-          <span className="text-xs font-semibold tracking-wide">{LANGUAGE_BADGES[locale]}</span>
+          <Globe className="h-[19px] w-[19px]" strokeWidth={1.6} aria-hidden="true" />
+          <span className="text-sm font-medium tracking-wide">{LANGUAGE_BADGES[locale]}</span>
           <span className="sr-only">{t('header.languageLabel')}</span>
         </Button>
       </DropdownMenuTrigger>

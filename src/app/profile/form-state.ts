@@ -8,6 +8,7 @@ export type UpdateProfileFormValues = {
   notifyOffers: boolean;
   notifyUpdates: boolean;
   marketingEmails: boolean;
+  preferredLanguage: 'en' | 'ar' | 'ku';
 };
 
 export type UpdateProfileFormState = {
@@ -20,4 +21,14 @@ export const UPDATE_PROFILE_INITIAL_STATE: UpdateProfileFormState = {
   status: 'idle',
   message: null,
   fieldErrors: {},
+};
+
+export type SimpleSettingsActionState = {
+  status: 'idle' | 'success' | 'error';
+  message: string | null;
+};
+
+export const SIMPLE_SETTINGS_INITIAL_STATE: SimpleSettingsActionState = {
+  status: 'idle',
+  message: null,
 };

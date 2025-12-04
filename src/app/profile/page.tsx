@@ -42,12 +42,14 @@ import {
   Settings,
   ShieldCheck,
   Star,
+  User,
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/server';
 import { createTransformedSignedUrls } from '@/lib/storage';
 import ProductCard from '@/components/product-card-new';
 import { getProducts } from '@/lib/services/products';
 import ProfileSettingsForm from './profile-settings-form';
+import AccountSettingsPanel from './account-settings-panel';
 import type { UpdateProfileFormValues } from './form-state';
 type ProfilePageSearchParams = {
   tab?: string;
@@ -56,7 +58,7 @@ type ProfilePageSearchParams = {
 const ALLOWED_TABS = new Set([
   'overview',
   'listings',
-  'reviews',
+  'profile',
   'settings',
 ]);
 
@@ -126,7 +128,8 @@ export default async function ProfilePage({
     notify_messages: boolean | null;
     notify_offers: boolean | null;
     notify_updates: boolean | null;
-    marketing_emails: boolean | null;
+  marketing_emails: boolean | null;
+  preferred_language: string | null;
   };
 
   const { data: profileRow } = await supabase
@@ -147,13 +150,18 @@ export default async function ProfilePage({
       'notify_messages',
       'notify_offers',
       'notify_updates',
-      'marketing_emails',
+        'marketing_emails',
+        'preferred_language',
     ].join(', '),
     )
     .eq('id', user.id)
     .maybeSingle<UserProfileRow>();
 
-  const listings = await getProducts({ sellerId: user.id, includeInactive: true }, 24, 0);
+  const listings = await getProducts(
+    { sellerId: user.id, includeInactive: true, includeSold: true },
+    24,
+    0,
+  );
   const activeListings = listings.filter((listing) => listing.isActive && !listing.isSold);
   const activeListingIds = activeListings.map((listing) => listing.id);
 
@@ -206,6 +214,7 @@ export default async function ProfilePage({
     notifyOffers: profileRow?.notify_offers ?? true,
     notifyUpdates: profileRow?.notify_updates ?? true,
     marketingEmails: profileRow?.marketing_emails ?? false,
+    preferredLanguage: (profileRow?.preferred_language as 'en' | 'ar' | 'ku' | null) ?? 'en',
   };
 
   const settingsInitialValues: UpdateProfileFormValues = {
@@ -218,6 +227,7 @@ export default async function ProfilePage({
     notifyOffers: profileData.notifyOffers,
     notifyUpdates: profileData.notifyUpdates,
     marketingEmails: profileData.marketingEmails,
+    preferredLanguage: profileData.preferredLanguage,
   };
 
   // Attempt to serve a short-lived transformed avatar URL for reliable loading
@@ -307,7 +317,9 @@ export default async function ProfilePage({
                   )}
 
                   <div>
-                    <h1 className="text-2xl font-bold">{profileData.fullName}</h1>
+                    <h1 className="text-2xl font-bold max-w-[260px] mx-auto truncate">
+                      {profileData.fullName}
+                    </h1>
                     {(profileData.rating || profileData.totalRatings) && (
                       <div className="flex items-center justify-center gap-1 mt-1">
                         <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -360,40 +372,11 @@ export default async function ProfilePage({
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Account preferences</CardTitle>
-                <CardDescription>Current visibility and notification defaults.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm">
-                <Separator />
-                <div className="flex items-start gap-3">
-                  <Bell className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium text-foreground">Notifications</p>
-                    <ul className="mt-1 space-y-1 text-muted-foreground">
-                      <li>
-                        {profileData.notifyMessages ? '✓' : '•'} Message alerts
-                      </li>
-                      <li>
-                        {profileData.notifyOffers ? '✓' : '•'} Offer activity
-                      </li>
-                      <li>
-                        {profileData.notifyUpdates ? '✓' : '•'} Listing updates
-                      </li>
-                      <li>
-                        {profileData.marketingEmails ? '✓' : '•'} Marketing emails
-                      </li>
-                    </ul>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
 
           <div className="lg:col-span-2">
-            <Tabs key={activeTab} defaultValue={activeTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+            <Tabs key={activeTab} defaultValue={activeTab} className="space-y-6 -mt-3 sm:-mt-5">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="overview">
                   <LayoutDashboard className="mr-2 h-4 w-4" />
                   Overview
@@ -402,9 +385,9 @@ export default async function ProfilePage({
                   <Package className="mr-2 h-4 w-4" />
                   Listings
                 </TabsTrigger>
-                <TabsTrigger value="reviews">
-                  <Star className="mr-2 h-4 w-4" />
-                  Reviews
+                <TabsTrigger value="profile">
+                  <User className="mr-2 h-4 w-4" />
+                  Profile
                 </TabsTrigger>
                 <TabsTrigger value="settings">
                   <Settings className="mr-2 h-4 w-4" />
@@ -574,8 +557,8 @@ export default async function ProfilePage({
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <h3 className="text-sm font-semibold text-muted-foreground">Latest reviews</h3>
-                        <Link href="/profile?tab=reviews" className="text-sm text-primary hover:underline">
-                          See feedback
+                        <Link href="/profile?tab=profile" className="text-sm text-primary hover:underline">
+                          Manage profile
                         </Link>
                       </div>
                       {reviews.length === 0 ? (
@@ -639,15 +622,16 @@ export default async function ProfilePage({
                 </Card>
               </TabsContent>
 
-              <TabsContent value="reviews" className="space-y-6">
+              <TabsContent value="profile" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Reviews & Feedback</CardTitle>
+                    <CardTitle>Edit Profile</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Update what buyers see on your storefront.
+                    </p>
                   </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-muted-foreground">
-                      Reviews will appear here when buyers leave feedback.
-                    </div>
+                  <CardContent className="space-y-6">
+                    <ProfileSettingsForm initialValues={settingsInitialValues} />
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -656,18 +640,12 @@ export default async function ProfilePage({
                 <Card>
                   <CardHeader>
                     <CardTitle>Account Settings</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Control notifications, language, security, and danger zone actions.
+                    </p>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-6">
-                      <div>
-                        <p className="text-sm font-medium">Account email</p>
-                        <p className="text-sm text-muted-foreground">{profileData.email}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Email changes are managed through your authentication provider.
-                        </p>
-                      </div>
-                      <ProfileSettingsForm initialValues={settingsInitialValues} />
-                    </div>
+                    <AccountSettingsPanel initialValues={settingsInitialValues} currentEmail={profileData.email} />
                   </CardContent>
                 </Card>
               </TabsContent>

@@ -24,7 +24,7 @@ export default async function SimilarItems({ productId, categoryId, viewerId }: 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="font-headline text-2xl">You Might Also Like</CardTitle>
+        <CardTitle className="font-headline text-2xl">Recommended for You</CardTitle>
       </CardHeader>
       <CardContent>
         <Carousel

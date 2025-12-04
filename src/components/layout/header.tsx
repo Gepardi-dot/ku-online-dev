@@ -106,11 +106,11 @@ export default function AppHeader({ user }: AppHeaderProps) {
             {/* Mobile / small-screen logo (original behavior) */}
             <Link
               href="/"
-              className="flex items-center md:hidden"
+              className="group flex items-center md:hidden"
               aria-label="KU-ONLINE home"
             >
               <BrandLogo
-                className="h-16 w-16 overflow-visible transform scale-[2.5] translate-y-[12px]"
+                className="h-16 w-16 overflow-visible transform scale-[2.5] translate-y-[12px] transition-transform duration-200 group-hover:scale-[2.55] group-hover:translate-y-[10px]"
                 size={64}
               />
             </Link>
@@ -121,10 +121,10 @@ export default function AppHeader({ user }: AppHeaderProps) {
             <Link
               href="/"
               aria-label="KU-ONLINE home"
-              className="absolute -left-[4.56rem] top-[calc(50%+7px)] -translate-y-1/2"
+              className="group absolute -left-[4.56rem] top-[calc(50%+10px)] -translate-y-1/2"
             >
               <BrandLogo
-                className="h-16 w-16 overflow-visible transform scale-[2.3]"
+                className="h-16 w-16 overflow-visible transform scale-[2.3] transition-transform duration-200 group-hover:scale-[2.36] group-hover:translate-y-[2px]"
                 size={64}
               />
             </Link>
@@ -242,8 +242,13 @@ export default function AppHeader({ user }: AppHeaderProps) {
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="rounded-full">
-                  <Filter className="h-5 w-5" aria-hidden="true" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full px-3 flex items-center gap-2 min-w-[110px] justify-center"
+                >
+                  <Filter className="h-4 w-4" aria-hidden="true" />
+                  <span className="text-sm font-medium truncate">{currentCityLabel}</span>
                   <span className="sr-only">{t('header.filterLabel')}</span>
                 </Button>
               </DropdownMenuTrigger>

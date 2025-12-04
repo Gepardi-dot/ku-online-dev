@@ -17,6 +17,7 @@ import {
   postedWithinToDate,
   type ProductsFilterValues,
 } from '@/lib/products/filter-params';
+import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 
 interface ProductsSearchParams {
   page?: string;
@@ -39,6 +40,7 @@ interface ProductsContentProps {
   categories: { id: string; name: string }[];
   locations: string[];
   viewerId?: string | null;
+  locale: string;
 }
 
 const PAGE_SIZE = 24;
@@ -53,11 +55,12 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   return { title };
 }
 
-async function ProductsContent({ searchParams, categories, locations, viewerId }: ProductsContentProps) {
+async function ProductsContent({ searchParams, categories, locations, viewerId, locale }: ProductsContentProps) {
   const params = await searchParams;
   const { initialValues, filters, sort, postedWithin, page } = parseProductQueryParams(
     params as unknown as Record<string, string | undefined>,
   );
+  const t = (key: string) => serverTranslate(locale, key);
   const currentPage = page;
   const offset = (currentPage - 1) * PAGE_SIZE;
   const createdAfter = postedWithinToDate(postedWithin);
@@ -79,6 +82,14 @@ async function ProductsContent({ searchParams, categories, locations, viewerId }
   const showTo = count === 0 ? 0 : Math.min(displayOffset + items.length, count);
 
   const baseForQuery: ProductsFilterValues = initialValues;
+  const listingsTitle = t('listings.allTitle');
+  const listingsSubtitle =
+    count === 0
+      ? t('listings.noMatches')
+      : t('listings.showingRange')
+        .replace('{from}', String(showFrom))
+        .replace('{to}', String(showTo))
+        .replace('{total}', String(count));
 
   return (
     <section className="py-12">
@@ -87,18 +98,14 @@ async function ProductsContent({ searchParams, categories, locations, viewerId }
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold">All Listings</h1>
-            <p className="text-muted-foreground">
-              {count === 0
-                ? 'No listings match your filters yet. Try adjusting your search.'
-                : `Showing ${showFrom}-${showTo} of ${count} listing${count === 1 ? '' : 's'}.`}
-            </p>
+            <h1 className="text-3xl font-bold">{listingsTitle}</h1>
+            <p className="text-muted-foreground">{listingsSubtitle}</p>
           </div>
         </div>
 
         {items.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground">
-            No listings available yet. Check back soon!
+            {t('listings.emptyState')}
           </div>
         ) : (
           <ProductsExplorer
@@ -119,6 +126,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
+  const locale = await getServerLocale();
 
   const [categories, locations] = await Promise.all([
     getCategories(),
@@ -129,12 +137,13 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
 
   return (
     <AppLayout user={user}>
-      <Suspense fallback={<div className="container mx-auto px-4 py-12 text-center">Loading listings...</div>}>
+      <Suspense fallback={<div className="container mx-auto px-4 py-12 text-center">{serverTranslate(locale, 'listings.loading')}</div>}>
         <ProductsContent
           searchParams={searchParams}
           categories={categoryOptions}
           locations={locations}
           viewerId={user?.id ?? null}
+          locale={locale}
         />
       </Suspense>
     </AppLayout>

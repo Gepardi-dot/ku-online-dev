@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { toast } from '@/hooks/use-toast';
+import { useLocale } from '@/providers/locale-provider';
 
 type ReportListingDialogProps = {
   productId: string;
@@ -16,11 +17,11 @@ type ReportListingDialogProps = {
 };
 
 const REASONS = [
-  'Scam or fraud',
-  'Prohibited or illegal item',
-  'Offensive or abusive content',
-  'Suspicious account behaviour',
-  'Other',
+  'report.reasonScam',
+  'report.reasonIllegal',
+  'report.reasonOffensive',
+  'report.reasonSuspicious',
+  'report.reasonOther',
 ] as const;
 
 export function ReportListingDialog({ productId, sellerId }: ReportListingDialogProps) {
@@ -28,12 +29,13 @@ export function ReportListingDialog({ productId, sellerId }: ReportListingDialog
   const [submitting, setSubmitting] = useState(false);
   const [reason, setReason] = useState<(typeof REASONS)[number] | ''>('');
   const [details, setDetails] = useState('');
+  const { t } = useLocale();
 
   const handleSubmit = async () => {
     if (!reason) {
       toast({
-        title: 'Choose a reason',
-        description: 'Please select why you are reporting this listing.',
+        title: t('report.selectReason'),
+        description: t('report.selectReasonHint'),
         variant: 'destructive',
       });
       return;
@@ -54,18 +56,15 @@ export function ReportListingDialog({ productId, sellerId }: ReportListingDialog
 
       const payload = await res.json().catch(() => ({}));
       if (!res.ok || !payload?.ok) {
-        const description = typeof payload?.error === 'string'
-          ? payload.error
-          : 'We could not submit your report. Please try again shortly.';
+        const description = typeof payload?.error === 'string' ? payload.error : t('report.submitError');
         toast({
-          title: 'Report not submitted',
+          title: t('report.submitErrorTitle'),
           description,
           variant: 'destructive',
         });
         return;
       }
 
-      // Optionally also attach a user-level report when sellerId is available.
       if (sellerId) {
         await fetch('/api/abuse/report', {
           method: 'POST',
@@ -76,14 +75,12 @@ export function ReportListingDialog({ productId, sellerId }: ReportListingDialog
             reason: `Listing report: ${reason}`,
             details,
           }),
-        }).catch(() => {
-          // User-level report is best-effort; ignore failures here.
-        });
+        }).catch(() => undefined);
       }
 
       toast({
-        title: 'Report submitted',
-        description: 'Thank you for helping keep KU Online safe. Our team will review this listing.',
+        title: t('report.submitSuccessTitle'),
+        description: t('report.submitSuccess'),
       });
       setOpen(false);
       setReason('');
@@ -91,8 +88,8 @@ export function ReportListingDialog({ productId, sellerId }: ReportListingDialog
     } catch (error) {
       console.error('Failed to submit report', error);
       toast({
-        title: 'Report not submitted',
-        description: 'We could not submit your report. Please try again shortly.',
+        title: t('report.submitErrorTitle'),
+        description: t('report.submitError'),
         variant: 'destructive',
       });
     } finally {
@@ -105,22 +102,22 @@ export function ReportListingDialog({ productId, sellerId }: ReportListingDialog
       <DialogTrigger asChild>
         <Button variant="outline" className="w-full">
           <Flag className="mr-2 h-4 w-4" />
-          Report Listing
+          {t('report.button')}
         </Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Report this listing</DialogTitle>
+          <DialogTitle>{t('report.title')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Reason</Label>
+            <Label className="text-sm font-medium">{t('report.reasonLabel')}</Label>
             <RadioGroup value={reason} onValueChange={(value) => setReason(value as (typeof REASONS)[number])}>
               {REASONS.map((option) => (
                 <div key={option} className="flex items-center space-x-2">
                   <RadioGroupItem id={option} value={option} />
                   <Label htmlFor={option} className="text-sm">
-                    {option}
+                    {t(option)}
                   </Label>
                 </div>
               ))}
@@ -128,27 +125,26 @@ export function ReportListingDialog({ productId, sellerId }: ReportListingDialog
           </div>
           <div className="space-y-2">
             <Label htmlFor="report-details" className="text-sm font-medium">
-              Additional details (optional)
+              {t('report.detailsLabel')}
             </Label>
             <Textarea
               id="report-details"
               value={details}
               onChange={(event) => setDetails(event.target.value)}
-              placeholder="Describe what happened, including any links, usernames, or context that can help our team."
+              placeholder={t('report.detailsPlaceholder')}
               rows={4}
             />
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>
-            Cancel
+            {t('report.cancel')}
           </Button>
           <Button variant="destructive" onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'Submitting…' : 'Submit report'}
+            {submitting ? t('report.submitting') : t('report.submit')}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
