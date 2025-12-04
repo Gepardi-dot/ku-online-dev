@@ -233,13 +233,6 @@ export const translations = {
       reasonSuspicious: "Suspicious account behaviour",
       reasonOther: "Other",
     },
-    listings: {
-      allTitle: "All Listings",
-      showingRange: "Showing {from}-{to} of {total} listings.",
-      noMatches: "No listings match your filters yet. Try adjusting your search.",
-      emptyState: "No listings available yet. Check back soon!",
-      loading: "Loading listings...",
-    },
   },
   ar: {
     languageNames: {

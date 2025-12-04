@@ -198,7 +198,7 @@ export default async function ProfilePage({
   const profileData = {
     fullName: profileRow?.full_name ?? user.user_metadata?.full_name ?? 'User',
     avatar: profileRow?.avatar_url ?? user.user_metadata?.avatar_url ?? null,
-    email: user.email,
+    email: user.email ?? 'Not set',
     phone: profileRow?.phone ?? user.user_metadata?.phone ?? null,
     location: profileRow?.location ?? user.user_metadata?.location ?? 'Kurdistan',
     bio:
