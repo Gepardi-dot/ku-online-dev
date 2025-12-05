@@ -540,7 +540,9 @@ export async function searchProducts(
   );
 
   const sortedItems = sortProductsInMemory(orderedItems, sort);
-  await hydrateSellerProfiles(sortedItems);
+  if (!detailError) {
+    await hydrateSellerProfiles(sortedItems);
+  }
   await hydrateProductImages(sortedItems, { transform: { width: 512, resize: 'cover', quality: 80, format: 'webp' } });
   return { items: sortedItems, count: parsedCount };
 }
