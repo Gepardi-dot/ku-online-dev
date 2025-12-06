@@ -23,3 +23,15 @@ export async function register() {
 
   Sentry.init(commonOptions);
 }
+
+export function onRequestError(
+  error: unknown,
+  request: { path: string; method: string; headers: Record<string, string | string[] | undefined> },
+  errorContext: { routerKind: string; routePath: string; routeType: string },
+) {
+  if (!dsn) {
+    return;
+  }
+
+  Sentry.captureRequestError(error, request, errorContext);
+}
