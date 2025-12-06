@@ -1,23 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User, LogOut, Phone, Mail, LayoutDashboard } from 'lucide-react';
+import { User, LogOut, Phone, Mail, LayoutDashboard, Settings } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 import { getPublicEnv } from '@/lib/env-public';
+import { useLocale } from '@/providers/locale-provider';
 
 interface AuthButtonProps {
   user: any;
 }
 
 export default function AuthButton({ user }: AuthButtonProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { t } = useLocale();
   const [isLoading, setIsLoading] = useState(false);
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -26,6 +29,18 @@ export default function AuthButton({ user }: AuthButtonProps) {
   const [otpError, setOtpError] = useState<string | null>(null);
   const supabase = createClient();
   const { NEXT_PUBLIC_SITE_URL } = getPublicEnv();
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ source?: string }>).detail;
+      if (detail?.source !== 'profile-menu') {
+        setMenuOpen(false);
+      }
+    };
+    window.addEventListener('ku-menu-open', handler);
+    return () => window.removeEventListener('ku-menu-open', handler);
+  }, []);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -118,7 +133,15 @@ export default function AuthButton({ user }: AuthButtonProps) {
 
   if (user) {
     return (
-      <DropdownMenu>
+      <DropdownMenu
+        open={menuOpen}
+        onOpenChange={(next) => {
+          setMenuOpen(next);
+          if (next && typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('ku-menu-open', { detail: { source: 'profile-menu' } }));
+          }
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8">
@@ -129,11 +152,16 @@ export default function AuthButton({ user }: AuthButtonProps) {
             </Avatar>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56 mt-2" align="end" sideOffset={8} forceMount>
+        <DropdownMenuContent
+          className="z-[90] w-56 rounded-3xl border border-white/50 bg-gradient-to-br from-white/85 via-white/70 to-primary/10 p-2 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40"
+          align="end"
+          sideOffset={10}
+          forceMount
+        >
           <DropdownMenuItem className="font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none">
-                {user.user_metadata?.full_name || 'User'}
+                {user.user_metadata?.full_name || t('header.userMenu.defaultName')}
               </p>
               <p className="text-xs leading-none text-muted-foreground">
                 {user.email}
@@ -144,13 +172,19 @@ export default function AuthButton({ user }: AuthButtonProps) {
           <DropdownMenuItem asChild>
             <Link href="/profile?tab=overview" className="flex items-center">
               <LayoutDashboard className="mr-2 h-4 w-4" />
-              My Profile
+              {t('header.userMenu.myProfile')}
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/profile?tab=settings" className="flex items-center">
+              <Settings className="mr-2 h-4 w-4" />
+              {t('header.userMenu.settings')}
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />
-            <span>Log out</span>
+            <span>{t('header.userMenu.logout')}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -162,7 +196,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <User className="mr-2 h-4 w-4" />
-          Sign In
+          {t('header.signIn')}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">

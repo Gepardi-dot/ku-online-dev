@@ -35,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useLocale } from "@/providers/locale-provider";
 
 type ProfileSettingsFormProps = {
   initialValues: {
@@ -50,6 +51,7 @@ export function ProfileSettingsForm({ initialValues }: ProfileSettingsFormProps)
     updateProfileAction,
     UPDATE_PROFILE_INITIAL_STATE,
   );
+  const { t } = useLocale();
   const errors = useMemo<UpdateProfileFormState['fieldErrors']>(
     () => state.fieldErrors ?? {},
     [state.fieldErrors],
@@ -77,6 +79,18 @@ export function ProfileSettingsForm({ initialValues }: ProfileSettingsFormProps)
   }, [initialValues.location]);
   const [citySelection, setCitySelection] = useState<MarketCityValue>(initialCitySelection);
   const [isDirty, setIsDirty] = useState(false);
+  const getCityLabel = useCallback(
+    (value: string) => {
+      const key = `header.city.${value.toLowerCase()}`;
+      const translated = t(key);
+      if (translated !== key) {
+        return translated;
+      }
+      const fallback = MARKET_CITY_OPTIONS.find((option) => option.value === value)?.label;
+      return fallback ?? value;
+    },
+    [t],
+  );
 
   const markDirty = useCallback(() => {
     setIsDirty(true);
@@ -90,25 +104,25 @@ export function ProfileSettingsForm({ initialValues }: ProfileSettingsFormProps)
   useEffect(() => {
     if (state.status === "success") {
       toast({
-        title: "Profile updated",
-        description: "Your profile information has been saved.",
+        title: t("profile.form.updatedTitle"),
+        description: t("profile.form.updatedDescription"),
       });
       setIsDirty(false);
     } else if (state.message && Object.keys(errors).length === 0) {
       toast({
-        title: "Update failed",
+        title: t("profile.form.updateFailedTitle"),
         description: state.message,
         variant: "destructive",
       });
     }
-  }, [state.status, state.message, errors]);
+  }, [errors, state.message, state.status, t]);
 
   return (
     <form action={formAction} className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
         <FormField
           id="fullName"
-          label="Full name"
+          label={t("profile.form.fullNameLabel")}
           defaultValue={initialValues.fullName}
           error={errors.fullName}
           onDirty={markDirty}
@@ -116,7 +130,7 @@ export function ProfileSettingsForm({ initialValues }: ProfileSettingsFormProps)
         />
         <FormField
           id="location"
-          label="City"
+          label={t("profile.form.cityLabel")}
           error={errors.location}
           customField={
             <CitySelect
@@ -125,6 +139,8 @@ export function ProfileSettingsForm({ initialValues }: ProfileSettingsFormProps)
                 setCitySelection(nextValue);
                 markDirty();
               }}
+              getCityLabel={getCityLabel}
+              placeholder={t("profile.form.selectCityPlaceholder")}
             />
           }
         >
@@ -138,27 +154,27 @@ export function ProfileSettingsForm({ initialValues }: ProfileSettingsFormProps)
       <div className="grid gap-4 md:grid-cols-2">
         <FormField
           id="phone"
-          label="Phone"
+          label={t("profile.form.phoneLabel")}
           defaultValue={initialValues.phone}
           error={errors.phone}
           onDirty={markDirty}
-          placeholder="+964 750 000 0000"
+          placeholder={t("profile.form.phonePlaceholder")}
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="bio">Bio</Label>
+        <Label htmlFor="bio">{t("profile.form.bioLabel")}</Label>
         <Textarea
           id="bio"
           name="bio"
           defaultValue={initialValues.bio}
-          placeholder="Tell buyers a little about yourself and the items you sell."
+          placeholder={t("profile.form.bioPlaceholder")}
           onChange={(_event) => markDirty()}
           rows={4}
         />
         <FieldError messages={errors.bio} />
         {!initialValues.bio && (
           <p className="text-xs text-muted-foreground">
-            Helpful sellers share what they specialise in and how quickly they respond.
+            {t("profile.form.bioHelper")}
           </p>
         )}
       </div>
@@ -170,9 +186,13 @@ export function ProfileSettingsForm({ initialValues }: ProfileSettingsFormProps)
       )}
 
       <div className="flex items-center gap-3">
-        <SubmitButton canSubmit={isDirty} />
+        <SubmitButton
+          canSubmit={isDirty}
+          label={t("profile.form.save")}
+          pendingLabel={t("profile.form.saving")}
+        />
         <p className="text-xs text-muted-foreground">
-          Changes apply to your Supabase profile and watchlist for future sessions.
+          {t("profile.form.changesHint")}
         </p>
       </div>
     </form>
@@ -238,11 +258,19 @@ function FieldError({ messages }: { messages?: string[] }) {
   );
 }
 
-function SubmitButton({ canSubmit }: { canSubmit: boolean }) {
+function SubmitButton({
+  canSubmit,
+  label,
+  pendingLabel,
+}: {
+  canSubmit: boolean;
+  label: string;
+  pendingLabel: string;
+}) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" disabled={pending || !canSubmit}>
-      {pending ? "Saving..." : "Save changes"}
+      {pending ? pendingLabel : label}
     </Button>
   );
 }
@@ -250,19 +278,23 @@ function SubmitButton({ canSubmit }: { canSubmit: boolean }) {
 function CitySelect({
   value,
   onValueChange,
+  getCityLabel,
+  placeholder,
 }: {
   value: MarketCityValue;
   onValueChange: (value: MarketCityValue) => void;
+  getCityLabel: (value: string) => string;
+  placeholder: string;
 }) {
   return (
     <Select value={value} onValueChange={(next) => onValueChange(next as MarketCityValue)}>
       <SelectTrigger id="location">
-        <SelectValue placeholder="Select city" />
+        <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
         {MARKET_CITY_OPTIONS.map((option) => (
           <SelectItem key={option.value} value={option.value}>
-            {option.label}
+            {getCityLabel(option.value)}
           </SelectItem>
         ))}
       </SelectContent>

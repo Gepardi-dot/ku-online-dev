@@ -232,25 +232,30 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
   const ebayTriggerClass =
     "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E4E4E4] bg-white text-[#1F1C1C] transition hover:border-[#E67E22] hover:text-[#E67E22] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/50 focus-visible:ring-offset-2";
 
-  return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
-      <PopoverTrigger asChild>
-        <button type="button" className={ebayTriggerClass} aria-label={strings.label}>
-          <Bell className="h-6 w-6" strokeWidth={1.6} />
-          {indicator}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between border-b px-4 py-3">
-          <div className="text-sm font-semibold">{strings.label}</div>
+    return (
+      <Popover open={open} onOpenChange={handleOpenChange}>
+        <PopoverTrigger asChild>
+          <button type="button" className={ebayTriggerClass} aria-label={strings.label}>
+            <Bell className="h-6 w-6" strokeWidth={1.6} />
+            {indicator}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          side="bottom"
+          sideOffset={12}
+          className="z-[90] w-[360px] max-w-[calc(100vw-1.5rem)] rounded-3xl border border-white/50 bg-gradient-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40"
+        >
+        <div className="flex items-center justify-between rounded-2xl border border-white/30 bg-white/60 px-4 py-3 shadow-sm">
+          <div className="text-sm font-semibold text-[#2D2D2D]">{strings.label}</div>
           {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={handleMarkAllRead} className="h-8">
+            <Button variant="ghost" size="sm" onClick={handleMarkAllRead} className="h-8 text-[#E67E22]">
               {strings.markAll}
             </Button>
           )}
         </div>
-        <ScrollArea className="h-72">
-          <div className="space-y-1 px-2 py-2">
+        <ScrollArea className="mt-3 max-h-[420px]">
+          <div className="space-y-2 px-2 py-3">
             {loading ? (
               <div className="flex h-48 items-center justify-center text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -280,8 +285,8 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                     key={notification.id}
                     type="button"
                     onClick={() => void handleNotificationClick(notification)}
-                    className={`w-full rounded-md px-3 py-2 text-left text-sm transition hover:bg-muted ${
-                      notification.isRead ? "text-muted-foreground" : isListing ? "bg-rose-50" : "bg-primary/5"
+                    className={`w-full rounded-2xl border border-white/40 bg-white/70 px-3 py-3 text-left text-sm transition hover:border-white/60 hover:bg-white/80 ${
+                      notification.isRead ? "text-muted-foreground" : "shadow-[0_10px_30px_rgba(15,23,42,0.12)]"
                     }`}
                   >
                     {isListing ? (

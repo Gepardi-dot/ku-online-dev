@@ -21,11 +21,10 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogClose, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import BrandLogo from "@/components/brand-logo";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   countUnreadMessages,
   deleteConversation,
@@ -82,7 +81,6 @@ export default function MessagesMenu({
   const [draft, setDraft] = useState("");
   const [isMobile, setIsMobile] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "thread">("list");
-  const [topOffset, setTopOffset] = useState<number | null>(null);
   const [cardHeight, setCardHeight] = useState<number>(420);
 
   const conversationsRef = useRef<ConversationSummary[]>([]);
@@ -131,7 +129,6 @@ export default function MessagesMenu({
       const maxHeight = isSmallViewport ? Math.min(640, viewportHeight - offsetTop - extraGap) : 420;
       const clamped = Math.max(minHeight, Math.min(maxHeight, available));
 
-      setTopOffset(offsetTop);
       setCardHeight(clamped);
     };
 
@@ -498,7 +495,9 @@ export default function MessagesMenu({
       : null;
 
     const target = conversation.sellerId === userId ? conversation.buyer : conversation.seller;
-    const avatarLetter = target?.fullName ? target.fullName[0] : "U";
+    const targetName = target?.fullName?.trim() || target?.id || "Unknown user";
+    const avatarLetter = targetName.charAt(0).toUpperCase() || "U";
+    const avatarUrl = target?.avatarUrl ?? null;
 
     const preview = conversation.lastMessage ?? "";
 
@@ -520,7 +519,8 @@ export default function MessagesMenu({
           className="flex flex-1 items-center gap-3 text-left"
         >
           <Avatar className="h-9 w-9">
-            <AvatarFallback>{avatarLetter}</AvatarFallback>
+            <AvatarImage src={avatarUrl ?? undefined} alt={targetName} />
+            <AvatarFallback className="bg-[#F6ECE0] text-[#2D2D2D]">{avatarLetter}</AvatarFallback>
           </Avatar>
           <div className="flex flex-1 items-start justify-between gap-2">
             <div className="flex-1">
@@ -668,7 +668,7 @@ export default function MessagesMenu({
 
     return (
       <div className="flex h-full flex-col rounded-[24px] bg-transparent">
-        <div className="flex items-center gap-2 border-b border-[#D9C4AF] px-5 py-3">
+        <div className="flex items-center gap-3 border-b border-[#D9C4AF] px-5 py-3">
           {showBackButton && (
             <button
               type="button"
@@ -679,53 +679,34 @@ export default function MessagesMenu({
               <span>Back</span>
             </button>
           )}
-          <div className="flex flex-col">
-            <p className="text-sm font-semibold text-[#2D2D2D]">
-              {counterpart?.fullName ? `Chat with ${counterpart.fullName}` : "Chat"}
-            </p>
-            <div className="mt-1 flex items-center gap-2 text-xs text-[#777777]">
-              <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              <span>Status</span>
-              <span className="text-[#C4A98A]">{"\u00B7"}</span>
-              <span>On</span>
-            </div>
-          </div>
-        </div>
-
-        {product && (
-          <div className="border-b border-[#D9C4AF] bg-transparent px-5 py-3">
-            <Link
-              href={`/product/${product.id}`}
-              className="inline-flex items-center gap-3 rounded-2xl border border-[#D9C4AF] bg-[rgba(255,250,245,0.85)] px-3 py-2 shadow-sm"
-            >
-              <div className="relative h-12 w-12 overflow-hidden rounded-xl bg-[#EBDAC8]">
+          <div className="flex flex-1 items-center gap-3">
+            {product && (
+              <Link
+                href={`/product/${product.id}`}
+                className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-[#D9C4AF] bg-[#EBDAC8]"
+              >
                 {productImageSrc ? (
-                  <Image
-                    src={productImageSrc}
-                    alt={product.title}
-                    fill
-                    className="object-cover"
-                  />
+                  <Image src={productImageSrc} alt={product.title} fill className="object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-[10px] text-[#777777]">
                     No image
                   </div>
                 )}
+              </Link>
+            )}
+            <div className="flex flex-col">
+              <p className="text-sm font-semibold text-[#2D2D2D]">
+                {counterpart?.fullName ? `Chat with ${counterpart.fullName}` : "Chat"}
+              </p>
+              <div className="mt-1 flex items-center gap-2 text-xs text-[#777777]">
+                <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                <span>Status</span>
+                <span className="text-[#C4A98A]">{"\u00B7"}</span>
+                <span>On</span>
               </div>
-              <div className="flex-1">
-                <p className="line-clamp-1 text-sm font-semibold text-[#2D2D2D]">
-                  {product.title}
-                </p>
-                <p className="line-clamp-1 text-xs text-[#E67E22]">
-                  {typeof product.price === "number"
-                    ? `${product.price.toLocaleString(locale)} ${product.currency ?? "IQD"}`
-                    : product.currency ?? null}
-                </p>
-              </div>
-              <ArrowRight className="h-4 w-4 text-[#777777]" />
-            </Link>
+            </div>
           </div>
-        )}
+        </div>
 
         <ScrollArea className="flex-1 px-5 py-4">
           {renderMessages()}
@@ -767,11 +748,11 @@ export default function MessagesMenu({
     );
   };
 
-  // --- Render root dialog ---
+  // --- Render root dropdown ---
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
         {compactTrigger ? (
           <button
             type="button"
@@ -804,69 +785,62 @@ export default function MessagesMenu({
             {indicator}
           </button>
         )}
-      </DialogTrigger>
+      </PopoverTrigger>
+      <PopoverAnchor asChild>
+        <div className="fixed left-1/2 top-[56px] -translate-x-1/2 pointer-events-none" aria-hidden />
+      </PopoverAnchor>
 
-      <DialogContent className="!top-0 !left-0 !h-screen !w-full !max-w-none !translate-x-0 !translate-y-0 !border-none !bg-transparent !p-0 !shadow-none flex items-start justify-center">
-        <DialogTitle className="sr-only">{strings.label}</DialogTitle>
-        <div
-          className="relative flex min-h-[380px] w-full max-w-5xl items-start justify-center px-4 pb-6 sm:px-6"
-          style={{ paddingTop: Math.max(0, ((topOffset ?? 120) + 8 - 24)) }}
-        >
-          {/* Soft glow behind card */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-[70vh] w-[70vw] rounded-full bg-white/15 blur-3xl" />
+      <PopoverContent
+        side="bottom"
+        align="center"
+        sideOffset={12}
+        className="z-[90] w-[960px] max-w-[min(1100px,calc(100vw-1.5rem))] rounded-[32px] border border-white/50 bg-gradient-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40"
+      >
+        {!canLoad ? (
+          <div className="relative flex h-[380px] w-full items-center justify-center rounded-[24px] px-6 text-center text-sm text-[#777777]">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+              aria-label={strings.label}
+            >
+              <X className="h-4 w-4" />
+            </button>
+            {strings.loginRequired}
           </div>
-
-          {/* KU-ONLINE watermark logo */}
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <BrandLogo size={640} />
-          </div>
-
-          {/* Glass card */}
-          {!canLoad ? (
-            <div className="relative z-10 flex h-[380px] w-full max-w-5xl items-center justify-center rounded-[32px] border border-white/60 bg-[rgba(255,250,245,0.35)] px-6 text-center text-sm text-[#777777] shadow-[0_24px_80px_rgba(15,23,42,0.25)] backdrop-blur">
-              <DialogClose
-                type="button"
-                className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-[rgba(255,250,245,0.95)] text-[#2D2D2D] shadow-[0_10px_30px_rgba(15,23,42,0.25)] transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-                aria-label={strings.label}
-              >
-                <X className="h-4 w-4" />
-              </DialogClose>
-              {strings.loginRequired}
-            </div>
-          ) : (
-            <div className="relative z-10 mx-auto flex w-full max-w-5xl flex-col rounded-[32px] border border-white/60 bg-[rgba(255,250,245,0.35)] p-4 shadow-[0_24px_80px_rgba(15,23,42,0.25)] backdrop-blur md:flex-row md:gap-4">
-              <DialogClose
-                type="button"
-                className="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/80 bg-[rgba(255,250,245,0.95)] text-[#2D2D2D] shadow-[0_10px_30px_rgba(15,23,42,0.25)] transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/70 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
-                aria-label={strings.label}
-              >
-                <X className="h-4 w-4" />
-              </DialogClose>
-              {isMobile ? (
-                mobileView === "list" ? (
-                  <div className="w-full" style={{ height: cardHeight }}>
-                    {renderConversationListSection()}
-                  </div>
-                ) : (
-                  <div className="w-full" style={{ height: cardHeight }}>
-                    {renderConversationThreadSection(true)}
-                  </div>
-                )
+        ) : (
+          <div className="relative mx-auto flex w-full flex-col gap-4 p-1 md:flex-row">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+              aria-label={strings.label}
+            >
+              <X className="h-4 w-4" />
+            </button>
+            {isMobile ? (
+              mobileView === "list" ? (
+                <div className="w-full" style={{ height: cardHeight }}>
+                  {renderConversationListSection()}
+                </div>
               ) : (
-                <>
-                  <div className="w-[35%] min-w-[220px]" style={{ height: cardHeight }}>
-                    {renderConversationListSection()}
-                  </div>
-                  <div className="flex-1" style={{ height: cardHeight }}>
-                    {renderConversationThreadSection(false)}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+                <div className="w-full" style={{ height: cardHeight }}>
+                  {renderConversationThreadSection(true)}
+                </div>
+              )
+            ) : (
+              <>
+                <div className="w-[35%] min-w-[240px]" style={{ height: cardHeight }}>
+                  {renderConversationListSection()}
+                </div>
+                <div className="flex-1" style={{ height: cardHeight }}>
+                  {renderConversationThreadSection(false)}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

@@ -6,8 +6,10 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
+import { useRouter } from "next/navigation";
 import {
   defaultLocale,
   Locale,
@@ -36,6 +38,8 @@ function applyDocumentLocale(nextLocale: Locale) {
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(defaultLocale);
+  const router = useRouter();
+  const hasHydrated = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -68,15 +72,22 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
 
   const setLocale = useCallback(
     (nextLocale: Locale) => {
+      if (nextLocale === locale) {
+        return;
+      }
       setLocaleState(nextLocale);
-      persistLocale(nextLocale);
     },
-    [persistLocale],
+    [locale],
   );
 
   useEffect(() => {
     persistLocale(locale);
-  }, [locale, persistLocale]);
+    if (!hasHydrated.current) {
+      hasHydrated.current = true;
+      return;
+    }
+    router.refresh();
+  }, [locale, persistLocale, router]);
 
   const messages = translations[locale];
 
