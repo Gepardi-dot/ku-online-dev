@@ -106,11 +106,11 @@ export default function AppHeader({ user }: AppHeaderProps) {
             {/* Mobile / small-screen logo (original behavior) */}
             <Link
               href="/"
-              className="group flex items-center md:hidden"
+              className="group relative flex h-16 w-16 items-center justify-center md:hidden"
               aria-label="KU-ONLINE home"
             >
               <BrandLogo
-                className="h-16 w-16 overflow-visible transform scale-[2.5] translate-y-[12px] transition-transform duration-200 group-hover:scale-[2.55] group-hover:translate-y-[10px]"
+                className="h-16 w-16 overflow-visible transform scale-[2.5] translate-y-[12px] transition-transform duration-200 group-hover:scale-[2.55] group-hover:translate-y-[10px] pointer-events-none"
                 size={64}
               />
             </Link>
@@ -121,10 +121,10 @@ export default function AppHeader({ user }: AppHeaderProps) {
             <Link
               href="/"
               aria-label="KU-ONLINE home"
-              className="group absolute -left-[4.56rem] top-[calc(50%+10px)] -translate-y-1/2"
+              className="group absolute -left-[4.56rem] top-[calc(50%+10px)] -translate-y-1/2 h-16 w-16 flex items-center justify-center"
             >
               <BrandLogo
-                className="h-16 w-16 overflow-visible transform scale-[2.3] transition-transform duration-200 group-hover:scale-[2.36] group-hover:translate-y-[2px]"
+                className="h-16 w-16 overflow-visible transform scale-[2.3] transition-transform duration-200 group-hover:scale-[2.36] group-hover:translate-y-[2px] pointer-events-none"
                 size={64}
               />
             </Link>

@@ -25,6 +25,7 @@ import {
   type UpdateProfileFormState,
   type UpdateProfileFormValues,
 } from './form-state';
+import { useLocale } from '@/providers/locale-provider';
 
 type Props = {
   initialValues: UpdateProfileFormValues;
@@ -47,6 +48,7 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
   const [emailState, emailAction] = useActionState(requestEmailChangeAction, SIMPLE_SETTINGS_INITIAL_STATE);
   const [passwordState, passwordAction] = useActionState(changePasswordAction, SIMPLE_SETTINGS_INITIAL_STATE);
   const { toast } = useToast();
+  const { t, messages } = useLocale();
 
   const [notifyMessages, setNotifyMessages] = useState(initialValues.notifyMessages);
   const [notifyOffers, setNotifyOffers] = useState(initialValues.notifyOffers);
@@ -55,13 +57,20 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
   const [preferredLanguage, setPreferredLanguage] = useState(initialValues.preferredLanguage ?? 'en');
 
   useEffect(() => {
-    if (state.status === 'success' && state.message) {
-      toast({ title: 'Preferences updated', description: state.message });
+    if (state.status === 'success') {
+      toast({
+        title: t('profile.settingsPanel.preferencesUpdatedTitle'),
+        description: state.message || t('profile.settingsPanel.preferencesUpdatedDescription'),
+      });
     }
     if (state.status === 'error' && state.message && Object.keys(state.fieldErrors ?? {}).length === 0) {
-      toast({ title: 'Update failed', description: state.message, variant: 'destructive' });
+      toast({
+        title: t('profile.settingsPanel.preferencesErrorTitle'),
+        description: state.message,
+        variant: 'destructive',
+      });
     }
-  }, [state, toast]);
+  }, [state, toast, t]);
 
   const hasGlobalError =
     state.status === 'error' && state.message && Object.keys(state.fieldErrors ?? {}).length > 0;
@@ -71,34 +80,36 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
       <form action={formAction} className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Notifications</CardTitle>
-            <p className="text-sm text-muted-foreground">Choose how we keep you informed.</p>
+            <CardTitle>{t('profile.settingsPanel.notificationsTitle')}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {t('profile.settingsPanel.notificationsDescription')}
+            </p>
           </CardHeader>
           <CardContent className="space-y-3">
             <ToggleRow
-              label="Message alerts"
-              description="Receive instant notifications when buyers contact you."
+              label={t('profile.settingsPanel.toggles.messageAlerts.title')}
+              description={t('profile.settingsPanel.toggles.messageAlerts.description')}
               checked={notifyMessages}
               onCheckedChange={setNotifyMessages}
               name="notifyMessages"
             />
             <ToggleRow
-              label="Offer activity"
-              description="Stay updated about offers and counter offers on your listings."
+              label={t('profile.settingsPanel.toggles.offerActivity.title')}
+              description={t('profile.settingsPanel.toggles.offerActivity.description')}
               checked={notifyOffers}
               onCheckedChange={setNotifyOffers}
               name="notifyOffers"
             />
             <ToggleRow
-              label="Listing updates"
-              description="Get alerts about expiring or promoted listings."
+              label={t('profile.settingsPanel.toggles.listingUpdates.title')}
+              description={t('profile.settingsPanel.toggles.listingUpdates.description')}
               checked={notifyUpdates}
               onCheckedChange={setNotifyUpdates}
               name="notifyUpdates"
             />
             <ToggleRow
-              label="Marketing emails"
-              description="Occasional tips, promos, and marketplace news."
+              label={t('profile.settingsPanel.toggles.marketingEmails.title')}
+              description={t('profile.settingsPanel.toggles.marketingEmails.description')}
               checked={marketingEmails}
               onCheckedChange={setMarketingEmails}
               name="marketingEmails"
@@ -108,22 +119,24 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
 
         <Card>
           <CardHeader>
-            <CardTitle>Language</CardTitle>
-            <p className="text-sm text-muted-foreground">Controls the default language across the app.</p>
+            <CardTitle>{t('profile.settingsPanel.languageTitle')}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {t('profile.settingsPanel.languageDescription')}
+            </p>
           </CardHeader>
           <CardContent className="max-w-xs space-y-2">
-            <Label htmlFor="preferredLanguage">Preferred language</Label>
+            <Label htmlFor="preferredLanguage">{t('profile.settingsPanel.languageLabel')}</Label>
             <Select
               value={preferredLanguage}
               onValueChange={(value) => setPreferredLanguage(value as 'en' | 'ar' | 'ku')}
             >
               <SelectTrigger id="preferredLanguage">
-                <SelectValue placeholder="Choose a language" />
+                <SelectValue placeholder={t('profile.settingsPanel.languagePlaceholder')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="en">English</SelectItem>
-                <SelectItem value="ar">العربية</SelectItem>
-                <SelectItem value="ku">Kurdî</SelectItem>
+                <SelectItem value="en">{messages.languageNames.en}</SelectItem>
+                <SelectItem value="ar">{messages.languageNames.ar}</SelectItem>
+                <SelectItem value="ku">{messages.languageNames.ku}</SelectItem>
               </SelectContent>
             </Select>
             <input type="hidden" name="preferredLanguage" value={preferredLanguage} />
@@ -131,24 +144,34 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
         </Card>
 
         <div className="flex flex-col items-end gap-2">
-          <SubmitButton />
+          <SubmitButton
+            label={t('profile.settingsPanel.save')}
+            pendingLabel={t('profile.settingsPanel.saving')}
+          />
           {hasGlobalError ? <p className="text-sm text-destructive">{state.message}</p> : null}
         </div>
       </form>
 
       <Card>
         <CardHeader>
-          <CardTitle>Account email</CardTitle>
+          <CardTitle>{t('profile.settingsPanel.accountEmailTitle')}</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Current email: <span className="font-medium text-foreground">{currentEmail}</span>. We’ll send a confirmation
-            link to the new address.
+            {t('profile.settingsPanel.accountEmailDescription').replace('{email}', currentEmail)}
           </p>
         </CardHeader>
         <CardContent>
           <form action={emailAction} className="space-y-3 max-w-md">
-            <Input type="email" name="newEmail" placeholder="new-email@example.com" required />
+            <Input
+              type="email"
+              name="newEmail"
+              placeholder={t('profile.settingsPanel.accountEmailPlaceholder')}
+              required
+            />
             <div className="flex items-center gap-3">
-              <NamedSubmitButton label="Send confirmation" pendingLabel="Sending..." />
+              <NamedSubmitButton
+                label={t('profile.settingsPanel.sendConfirmation')}
+                pendingLabel={t('profile.settingsPanel.sendingConfirmation')}
+              />
               {emailState.message ? (
                 <p
                   className={`text-sm ${
@@ -165,21 +188,26 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
 
       <Card>
         <CardHeader>
-          <CardTitle>Password</CardTitle>
-          <p className="text-sm text-muted-foreground">Use a strong password that you don’t reuse elsewhere.</p>
+          <CardTitle>{t('profile.settingsPanel.passwordTitle')}</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            {t('profile.settingsPanel.passwordDescription')}
+          </p>
         </CardHeader>
         <CardContent>
           <form action={passwordAction} className="space-y-3 max-w-md">
             <div className="space-y-2">
-              <Label htmlFor="newPassword">New password</Label>
+              <Label htmlFor="newPassword">{t('profile.settingsPanel.newPasswordLabel')}</Label>
               <Input type="password" name="newPassword" id="newPassword" minLength={8} required />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm new password</Label>
+              <Label htmlFor="confirmPassword">{t('profile.settingsPanel.confirmPasswordLabel')}</Label>
               <Input type="password" name="confirmPassword" id="confirmPassword" minLength={8} required />
             </div>
             <div className="flex items-center gap-3">
-              <NamedSubmitButton label="Update password" pendingLabel="Updating..." />
+              <NamedSubmitButton
+                label={t('profile.settingsPanel.updatePassword')}
+                pendingLabel={t('profile.settingsPanel.updatingPassword')}
+              />
               {passwordState.message ? (
                 <p
                   className={`text-sm ${
@@ -196,15 +224,15 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-destructive">Danger zone</CardTitle>
-          <p className="text-sm text-muted-foreground">Permanently delete your account and marketplace data.</p>
+          <CardTitle className="text-destructive">{t('profile.settingsPanel.dangerZoneTitle')}</CardTitle>
+          <p className="text-sm text-muted-foreground">{t('profile.settingsPanel.dangerZoneDescription')}</p>
         </CardHeader>
         <CardContent>
           <Button
             type="button"
             variant="destructive"
             onClick={async () => {
-              if (!confirm('This will permanently delete your account. Continue?')) return;
+              if (!confirm(t('profile.settingsPanel.deleteConfirm'))) return;
               try {
                 const res = await fetch('/api/account/delete', {
                   method: 'POST',
@@ -217,11 +245,15 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
                 window.location.href = '/';
               } catch (err) {
                 console.error('Delete account failed', err);
-                toast({ title: 'Delete failed', description: 'Please try again shortly.', variant: 'destructive' });
+                toast({
+                  title: t('profile.settingsPanel.deleteFailedTitle'),
+                  description: t('profile.settingsPanel.deleteFailedDescription'),
+                  variant: 'destructive',
+                });
               }
             }}
           >
-            Delete my account
+            {t('profile.settingsPanel.deleteAccount')}
           </Button>
         </CardContent>
       </Card>
@@ -242,12 +274,18 @@ function ToggleRow({ label, description, checked, onCheckedChange, name }: Toggl
   );
 }
 
-function SubmitButton() {
+function SubmitButton({
+  label,
+  pendingLabel,
+}: {
+  label: string;
+  pendingLabel: string;
+}) {
   const { pending } = useFormStatus();
 
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? 'Saving…' : 'Save changes'}
+      {pending ? pendingLabel : label}
     </Button>
   );
 }

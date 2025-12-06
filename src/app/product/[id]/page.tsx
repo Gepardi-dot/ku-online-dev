@@ -89,6 +89,21 @@ export default async function ProductPage({ params }: ProductPageProps) {
     return formatter.format(price).replace(/IQD/g, currencyLabel).trim();
   };
 
+  const conditionLabels: Record<string, string> = {
+    'new': t('filters.conditionNew'),
+    'used - like new': t('filters.conditionLikeNew'),
+    'used - good': t('filters.conditionGood'),
+    'used - fair': t('filters.conditionFair'),
+  };
+
+  const getConditionLabel = (value: string | null | undefined) => {
+    if (!value) {
+      return t('product.conditionUnknown');
+    }
+    const normalized = value.trim().toLowerCase();
+    return conditionLabels[normalized] ?? value;
+  };
+
   const getConditionColor = (condition: string | null | undefined) => {
     switch (condition) {
       case 'New':
@@ -201,7 +216,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   <h1 dir="auto" className="text-2xl font-bold bidi-auto">{product.title}</h1>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge className={`text-white ${getConditionColor(product.condition)}`}>
-                      {product.condition ?? t('product.conditionUnknown')}
+                      {getConditionLabel(product.condition)}
                     </Badge>
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Eye className="h-4 w-4" />

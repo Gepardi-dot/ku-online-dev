@@ -1,5 +1,6 @@
 'use client'
 
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -22,9 +23,30 @@ const LANGUAGE_BADGES: Record<Locale, string> = {
 
 export default function LanguageSwitcher() {
   const { locale, setLocale, messages, t } = useLocale();
+  const [open, setOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ source?: string }>).detail;
+      if (detail?.source !== 'language-switcher') {
+        setOpen(false);
+      }
+    };
+    window.addEventListener('ku-menu-open', handler);
+    return () => window.removeEventListener('ku-menu-open', handler);
+  }, []);
 
   return (
-    <DropdownMenu>
+    <DropdownMenu
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (next && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ku-menu-open', { detail: { source: 'language-switcher' } }));
+        }
+      }}
+    >
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
@@ -36,7 +58,11 @@ export default function LanguageSwitcher() {
           <span className="sr-only">{t('header.languageLabel')}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
+      <DropdownMenuContent
+        align="end"
+        sideOffset={4}
+        className="z-[90] w-44 rounded-3xl border border-white/50 bg-gradient-to-br from-white/85 via-white/70 to-primary/10 p-2 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40"
+      >
         <DropdownMenuLabel>{t('header.languageLabel')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {SUPPORTED_LANGUAGES.map((code) => (

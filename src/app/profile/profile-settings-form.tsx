@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useFormStatus } from 'react-dom';
+import { useLocale } from '@/providers/locale-provider';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +40,7 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
     UPDATE_PROFILE_INITIAL_STATE,
   );
   const { toast } = useToast();
+  const { t } = useLocale();
   const { NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET } = useMemo(() => getPublicEnv(), []);
 
   const [notifyMessages, setNotifyMessages] = useState(initialValues.notifyMessages);
@@ -62,19 +64,19 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
   useEffect(() => {
     if (state.status === 'success' && state.message) {
       toast({
-        title: 'Profile updated',
-        description: state.message,
+        title: t('profile.form.updatedTitle'),
+        description: t('profile.form.updatedDescription'),
       });
     }
 
     if (state.status === 'error' && state.message && Object.keys(state.fieldErrors ?? {}).length === 0) {
       toast({
-        title: 'Profile update failed',
+        title: t('profile.form.updateFailedTitle'),
         description: state.message,
         variant: 'destructive',
       });
     }
-  }, [state, toast]);
+  }, [state, toast, t]);
 
   useEffect(() => {
     setNotifyMessages(initialValues.notifyMessages);
@@ -100,20 +102,22 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
     <form action={formAction} className="space-y-10" id="profile-settings-form">
       <section className="space-y-6">
         <div>
-          <h3 className="text-sm font-medium text-foreground">Avatar</h3>
-          <p className="text-sm text-muted-foreground">A clear photo helps buyers recognize you.</p>
+          <h3 className="text-sm font-medium text-foreground">{t('profile.form.avatarTitle')}</h3>
+          <p className="text-sm text-muted-foreground">{t('profile.form.avatarHelper')}</p>
         </div>
         <div className="flex items-center gap-4">
           <div className="relative h-16 w-16 overflow-hidden rounded-full bg-muted">
             {avatarPreview ? (
-              <NextImage src={avatarPreview} alt="Avatar" fill className="object-cover" />
+              <NextImage src={avatarPreview} alt={t('profile.form.avatarAlt')} fill className="object-cover" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">No avatar</div>
+              <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                {t('profile.form.noAvatar')}
+              </div>
             )}
           </div>
           <div className="flex items-center gap-2">
             <Button type="button" variant="secondary" disabled={avatarUploading} onClick={() => avatarInputRef.current?.click()}>
-              {avatarUploading ? 'Uploading...' : 'Upload avatar'}
+              {avatarUploading ? t('profile.form.uploadingAvatar') : t('profile.form.uploadAvatar')}
             </Button>
             <input id="avatar-file-input" ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
               const file = e.target.files?.[0];
@@ -135,15 +139,15 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
       </section>
       <section id="profile-details" className="space-y-6">
         <div>
-          <h3 className="text-sm font-semibold text-foreground">Profile details</h3>
+          <h3 className="text-sm font-semibold text-foreground">{t('profile.form.detailsTitle')}</h3>
           <p className="text-sm text-muted-foreground">
-            Update what buyers see on your storefront and how they can reach you.
+            {t('profile.form.detailsDescription')}
           </p>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="fullName">Full name</Label>
+            <Label htmlFor="fullName">{t('profile.form.fullNameLabel')}</Label>
             <Input
               id="fullName"
               name="fullName"
@@ -154,35 +158,35 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
             <FieldErrors errors={state.fieldErrors?.fullName} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone (optional)</Label>
+            <Label htmlFor="phone">{t('profile.form.phoneOptionalLabel')}</Label>
             <Input
               id="phone"
               name="phone"
               defaultValue={initialValues.phone ?? ''}
-              placeholder="+964 750 000 0000"
+              placeholder={t('profile.form.phonePlaceholder')}
             />
             <FieldErrors errors={state.fieldErrors?.phone} />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="location">Location</Label>
+          <Label htmlFor="location">{t('profile.form.cityLabel')}</Label>
           <Input
             id="location"
             name="location"
             defaultValue={initialValues.location ?? ''}
-            placeholder="Erbil, Kurdistan"
+            placeholder={t('profile.form.locationPlaceholder')}
           />
           <FieldErrors errors={state.fieldErrors?.location} />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="bio">Bio</Label>
+          <Label htmlFor="bio">{t('profile.form.bioLabel')}</Label>
           <Textarea
             id="bio"
             name="bio"
             defaultValue={initialValues.bio ?? ''}
-            placeholder="Tell buyers a little about yourself."
+            placeholder={t('profile.form.bioPlaceholder')}
             rows={4}
           />
           <FieldErrors errors={state.fieldErrors?.bio} />
@@ -198,11 +202,11 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
       <Separator />
       <section className="space-y-3">
         <div>
-          <h3 className="text-sm font-medium text-destructive">Danger zone</h3>
-          <p className="text-sm text-muted-foreground">Permanently delete your account and data.</p>
+          <h3 className="text-sm font-medium text-destructive">{t('profile.settingsPanel.dangerZoneTitle')}</h3>
+          <p className="text-sm text-muted-foreground">{t('profile.settingsPanel.dangerZoneDescription')}</p>
         </div>
         <Button type="button" variant="destructive" onClick={async () => {
-          if (!confirm('This will permanently delete your account. Continue?')) return;
+          if (!confirm(t('profile.settingsPanel.deleteConfirm'))) return;
           try {
             const res = await fetch('/api/account/delete', { method: 'POST', headers: { 'x-reconfirm': 'delete' } });
             if (!res.ok) {
@@ -212,16 +216,20 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
             window.location.href = '/';
           } catch (err) {
             console.error('Delete account failed', err);
-            toast({ title: 'Delete failed', description: 'Please try again shortly.', variant: 'destructive' });
+            toast({
+              title: t('profile.settingsPanel.deleteFailedTitle'),
+              description: t('profile.settingsPanel.deleteFailedDescription'),
+              variant: 'destructive',
+            });
           }
-        }}>Delete my account</Button>
+        }}>{t('profile.settingsPanel.deleteAccount')}</Button>
       </section>
 
       {/* Cropper Dialog */}
       {cropOpen && cropImageUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
           <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-lg">
-            <h4 className="mb-2 text-sm font-semibold">Crop your avatar</h4>
+            <h4 className="mb-2 text-sm font-semibold">{t('profile.form.cropTitle')}</h4>
             <div
               className="relative mx-auto my-2 h-72 w-72 overflow-hidden rounded-full bg-muted"
               onPointerMove={(e) => {
@@ -275,7 +283,13 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
               />
             </div>
             <div className="mt-4 flex items-center justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => { setCropOpen(false); URL.revokeObjectURL(cropImageUrl); setCropImageUrl(null); }}>Cancel</Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => { setCropOpen(false); URL.revokeObjectURL(cropImageUrl); setCropImageUrl(null); }}
+              >
+                {t('profile.form.cancel')}
+              </Button>
               <Button
                 type="button"
                 onClick={async () => {
@@ -340,17 +354,21 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
                     setCropOpen(false);
                     URL.revokeObjectURL(cropImageUrl);
                     setCropImageUrl(null);
-                    toast({ title: 'Avatar updated' });
+                    toast({ title: t('profile.form.avatarUpdated') });
                     router.refresh();
                   } catch (err) {
                     console.error('Cropping/upload failed', err);
-                    toast({ title: 'Avatar update failed', description: 'Please try again.', variant: 'destructive' });
+                    toast({
+                      title: t('profile.form.avatarUpdateFailed'),
+                      description: t('profile.form.avatarUpdateFailedDescription'),
+                      variant: 'destructive',
+                    });
                   } finally {
                     setAvatarUploading(false);
                   }
                 }}
               >
-                Crop & Upload
+                {t('profile.form.cropSave')}
               </Button>
             </div>
           </div>
@@ -365,7 +383,7 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
         <p className="text-sm text-destructive">{state.message}</p>
       ) : null}
 
-      <SubmitButton />
+      <SubmitButton label={t('profile.form.save')} pendingLabel={t('profile.form.saving')} />
     </form>
   );
 }
@@ -397,12 +415,12 @@ function FieldErrors({ errors }: { errors?: string[] }) {
   );
 }
 
-function SubmitButton() {
+function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
 
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? 'Saving...' : 'Save changes'}
+      {pending ? pendingLabel : label}
     </Button>
   );
 }

@@ -51,6 +51,9 @@ import { getProducts } from '@/lib/services/products';
 import ProfileSettingsForm from './profile-settings-form';
 import AccountSettingsPanel from './account-settings-panel';
 import type { UpdateProfileFormValues } from './form-state';
+import { getServerLocale, serverTranslate } from '@/lib/locale/server';
+import { rtlLocales } from '@/lib/locale/dictionary';
+import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
 type ProfilePageSearchParams = {
   tab?: string;
 };
@@ -104,6 +107,9 @@ export default async function ProfilePage({
 }) {
   const params = searchParams ? await searchParams : {};
   const cookieStore = await cookies();
+  const locale = await getServerLocale();
+  const t = (key: string) => serverTranslate(locale, key);
+  const isRtl = rtlLocales.includes(locale);
   const supabase = await createClient(cookieStore);
   const {
     data: { user },
@@ -273,6 +279,16 @@ export default async function ProfilePage({
   const totalViews = activeListings.reduce((acc, item) => acc + (item.views ?? 0), 0);
   const featuredListingsSource = activeListings.length > 0 ? activeListings : listings;
   const featuredListings = featuredListingsSource.slice(0, 3);
+  const cityLabels = MARKET_CITY_OPTIONS.reduce<Record<string, string>>((acc, option) => {
+    const key = option.value.toLowerCase();
+    acc[key] = t(`header.city.${key}`);
+    return acc;
+  }, {});
+  const getCityLabel = (value: string | null | undefined) => {
+    if (!value) return value ?? '';
+    const normalized = value.trim().toLowerCase();
+    return cityLabels[normalized] ?? value;
+  };
 
   const reviews: ReviewRow[] = (recentReviews ?? []).map((row: any) => {
     const buyer = Array.isArray(row?.buyer)
@@ -294,7 +310,7 @@ export default async function ProfilePage({
 
   return (
     <AppLayout user={user}>
-      <div className="container mx-auto px-4 py-6">
+      <div className="container mx-auto px-4 py-6" dir={isRtl ? 'rtl' : undefined}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1">
             <Card>
@@ -311,7 +327,7 @@ export default async function ProfilePage({
                     <div className="flex justify-center">
                       <Badge variant="secondary" className="flex items-center gap-1">
                         <ShieldCheck className="h-3 w-3 text-emerald-500" />
-                        Verified Seller
+                        {t('profile.overview.trustedBadge')}
                       </Badge>
                     </div>
                   )}
@@ -335,11 +351,13 @@ export default async function ProfilePage({
 
                   <div className="flex items-center justify-center gap-1 text-muted-foreground">
                     <MapPin className="h-4 w-4" />
-                    {profileData.location}
+                    {getCityLabel(profileData.location)}
                   </div>
 
                   {joinedLabel && (
-                    <p className="text-xs text-muted-foreground">Member since {joinedLabel}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {t('product.memberSincePrefix')} {joinedLabel}
+                    </p>
                   )}
 
                   <p className="text-sm text-muted-foreground">{profileData.bio}</p>
@@ -347,15 +365,15 @@ export default async function ProfilePage({
                   <div className="grid grid-cols-3 gap-4 py-4 border-t border-b">
                     <div className="text-center">
                       <div className="font-bold text-lg">{listings.length}</div>
-                      <div className="text-xs text-muted-foreground">Listings</div>
+                      <div className="text-xs text-muted-foreground">{t('profile.overview.statsListings')}</div>
                     </div>
                     <div className="text-center">
                       <div className="font-bold text-lg">{profileData.totalRatings}</div>
-                      <div className="text-xs text-muted-foreground">Reviews</div>
+                      <div className="text-xs text-muted-foreground">{t('profile.overview.statsReviews')}</div>
                     </div>
                     <div className="text-center">
                       <div className="font-bold text-lg">{profileData.responseRate}</div>
-                      <div className="text-xs text-muted-foreground">Response</div>
+                      <div className="text-xs text-muted-foreground">{t('profile.overview.statsResponse')}</div>
                     </div>
                   </div>
 
@@ -364,7 +382,7 @@ export default async function ProfilePage({
                     <Button asChild variant="outline" className="w-full">
                       <Link href="/profile?tab=settings">
                         <Settings className="mr-2 h-4 w-4" />
-                        Settings
+                        {t('profile.tabs.settings')}
                       </Link>
                     </Button>
                   </div>
@@ -379,28 +397,28 @@ export default async function ProfilePage({
               <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="overview">
                   <LayoutDashboard className="mr-2 h-4 w-4" />
-                  Overview
+                  {t('profile.tabs.overview')}
                 </TabsTrigger>
                 <TabsTrigger value="listings">
                   <Package className="mr-2 h-4 w-4" />
-                  Listings
+                  {t('profile.tabs.listings')}
                 </TabsTrigger>
                 <TabsTrigger value="profile">
                   <User className="mr-2 h-4 w-4" />
-                  Profile
+                  {t('nav.profile')}
                 </TabsTrigger>
                 <TabsTrigger value="settings">
                   <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                  {t('profile.tabs.settings')}
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Seller snapshot</CardTitle>
+                    <CardTitle>{t('profile.overview.sellerSnapshotTitle')}</CardTitle>
                     <CardDescription>
-                      A consolidated view of how buyers experience your store.
+                      {t('profile.overview.sellerSnapshotDescription')}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -416,14 +434,18 @@ export default async function ProfilePage({
                             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                               <span className="flex items-center gap-1">
                                 <MapPin className="h-4 w-4" />
-                                {profileData.location}
+                                {getCityLabel(profileData.location)}
                               </span>
                               {profileData.isVerified ? (
                                 <span className="flex items-center gap-1 text-emerald-600">
-                                  <BadgeCheck className="h-4 w-4" /> Verified
+                                  <BadgeCheck className="h-4 w-4" /> {t('profile.overview.trustedBadge')}
                                 </span>
                               ) : null}
-                              {joinedLabel ? <span>Joined {joinedLabel}</span> : null}
+                              {joinedLabel ? (
+                                <span>
+                                  {t('product.memberSincePrefix')} {joinedLabel}
+                                </span>
+                              ) : null}
                             </div>
                           </div>
                         </div>
@@ -434,11 +456,13 @@ export default async function ProfilePage({
 
                         <dl className="grid gap-4 sm:grid-cols-2 text-sm">
                           <div>
-                            <dt className="font-medium text-muted-foreground">Contact</dt>
+                            <dt className="font-medium text-muted-foreground">
+                              {t('profile.overview.contactTitle')}
+                            </dt>
                             <dd className="mt-1 space-y-1">
                               <p className="text-foreground">{profileData.email}</p>
                               <p className="text-muted-foreground">
-                                {profileData.phone ?? 'Phone not provided'}
+                                {profileData.phone ?? t('profile.overview.phoneNotProvided')}
                               </p>
                             </dd>
                           </div>
@@ -450,7 +474,7 @@ export default async function ProfilePage({
                         <div className="rounded-lg border bg-muted/40 p-4">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-medium text-muted-foreground">
-                              Profile completeness
+                              {t('profile.overview.profileCompleteness')}
                             </p>
                             <span className="text-sm font-semibold text-foreground">
                               {completionScore}%
@@ -460,28 +484,30 @@ export default async function ProfilePage({
                           <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
                             <li className="flex items-center gap-2">
                               <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                              Trusted seller badge
+                              {t('profile.overview.trustedBadge')}
                             </li>
                             <li className="flex items-center gap-2">
                               <Clock className="h-4 w-4 text-blue-500" />
-                              Response rate: {profileData.responseRate}
+                              {t('profile.overview.responseRateLabel')}: {profileData.responseRate}
                             </li>
                             <li className="flex items-center gap-2">
                               <BellRing className="h-4 w-4 text-amber-500" />
-                              Notifications tuned for buyers
+                              {t('profile.overview.notificationsTuned')}
                             </li>
                           </ul>
                         </div>
 
                         <div className="rounded-lg border bg-background p-4 shadow-sm">
-                          <p className="text-sm font-medium text-muted-foreground">Preferences</p>
+                          <p className="text-sm font-medium text-muted-foreground">
+                            {t('profile.overview.preferencesTitle')}
+                          </p>
                           <div className="mt-3 space-y-2 text-sm">
                             <div className="flex items-center justify-between">
                               <span className="flex items-center gap-2 text-muted-foreground">
-                                <Bell className="h-4 w-4" /> Marketing email opt-in
+                                <Bell className="h-4 w-4" /> {t('profile.overview.marketingEmailOptIn')}
                               </span>
                               <span className="font-medium text-foreground">
-                                {profileData.marketingEmails ? 'Enabled' : 'Disabled'}
+                                {profileData.marketingEmails ? t('profile.overview.enabled') : t('profile.overview.disabled')}
                               </span>
                             </div>
                           </div>
@@ -493,36 +519,36 @@ export default async function ProfilePage({
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Performance insights</CardTitle>
-                    <CardDescription>Monitor how your storefront is trending.</CardDescription>
+                    <CardTitle>{t('profile.overview.performanceInsightsTitle')}</CardTitle>
+                    <CardDescription>{t('profile.overview.performanceInsightsDescription')}</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                       <InsightTile
                         icon={<Package className="h-5 w-5 text-primary" />}
-                        label="Active listings"
+                        label={t('profile.overview.metricActiveListings')}
                         value={activeListings.length.toLocaleString()}
                       />
                       <InsightTile
                         icon={<Eye className="h-5 w-5 text-primary" />}
-                        label="Total views"
+                        label={t('profile.overview.metricTotalViews')}
                         value={totalViews.toLocaleString()}
                       />
                       <InsightTile
                         icon={<Star className="h-5 w-5 text-primary" />}
-                        label="Average rating"
+                        label={t('profile.overview.metricAverageRating')}
                         value={profileData.rating ? profileData.rating.toFixed(1) : '—'}
                         helper={
                           profileData.totalRatings
-                            ? `${profileData.totalRatings} reviews`
-                            : 'Awaiting first review'
+                            ? `${profileData.totalRatings} ${t('product.reviewsLabel')}`
+                            : t('profile.overview.metricAverageRatingNoReviews')
                         }
                       />
                       <InsightTile
                         icon={<MessageCircle className="h-5 w-5 text-primary" />}
-                        label="Watchers"
+                        label={t('profile.overview.metricWatchers')}
                         value={watchersCount.toLocaleString()}
-                        helper="Buyers keeping tabs on your listings"
+                        helper={t('profile.overview.metricWatchersHelper')}
                       />
                     </div>
                   </CardContent>
@@ -530,20 +556,22 @@ export default async function ProfilePage({
 
                 <Card>
                   <CardHeader>
-                    <CardTitle>Recent activity</CardTitle>
-                    <CardDescription>What you have been sharing and what buyers are saying.</CardDescription>
+                    <CardTitle>{t('profile.overview.recentActivityTitle')}</CardTitle>
+                    <CardDescription>{t('profile.overview.recentActivityDescription')}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-muted-foreground">Latest listings</h3>
+                        <h3 className="text-sm font-semibold text-muted-foreground">
+                          {t('profile.overview.latestListingsTitle')}
+                        </h3>
                         <Link href="/profile?tab=listings" className="text-sm text-primary hover:underline">
-                          View all
+                          {t('profile.overview.latestListingsCta')}
                         </Link>
                       </div>
                       {featuredListings.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
-                          Publish a listing to showcase it here.
+                          {t('profile.overview.latestListingsEmpty')}
                         </p>
                       ) : (
                         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -556,14 +584,16 @@ export default async function ProfilePage({
                     <Separator />
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-semibold text-muted-foreground">Latest reviews</h3>
+                        <h3 className="text-sm font-semibold text-muted-foreground">
+                          {t('profile.overview.recentReviewsTitle')}
+                        </h3>
                         <Link href="/profile?tab=profile" className="text-sm text-primary hover:underline">
-                          Manage profile
+                          {t('profile.overview.recentReviewsCta')}
                         </Link>
                       </div>
                       {reviews.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
-                          Reviews will appear here after your first sale.
+                          {t('profile.overview.recentReviewsEmpty')}
                         </p>
                       ) : (
                         <ul className="space-y-4">
@@ -578,7 +608,7 @@ export default async function ProfilePage({
                               <div className="space-y-1">
                                 <div className="flex items-center gap-2">
                                   <span className="text-sm font-medium">
-                                    {review.buyer?.full_name ?? 'Buyer'}
+                                    {review.buyer?.full_name ?? t('profile.overview.reviewBuyerFallback')}
                                   </span>
                                   <Badge variant="secondary" className="flex items-center gap-1">
                                     <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
@@ -604,12 +634,14 @@ export default async function ProfilePage({
               <TabsContent value="listings" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>My Listings ({listings.length})</CardTitle>
+                    <CardTitle>
+                      {t('profile.listings.title')} ({listings.length})
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     {listings.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
-                        You have not published any listings yet.
+                        {t('profile.listings.empty')}
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -625,9 +657,9 @@ export default async function ProfilePage({
               <TabsContent value="profile" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Edit Profile</CardTitle>
+                    <CardTitle>{t('profile.form.heading')}</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Update what buyers see on your storefront.
+                      {t('profile.form.description')}
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -639,9 +671,9 @@ export default async function ProfilePage({
               <TabsContent value="settings" className="space-y-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Account Settings</CardTitle>
+                    <CardTitle>{t('profile.settingsPanel.heading')}</CardTitle>
                     <p className="text-sm text-muted-foreground">
-                      Control notifications, language, security, and danger zone actions.
+                      {t('profile.settingsPanel.description')}
                     </p>
                   </CardHeader>
                   <CardContent>
