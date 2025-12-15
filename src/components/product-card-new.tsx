@@ -6,7 +6,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MapPin, Eye } from 'lucide-react';
 import type { ProductWithRelations } from '@/lib/services/products';
-import { formatDistanceToNow } from 'date-fns';
 import FavoriteToggle from '@/components/product/favorite-toggle';
 import { useLocale } from '@/providers/locale-provider';
 
@@ -16,30 +15,158 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, viewerId }: ProductCardProps) {
-  const { t } = useLocale();
+  const { t, locale, messages } = useLocale();
+  const cityLabels = messages.header.city as Record<string, string>;
+  const getCityLabel = (value: string) => cityLabels[value.trim().toLowerCase()] ?? value;
 
-  const formatPrice = (price: number, currency?: string | null) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency ?? 'IQD',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price).replace('IQD', 'IQD');
+  const formatRelativeTimeEnglish = (date: Date): string => {
+    const now = Date.now();
+    const diffMs = Math.max(0, now - date.getTime());
+    const totalMinutes = Math.floor(diffMs / 60_000);
+    const totalHours = Math.floor(diffMs / 3_600_000);
+    const totalDays = Math.floor(diffMs / 86_400_000);
+
+    if (totalMinutes < 60) {
+      const minutes = Math.max(1, totalMinutes);
+      return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+    }
+
+    if (totalHours < 24) {
+      const hours = Math.max(1, totalHours);
+      return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    }
+
+    if (totalDays < 7) {
+      const days = Math.max(1, totalDays);
+      return `${days} day${days === 1 ? '' : 's'} ago`;
+    }
+
+    if (totalDays < 30) {
+      const weeks = Math.max(1, Math.floor(totalDays / 7));
+      return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
+    }
+
+    if (totalDays < 365) {
+      const months = Math.max(1, Math.floor(totalDays / 30));
+      return `${months} month${months === 1 ? '' : 's'} ago`;
+    }
+
+    const years = Math.max(1, Math.floor(totalDays / 365));
+    return `${years} year${years === 1 ? '' : 's'} ago`;
   };
 
-  const getConditionColor = (condition: string) => {
-    switch (condition) {
-      case 'New':
-        return 'bg-green-500';
-      case 'Used - Like New':
-        return 'bg-blue-500';
-      case 'Used - Good':
-        return 'bg-yellow-500';
-      case 'Used - Fair':
-        return 'bg-orange-500';
-      default:
-        return 'bg-gray-500';
+  const formatRelativeTimeArabic = (date: Date): string => {
+    const now = Date.now();
+    const diffMs = Math.max(0, now - date.getTime());
+    const totalMinutes = Math.floor(diffMs / 60_000);
+    const totalHours = Math.floor(diffMs / 3_600_000);
+    const totalDays = Math.floor(diffMs / 86_400_000);
+
+    if (totalMinutes < 1) {
+      return 'الآن';
     }
+
+    const formatNumber = (value: number) => new Intl.NumberFormat('ar-u-nu-arab').format(value);
+
+    if (totalHours < 1) {
+      const minutes = Math.max(1, totalMinutes);
+      if (minutes === 1) return 'منذ دقيقة';
+      if (minutes === 2) return 'منذ دقيقتين';
+      return `منذ ${formatNumber(minutes)} دقائق`;
+    }
+
+    if (totalHours < 24) {
+      const hours = Math.max(1, totalHours);
+      if (hours === 1) return 'منذ ساعة';
+      if (hours === 2) return 'منذ ساعتين';
+      return `منذ ${formatNumber(hours)} ساعات`;
+    }
+
+    if (totalDays < 31) {
+      const days = Math.max(1, totalDays);
+      if (days === 1) return 'منذ يوم';
+      if (days === 2) return 'منذ يومين';
+      return `منذ ${formatNumber(days)} أيام`;
+    }
+
+    const months = Math.floor(totalDays / 30);
+    if (months < 12) {
+      const normalizedMonths = Math.max(1, months);
+      if (normalizedMonths === 1) return 'منذ شهر';
+      if (normalizedMonths === 2) return 'منذ شهرين';
+      return `منذ ${formatNumber(normalizedMonths)} شهور`;
+    }
+
+    const years = Math.max(1, Math.floor(totalDays / 365));
+    if (years === 1) return 'منذ سنة';
+    if (years === 2) return 'منذ سنتين';
+    return `منذ ${formatNumber(years)} سنوات`;
+  };
+
+  const formatRelativeTimeKurdish = (date: Date): string => {
+    const now = Date.now();
+    const diffMs = Math.max(0, now - date.getTime());
+    const totalHours = Math.floor(diffMs / 3_600_000);
+    const totalDays = Math.floor(diffMs / 86_400_000);
+
+    const formatNumber = (value: number) => new Intl.NumberFormat('ku-u-nu-arab').format(value);
+
+    if (totalHours < 24) {
+      const hours = Math.max(1, totalHours);
+      return `پێش ${formatNumber(hours)} ساعة`;
+    }
+
+    if (totalDays < 7) {
+      const days = Math.max(1, totalDays);
+      return `پێش ${formatNumber(days)} ڕۆژ`;
+    }
+
+    if (totalDays < 30) {
+      const weeks = Math.max(1, Math.floor(totalDays / 7));
+      return `پێش ${formatNumber(weeks)} هەفتە`;
+    }
+
+    if (totalDays < 365) {
+      const months = Math.max(1, Math.floor(totalDays / 30));
+      return `پێش ${formatNumber(months)} مانگ`;
+    }
+
+    const years = Math.max(1, Math.floor(totalDays / 365));
+    return `پێش ${formatNumber(years)} ساڵ`;
+  };
+
+  const formatPrice = (price: number, currency?: string | null) => {
+    try {
+      return new Intl.NumberFormat(locale, {
+        style: 'currency',
+        currency: currency ?? 'IQD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      })
+        .format(price)
+        .replace('IQD', 'IQD');
+    } catch {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency ?? 'IQD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      })
+        .format(price)
+        .replace('IQD', 'IQD');
+    }
+  };
+
+  const conditionColorMap: Record<string, string> = {
+    new: 'bg-green-500',
+    'used - like new': 'bg-blue-500',
+    'used - good': 'bg-yellow-500',
+    'used - fair': 'bg-orange-500',
+  };
+
+  const getConditionColor = (condition?: string | null) => {
+    const normalized = (condition ?? '').trim().toLowerCase();
+    return conditionColorMap[normalized] ?? 'bg-gray-500';
   };
 
   const conditionLabels: Record<string, string> = {
@@ -55,9 +182,15 @@ export default function ProductCard({ product, viewerId }: ProductCardProps) {
     return conditionLabels[normalized] ?? value;
   };
 
-  const createdAtLabel = product.createdAt ? formatDistanceToNow(product.createdAt, { addSuffix: true }) : '';
+  const createdAtLabel = product.createdAt
+    ? locale === 'ar'
+      ? formatRelativeTimeArabic(product.createdAt)
+      : locale === 'ku'
+        ? formatRelativeTimeKurdish(product.createdAt)
+        : formatRelativeTimeEnglish(product.createdAt)
+    : '';
   const sellerDisplayNameRaw = product.seller?.fullName ?? product.seller?.name ?? product.seller?.email ?? '';
-  const sellerDisplayName = sellerDisplayNameRaw.trim() || 'Seller';
+  const sellerDisplayName = sellerDisplayNameRaw.trim() || messages.product.sellerFallback;
   const conditionLabel = getConditionLabel(product.condition || 'New');
 
   return (
@@ -126,13 +259,15 @@ export default function ProductCard({ product, viewerId }: ProductCardProps) {
           {product.location && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <MapPin className="h-3 w-3" />
-              {product.location}
+              <span dir="auto" className="bidi-auto">
+                {getCityLabel(product.location)}
+              </span>
             </div>
           )}
           
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>{sellerDisplayName}</span>
-            <span>{createdAtLabel}</span>
+            <span dir="auto" className="bidi-auto">{createdAtLabel}</span>
           </div>
         </div>
         </CardContent>

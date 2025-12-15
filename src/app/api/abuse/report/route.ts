@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { createClient as createSupabaseServiceRole } from '@supabase/supabase-js';
 
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@/utils/supabase/server';
@@ -9,6 +10,10 @@ import { getEnv } from '@/lib/env';
 export const runtime = 'nodejs';
 
 const env = getEnv();
+const supabaseServiceRole =
+  env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY
+    ? createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+    : null;
 
 const originAllowList = buildOriginAllowList([
   env.NEXT_PUBLIC_SITE_URL ?? null,
@@ -27,6 +32,81 @@ type ReportBody = {
   reason?: string;
   details?: string;
 };
+
+type ReportRow = {
+  id: string;
+  reporter_id: string;
+  product_id: string | null;
+  reported_user_id: string | null;
+  message_id: string | null;
+  status: string;
+  is_auto_flagged: boolean;
+  reason: string;
+};
+
+async function sendNotification(userId: string, title: string, content: string | null, relatedId: string | null) {
+  if (!supabaseServiceRole) return;
+
+  const { error } = await supabaseServiceRole.from('notifications').insert({
+    user_id: userId,
+    title,
+    content,
+    type: 'system',
+    related_id: relatedId,
+  });
+
+  if (error) {
+    console.error('Failed to send notification', error);
+  }
+}
+
+async function handleAutoFlag(report: ReportRow) {
+  if (!report.is_auto_flagged || !supabaseServiceRole) {
+    return;
+  }
+
+  if (report.product_id) {
+    const { data: product, error: productError } = await supabaseServiceRole
+      .from('products')
+      .select('id, seller_id, title, is_active')
+      .eq('id', report.product_id)
+      .maybeSingle();
+
+    if (productError) {
+      console.error('Failed to read product for auto-flag handling', productError);
+    }
+
+    if (product?.id) {
+      if (product.is_active !== false) {
+        const { error: hideError } = await supabaseServiceRole
+          .from('products')
+          .update({ is_active: false })
+          .eq('id', product.id);
+
+        if (hideError) {
+          console.error('Failed to hide auto-flagged product', hideError);
+        }
+      }
+
+      if (product.seller_id) {
+        await sendNotification(
+          product.seller_id,
+          'Listing temporarily hidden',
+          `Your listing "${product.title ?? 'product'}" was hidden after multiple reports. Please review and update it to comply with marketplace policies.`,
+          product.id,
+        );
+      }
+    }
+  }
+
+  const relatedId = report.product_id ?? report.reported_user_id ?? report.message_id ?? null;
+  await sendNotification(
+    report.reporter_id,
+    'Report received',
+    'We received your report and automatically flagged the content for review.',
+    relatedId,
+  );
+}
 
 const handler: (request: Request) => Promise<Response> = async (request: Request) => {
   const originHeader = request.headers.get('origin');
@@ -101,11 +181,33 @@ const handler: (request: Request) => Promise<Response> = async (request: Request
     return NextResponse.json({ error: 'Unsupported targetType.' }, { status: 400 });
   }
 
-  const { error } = await supabase.from('abuse_reports').insert(payload).single();
-  if (error) {
+  const { data: inserted, error } = await supabase
+    .from('abuse_reports')
+    .insert(payload)
+    .select('id, reporter_id, product_id, reported_user_id, message_id, status, is_auto_flagged, reason')
+    .single();
+
+  if (error || !inserted) {
     console.error('Failed to create abuse report', error);
     return NextResponse.json({ error: 'Failed to submit report.' }, { status: 500 });
   }
+
+  let reportRow: ReportRow = inserted as ReportRow;
+
+  // Re-fetch to pick up trigger-updated status/flags.
+  const { data: refreshed, error: refreshError } = await supabase
+    .from('abuse_reports')
+    .select('id, reporter_id, product_id, reported_user_id, message_id, status, is_auto_flagged, reason')
+    .eq('id', inserted.id)
+    .maybeSingle();
+
+  if (refreshError) {
+    console.error('Failed to refresh abuse report after insert', refreshError);
+  } else if (refreshed) {
+    reportRow = refreshed as ReportRow;
+  }
+
+  await handleAutoFlag(reportRow);
 
   // Best-effort audit logging including IP and user agent.
   const ip = clientIdentifier !== 'unknown' ? clientIdentifier : null;

@@ -7,12 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User, LogOut, Phone, Mail, LayoutDashboard, Settings } from 'lucide-react';
+import { User, LogOut, Phone, Mail, LayoutDashboard, Settings, ShieldCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 import { getPublicEnv } from '@/lib/env-public';
 import { useLocale } from '@/providers/locale-provider';
+import { isModerator } from '@/lib/auth/roles';
 
 interface AuthButtonProps {
   user: any;
@@ -132,6 +133,8 @@ export default function AuthButton({ user }: AuthButtonProps) {
   };
 
   if (user) {
+    const userIsModerator = isModerator(user);
+
     return (
       <DropdownMenu
         open={menuOpen}
@@ -175,6 +178,14 @@ export default function AuthButton({ user }: AuthButtonProps) {
               {t('header.userMenu.myProfile')}
             </Link>
           </DropdownMenuItem>
+          {userIsModerator && (
+            <DropdownMenuItem asChild>
+              <Link href="/admin/moderation" className="flex items-center">
+                <ShieldCheck className="mr-2 h-4 w-4" />
+                {t('header.userMenu.moderation')}
+              </Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem asChild>
             <Link href="/profile?tab=settings" className="flex items-center">
               <Settings className="mr-2 h-4 w-4" />

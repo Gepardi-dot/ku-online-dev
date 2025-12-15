@@ -22,6 +22,7 @@ import { cn } from "@/lib/utils";
 import { COLOR_OPTIONS, type ColorToken } from "@/data/colors";
 import { Check } from 'lucide-react';
 import { useLocale } from "@/providers/locale-provider";
+import { rtlLocales } from "@/lib/locale/dictionary";
 
 type CategoryOption = { id: string; name: string };
 
@@ -78,7 +79,9 @@ export function ProductsFilterBar({
   showCategorySelect = false, // API compatibility
 }: ProductsFilterBarProps) {
   const router = useRouter();
-  const { t, messages } = useLocale();
+  const { t, messages, locale } = useLocale();
+  const direction = rtlLocales.includes(locale) ? "rtl" : "ltr";
+  const contentAlign = direction === "rtl" ? "end" : "start";
   const init = useInitialState(initialValues);
 
   const [condition, setCondition] = useState<string>(init.condition || "");
@@ -172,17 +175,21 @@ export function ProductsFilterBar({
   const locationUiValue = location === "" ? CLEAR_VALUE : location;
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white/70 backdrop-blur px-2.5 py-1.5 shadow-sm w-full md:w-fit md:mx-auto">
+    <div
+      dir={direction}
+      className="rounded-xl border border-gray-200 bg-white/70 backdrop-blur px-2.5 py-1.5 shadow-sm w-full md:w-fit md:mx-auto"
+    >
       <div className="flex flex-wrap items-center gap-1.5">
         {/* Condition */}
         <Select
+          dir={direction}
           value={conditionUiValue}
           onValueChange={(v) => setCondition(v === CLEAR_VALUE ? "" : v)}
         >
           <SelectTrigger className="h-8 rounded-full text-xs px-2.5 bg-white border border-gray-200 w-auto min-w-[88px] shrink-0">
             <SelectValue placeholder={t("filters.condition")} />
           </SelectTrigger>
-          <SelectContent align="start">
+          <SelectContent align={contentAlign} dir={direction}>
             <SelectItem value={CLEAR_VALUE}>{t("filters.conditionAll")}</SelectItem>
             {CONDITION_OPTIONS.filter((opt) => opt.value !== "").map((opt) => (
               <SelectItem key={opt.value || "all"} value={opt.value || CLEAR_VALUE}>
@@ -194,13 +201,14 @@ export function ProductsFilterBar({
 
         {/* City */}
         <Select
+          dir={direction}
           value={locationUiValue}
           onValueChange={(v) => setLocation(v === CLEAR_VALUE ? "" : v)}
         >
           <SelectTrigger className="h-8 rounded-full text-xs px-2.5 bg-white border border-gray-200 w-auto min-w-[64px] shrink-0">
             <SelectValue placeholder={t("filters.city")} />
           </SelectTrigger>
-          <SelectContent align="start">
+          <SelectContent align={contentAlign} dir={direction}>
             <SelectItem value={CLEAR_VALUE}>{t("filters.cityAll")}</SelectItem>
             {locations.map((loc) => (
               <SelectItem key={loc} value={loc}>
@@ -224,7 +232,7 @@ export function ProductsFilterBar({
               {t("filters.color")}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[min(92vw,22rem)]" align="start">
+          <PopoverContent className="w-[min(92vw,22rem)]" align={contentAlign} dir={direction}>
             <div className="grid grid-cols-8 sm:grid-cols-10 gap-2 p-1">
               {/* All colors */}
               <button
@@ -283,7 +291,7 @@ export function ProductsFilterBar({
               {priceChipLabel}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[min(90vw,20rem)]" align="start">
+          <PopoverContent className="w-[min(90vw,20rem)]" align={contentAlign} dir={direction}>
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{t("filters.priceRange")}</span>
@@ -318,11 +326,11 @@ export function ProductsFilterBar({
         </Popover>
 
         {/* Sort */}
-        <Select value={sort} onValueChange={(v) => setSort(v)}>
+        <Select dir={direction} value={sort} onValueChange={(v) => setSort(v)}>
           <SelectTrigger className="h-8 rounded-full text-xs px-2.5 bg-white border border-gray-200 w-auto min-w-[92px] shrink-0">
             <SelectValue placeholder={t("filters.sortNewest")} />
           </SelectTrigger>
-          <SelectContent align="start">
+          <SelectContent align={contentAlign} dir={direction}>
             <SelectItem value="newest">{t("filters.sortNewest")}</SelectItem>
             <SelectItem value="price_asc">{t("filters.sortPriceAsc")}</SelectItem>
             <SelectItem value="price_desc">{t("filters.sortPriceDesc")}</SelectItem>

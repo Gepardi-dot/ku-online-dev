@@ -7,6 +7,7 @@ import AppFooter from '@/components/layout/footer';
 import MobileNav from '@/components/layout/mobile-nav';
 import { Noto_Kufi_Arabic, Noto_Sans_Arabic, PT_Sans } from 'next/font/google';
 import { LocaleProvider } from '@/providers/locale-provider';
+import { getServerLocale } from '@/lib/locale/server';
 
 const ptSans = PT_Sans({
   subsets: ['latin'],
@@ -33,11 +34,12 @@ export const metadata: Metadata = {
   description: 'A multi-vendor local marketplace for the Kurdistan region.',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getServerLocale();
   const supabaseOrigin = (() => {
     try {
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -47,7 +49,7 @@ export default function RootLayout({
     }
   })();
   return (
-    <html lang="en" dir="ltr" suppressHydrationWarning>
+    <html lang={locale} dir="ltr" suppressHydrationWarning>
       <head>
         {supabaseOrigin ? (
           <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />

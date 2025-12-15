@@ -11,6 +11,7 @@
                     "src/lib/services/products.ts",
                     "src/lib/services/__tests__/**/*.ts",
                     "src/lib/products/__tests__/**/*.ts",
-                    "src/lib/products/filter-params.ts"
+                    "src/lib/products/filter-params.ts",
+                    "src/lib/auth/**/*.ts"
                 ]
 }

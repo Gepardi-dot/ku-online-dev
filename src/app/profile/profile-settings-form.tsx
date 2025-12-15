@@ -99,14 +99,14 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
     state.status === 'error' && state.message && Object.keys(state.fieldErrors ?? {}).length > 0;
 
   return (
-    <form action={formAction} className="space-y-10" id="profile-settings-form">
-      <section className="space-y-6">
+    <form action={formAction} className="space-y-6 max-w-xl mx-auto" id="profile-settings-form">
+      <section className="space-y-4 rounded-2xl border border-muted/40 bg-white/90 p-4 sm:p-5 shadow-sm">
         <div>
           <h3 className="text-sm font-medium text-foreground">{t('profile.form.avatarTitle')}</h3>
           <p className="text-sm text-muted-foreground">{t('profile.form.avatarHelper')}</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="relative h-16 w-16 overflow-hidden rounded-full bg-muted">
+          <div className="relative h-16 w-16 overflow-hidden rounded-full bg-muted shadow-inner">
             {avatarPreview ? (
               <NextImage src={avatarPreview} alt={t('profile.form.avatarAlt')} fill className="object-cover" />
             ) : (
@@ -115,8 +115,14 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
               </div>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="secondary" disabled={avatarUploading} onClick={() => avatarInputRef.current?.click()}>
+          <div className="flex flex-col gap-2">
+            <Button
+              type="button"
+              variant="secondary"
+              className="px-3 text-sm sm:px-4"
+              disabled={avatarUploading}
+              onClick={() => avatarInputRef.current?.click()}
+            >
               {avatarUploading ? t('profile.form.uploadingAvatar') : t('profile.form.uploadAvatar')}
             </Button>
             <input id="avatar-file-input" ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
@@ -137,9 +143,12 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
         </div>
         <input type="hidden" name="avatarUrl" id="avatarUrlHidden" value={avatarValue} readOnly />
       </section>
-      <section id="profile-details" className="space-y-6">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">{t('profile.form.detailsTitle')}</h3>
+      <section
+        id="profile-details"
+        className="space-y-5 rounded-2xl border border-muted/40 bg-white/90 p-4 sm:p-5 shadow-sm"
+      >
+        <div className="flex flex-col gap-1">
+          <h3 className="text-base font-semibold text-foreground">{t('profile.form.detailsTitle')}</h3>
           <p className="text-sm text-muted-foreground">
             {t('profile.form.detailsDescription')}
           </p>
@@ -200,12 +209,18 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
       <input type="hidden" name="marketingEmails" value={initialValues.marketingEmails ? 'true' : 'false'} />
 
       <Separator />
-      <section className="space-y-3">
-        <div>
-          <h3 className="text-sm font-medium text-destructive">{t('profile.settingsPanel.dangerZoneTitle')}</h3>
+      <section className="space-y-3 rounded-2xl border border-destructive/15 bg-destructive/5 p-4">
+        <div className="flex flex-col gap-1">
+          <h3 className="text-sm font-semibold text-destructive">
+            {t('profile.settingsPanel.dangerZoneTitle')}
+          </h3>
           <p className="text-sm text-muted-foreground">{t('profile.settingsPanel.dangerZoneDescription')}</p>
         </div>
-        <Button type="button" variant="destructive" onClick={async () => {
+        <Button
+          type="button"
+          className="px-4 text-sm"
+          variant="destructive"
+          onClick={async () => {
           if (!confirm(t('profile.settingsPanel.deleteConfirm'))) return;
           try {
             const res = await fetch('/api/account/delete', { method: 'POST', headers: { 'x-reconfirm': 'delete' } });
@@ -222,7 +237,10 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
               variant: 'destructive',
             });
           }
-        }}>{t('profile.settingsPanel.deleteAccount')}</Button>
+        }}
+        >
+          {t('profile.settingsPanel.deleteAccount')}
+        </Button>
       </section>
 
       {/* Cropper Dialog */}

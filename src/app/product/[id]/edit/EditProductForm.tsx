@@ -336,22 +336,24 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
           <div>
             <Label>Images *</Label>
             <div
-              className={`border-2 border-dashed rounded-lg p-6 text-center transition ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300'} ${storageBusy ? 'opacity-60' : ''}`}
+              className={`border-2 border-dashed rounded-lg p-6 text-left transition ${isDragActive ? 'border-primary bg-primary/5' : 'border-gray-300'} ${storageBusy ? 'opacity-60' : ''} flex flex-col items-start gap-3`}
               onDragEnter={(e) => { e.preventDefault(); setIsDragActive(true); }}
               onDragOver={(e) => { e.preventDefault(); setIsDragActive(true); }}
               onDragLeave={() => setIsDragActive(false)}
               onDrop={onDrop}
               role="presentation"
             >
-              <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-              <p className="text-gray-600">Drag and drop images here or</p>
-              <Button type="button" variant="outline" className="mt-2" onClick={onFileButton} disabled={storageBusy || uploadedImages.length >= MAX_IMAGES}>
+              <Button type="button" variant="outline" className="mt-0 self-start" onClick={onFileButton} disabled={storageBusy || uploadedImages.length >= MAX_IMAGES}>
                 {storageBusy ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>) : 'Browse files'}
               </Button>
-              <p className="mt-2 text-sm text-muted-foreground">Supports {ACCEPTED_FILES_DESCRIPTION} up to 50MB each. Max {MAX_IMAGES} images.</p>
-              <p className="mt-1 text-xs text-muted-foreground">Tip: Cars and Property keep original resolution (up to 10MB per image) after upload.</p>
+              <div className="flex items-center gap-2 text-gray-600">
+                <Upload className="h-5 w-5 text-gray-400" />
+                <span>Or drag and drop images here</span>
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">Supports {ACCEPTED_FILES_DESCRIPTION} up to 50MB each. Max {MAX_IMAGES} images.</p>
+              <p className="text-xs text-muted-foreground">Tip: Cars and Property keep original resolution (up to 10MB per image) after upload.</p>
               <input ref={fileInputRef} type="file" accept={ACCEPTED_FILE_MIME_TYPES.join(',')} multiple className="hidden" onChange={onFileChange} />
-              <p className="mt-2 text-xs text-muted-foreground">{uploadedImages.length} of {MAX_IMAGES} images</p>
+              <p className="text-xs text-muted-foreground">{uploadedImages.length} of {MAX_IMAGES} images</p>
             </div>
 
             {uploadedImages.length > 0 && (

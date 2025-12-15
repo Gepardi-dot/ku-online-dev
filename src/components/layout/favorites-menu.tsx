@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Heart, Loader2, Share2, Trash, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -301,14 +300,14 @@ export default function FavoritesMenu({
         align="end"
         side="bottom"
         sideOffset={12}
-        className="z-[90] w-[460px] max-w-[calc(100vw-1rem)] rounded-3xl border border-white/50 bg-gradient-to-br from-white/92 via-white/85 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40"
+        className="z-[90] flex w-[460px] max-h-[calc(100vh-5rem)] max-w-[calc(100vw-1rem)] flex-col rounded-3xl border border-white/50 bg-gradient-to-br from-white/92 via-white/85 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40"
       >
         {!canLoad ? (
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
             {strings.loginRequired}
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex h-full flex-col gap-3">
             <div className="flex items-start justify-between gap-3 rounded-2xl border border-white/30 bg-white/80 px-4 py-3 shadow-sm">
               <div>
                 <p className="text-sm font-semibold text-[#2D2D2D]">{strings.label}</p>
@@ -338,31 +337,27 @@ export default function FavoritesMenu({
                   {strings.empty}
                 </div>
               ) : (
-                <ScrollArea className="max-h-[420px]">
+                <div className="max-h-[320px] overflow-y-auto overscroll-contain pr-1">
                   <div className="space-y-3 bg-transparent">
                     {favorites.map((favorite) => {
                       const product = favorite.product;
-                    const firstUrl = (product?.imageUrls ?? []).find(
-                      (u) => typeof u === 'string' && u.trim().length > 0,
-                    );
-                    const imageSrc: string | undefined =
-                      firstUrl && firstUrl.trim().length > 0 ? firstUrl : undefined;
-                    return (
-                      <div
-                        key={favorite.id}
-                        className="flex items-center gap-3 rounded-3xl border border-white/50 bg-white/90 p-3 shadow-[0_10px_30px_rgba(15,23,42,0.12)]"
-                      >
-                        <Link
-                          href={product ? `/product/${product.id}` : '#'}
-                          className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-white/90"
+                      const firstUrl = (product?.imageUrls ?? []).find(
+                        (u) => typeof u === 'string' && u.trim().length > 0,
+                      );
+                      const imageSrc: string | undefined =
+                        firstUrl && firstUrl.trim().length > 0 ? firstUrl : undefined;
+
+                      return (
+                        <div
+                          key={favorite.id}
+                          className="flex items-center gap-3 rounded-3xl border border-white/50 bg-white/90 p-3 shadow-[0_10px_30px_rgba(15,23,42,0.12)]"
                         >
-                          {imageSrc ? (
-                            <Image
-                              src={imageSrc}
-                              alt={product?.title ?? 'Product'}
-                                fill
-                                className="object-cover"
-                              />
+                          <Link
+                            href={product ? `/product/${product.id}` : '#'}
+                            className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-white/90"
+                          >
+                            {imageSrc ? (
+                              <Image src={imageSrc} alt={product?.title ?? 'Product'} fill className="object-cover" />
                             ) : (
                               <div className="flex h-full w-full items-center justify-center bg-muted text-[10px] text-muted-foreground">
                                 No image
@@ -408,7 +403,7 @@ export default function FavoritesMenu({
                       );
                     })}
                   </div>
-                </ScrollArea>
+                </div>
               )}
             </div>
           </div>

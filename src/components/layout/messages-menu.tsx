@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import {
@@ -42,6 +43,15 @@ import { toast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
+
+const clampValue = (input: number, min: number, max: number) => Math.min(max, Math.max(min, input));
+const MOBILE_BOTTOM_GAP_PX = 38; // roughly 1cm spacing so the sheet clears the mobile nav
+
+interface DragState {
+  active: boolean;
+  startY: number;
+  startOffset: number;
+}
 
 interface MessagesMenuStrings {
   label: string;
@@ -82,8 +92,13 @@ export default function MessagesMenu({
   const [isMobile, setIsMobile] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "thread">("list");
   const [cardHeight, setCardHeight] = useState<number>(420);
+  const [cardOffsetTop, setCardOffsetTop] = useState<number>(56);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
 
   const conversationsRef = useRef<ConversationSummary[]>([]);
+  const dragStateRef = useRef<DragState>({ active: false, startY: 0, startOffset: 0 });
+  const sheetRef = useRef<HTMLDivElement | null>(null);
 
   const canLoad = Boolean(userId);
 
@@ -116,9 +131,10 @@ export default function MessagesMenu({
       const viewportHeight = window.innerHeight || 0;
       const navHeight = mobileNav ? mobileNav.getBoundingClientRect().height : 0;
 
-      // Reserve some extra gap above the nav so the card
-      // never visually collides with it.
-      const extraGap = isSmallViewport ? 8 : 24;
+      // On mobile we want the sheet to sit just above
+      // the bottom navigation bar with a small gap, while
+      // on larger screens we keep a bit more breathing room.
+      const extraGap = isSmallViewport ? MOBILE_BOTTOM_GAP_PX : 24;
       let available = viewportHeight - offsetTop - navHeight - extraGap;
 
       // Clamp the card height so it stays elegant on all screens.
@@ -129,6 +145,7 @@ export default function MessagesMenu({
       const maxHeight = isSmallViewport ? Math.min(640, viewportHeight - offsetTop - extraGap) : 420;
       const clamped = Math.max(minHeight, Math.min(maxHeight, available));
 
+      setCardOffsetTop(offsetTop);
       setCardHeight(clamped);
     };
 
@@ -390,6 +407,78 @@ export default function MessagesMenu({
   const chipClass =
     "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E4E4E4] bg-white text-[#1F1C1C] transition hover:border-[#E67E22] hover:text-[#E67E22] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/50 focus-visible:ring-offset-2";
 
+  const minDragOffset = useMemo(() => {
+    if (!isMobile) return 0;
+    const availableLift = Math.max(cardOffsetTop - 12, 0);
+    const minimumLift = 80;
+    return -Math.max(availableLift, minimumLift);
+  }, [isMobile, cardOffsetTop]);
+
+  useEffect(() => {
+    setDragOffset((current) => clampValue(current, minDragOffset, 0));
+  }, [minDragOffset]);
+
+  useEffect(() => {
+    if (!open) {
+      dragStateRef.current.active = false;
+      setDragOffset(0);
+      setIsDragging(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!isMobile) {
+      dragStateRef.current.active = false;
+      setDragOffset(0);
+      setIsDragging(false);
+    }
+  }, [isMobile]);
+
+  useEffect(() => {
+    if (!open || !isMobile) return;
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!dragStateRef.current.active) return;
+      const delta = event.clientY - dragStateRef.current.startY;
+      const next = clampValue(dragStateRef.current.startOffset + delta, minDragOffset, 0);
+      setDragOffset(next);
+    };
+
+    const stopDragging = () => {
+      if (!dragStateRef.current.active) return;
+      dragStateRef.current.active = false;
+      setIsDragging(false);
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopDragging);
+    window.addEventListener("pointercancel", stopDragging);
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopDragging);
+      window.removeEventListener("pointercancel", stopDragging);
+    };
+  }, [open, isMobile, minDragOffset]);
+
+  useEffect(() => {
+    if (!open || !isMobile) return;
+    if (typeof window === "undefined") return;
+    if (!sheetRef.current) return;
+
+    const viewportHeight = window.innerHeight || 0;
+    const mobileNav = document.querySelector<HTMLElement>("[data-mobile-nav]");
+    const navHeight = mobileNav ? mobileNav.getBoundingClientRect().height : 0;
+    const maxBottom = viewportHeight - navHeight - MOBILE_BOTTOM_GAP_PX;
+
+    const rect = sheetRef.current.getBoundingClientRect();
+    const overshoot = rect.bottom - maxBottom;
+
+    if (Math.abs(overshoot) < 1) return;
+
+    setDragOffset((current) => clampValue(current - overshoot, minDragOffset, 0));
+  }, [open, isMobile, minDragOffset]);
+
   // --- Event handlers ---
 
   const handleOpenChange = useCallback(
@@ -400,8 +489,16 @@ export default function MessagesMenu({
           return;
         }
         setMobileView("list");
+        // Let the automatic alignment effect position the
+        // sheet so its bottom edge rests on the nav bar.
+        setDragOffset(0);
+        dragStateRef.current.active = false;
+        setIsDragging(false);
         setOpen(true);
       } else {
+        dragStateRef.current.active = false;
+        setDragOffset(0);
+        setIsDragging(false);
         setOpen(false);
       }
     },
@@ -484,6 +581,22 @@ export default function MessagesMenu({
     [activeConversationId, refreshUnread],
   );
 
+  const handleDragStart = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!isMobile) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      dragStateRef.current = {
+        active: true,
+        startY: event.clientY,
+        startOffset: dragOffset,
+      };
+      setIsDragging(true);
+    },
+    [isMobile, dragOffset],
+  );
+
   // --- Render helpers ---
 
   const renderConversationSummary = (conversation: ConversationSummary) => {
@@ -505,12 +618,12 @@ export default function MessagesMenu({
       <div
         key={conversation.id}
         className={cn(
-          "flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left text-sm shadow-sm transition",
+          "flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left text-sm shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md active:translate-y-0",
           isActive
-            ? "border-[#E7C9A3] bg-[rgba(231,201,163,0.35)]"
+            ? "border-[#E67E22]/40 bg-[rgba(255,255,255,0.72)] shadow-md ring-1 ring-[#E67E22]/10"
             : isUnread
-              ? "border-[#F3C78A] bg-[rgba(243,199,138,0.25)]"
-              : "border-transparent bg-[rgba(255,255,255,0.24)] hover:bg-[rgba(255,255,255,0.4)]",
+              ? "border-[#F3C78A]/70 bg-[rgba(255,255,255,0.56)] hover:bg-[rgba(255,255,255,0.66)]"
+              : "border-[#EBDAC8]/55 bg-[rgba(255,255,255,0.34)] hover:border-[#E7C9A3]/70 hover:bg-[rgba(255,255,255,0.52)]",
         )}
       >
         <button
@@ -794,52 +907,71 @@ export default function MessagesMenu({
         side="bottom"
         align="center"
         sideOffset={12}
-        className="z-[90] w-[960px] max-w-[min(1100px,calc(100vw-1.5rem))] rounded-[32px] border border-white/50 bg-gradient-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40"
+        className="relative z-[90] w-[960px] max-w-[min(1100px,calc(100vw-1.5rem))] border-none bg-transparent p-0 shadow-none ring-0"
       >
-        {!canLoad ? (
-          <div className="relative flex h-[380px] w-full items-center justify-center rounded-[24px] px-6 text-center text-sm text-[#777777]">
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
-              aria-label={strings.label}
-            >
-              <X className="h-4 w-4" />
-            </button>
-            {strings.loginRequired}
-          </div>
-        ) : (
-          <div className="relative mx-auto flex w-full flex-col gap-4 p-1 md:flex-row">
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="absolute right-3 top-3 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
-              aria-label={strings.label}
-            >
-              <X className="h-4 w-4" />
-            </button>
-            {isMobile ? (
-              mobileView === "list" ? (
-                <div className="w-full" style={{ height: cardHeight }}>
-                  {renderConversationListSection()}
-                </div>
+        <div
+          ref={sheetRef}
+          className="relative rounded-[32px] border border-white/50 bg-gradient-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40"
+          style={{
+            transform: `translateY(${dragOffset}px)`,
+            transition: isDragging ? "none" : "transform 180ms ease-out",
+          }}
+        >
+          {isMobile && (
+            <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
+              <div
+                role="presentation"
+                aria-hidden="true"
+                onPointerDown={handleDragStart}
+                className="pointer-events-auto h-1.5 w-16 cursor-grab rounded-full bg-[#D9C4AF]/80 touch-none select-none transition active:cursor-grabbing"
+              />
+            </div>
+          )}
+          {!canLoad ? (
+            <div className="relative flex h-[380px] w-full items-center justify-center rounded-[24px] px-6 text-center text-sm text-[#777777]">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+                aria-label={strings.label}
+              >
+                <X className="h-4 w-4" />
+              </button>
+              {strings.loginRequired}
+            </div>
+          ) : (
+            <div className="relative mx-auto flex w-full flex-col gap-4 p-1 md:flex-row">
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+                aria-label={strings.label}
+              >
+                <X className="h-4 w-4" />
+              </button>
+              {isMobile ? (
+                mobileView === "list" ? (
+                  <div className="w-full" style={{ height: cardHeight }}>
+                    {renderConversationListSection()}
+                  </div>
+                ) : (
+                  <div className="w-full" style={{ height: cardHeight }}>
+                    {renderConversationThreadSection(true)}
+                  </div>
+                )
               ) : (
-                <div className="w-full" style={{ height: cardHeight }}>
-                  {renderConversationThreadSection(true)}
-                </div>
-              )
-            ) : (
-              <>
-                <div className="w-[35%] min-w-[240px]" style={{ height: cardHeight }}>
-                  {renderConversationListSection()}
-                </div>
-                <div className="flex-1" style={{ height: cardHeight }}>
-                  {renderConversationThreadSection(false)}
-                </div>
-              </>
-            )}
-          </div>
-        )}
+                <>
+                  <div className="w-[35%] min-w-[240px]" style={{ height: cardHeight }}>
+                    {renderConversationListSection()}
+                  </div>
+                  <div className="flex-1" style={{ height: cardHeight }}>
+                    {renderConversationThreadSection(false)}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );

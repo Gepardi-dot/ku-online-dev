@@ -4,6 +4,9 @@ import { corsHeaders } from "../_shared/cors.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const openAiApiKey = Deno.env.get("OPENAI_API_KEY");
+const openAiEmbeddingsUrl = Deno.env.get("OPENAI_EMBEDDINGS_URL") ?? "https://api.openai.com/v1/embeddings";
+const embeddingModel = Deno.env.get("EMBEDDING_MODEL") ?? "text-embedding-3-small";
 
 if (!supabaseUrl) {
   throw new Error("SUPABASE_URL is not configured");
@@ -11,6 +14,41 @@ if (!supabaseUrl) {
 
 if (!serviceRoleKey) {
   throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured");
+}
+
+async function createEmbedding(input: string): Promise<number[] | null> {
+  if (!openAiApiKey) {
+    return null;
+  }
+
+  const body = JSON.stringify({
+    model: embeddingModel,
+    input,
+  });
+
+  const response = await fetch(openAiEmbeddingsUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${openAiApiKey}`,
+    },
+    body,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("OpenAI embeddings request failed", response.status, errorText);
+    return null;
+  }
+
+  const payload = await response.json() as { data?: { embedding: number[] }[] };
+  const first = Array.isArray(payload.data) && payload.data.length > 0 ? payload.data[0] : null;
+  if (!first || !Array.isArray(first.embedding)) {
+    console.error("OpenAI embeddings response missing embedding data");
+    return null;
+  }
+
+  return first.embedding;
 }
 
 function toNumber(input: unknown): number | null {
@@ -80,7 +118,21 @@ serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
-    const { data, error } = await supabase.rpc("search_products", {
+    let queryEmbedding: number[] | null = null;
+    const trimmedQuery = typeof query === "string" ? query.trim() : "";
+
+    if (trimmedQuery.length > 0) {
+      try {
+        queryEmbedding = await createEmbedding(trimmedQuery.slice(0, 256));
+      } catch (embeddingError) {
+        console.error("Failed to create query embedding", embeddingError);
+        queryEmbedding = null;
+      }
+    }
+
+    const rpcName = queryEmbedding ? "search_products_semantic" : "search_products";
+
+    const rpcArgs: Record<string, unknown> = {
       search_term: query,
       category: categoryId,
       min_price: minPrice,
@@ -88,10 +140,16 @@ serve(async (req) => {
       city,
       limit_count: limit,
       offset_count: offset,
-    });
+    };
+
+    if (rpcName === "search_products_semantic" && queryEmbedding) {
+      rpcArgs.query_embedding = queryEmbedding;
+    }
+
+    const { data, error } = await supabase.rpc(rpcName, rpcArgs);
 
     if (error) {
-      console.error("search_products rpc failed", error);
+      console.error(`${rpcName} rpc failed`, error);
       return new Response(
         JSON.stringify({ error: "Search failed", details: error.message }),
         {

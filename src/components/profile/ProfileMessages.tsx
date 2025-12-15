@@ -393,12 +393,12 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
           type="button"
           onClick={() => handleConversationSelect(conversation.id)}
           className={cn(
-            "flex w-full items-start gap-3 rounded-md border px-3 py-2 text-left text-sm transition",
+            "flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md active:translate-y-0",
             isActive
-              ? "border-primary bg-primary/5"
+              ? "border-primary/40 bg-primary/10 shadow-md ring-1 ring-primary/10"
               : isUnread
-                ? "border-amber-300 bg-amber-50 hover:border-amber-300/80"
-                : "border-transparent bg-muted/50 hover:border-primary/40",
+                ? "border-amber-300/70 bg-amber-50/70 hover:bg-amber-50/90"
+                : "border-border/60 bg-background/60 hover:border-primary/30 hover:bg-background/85",
           )}
         >
           <Avatar className="h-8 w-8">
