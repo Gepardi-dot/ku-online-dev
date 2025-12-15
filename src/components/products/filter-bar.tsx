@@ -174,10 +174,39 @@ export function ProductsFilterBar({
   const conditionUiValue = condition === "" ? CLEAR_VALUE : condition;
   const locationUiValue = location === "" ? CLEAR_VALUE : location;
 
+  const filterBarClassName =
+    "w-full rounded-2xl border border-white/50 bg-white/60 px-3 py-2 shadow-[0_18px_48px_rgba(15,23,42,0.1)] backdrop-blur-xl md:mx-auto md:w-fit";
+
+  const selectTriggerClassName =
+    "h-9 w-fit max-w-full rounded-xl border border-white/55 bg-white/65 px-3.5 text-sm shadow-sm ring-1 ring-white/25 backdrop-blur-xl " +
+    "hover:bg-white/75 hover:shadow-md focus:ring-2 focus:ring-primary/35 focus:ring-offset-2 focus:ring-offset-white/80";
+
+  const selectContentClassName =
+    "max-h-[15rem] w-fit max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/45 bg-white/35 " +
+    "shadow-[0_30px_95px_rgba(15,23,42,0.2)] ring-1 ring-white/20 backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110 " +
+    "[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0";
+
+  const selectItemClassName =
+    "relative isolate mb-1 last:mb-0 truncate overflow-hidden rounded-lg border border-white/35 bg-slate-50/25 py-2 ps-10 pe-3 text-sm text-foreground " +
+    "backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110 " +
+    "shadow-[0_14px_30px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.12)] " +
+    "before:pointer-events-none before:absolute before:inset-0 before:z-0 before:opacity-55 " +
+    "before:bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.18)_1px,transparent_0)] before:[background-size:6px_6px] " +
+    "after:pointer-events-none after:absolute after:inset-0 after:z-0 after:opacity-60 after:bg-gradient-to-b after:from-white/22 after:via-transparent after:to-transparent " +
+    "motion-safe:transition-[transform,background-color,border-color,box-shadow] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none " +
+    "hover:bg-white/22 hover:border-white/45 focus:bg-white/22 focus:text-foreground " +
+    "active:scale-[0.99] data-[highlighted]:scale-[0.99] data-[highlighted]:-translate-y-[1px] " +
+    "data-[highlighted]:bg-primary/10 data-[highlighted]:border-primary/25 data-[highlighted]:shadow-[0_14px_26px_rgba(249,115,22,0.12)] " +
+    "data-[state=checked]:bg-primary/10 data-[state=checked]:border-primary/30 data-[state=checked]:shadow-[0_14px_26px_rgba(249,115,22,0.14)]";
+
+  const popoverContentClassName =
+    "w-[min(92vw,22rem)] rounded-2xl border border-white/45 bg-white/35 p-3 " +
+    "shadow-[0_30px_95px_rgba(15,23,42,0.2)] ring-1 ring-white/20 backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110";
+
   return (
     <div
       dir={direction}
-      className="rounded-xl border border-gray-200 bg-white/70 backdrop-blur px-2.5 py-1.5 shadow-sm w-full md:w-fit md:mx-auto"
+      className={filterBarClassName}
     >
       <div className="flex flex-wrap items-center gap-1.5">
         {/* Condition */}
@@ -186,13 +215,15 @@ export function ProductsFilterBar({
           value={conditionUiValue}
           onValueChange={(v) => setCondition(v === CLEAR_VALUE ? "" : v)}
         >
-          <SelectTrigger className="h-8 rounded-full text-xs px-2.5 bg-white border border-gray-200 w-auto min-w-[88px] shrink-0">
+          <SelectTrigger className={selectTriggerClassName}>
             <SelectValue placeholder={t("filters.condition")} />
           </SelectTrigger>
-          <SelectContent align={contentAlign} dir={direction}>
-            <SelectItem value={CLEAR_VALUE}>{t("filters.conditionAll")}</SelectItem>
+          <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
+            <SelectItem value={CLEAR_VALUE} className={selectItemClassName}>
+              {t("filters.conditionAll")}
+            </SelectItem>
             {CONDITION_OPTIONS.filter((opt) => opt.value !== "").map((opt) => (
-              <SelectItem key={opt.value || "all"} value={opt.value || CLEAR_VALUE}>
+              <SelectItem key={opt.value || "all"} value={opt.value || CLEAR_VALUE} className={selectItemClassName}>
                 {getConditionLabel(opt.value)}
               </SelectItem>
             ))}
@@ -205,13 +236,15 @@ export function ProductsFilterBar({
           value={locationUiValue}
           onValueChange={(v) => setLocation(v === CLEAR_VALUE ? "" : v)}
         >
-          <SelectTrigger className="h-8 rounded-full text-xs px-2.5 bg-white border border-gray-200 w-auto min-w-[64px] shrink-0">
+          <SelectTrigger className={selectTriggerClassName}>
             <SelectValue placeholder={t("filters.city")} />
           </SelectTrigger>
-          <SelectContent align={contentAlign} dir={direction}>
-            <SelectItem value={CLEAR_VALUE}>{t("filters.cityAll")}</SelectItem>
+          <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
+            <SelectItem value={CLEAR_VALUE} className={selectItemClassName}>
+              {t("filters.cityAll")}
+            </SelectItem>
             {locations.map((loc) => (
-              <SelectItem key={loc} value={loc}>
+              <SelectItem key={loc} value={loc} className={selectItemClassName}>
                 {getCityLabel(loc)}
               </SelectItem>
             ))}
@@ -221,7 +254,10 @@ export function ProductsFilterBar({
         {/* Color */}
         <Popover open={colorOpen} onOpenChange={setColorOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="h-8 rounded-full px-2.5 text-xs border-gray-200 bg-white w-auto shrink-0 inline-flex items-center gap-2">
+            <Button
+              variant="outline"
+              className="inline-flex h-9 w-fit shrink-0 items-center gap-2 rounded-xl border-white/55 bg-white/65 px-3.5 text-sm shadow-sm ring-1 ring-white/25 backdrop-blur-xl hover:bg-white/75 hover:shadow-md"
+            >
               {color && (
                 <span
                   className="inline-block h-3.5 w-3.5 rounded-full border shadow-sm"
@@ -232,7 +268,7 @@ export function ProductsFilterBar({
               {t("filters.color")}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[min(92vw,22rem)]" align={contentAlign} dir={direction}>
+          <PopoverContent className={popoverContentClassName} align={contentAlign} dir={direction}>
             <div className="grid grid-cols-8 sm:grid-cols-10 gap-2 p-1">
               {/* All colors */}
               <button
@@ -287,11 +323,14 @@ export function ProductsFilterBar({
         {/* Price slider in a compact popover */}
         <Popover open={priceOpen} onOpenChange={setPriceOpen}>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="h-8 rounded-full px-2.5 text-xs border-gray-200 bg-white w-auto shrink-0">
+            <Button
+              variant="outline"
+              className="h-9 w-fit shrink-0 rounded-xl border-white/55 bg-white/65 px-3.5 text-sm shadow-sm ring-1 ring-white/25 backdrop-blur-xl hover:bg-white/75 hover:shadow-md"
+            >
               {priceChipLabel}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[min(90vw,20rem)]" align={contentAlign} dir={direction}>
+          <PopoverContent className={cn(popoverContentClassName, "w-[min(90vw,20rem)]")} align={contentAlign} dir={direction}>
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{t("filters.priceRange")}</span>
@@ -327,22 +366,22 @@ export function ProductsFilterBar({
 
         {/* Sort */}
         <Select dir={direction} value={sort} onValueChange={(v) => setSort(v)}>
-          <SelectTrigger className="h-8 rounded-full text-xs px-2.5 bg-white border border-gray-200 w-auto min-w-[92px] shrink-0">
+          <SelectTrigger className={selectTriggerClassName}>
             <SelectValue placeholder={t("filters.sortNewest")} />
           </SelectTrigger>
-          <SelectContent align={contentAlign} dir={direction}>
-            <SelectItem value="newest">{t("filters.sortNewest")}</SelectItem>
-            <SelectItem value="price_asc">{t("filters.sortPriceAsc")}</SelectItem>
-            <SelectItem value="price_desc">{t("filters.sortPriceDesc")}</SelectItem>
-            <SelectItem value="views_desc">{t("filters.sortMostViewed")}</SelectItem>
+          <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
+            <SelectItem value="newest" className={selectItemClassName}>{t("filters.sortNewest")}</SelectItem>
+            <SelectItem value="price_asc" className={selectItemClassName}>{t("filters.sortPriceAsc")}</SelectItem>
+            <SelectItem value="price_desc" className={selectItemClassName}>{t("filters.sortPriceDesc")}</SelectItem>
+            <SelectItem value="views_desc" className={selectItemClassName}>{t("filters.sortMostViewed")}</SelectItem>
           </SelectContent>
         </Select>
 
         <div className="flex items-center gap-1.5">
-          <Button size="sm" className="h-8 text-xs px-3 rounded-full" onClick={apply}>
+          <Button size="sm" className="h-9 text-sm px-4 rounded-full" onClick={apply}>
             {t("filters.apply")}
           </Button>
-          <Button size="sm" variant="ghost" className="h-8 text-xs px-2 rounded-full" onClick={reset}>
+          <Button size="sm" variant="ghost" className="h-9 text-sm px-3 rounded-full" onClick={reset}>
             {t("filters.reset")}
           </Button>
         </div>
