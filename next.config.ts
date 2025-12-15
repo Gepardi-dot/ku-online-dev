@@ -161,6 +161,36 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, '.'),
   images: {
     remotePatterns,
+    qualities: [75, 82],
+  },
+  webpack(config, options) {
+    const shouldDebugWebpack = process.env.NEXT_DEBUG_WEBPACK_OUTPUT === 'true';
+
+    if (shouldDebugWebpack && options.isServer) {
+      // eslint-disable-next-line no-console
+      console.log('[webpack:before]', {
+        nextRuntime: options.nextRuntime,
+        outputPath: config.output?.path,
+        filename: config.output?.filename,
+        chunkFilename: config.output?.chunkFilename,
+      });
+    }
+
+    if (options.isServer && config.output) {
+      config.output.chunkFilename = 'chunks/[id].js';
+    }
+
+    if (shouldDebugWebpack && options.isServer) {
+      // eslint-disable-next-line no-console
+      console.log('[webpack:after]', {
+        nextRuntime: options.nextRuntime,
+        outputPath: config.output?.path,
+        filename: config.output?.filename,
+        chunkFilename: config.output?.chunkFilename,
+      });
+    }
+
+    return config;
   },
   async headers() {
     if (!securityHeaders.length) {

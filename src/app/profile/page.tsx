@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { formatDistanceToNow } from 'date-fns';
+import { differenceInMonths, formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import EditProfileButton from '@/components/profile/EditProfileButton';
@@ -255,9 +255,22 @@ export default async function ProfilePage({
 
   // Visibility and language settings removed per product requirements.
 
-  const joinedLabel = profileData.joinedDate
-    ? formatDistanceToNow(new Date(profileData.joinedDate), { addSuffix: true })
-    : null;
+  const joinedLabel = (() => {
+    if (!profileData.joinedDate) {
+      return null;
+    }
+
+    const joinedDate = new Date(profileData.joinedDate);
+    if (Number.isNaN(joinedDate.getTime())) {
+      return null;
+    }
+
+    const months = Math.max(1, differenceInMonths(new Date(), joinedDate));
+    const numberLocale = locale === 'ar' || locale === 'ku' ? `${locale}-u-nu-arab` : locale;
+    const count = new Intl.NumberFormat(numberLocale).format(months);
+    const unit = t(`product.monthUnit.${months === 1 ? 'one' : 'other'}`);
+    return `${count} ${unit}`;
+  })();
 
   const requestedTab = params.tab ?? 'overview';
   const activeTab = ALLOWED_TABS.has(requestedTab ?? '')
@@ -315,7 +328,7 @@ export default async function ProfilePage({
           <div className="lg:col-span-1">
             <Card>
               <CardContent className="p-6">
-                <div className="text-center space-y-4">
+                <div className="space-y-4 text-center">
                   <Avatar className="h-24 w-24 mx-auto">
                     <AvatarImage src={avatarDisplayUrl ?? undefined} />
                     <AvatarFallback className="text-2xl">
@@ -323,46 +336,40 @@ export default async function ProfilePage({
                     </AvatarFallback>
                   </Avatar>
 
-                  {profileData.isVerified && (
-                    <div className="flex justify-center">
-                      <Badge variant="secondary" className="flex items-center gap-1">
-                        <ShieldCheck className="h-3 w-3 text-emerald-500" />
-                        {t('profile.overview.trustedBadge')}
-                      </Badge>
+                  <div className="flex items-center justify-center gap-2">
+                    <h1 className="text-2xl font-bold max-w-[260px] truncate">{profileData.fullName}</h1>
+                    {profileData.isVerified ? (
+                      <>
+                        <BadgeCheck className="h-5 w-5 text-emerald-600" />
+                        <span className="sr-only">{t('profile.overview.trustedBadge')}</span>
+                      </>
+                    ) : null}
+                  </div>
+
+                  {(Number(profileData.rating) > 0 || profileData.totalRatings > 0) && (
+                    <div className="inline-flex items-center justify-center gap-2 rounded-full bg-muted/80 px-3 py-1 text-xs text-muted-foreground">
+                      <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                      <span className="font-semibold text-foreground">
+                        {Number(profileData.rating ?? 0).toFixed(1)} / 5
+                      </span>
+                      <span>· {profileData.totalRatings} {t('product.reviewsLabel')}</span>
                     </div>
                   )}
-
-                  <div>
-                    <h1 className="text-2xl font-bold max-w-[260px] mx-auto truncate">
-                      {profileData.fullName}
-                    </h1>
-                    {(profileData.rating || profileData.totalRatings) && (
-                      <div className="flex items-center justify-center gap-1 mt-1">
-                        <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                        <span className="font-medium">
-                          {(profileData.rating ?? 0).toFixed(1)}
-                        </span>
-                        <span className="text-muted-foreground">
-                          ({profileData.totalRatings} reviews)
-                        </span>
-                      </div>
-                    )}
-                  </div>
 
                   <div className="flex items-center justify-center gap-1 text-muted-foreground">
                     <MapPin className="h-4 w-4" />
                     {getCityLabel(profileData.location)}
                   </div>
 
-                  {joinedLabel && (
-                    <p className="text-xs text-muted-foreground">
+                  {joinedLabel ? (
+                    <p dir="auto" className="text-xs text-muted-foreground bidi-auto">
                       {t('product.memberSincePrefix')} {joinedLabel}
                     </p>
-                  )}
+                  ) : null}
 
                   <p className="text-sm text-muted-foreground">{profileData.bio}</p>
 
-                  <div className="grid grid-cols-3 gap-4 py-4 border-t border-b">
+                  <div className="grid grid-cols-3 gap-4 border-t border-b py-4">
                     <div className="text-center">
                       <div className="font-bold text-lg">{listings.length}</div>
                       <div className="text-xs text-muted-foreground">{t('profile.overview.statsListings')}</div>
@@ -389,7 +396,6 @@ export default async function ProfilePage({
                 </div>
               </CardContent>
             </Card>
-
           </div>
 
           <div className="lg:col-span-2">
@@ -414,109 +420,6 @@ export default async function ProfilePage({
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>{t('profile.overview.sellerSnapshotTitle')}</CardTitle>
-                    <CardDescription>
-                      {t('profile.overview.sellerSnapshotDescription')}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid gap-6 lg:grid-cols-2">
-                      <div className="space-y-4">
-                        <div className="flex items-center gap-4">
-                          <Avatar className="h-16 w-16">
-                            <AvatarImage src={profileData.avatar ?? undefined} />
-                            <AvatarFallback>{profileData.fullName[0]}</AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="text-lg font-semibold">{profileData.fullName}</p>
-                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <MapPin className="h-4 w-4" />
-                                {getCityLabel(profileData.location)}
-                              </span>
-                              {profileData.isVerified ? (
-                                <span className="flex items-center gap-1 text-emerald-600">
-                                  <BadgeCheck className="h-4 w-4" /> {t('profile.overview.trustedBadge')}
-                                </span>
-                              ) : null}
-                              {joinedLabel ? (
-                                <span>
-                                  {t('product.memberSincePrefix')} {joinedLabel}
-                                </span>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          {profileData.bio}
-                        </p>
-
-                        <dl className="grid gap-4 sm:grid-cols-2 text-sm">
-                          <div>
-                            <dt className="font-medium text-muted-foreground">
-                              {t('profile.overview.contactTitle')}
-                            </dt>
-                            <dd className="mt-1 space-y-1">
-                              <p className="text-foreground">{profileData.email}</p>
-                              <p className="text-muted-foreground">
-                                {profileData.phone ?? t('profile.overview.phoneNotProvided')}
-                              </p>
-                            </dd>
-                          </div>
-                          
-                        </dl>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="rounded-lg border bg-muted/40 p-4">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium text-muted-foreground">
-                              {t('profile.overview.profileCompleteness')}
-                            </p>
-                            <span className="text-sm font-semibold text-foreground">
-                              {completionScore}%
-                            </span>
-                          </div>
-                          <Progress value={completionScore} className="mt-2" />
-                          <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                            <li className="flex items-center gap-2">
-                              <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                              {t('profile.overview.trustedBadge')}
-                            </li>
-                            <li className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-blue-500" />
-                              {t('profile.overview.responseRateLabel')}: {profileData.responseRate}
-                            </li>
-                            <li className="flex items-center gap-2">
-                              <BellRing className="h-4 w-4 text-amber-500" />
-                              {t('profile.overview.notificationsTuned')}
-                            </li>
-                          </ul>
-                        </div>
-
-                        <div className="rounded-lg border bg-background p-4 shadow-sm">
-                          <p className="text-sm font-medium text-muted-foreground">
-                            {t('profile.overview.preferencesTitle')}
-                          </p>
-                          <div className="mt-3 space-y-2 text-sm">
-                            <div className="flex items-center justify-between">
-                              <span className="flex items-center gap-2 text-muted-foreground">
-                                <Bell className="h-4 w-4" /> {t('profile.overview.marketingEmailOptIn')}
-                              </span>
-                              <span className="font-medium text-foreground">
-                                {profileData.marketingEmails ? t('profile.overview.enabled') : t('profile.overview.disabled')}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
                 <Card>
                   <CardHeader>
                     <CardTitle>{t('profile.overview.performanceInsightsTitle')}</CardTitle>

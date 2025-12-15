@@ -15,7 +15,7 @@ import MarkSoldToggle from '@/components/product/mark-sold-toggle';
 import ReviewSystem from '@/components/reviews/review-system';
 import SimilarItems from '@/components/product/similar-items';
 import { ReportListingDialog } from '@/components/reports/ReportListingDialog';
-import { formatDistanceToNow } from 'date-fns';
+import { differenceInMonths } from 'date-fns';
 import { getProductById, incrementProductViews } from '@/lib/services/products';
 import ProductImages from '@/components/product/product-images';
 import { getProductFavoriteCount } from '@/lib/services/favorites-analytics';
@@ -129,10 +129,17 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const createdAtLabel = createdDays !== null
     ? t('product.daysAgo').replace('{days}', formatNumber(createdDays))
     : '';
-  const joinedDays = daysSince(seller?.createdAt ?? null);
-  const sellerJoinedLabel = joinedDays !== null
-    ? t('product.daysAgo').replace('{days}', formatNumber(joinedDays))
-    : null;
+  const sellerJoinedLabel = (() => {
+    if (!seller?.createdAt) {
+      return null;
+    }
+
+    const months = Math.max(1, differenceInMonths(new Date(), seller.createdAt));
+    const numberLocale = locale === 'ar' || locale === 'ku' ? `${locale}-u-nu-arab` : locale;
+    const count = new Intl.NumberFormat(numberLocale).format(months);
+    const unit = t(`product.monthUnit.${months === 1 ? 'one' : 'other'}`);
+    return `${count} ${unit}`;
+  })();
   const sellerDisplayNameRaw = seller?.fullName ?? seller?.name ?? seller?.email ?? '';
   const sellerDisplayName = sellerDisplayNameRaw.trim() || 'Seller';
   const sellerInitial = sellerDisplayName.charAt(0).toUpperCase();
@@ -300,7 +307,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                           </p>
                         )}
                         {sellerJoinedLabel && (
-                          <p>
+                          <p dir="auto" className="bidi-auto">
                             {t('product.memberSincePrefix')} {sellerJoinedLabel}
                           </p>
                         )}

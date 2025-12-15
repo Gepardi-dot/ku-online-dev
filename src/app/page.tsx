@@ -26,138 +26,15 @@ import ProductGridSkeleton from '@/components/products/ProductGridSkeleton';
 import { NewsletterSignup } from '@/components/marketing/newsletter-signup';
 import Link from 'next/link';
 import Image from 'next/image';
-
-type CategoryUiConfig = {
-  key: string;
-  label: string;
-  labelAr?: string;
-  labelKu?: string;
-  icon: string;
-  matchNames: string[];
-};
-
-const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
-  {
-    key: 'smartphones-ipads',
-    label: 'Smartphones and iPads',
-    labelAr: 'الهواتف والأيباد',
-    labelKu: 'مۆبایل و ئایپاد',
-    icon: '/Smartphones and ipads.png',
-    matchNames: ['smartphones and ipads', 'smartphones', 'smartphone'],
-  },
-  {
-    key: 'fashion',
-    label: 'Fashion',
-    labelAr: 'أزياء',
-    labelKu: 'فەشن',
-    icon: '/Fashion (2) (1).png',
-    matchNames: ['fashion'],
-  },
-  {
-    key: 'electronics',
-    label: 'Electronics',
-    labelAr: 'إلكترونيات',
-    labelKu: 'ئێلێکترۆنیات',
-    icon: '/Electronics (1).png',
-    matchNames: ['electronics'],
-  },
-  {
-    key: 'sports',
-    label: 'Sports',
-    labelAr: 'رياضة',
-    labelKu: 'وەرزشی',
-    icon: '/Sports (2) (1).png',
-    matchNames: ['sports'],
-  },
-  {
-    key: 'home-appliance',
-    label: 'Home Appliance',
-    labelAr: 'أجهزة منزلية',
-    labelKu: 'کەرەساتی ماڵەوە',
-    icon: '/Home appliance.png',
-    matchNames: ['home appliance', 'home & garden', 'home and garden'],
-  },
-  {
-    key: 'kids-toys',
-    label: 'Kids & Toys',
-    labelAr: 'ألعاب الأطفال',
-    labelKu: 'منداڵ و یاریەکان',
-    icon: '/Kids & Toys (1).png',
-    matchNames: ['kids & toys', 'kids and toys', 'toys'],
-  },
-  {
-    key: 'furniture',
-    label: 'Furniture',
-    labelAr: 'أثاث',
-    labelKu: 'کاڵای خانووبەرە',
-    icon: '/Furniture (1).png',
-    matchNames: ['furniture'],
-  },
-  {
-    key: 'services',
-    label: 'Services',
-    labelAr: 'خدمات',
-    labelKu: 'خزمەتگوزاری',
-    icon: '/Services (1).png',
-    matchNames: ['services'],
-  },
-  {
-    key: 'cars',
-    label: 'Cars',
-    labelAr: 'سيارات',
-    labelKu: 'ئۆتۆمبێل',
-    icon: '/Cars (2) (1).png',
-    matchNames: ['cars', 'motors', 'vehicles'],
-  },
-  {
-    key: 'property',
-    label: 'Property',
-    labelAr: 'عقارات',
-    labelKu: 'خانوو',
-    icon: '/Property.png',
-    matchNames: ['property', 'real estate'],
-  },
-  {
-    key: 'free',
-    label: 'Free',
-    labelAr: 'مجاني',
-    labelKu: 'بێبەرامبەر',
-    icon: '/Free (2) (1).png',
-    matchNames: ['free'],
-  },
-  {
-    key: 'others',
-    label: 'Others',
-    labelAr: 'أخرى',
-    labelKu: 'هیتر',
-    icon: '/Others (2) (1).png',
-    matchNames: ['others'],
-  },
-];
-
-const CATEGORY_ICON_MAP: Record<string, string> = CATEGORY_UI_CONFIG.reduce(
-  (acc, config) => {
-    for (const name of config.matchNames) {
-      acc[name.toLowerCase()] = config.icon;
-    }
-    return acc;
-  },
-  {} as Record<string, string>,
-);
-
-const CATEGORY_LABEL_MAP: Record<string, CategoryUiConfig> = CATEGORY_UI_CONFIG.reduce(
-  (acc, config) => {
-    for (const name of config.matchNames) {
-      acc[name.toLowerCase()] = config;
-    }
-    return acc;
-  },
-  {} as Record<string, CategoryUiConfig>,
-);
-const CATEGORY_BLUR_PLACEHOLDER =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP4BwQACfsD/QwZk48AAAAASUVORK5CYII=';
+import SwipeHint from '@/components/ui/swipe-hint';
+import {
+  CATEGORY_UI_CONFIG,
+  CATEGORY_ICON_MAP,
+  CATEGORY_LABEL_MAP,
+  CATEGORY_BLUR_PLACEHOLDER,
+} from '@/data/category-ui-config';
 import { getServerLocale } from '@/lib/locale/server';
-import { LocaleMessages, translations } from '@/lib/locale/dictionary';
+import { LocaleMessages, rtlLocales, translations } from '@/lib/locale/dictionary';
 
 interface SearchPageParams {
   category?: string;
@@ -214,6 +91,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
     params as unknown as Record<string, string | undefined>,
   );
   const locale = await getServerLocale();
+  const categoriesDirection = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
   const createdAfter = postedWithinToDate(postedWithin);
 
   const filtersWithDate = {
@@ -256,7 +134,11 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
               {messages.homepage.noCategories}
             </span>
           ) : (
-            <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1 snap-x snap-mandatory lg:gap-1 lg:overflow-visible lg:justify-center">
+            <SwipeHint
+              label={messages.homepage.swipeHint}
+              direction={categoriesDirection}
+              containerClassName="no-scrollbar flex gap-[0.25rem] overflow-x-auto pb-1 snap-x snap-mandatory lg:gap-1.5 lg:overflow-visible lg:justify-center"
+            >
               {categories.map((category, idx) => {
                 const baseName = category.name ?? '';
                 const baseNameLc = baseName.toLowerCase();
@@ -311,10 +193,10 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                     href={categoryHref}
                     key={category.id}
                     aria-label={label}
-                    className="snap-start inline-flex shrink-0 w-24 lg:w-20 flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs sm:text-sm font-medium text-foreground/90 transition hover:bg-muted/60 active:scale-[0.99] md:snap-normal"
+                    className="snap-start inline-flex shrink-0 w-[6.1rem] sm:w-[6rem] md:w-[5.8rem] lg:w-[5.5rem] flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] sm:text-sm font-medium text-foreground/90 transition hover:bg-muted/60 active:scale-[0.99] md:snap-normal"
                   >
                     <span
-                      className="relative inline-flex h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 lg:h-16 lg:w-16 items-center justify-center overflow-hidden bg-white rounded-[18px]"
+                      className="relative inline-flex h-[3.6rem] w-[3.6rem] sm:h-14 sm:w-14 md:h-16 md:w-16 items-center justify-center overflow-hidden bg-white rounded-[18px]"
                       aria-hidden="true"
                     >
                       {isLocalImage ? (
@@ -350,7 +232,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                   </Link>
                 );
               })}
-            </div>
+            </SwipeHint>
           )}
         </div>
       </section>
@@ -449,12 +331,4 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
     </AppLayout>
   );
 }
-
-
-
-
-
-
-
-
 

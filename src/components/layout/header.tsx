@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState, FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, FormEvent, ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Search, Filter, PackagePlus } from 'lucide-react';
+import { Camera, Search, Filter, PackagePlus } from 'lucide-react';
 import { Icons } from '@/components/icons';
 import BrandLogo from '@/components/brand-logo';
 import LanguageSwitcher from '@/components/language-switcher';
@@ -38,6 +38,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [city, setCity] = useState<CityKey>('all');
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!searchParams) {
@@ -95,12 +96,38 @@ export default function AppHeader({ user }: AppHeaderProps) {
     return cityMap[city] ?? cityMap.all;
   }, [city, messages.header.city]);
 
+  const handleImageSearchClick = () => {
+    if (imageInputRef.current) {
+      imageInputRef.current.click();
+    }
+  };
+
+  const handleImageInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (typeof window !== 'undefined') {
+      window.alert(`${messages.common.comingSoonTitle}\n\n${messages.common.comingSoonDescription}`);
+    }
+
+    event.target.value = '';
+  };
+
   return (
     <header
       id="ku-main-header"
       className="sticky top-0 z-[60] w-full bg-white/80 shadow-sm backdrop-blur-md pointer-events-auto"
     >
       <div className="container mx-auto px-4">
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleImageInputChange}
+        />
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
             {/* Mobile / small-screen logo (original behavior) */}
@@ -137,7 +164,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder={t('header.searchPlaceholder')}
                   aria-label={t('header.searchPlaceholder')}
-                  className="w-full rounded-full border-gray-300 pr-44 focus:border-primary focus:ring-primary focus:ring-2"
+                  className="w-full rounded-full border-gray-300 pr-56 focus:border-primary focus:ring-primary focus:ring-2"
                 />
                 <div className="absolute right-0 top-0 h-full flex items-center">
                   <DropdownMenu>
@@ -147,7 +174,10 @@ export default function AppHeader({ user }: AppHeaderProps) {
                         <span className="truncate max-w-[7.5rem]">{currentCityLabel}</span>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="end">
+                    <DropdownMenuContent
+                      className="w-56 rounded-3xl border border-white/60 bg-gradient-to-br from-white/95 via-white/90 to-primary/5 p-3 shadow-[0_18px_48px_rgba(15,23,42,0.18)] backdrop-blur-xl ring-1 ring-white/40"
+                      align="end"
+                    >
                       <DropdownMenuLabel>{t('header.filterLabel')}</DropdownMenuLabel>
                       <DropdownMenuSeparator />
                       <DropdownMenuRadioGroup value={city} onValueChange={handleCitySelection}>
@@ -159,6 +189,15 @@ export default function AppHeader({ user }: AppHeaderProps) {
                       </DropdownMenuRadioGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-full px-4 border-l"
+                    aria-label={t('header.searchByImage')}
+                    onClick={handleImageSearchClick}
+                  >
+                    <Camera className="h-5 w-5" aria-hidden="true" />
+                  </Button>
                   <Button
                     type="submit"
                     className="h-full rounded-r-full px-5 bg-primary hover:bg-accent-foreground"
@@ -230,8 +269,16 @@ export default function AppHeader({ user }: AppHeaderProps) {
                 onChange={(event) => setSearchTerm(event.target.value)}
                 placeholder={t('header.searchMobilePlaceholder')}
                 aria-label={t('header.searchMobilePlaceholder')}
-                className="w-full rounded-full border-gray-300 pr-10 focus:border-primary"
+                className="w-full rounded-full border-gray-300 pr-20 focus:border-primary"
               />
+              <button
+                type="button"
+                className="absolute right-9 top-1/2 -translate-y-1/2 text-gray-400"
+                aria-label={t('header.searchByImage')}
+                onClick={handleImageSearchClick}
+              >
+                <Camera className="h-5 w-5" aria-hidden="true" />
+              </button>
               <button
                 type="submit"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
@@ -245,14 +292,17 @@ export default function AppHeader({ user }: AppHeaderProps) {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-full px-3 flex items-center gap-2 min-w-[110px] justify-center"
+                  className="rounded-full px-2.5 flex items-center gap-1 min-w-[78px] justify-center"
                 >
                   <Filter className="h-4 w-4" aria-hidden="true" />
-                  <span className="text-sm font-medium truncate">{currentCityLabel}</span>
+                  <span className="text-sm font-semibold truncate">{currentCityLabel}</span>
                   <span className="sr-only">{t('header.filterLabel')}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end">
+                    <DropdownMenuContent
+                      className="w-56 rounded-3xl border border-white/60 bg-gradient-to-br from-white/95 via-white/90 to-primary/5 p-3 shadow-[0_18px_48px_rgba(15,23,42,0.18)] backdrop-blur-xl ring-1 ring-white/40"
+                      align="end"
+                    >
                 <DropdownMenuLabel>{t('header.filterLabel')}</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuRadioGroup value={city} onValueChange={handleCitySelection}>

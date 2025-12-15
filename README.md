@@ -104,15 +104,19 @@ column for relevance scoring and `totalCount` reports how many listings match th
 - Server-side normalization now hydrates seller/category relations for search results so UI components receive
   `ProductWithRelations` objects regardless of the data source.
 
-### Smart recommendations
+### Smart recommendations and semantic search
 
 - The `20241205163000_add_product_embeddings.sql` migration enables the `vector` extension, adds a `products.embedding` column,
   and registers the `recommend_products` RPC that blends cosine similarity with category, price, and engagement filters.
 - Deploy `supabase/functions/recommend-products` (via `supabase functions deploy recommend-products --project-ref <project-ref>`) so the backend can serve cached recommendations without exposing the service role key to the client.
 - Populate embeddings with `node scripts/backfill-product-embeddings.mjs` (requires `OPENAI_API_KEY`, `NEXT_PUBLIC_SUPABASE_URL`,
-  `SUPABASE_SERVICE_ROLE_KEY`). Re-run it whenever bulk imports happen or wire it into your ingestion pipeline.
-- Once vectors exist, product pages automatically render the "Recommended for You" carousel powered by the new RPC. If no
-  embeddings are available yet, the UI falls back to simple category-based suggestions.
+  `SUPABASE_SERVICE_ROLE_KEY`). Re-run it whenever bulk imports happen or wire it into your ingestion pipeline so both recommendations
+  and search results have up-to-date vectors.
+- The `20251210120000_semantic_product_search.sql` migration adds a `search_products_semantic` RPC that blends semantic similarity
+  from embeddings with traditional full-text ranking.
+- Once vectors exist, product pages automatically render the "Recommended for You" carousel powered by the new RPC, and the
+  `product-search` edge function can augment keyword search with multilingual semantic matching. If no embeddings are available yet
+  or the OpenAI API key is missing, the UI falls back to simple category-based suggestions and text-only search.
 
 ### Smoke tests
 
