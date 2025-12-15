@@ -426,6 +426,10 @@ export const translations = {
         selectedCount: "{count} of {max} images selected",
         previewAlt: "Uploaded preview",
       },
+      currency: {
+        iqd: "IQD",
+        usd: "$ USD",
+      },
       submit: {
         creating: "Creating Listing...",
         create: "Create Listing",
@@ -877,7 +881,7 @@ export const translations = {
       },
     },
     sellForm: {
-      title: "SELL",
+      title: "بيع",
       hero: {
         subtitle: "ابدأ بالصور — الإعلانات التي تحتوي على صور تحصل على مشاهدات أكثر.",
       },
@@ -914,6 +918,10 @@ export const translations = {
         tip: "نصيحة: فئتا السيارات والعقارات تحتفظان بالدقة الأصلية (حتى 10MB لكل صورة) بعد الرفع.",
         selectedCount: "تم اختيار {count} من {max} صور",
         previewAlt: "معاينة الصورة المرفوعة",
+      },
+      currency: {
+        iqd: "د.ع",
+        usd: "$ دولار",
       },
       submit: {
         creating: "جارٍ إنشاء الإعلان...",
@@ -1366,7 +1374,7 @@ export const translations = {
       },
     },
     sellForm: {
-      title: "SELL",
+      title: "فرۆش",
       hero: {
         subtitle: "لە وێنەوە دەست پێ بکە — ئێعلانەکان بە وێنە بینەر زیاتر دەبینن.",
       },
@@ -1403,6 +1411,10 @@ export const translations = {
         tip: "ئاگاداری: ئۆتۆمبێل و خاوەنخانە قەبارەی ڕەسەن دەپارێزن (تا 10MB بۆ هەر وێنە) لە دوای بارکردن.",
         selectedCount: "{count} لە {max} وێنە هەڵبژێردرا",
         previewAlt: "پێشبینی وێنەی بارکراو",
+      },
+      currency: {
+        iqd: "دینار",
+        usd: "$ دۆلار",
       },
       submit: {
         creating: "ئیلان دروست دەکرێت...",

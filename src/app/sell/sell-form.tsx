@@ -55,11 +55,6 @@ const SELL_COLOR_TOKENS = [
 
 type CurrencyCode = 'IQD' | 'USD';
 
-const CURRENCY_TOGGLE_OPTIONS: Array<{ value: CurrencyCode; label: string }> = [
-  { value: 'IQD', label: 'IQD' },
-  { value: 'USD', label: '$ USD' },
-];
-
 const COLOR_CHIP_STYLE_MAP: Record<(typeof SELL_COLOR_TOKENS)[number], { bg: string; fg: string }> = {
   orange: { bg: '#f97316', fg: '#ffffff' },
   black: { bg: '#0a0a0a', fg: '#ffffff' },
@@ -125,6 +120,10 @@ export default function SellForm({ user }: SellFormProps) {
   const { t, messages, locale } = useLocale();
   const direction = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
   const contentAlign = direction === 'rtl' ? 'end' : 'start';
+  const currencyToggleOptions: Array<{ value: CurrencyCode; label: string }> = [
+    { value: 'IQD', label: t('sellForm.currency.iqd') },
+    { value: 'USD', label: t('sellForm.currency.usd') },
+  ];
   const maxFileSizeMb = Math.round(MAX_FILE_SIZE / (1024 * 1024));
 
   const cityLabels = messages.header.city as Record<string, string>;
@@ -157,7 +156,7 @@ export default function SellForm({ user }: SellFormProps) {
   const selectTriggerClassName = [
     'h-12 w-fit max-w-full rounded-xl border border-white/50 bg-white/65 px-4 text-sm backdrop-blur-xl',
     '[&>span]:max-w-[18rem]',
-    'shadow-[0_12px_32px_rgba(15,23,42,0.08)] ring-1 ring-white/30 transition',
+    'shadow-[0_14px_38px_rgba(15,23,42,0.1)] ring-1 ring-black/10 transition',
     'hover:bg-white/75 hover:shadow-[0_16px_40px_rgba(15,23,42,0.1)]',
     'focus:ring-2 focus:ring-primary/35 focus:ring-offset-2 focus:ring-offset-white/80',
   ].join(' ');
@@ -935,13 +934,13 @@ export default function SellForm({ user }: SellFormProps) {
                             aria-label="Currency"
                             className="inline-flex items-center gap-1 rounded-2xl border border-border/80 bg-white/95 p-1 shadow-sm ring-1 ring-black/5"
                           >
-                            {CURRENCY_TOGGLE_OPTIONS.map((option) => (
+                            {currencyToggleOptions.map((option) => (
                               <button
                                 key={option.value}
                                 type="button"
                                 aria-pressed={formData.currency === option.value}
                                 className={[
-                                  'rounded-xl px-3 py-1.5 text-xs font-semibold transition-colors',
+                                  'flex h-8 items-center rounded-xl px-3 py-0 text-xs font-semibold transition-colors',
                                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2',
                                   formData.currency === option.value
                                     ? 'bg-primary text-primary-foreground shadow-sm'
@@ -952,13 +951,20 @@ export default function SellForm({ user }: SellFormProps) {
                                   setFormData((prev) => ({ ...prev, currency: option.value }));
                                 }}
                               >
-                                {option.label}
+                                {option.label.includes('$') ? (
+                                  <span className="inline-flex items-center gap-1 leading-none">
+                                    <span className="text-lg leading-none">$</span>
+                                    <span className="text-sm leading-none">{option.label.replace('$', '').trim()}</span>
+                                  </span>
+                                ) : (
+                                  <span className="text-sm leading-none">{option.label}</span>
+                                )}
                               </button>
                             ))}
                           </div>
 
                           <div className="flex items-center gap-2 rounded-2xl border border-border/80 bg-white/95 px-3 py-2 shadow-sm ring-1 ring-black/5">
-                            <span className="text-xs font-semibold text-muted-foreground">{t('sellForm.fields.free')}</span>
+                            <span className="text-sm font-semibold text-muted-foreground">{t('sellForm.fields.free')}</span>
                             <Switch
                               checked={isFree}
                               onCheckedChange={(checked) => {
