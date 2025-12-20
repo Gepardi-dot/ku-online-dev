@@ -12,6 +12,7 @@ export interface NotificationRecord {
   content: string | null;
   type: string;
   relatedId: string | null;
+  meta: unknown | null;
   isRead: boolean;
   createdAt: string;
 }
@@ -24,6 +25,7 @@ function mapNotificationRow(row: any): NotificationRecord {
     content: (row.content as string) ?? null,
     type: (row.type as string) ?? 'system',
     relatedId: (row.related_id as string) ?? null,
+    meta: (row.meta as unknown) ?? null,
     isRead: Boolean(row.is_read),
     createdAt: row.created_at as string,
   };
@@ -32,7 +34,7 @@ function mapNotificationRow(row: any): NotificationRecord {
 export async function fetchNotifications(userId: string, limit = 20): Promise<NotificationRecord[]> {
   const { data, error } = await supabase
     .from('notifications')
-    .select('id, user_id, title, content, type, related_id, is_read, created_at')
+    .select('*')
     .eq('user_id', userId)
     .neq('type', 'message')
     .neq('type', 'favorite')

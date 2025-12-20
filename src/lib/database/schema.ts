@@ -34,6 +34,7 @@ export const users = pgTable('users', {
   email: varchar('email', { length: 255 }).unique(),
   phone: varchar('phone', { length: 20 }),
   fullName: text('full_name'),
+  name: text('name'),
   avatar: text('avatar_url'),
   location: text('location'),
   bio: text('bio'),

@@ -7,6 +7,7 @@ export type UpdateProfileFormValues = {
   notifyMessages: boolean;
   notifyOffers: boolean;
   notifyUpdates: boolean;
+  notifyAnnouncements: boolean;
   marketingEmails: boolean;
   preferredLanguage: 'en' | 'ar' | 'ku';
 };

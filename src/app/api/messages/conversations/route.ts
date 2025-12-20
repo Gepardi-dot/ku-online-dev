@@ -58,7 +58,7 @@ export const GET = withSentryRoute(async (request: Request) => {
 
   // Derive which conversations have unread messages for this user so
   // the UI can visually distinguish unread threads.
-  let unreadByConversation = new Set<string>();
+  const unreadCounts = new Map<string, number>();
   if (rows.length > 0) {
     const conversationIds = rows.map((row) => String(row.id));
     const { data: unreadRows, error: unreadError } = await supabaseAdmin
@@ -71,7 +71,10 @@ export const GET = withSentryRoute(async (request: Request) => {
     if (unreadError) {
       console.error('Unread messages query failed', unreadError);
     } else {
-      unreadByConversation = new Set((unreadRows ?? []).map((row: any) => String(row.conversation_id)));
+      (unreadRows ?? []).forEach((row: any) => {
+        const conversationId = String(row.conversation_id);
+        unreadCounts.set(conversationId, (unreadCounts.get(conversationId) ?? 0) + 1);
+      });
     }
   }
 
@@ -86,7 +89,8 @@ export const GET = withSentryRoute(async (request: Request) => {
       lastMessage: (row.last_message as string | null) ?? null,
       lastMessageAt: (row.last_message_at as string | null) ?? null,
       updatedAt: (row.updated_at as string | null) ?? null,
-      hasUnread: unreadByConversation.has(String(row.id)),
+      unreadCount: unreadCounts.get(String(row.id)) ?? 0,
+      hasUnread: (unreadCounts.get(String(row.id)) ?? 0) > 0,
       product: productRecord
         ? {
             id: String(productRecord.id),

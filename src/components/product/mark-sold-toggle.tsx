@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Loader2, CheckCircle2, RotateCcw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { createClient } from '@/utils/supabase/client';
 import { useLocale } from '@/providers/locale-provider';
 
 interface MarkSoldToggleProps {
@@ -19,7 +18,6 @@ export default function MarkSoldToggle({ productId, sellerId, viewerId, isSold }
   const [loading, setLoading] = useState(false);
   const [localSold, setLocalSold] = useState(isSold);
   const router = useRouter();
-  const supabase = createClient();
   const { t } = useLocale();
 
   const canToggle = Boolean(viewerId && viewerId === sellerId);
@@ -33,13 +31,20 @@ export default function MarkSoldToggle({ productId, sellerId, viewerId, isSold }
     setLoading(true);
     try {
       const next = !localSold;
-      const { error } = await supabase
-        .from('products')
-        .update({ is_sold: next })
-        .eq('id', productId)
-        .eq('seller_id', sellerId);
-      if (error) throw error;
-      setLocalSold(next);
+
+      const response = await fetch(`/api/products/${productId}/sold`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isSold: next }),
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        const message = typeof payload?.error === 'string' ? payload.error : 'Request failed';
+        throw new Error(message);
+      }
+
+      setLocalSold(Boolean(payload?.isSold ?? next));
       toast({ title: next ? t('product.markedSold') : t('product.markedAvailable') });
       router.refresh();
     } catch (err) {
@@ -52,7 +57,7 @@ export default function MarkSoldToggle({ productId, sellerId, viewerId, isSold }
     } finally {
       setLoading(false);
     }
-  }, [canToggle, loading, localSold, productId, router, sellerId, supabase, t]);
+  }, [canToggle, loading, localSold, productId, router, t]);
 
   return (
     <Button

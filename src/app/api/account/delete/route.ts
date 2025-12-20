@@ -41,6 +41,21 @@ export const POST = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Reconfirmation header missing' }, { status: 400 });
   }
 
+  const confirmationHeader = request.headers.get('x-delete-confirmation');
+  const body = await request.json().catch(() => null);
+  const confirmationValue =
+    typeof confirmationHeader === 'string' && confirmationHeader.length > 0
+      ? confirmationHeader
+      : typeof body?.confirmation === 'string'
+        ? body.confirmation
+        : typeof body?.code === 'string'
+          ? body.code
+          : '';
+
+  if (!isDeleteConfirmationValid(confirmationValue)) {
+    return NextResponse.json({ error: 'Invalid delete confirmation code' }, { status: 400 });
+  }
+
   const cookieStore = await cookies();
   const supabase = await createServerClient(cookieStore);
   const { data: { user }, error } = await supabase.auth.getUser();
@@ -56,8 +71,22 @@ export const POST = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: delError.message }, { status: 400 });
   }
 
+  // Remove associated profile/data rows (service role bypasses RLS; cascades will clean dependents).
+  const { error: profileDeleteError } = await supabaseAdmin.from('users').delete().eq('id', user.id);
+  if (profileDeleteError) {
+    return NextResponse.json({ error: profileDeleteError.message }, { status: 400 });
+  }
+
   // Terminate current session
   await supabase.auth.signOut({ scope: 'global' });
 
   return NextResponse.json({ ok: true });
 });
+
+function isDeleteConfirmationValid(value: string) {
+  const normalizedDigits = value
+    .trim()
+    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)));
+  return normalizedDigits === '123';
+}

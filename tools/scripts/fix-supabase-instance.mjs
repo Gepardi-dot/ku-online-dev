@@ -123,9 +123,9 @@ async function main() {
     $$;
   `);
 
-  await applySql('Ensure product-images bucket is private', `
+  await applySql('Ensure product-images bucket is public', `
     update storage.buckets
-      set public = false
+      set public = true
     where id = 'product-images';
   `);
 
@@ -143,7 +143,6 @@ async function main() {
       for select
       using (
         bucket_id = 'product-images'
-        and name like 'public/%'
       );
 
     create policy "Authenticated upload product images"
@@ -152,7 +151,6 @@ async function main() {
       with check (
         bucket_id = 'product-images'
         and auth.role() = 'authenticated'
-        and name like auth.uid()::text || '/%'
       );
 
     create policy "Update own product images"
@@ -161,12 +159,10 @@ async function main() {
       using (
         bucket_id = 'product-images'
         and auth.uid() = owner
-        and name like auth.uid()::text || '/%'
       )
       with check (
         bucket_id = 'product-images'
         and auth.uid() = owner
-        and name like auth.uid()::text || '/%'
       );
 
     create policy "Delete own product images"
@@ -175,7 +171,6 @@ async function main() {
       using (
         bucket_id = 'product-images'
         and auth.uid() = owner
-        and name like auth.uid()::text || '/%'
       );
   `);
 

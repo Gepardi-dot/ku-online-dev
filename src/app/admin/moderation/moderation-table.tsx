@@ -6,6 +6,8 @@ import { formatDistanceToNow } from 'date-fns';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
 import {
   Table,
   TableBody,
@@ -16,6 +18,8 @@ import {
 } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
 
+type ModerationUser = { id: string; name: string; isVerified: boolean };
+
 export type ModerationReport = {
   id: string;
   reason: string;
@@ -24,8 +28,8 @@ export type ModerationReport = {
   isAutoFlagged: boolean;
   createdAt: string;
   product: { id: string; title: string; isActive: boolean } | null;
-  reporter: { id: string; name: string } | null;
-  reportedUser: { id: string; name: string } | null;
+  reporter: ModerationUser | null;
+  reportedUser: ModerationUser | null;
 };
 
 interface ModerationTableProps {
@@ -48,6 +52,9 @@ function StatusBadge({ status }: { status: ModerationReport['status'] }) {
 export default function ModerationTable({ reports }: ModerationTableProps) {
   const [rows, setRows] = useState<ModerationReport[]>(reports ?? []);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [userDialogOpen, setUserDialogOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<ModerationUser | null>(null);
+  const [verifyingUserId, setVerifyingUserId] = useState<string | null>(null);
 
   const sortedRows = useMemo(
     () =>
@@ -56,6 +63,59 @@ export default function ModerationTable({ reports }: ModerationTableProps) {
       ),
     [rows],
   );
+
+  const openUserDialog = (user: ModerationUser) => {
+    setSelectedUser(user);
+    setUserDialogOpen(true);
+  };
+
+  const updateUserVerified = async (userId: string, isVerified: boolean) => {
+    setVerifyingUserId(userId);
+    try {
+      const res = await fetch('/api/admin/users/verify', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, isVerified }),
+      });
+
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload?.ok) {
+        const description =
+          typeof payload?.error === 'string' ? payload.error : 'Failed to update user.';
+        toast({
+          title: 'Update failed',
+          description,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setRows((prev) =>
+        prev.map((row) => ({
+          ...row,
+          reporter:
+            row.reporter?.id === userId ? { ...row.reporter, isVerified } : row.reporter,
+          reportedUser:
+            row.reportedUser?.id === userId ? { ...row.reportedUser, isVerified } : row.reportedUser,
+        })),
+      );
+      setSelectedUser((prev) => (prev?.id === userId ? { ...prev, isVerified } : prev));
+
+      toast({
+        title: 'User updated',
+        description: isVerified ? 'User is now verified.' : 'Verification removed.',
+      });
+    } catch (error) {
+      console.error('Failed to update user verification', error);
+      toast({
+        title: 'Update failed',
+        description: 'Please try again in a moment.',
+        variant: 'destructive',
+      });
+    } finally {
+      setVerifyingUserId(null);
+    }
+  };
 
   const updateReport = async (
     id: string,
@@ -128,6 +188,41 @@ export default function ModerationTable({ reports }: ModerationTableProps) {
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">Recent abuse reports</p>
       </div>
+
+      <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>User</DialogTitle>
+            <DialogDescription>Manage verification status for this user.</DialogDescription>
+          </DialogHeader>
+          {selectedUser ? (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <div className="text-sm font-medium">{selectedUser.name}</div>
+                <div className="text-xs text-muted-foreground">ID: {selectedUser.id}</div>
+              </div>
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div className="space-y-1">
+                  <div className="text-sm font-medium">Verified</div>
+                  <div className="text-xs text-muted-foreground">Shows the verification badge across the app.</div>
+                </div>
+                <Switch
+                  checked={selectedUser.isVerified}
+                  onCheckedChange={(checked) => updateUserVerified(selectedUser.id, checked)}
+                  disabled={verifyingUserId === selectedUser.id}
+                  aria-label="Toggle verified"
+                />
+              </div>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUserDialogOpen(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Table>
         <TableHeader>
           <TableRow>
@@ -174,7 +269,19 @@ export default function ModerationTable({ reports }: ModerationTableProps) {
                     </div>
                   ) : report.reportedUser ? (
                     <div className="flex flex-col">
-                      <span className="font-medium">{report.reportedUser.name}</span>
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 justify-start font-medium"
+                        onClick={() => openUserDialog(report.reportedUser as ModerationUser)}
+                      >
+                        {report.reportedUser.name}
+                        {report.reportedUser.isVerified ? (
+                          <Badge variant="secondary" className="ml-2">
+                            Verified
+                          </Badge>
+                        ) : null}
+                      </Button>
                       <span className="text-xs text-muted-foreground">
                         User ID: {report.reportedUser.id}
                       </span>
@@ -186,7 +293,19 @@ export default function ModerationTable({ reports }: ModerationTableProps) {
                 <TableCell className="text-sm">
                   {report.reporter ? (
                     <div className="flex flex-col">
-                      <span className="font-medium">{report.reporter.name}</span>
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="h-auto p-0 justify-start font-medium"
+                        onClick={() => openUserDialog(report.reporter as ModerationUser)}
+                      >
+                        {report.reporter.name}
+                        {report.reporter.isVerified ? (
+                          <Badge variant="secondary" className="ml-2">
+                            Verified
+                          </Badge>
+                        ) : null}
+                      </Button>
                       <span className="text-xs text-muted-foreground">ID: {report.reporter.id}</span>
                     </div>
                   ) : (

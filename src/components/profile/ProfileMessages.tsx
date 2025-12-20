@@ -80,12 +80,10 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     try {
       const results = await listConversationsForUser(userId);
       setConversations(results);
-      if (results.length > 0) {
-        setActiveConversationId((previous) => previous ?? results[0].id);
-      } else {
-        setActiveConversationId(null);
-        setMessagesState([]);
-      }
+      setActiveConversationId((previous) => {
+        if (!previous) return null;
+        return results.some((conversation) => conversation.id === previous) ? previous : null;
+      });
     } catch (error) {
       console.error("Failed to load conversations", error);
       toast({
@@ -117,7 +115,9 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         await markConversationRead(conversationId, userId);
         setConversations((previous) =>
           previous.map((conversation) =>
-            conversation.id === conversationId ? { ...conversation, hasUnread: false } : conversation,
+            conversation.id === conversationId
+              ? { ...conversation, hasUnread: false, unreadCount: 0 }
+              : conversation,
           ),
         );
       } catch (error) {
@@ -158,11 +158,14 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         if (!existing) {
           return previous;
         }
+        const nextUnreadCount =
+          shouldFlagUnread ? (existing.unreadCount ?? (existing.hasUnread ? 1 : 0)) + 1 : 0;
         const updated = {
           ...existing,
           lastMessage: message.content,
           lastMessageAt: message.createdAt,
           hasUnread: shouldFlagUnread ? true : false,
+          unreadCount: nextUnreadCount,
         };
         const others = previous.filter((item) => item.id !== message.conversationId);
         return [updated, ...others];
@@ -174,7 +177,9 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
             if (!summary) {
               return;
             }
-            const summaryWithUnread = shouldFlagUnread ? { ...summary, hasUnread: true } : summary;
+            const summaryWithUnread = shouldFlagUnread
+              ? { ...summary, hasUnread: true, unreadCount: 1 }
+              : { ...summary, hasUnread: false, unreadCount: 0 };
             setConversations((previous) => {
               if (previous.some((item) => item.id === summaryWithUnread.id)) {
                 return previous;
@@ -223,6 +228,13 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
       if (message.receiverId === userId) {
         try {
           await markConversationRead(activeConversationId, userId);
+          setConversations((previous) =>
+            previous.map((conversation) =>
+              conversation.id === activeConversationId
+                ? { ...conversation, hasUnread: false, unreadCount: 0 }
+                : conversation,
+            ),
+          );
         } catch (error) {
           console.error("Failed to mark message read", error);
         }
@@ -397,7 +409,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
             isActive
               ? "border-primary/40 bg-primary/10 shadow-md ring-1 ring-primary/10"
               : isUnread
-                ? "border-amber-300/70 bg-amber-50/70 hover:bg-amber-50/90"
+                ? "border-[#E67E22]/30 bg-[#FFF3E6] shadow-md ring-1 ring-[#E67E22]/10 hover:bg-[#FFE7CF]"
                 : "border-border/60 bg-background/60 hover:border-primary/30 hover:bg-background/85",
           )}
         >
@@ -405,9 +417,11 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
             <AvatarFallback>{avatarLetter}</AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <p className={cn("text-sm", isUnread ? "font-semibold" : "font-medium")}>
-              {target?.fullName ?? target?.id?.slice(0, 8) ?? "Unknown user"}
-            </p>
+            <div className="flex items-start justify-between gap-2">
+              <p className={cn("text-sm", isUnread ? "font-semibold" : "font-medium")}>
+                {target?.fullName ?? target?.id?.slice(0, 8) ?? "Unknown user"}
+              </p>
+            </div>
             {productTitle ? (
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {productTitle}

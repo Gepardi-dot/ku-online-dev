@@ -5,6 +5,7 @@ create table if not exists public.users (
     email varchar(255) unique,
     phone varchar(20),
     full_name text,
+    name text,
     avatar_url text,
     location text,
     bio text,
@@ -41,7 +42,15 @@ create table if not exists public.products (
     is_promoted boolean not null default false,
     views integer not null default 0,
     created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now()
+    updated_at timestamptz not null default now(),
+    constraint products_currency_check check (currency in ('IQD', 'USD')),
+    constraint products_condition_check check (
+        condition in ('New', 'Used - Like New', 'Used - Good', 'Used - Fair')
+    ),
+    constraint products_images_array check (jsonb_typeof(images) = 'array'),
+    constraint products_images_max check (jsonb_array_length(images) <= 5),
+    constraint products_views_non_negative check (views >= 0),
+    constraint products_active_seller_required check (is_active = false or seller_id is not null)
 );
 create table if not exists public.messages (
     id uuid primary key default gen_random_uuid(),
@@ -62,8 +71,45 @@ create table if not exists public.reviews (
     rating integer not null check (rating between 1 and 5),
     comment text,
     is_anonymous boolean not null default false,
-    created_at timestamptz not null default now()
+    created_at timestamptz not null default now(),
+    constraint reviews_buyer_product_unique unique (buyer_id, product_id),
+    constraint reviews_no_self_review check (
+        buyer_id is null or seller_id is null or buyer_id <> seller_id
+    )
 );
+create or replace function public.enforce_review_product_seller_match()
+returns trigger
+language plpgsql
+as $$
+declare
+    expected_seller uuid;
+begin
+    if new.product_id is null then
+        return new;
+    end if;
+
+    select seller_id
+    into expected_seller
+    from public.products
+    where id = new.product_id;
+
+    if not found then
+        raise exception 'Review product % does not exist', new.product_id;
+    end if;
+
+    if new.seller_id is distinct from expected_seller then
+        raise exception 'Review seller must match product seller';
+    end if;
+
+    return new;
+end;
+$$;
+drop trigger if exists trg_reviews_product_seller_match on public.reviews;
+create constraint trigger trg_reviews_product_seller_match
+    after insert or update on public.reviews
+    deferrable initially deferred
+    for each row
+    execute procedure public.enforce_review_product_seller_match();
 create table if not exists public.favorites (
     id uuid primary key default gen_random_uuid(),
     user_id uuid references public.users(id) on delete cascade,

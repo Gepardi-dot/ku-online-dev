@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { getPublicEnv } from '@/lib/env-public';
+import { signStoragePaths } from '@/lib/services/storage-sign-client';
 
 const supabase = createClient();
 const { NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET } = getPublicEnv();
@@ -66,16 +67,9 @@ async function hydrateFavoriteImages(favorites: FavoriteSummary[]) {
   }
 
   try {
-    const response = await fetch('/api/storage/sign', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paths, transform: { width: 96, resize: 'cover', quality: 70, format: 'webp' } }),
+    const map = await signStoragePaths(paths, {
+      transform: { width: 96, resize: 'cover', quality: 70, format: 'webp' },
     });
-    if (!response.ok) {
-      throw new Error('Failed to sign favorite images');
-    }
-    const payload = (await response.json().catch(() => ({}))) as { map?: Record<string, string> };
-    const map = payload.map ?? {};
 
     favorites.forEach((favorite) => {
       if (!favorite.product) return;

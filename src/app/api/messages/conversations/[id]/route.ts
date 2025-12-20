@@ -29,7 +29,7 @@ export const DELETE = withSentryRoute(
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const { data: convo, error: convoError } = await supabase
+    const { data: convo, error: convoError } = await supabaseAdmin
       .from('conversations')
       .select('id, seller_id, buyer_id')
       .eq('id', conversationId)
@@ -44,7 +44,7 @@ export const DELETE = withSentryRoute(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { error } = await supabase
+    const { error } = await supabaseAdmin
       .from('conversations')
       .delete()
       .eq('id', conversationId);

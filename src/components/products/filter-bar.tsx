@@ -178,26 +178,19 @@ export function ProductsFilterBar({
     "w-full rounded-2xl border border-white/50 bg-white/60 px-3 py-2 shadow-[0_18px_48px_rgba(15,23,42,0.1)] backdrop-blur-xl md:mx-auto md:w-fit";
 
   const selectTriggerClassName =
-    "h-9 w-fit max-w-full rounded-xl border border-white/55 bg-white/65 px-3.5 text-sm shadow-sm ring-1 ring-white/25 backdrop-blur-xl " +
+    "h-10 w-fit max-w-full rounded-xl border border-white/55 bg-white/65 px-3.5 text-[15px] shadow-sm ring-1 ring-white/25 backdrop-blur-xl " +
     "hover:bg-white/75 hover:shadow-md focus:ring-2 focus:ring-primary/35 focus:ring-offset-2 focus:ring-offset-white/80";
 
   const selectContentClassName =
-    "max-h-[15rem] w-fit max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/45 bg-white/35 " +
-    "shadow-[0_30px_95px_rgba(15,23,42,0.2)] ring-1 ring-white/20 backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110 " +
-    "[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0";
+    "max-h-[18rem] w-fit max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[#d6d6d6]/70 bg-white/90 p-1 " +
+    "shadow-[0_18px_48px_rgba(15,23,42,0.18)] ring-1 ring-white/40 backdrop-blur-xl " +
+    "[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0 [&_[data-radix-select-viewport]]:p-1 " +
+    "[&_[data-radix-select-viewport]]:flex [&_[data-radix-select-viewport]]:flex-col [&_[data-radix-select-viewport]]:gap-1";
 
   const selectItemClassName =
-    "relative isolate mb-1 last:mb-0 truncate overflow-hidden rounded-lg border border-white/35 bg-slate-50/25 py-2 ps-10 pe-3 text-sm text-foreground " +
-    "backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110 " +
-    "shadow-[0_14px_30px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.12)] " +
-    "before:pointer-events-none before:absolute before:inset-0 before:z-0 before:opacity-55 " +
-    "before:bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.18)_1px,transparent_0)] before:[background-size:6px_6px] " +
-    "after:pointer-events-none after:absolute after:inset-0 after:z-0 after:opacity-60 after:bg-gradient-to-b after:from-white/22 after:via-transparent after:to-transparent " +
-    "motion-safe:transition-[transform,background-color,border-color,box-shadow] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none " +
-    "hover:bg-white/22 hover:border-white/45 focus:bg-white/22 focus:text-foreground " +
-    "active:scale-[0.99] data-[highlighted]:scale-[0.99] data-[highlighted]:-translate-y-[1px] " +
-    "data-[highlighted]:bg-primary/10 data-[highlighted]:border-primary/25 data-[highlighted]:shadow-[0_14px_26px_rgba(249,115,22,0.12)] " +
-    "data-[state=checked]:bg-primary/10 data-[state=checked]:border-primary/30 data-[state=checked]:shadow-[0_14px_26px_rgba(249,115,22,0.14)]";
+    "w-full truncate rounded-xl border border-slate-200/70 bg-white px-3 py-2 ps-10 text-[15px] text-[#1F1C1C] shadow-sm outline-none transition " +
+    "hover:border-slate-300/70 hover:bg-slate-50/80 data-[highlighted]:border-slate-300/70 data-[highlighted]:bg-slate-50/80 " +
+    "data-[state=checked]:border-primary/25 data-[state=checked]:bg-primary/10 data-[state=checked]:font-medium";
 
   const popoverContentClassName =
     "w-[min(92vw,22rem)] rounded-2xl border border-white/45 bg-white/35 p-3 " +

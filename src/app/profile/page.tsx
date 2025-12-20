@@ -39,6 +39,7 @@ import {
   MapPin,
   MessageCircle,
   Package,
+  Phone,
   Settings,
   ShieldCheck,
   Star,
@@ -134,8 +135,9 @@ export default async function ProfilePage({
     notify_messages: boolean | null;
     notify_offers: boolean | null;
     notify_updates: boolean | null;
-  marketing_emails: boolean | null;
-  preferred_language: string | null;
+    notify_announcements: boolean | null;
+    marketing_emails: boolean | null;
+    preferred_language: string | null;
   };
 
   const { data: profileRow } = await supabase
@@ -152,13 +154,14 @@ export default async function ProfilePage({
         'created_at',
         'response_rate',
         'is_verified',
-      'profile_completed',
-      'notify_messages',
-      'notify_offers',
-      'notify_updates',
+        'profile_completed',
+        'notify_messages',
+        'notify_offers',
+        'notify_updates',
+        'notify_announcements',
         'marketing_emails',
         'preferred_language',
-    ].join(', '),
+      ].join(', '),
     )
     .eq('id', user.id)
     .maybeSingle<UserProfileRow>();
@@ -209,7 +212,7 @@ export default async function ProfilePage({
     location: profileRow?.location ?? user.user_metadata?.location ?? 'Kurdistan',
     bio:
       profileRow?.bio ??
-      'Selling quality items at great prices. Fast shipping and excellent customer service.',
+      (typeof user.user_metadata?.bio === 'string' ? (user.user_metadata.bio as string) : null),
     rating: profileRow?.rating ? Number(profileRow.rating) : null,
     totalRatings: profileRow?.total_ratings ? Number(profileRow.total_ratings) : 0,
     joinedDate: profileRow?.created_at ?? user.created_at ?? null,
@@ -219,6 +222,7 @@ export default async function ProfilePage({
     notifyMessages: profileRow?.notify_messages ?? true,
     notifyOffers: profileRow?.notify_offers ?? true,
     notifyUpdates: profileRow?.notify_updates ?? true,
+    notifyAnnouncements: profileRow?.notify_announcements ?? false,
     marketingEmails: profileRow?.marketing_emails ?? false,
     preferredLanguage: (profileRow?.preferred_language as 'en' | 'ar' | 'ku' | null) ?? 'en',
   };
@@ -232,6 +236,7 @@ export default async function ProfilePage({
     notifyMessages: profileData.notifyMessages,
     notifyOffers: profileData.notifyOffers,
     notifyUpdates: profileData.notifyUpdates,
+    notifyAnnouncements: profileData.notifyAnnouncements,
     marketingEmails: profileData.marketingEmails,
     preferredLanguage: profileData.preferredLanguage,
   };
@@ -253,7 +258,7 @@ export default async function ProfilePage({
     // best-effort; keep original URL
   }
 
-  // Visibility and language settings removed per product requirements.
+  // Visibility settings removed per product requirements.
 
   const joinedLabel = (() => {
     if (!profileData.joinedDate) {
@@ -321,6 +326,11 @@ export default async function ProfilePage({
     };
   });
 
+  const phoneDir =
+    typeof profileData.phone === 'string' && /[\u0660-\u0669\u06F0-\u06F9]/.test(profileData.phone)
+      ? 'rtl'
+      : 'ltr';
+
   return (
     <AppLayout user={user}>
       <div className="container mx-auto px-4 py-6" dir={isRtl ? 'rtl' : undefined}>
@@ -336,7 +346,7 @@ export default async function ProfilePage({
                     </AvatarFallback>
                   </Avatar>
 
-                  <div className="flex items-center justify-center gap-2">
+                  <div dir="auto" className="flex items-center justify-center gap-2 bidi-auto">
                     <h1 className="text-2xl font-bold max-w-[260px] truncate">{profileData.fullName}</h1>
                     {profileData.isVerified ? (
                       <>
@@ -345,6 +355,16 @@ export default async function ProfilePage({
                       </>
                     ) : null}
                   </div>
+
+                  {profileData.phone ? (
+                    <div
+                      dir={phoneDir}
+                      className="inline-flex items-center justify-center gap-1 text-sm text-muted-foreground bidi-auto"
+                    >
+                      <Phone className="h-4 w-4" aria-hidden="true" />
+                      <span>{profileData.phone}</span>
+                    </div>
+                  ) : null}
 
                   {(Number(profileData.rating) > 0 || profileData.totalRatings > 0) && (
                     <div className="inline-flex items-center justify-center gap-2 rounded-full bg-muted/80 px-3 py-1 text-xs text-muted-foreground">
@@ -367,7 +387,11 @@ export default async function ProfilePage({
                     </p>
                   ) : null}
 
-                  <p className="text-sm text-muted-foreground">{profileData.bio}</p>
+                  {profileData.bio ? (
+                    <p dir="auto" className="text-sm text-muted-foreground bidi-auto">
+                      {profileData.bio}
+                    </p>
+                  ) : null}
 
                   <div className="grid grid-cols-3 gap-4 border-t border-b py-4">
                     <div className="text-center">
