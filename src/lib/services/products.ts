@@ -1,8 +1,9 @@
 import { cookies } from "next/headers";
+import { algoliasearch, type Algoliasearch } from "algoliasearch";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { createSignedUrls, createTransformedSignedUrls } from '@/lib/storage';
-import { MARKET_CITY_OPTIONS, getMarketCityLabel } from '@/data/market-cities';
+import { MARKET_CITY_OPTIONS, getMarketCityLabel, normalizeMarketCityValue } from '@/data/market-cities';
 import { getEnv } from "@/lib/env";
 
 export interface SellerProfile {
@@ -266,6 +267,36 @@ async function getSupabaseAdmin() {
   return supabaseAdmin;
 }
 
+let algoliaClient: Algoliasearch | null = null;
+let algoliaUnavailable = false;
+let algoliaIndexName: string | null = null;
+
+function getAlgoliaClient(): Algoliasearch | null {
+  if (algoliaClient) {
+    return algoliaClient;
+  }
+  if (algoliaUnavailable) {
+    return null;
+  }
+
+  try {
+    const { ALGOLIA_APP_ID, ALGOLIA_SEARCH_API_KEY, ALGOLIA_INDEX_NAME } = process.env;
+    if (!ALGOLIA_APP_ID || !ALGOLIA_SEARCH_API_KEY || !ALGOLIA_INDEX_NAME) {
+      algoliaUnavailable = true;
+      return null;
+    }
+
+    const client = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_SEARCH_API_KEY);
+    algoliaClient = client;
+    algoliaIndexName = ALGOLIA_INDEX_NAME;
+    return algoliaClient;
+  } catch (error) {
+    console.warn("Algolia search unavailable", error);
+    algoliaUnavailable = true;
+    return null;
+  }
+}
+
 async function hydrateSellerProfiles(products: ProductWithRelations[]): Promise<void> {
   const missingIds = Array.from(
     new Set(
@@ -406,6 +437,30 @@ function sortProductsInMemory(items: ProductWithRelations[], sort: ProductSort) 
   }
 }
 
+type AlgoliaSearchHit = {
+  objectID?: string;
+  id?: string;
+  title?: string;
+  description?: string | null;
+  price?: number | string | null;
+  original_price?: number | string | null;
+  currency?: string | null;
+  condition?: string | null;
+  color_token?: string | null;
+  category_id?: string | null;
+  seller_id?: string | null;
+  location?: string | null;
+  images?: string[] | null;
+  is_active?: boolean | null;
+  is_sold?: boolean | null;
+  is_promoted?: boolean | null;
+  views?: number | string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  seller?: any;
+  category?: any;
+};
+
 type EdgeSearchProductRow = SupabaseProductRow & { rank?: number | string | null };
 
 type EdgeSearchResponse = {
@@ -454,6 +509,212 @@ function parseCountValue(value: number | string | null | undefined, fallback: nu
   return fallback;
 }
 
+function quoteAlgoliaFilterValue(value: string): string {
+  const escaped = value.replace(/"/g, '\\"');
+  return `"${escaped}"`;
+}
+
+function resolveLocationFilter(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = normalizeMarketCityValue(value);
+  if (normalized) {
+    return normalized;
+  }
+
+  const fallback = value.trim().toLowerCase();
+  return fallback.length > 0 ? fallback : null;
+}
+
+function buildAlgoliaSearchFilters(filters: ProductFilters, looksFree: boolean) {
+  const clauses = ['is_active:true', 'is_sold:false'];
+
+  if (filters.category) {
+    clauses.push(`category_id:${quoteAlgoliaFilterValue(filters.category)}`);
+  }
+
+  if (filters.condition) {
+    clauses.push(`condition:${quoteAlgoliaFilterValue(filters.condition)}`);
+  }
+
+  if (filters.color) {
+    clauses.push(`color_token:${quoteAlgoliaFilterValue(filters.color)}`);
+  }
+
+  const location = resolveLocationFilter(filters.location);
+  if (location) {
+    clauses.push(`location_normalized:${quoteAlgoliaFilterValue(location)}`);
+  }
+
+  const numericFilters: string[] = [];
+  const minPrice = looksFree ? 0 : filters.minPrice;
+  const maxPrice = looksFree ? 0 : filters.maxPrice;
+
+  if (typeof minPrice === 'number') {
+    numericFilters.push(`price>=${minPrice}`);
+  }
+
+  if (typeof maxPrice === 'number') {
+    numericFilters.push(`price<=${maxPrice}`);
+  }
+
+  return {
+    filters: clauses.join(' AND '),
+    numericFilters,
+  };
+}
+
+function toSupabaseRowFromAlgolia(hit: AlgoliaSearchHit): SupabaseProductRow {
+  const id =
+    typeof hit.objectID === 'string' && hit.objectID.length > 0
+      ? hit.objectID
+      : typeof hit.id === 'string'
+      ? hit.id
+      : '';
+
+  return {
+    id,
+    title: hit.title ?? '',
+    description: hit.description ?? null,
+    price: hit.price ?? null,
+    original_price: hit.original_price ?? null,
+    currency: hit.currency ?? null,
+    condition: hit.condition ?? null,
+    color_token: hit.color_token ?? null,
+    category_id: hit.category_id ?? null,
+    seller_id: hit.seller_id ?? '',
+    location: hit.location ?? null,
+    images: hit.images ?? null,
+    is_active: typeof hit.is_active === 'boolean' ? hit.is_active : null,
+    is_sold: typeof hit.is_sold === 'boolean' ? hit.is_sold : null,
+    is_promoted: typeof hit.is_promoted === 'boolean' ? hit.is_promoted : null,
+    views: hit.views ?? null,
+    created_at: hit.created_at ?? null,
+    updated_at: hit.updated_at ?? null,
+    seller: hit.seller ?? null,
+    category: hit.category ?? null,
+  };
+}
+
+async function searchProductsViaAlgolia(
+  supabase: any,
+  searchTerm: string,
+  filters: ProductFilters,
+  limit: number,
+  offset: number,
+  sort: ProductSort,
+  looksFree: boolean,
+): Promise<{ items: ProductWithRelations[]; count: number } | null> {
+  const client = getAlgoliaClient();
+  const indexName = algoliaIndexName;
+  if (!client || !indexName) {
+    return null;
+  }
+
+  try {
+    const safeLimit = Math.max(1, limit);
+    const page = Math.max(0, Math.floor(offset / safeLimit));
+    const { filters: filterString, numericFilters } = buildAlgoliaSearchFilters(filters, looksFree);
+
+    const searchParams: Record<string, unknown> = {
+      query: searchTerm,
+      page,
+      hitsPerPage: safeLimit,
+      filters: filterString,
+      attributesToRetrieve: [
+        'objectID',
+        'id',
+        'title',
+        'description',
+        'price',
+        'original_price',
+        'currency',
+        'condition',
+        'color_token',
+        'category_id',
+        'seller_id',
+        'location',
+        'images',
+        'is_active',
+        'is_sold',
+        'is_promoted',
+        'views',
+        'created_at',
+        'updated_at',
+        'seller',
+        'category',
+      ],
+      attributesToHighlight: [],
+    };
+
+    if (numericFilters.length > 0) {
+      searchParams.numericFilters = numericFilters;
+    }
+
+    const result = await client.searchSingleIndex<AlgoliaSearchHit>({
+      indexName,
+      searchParams,
+    });
+    const hits = Array.isArray(result.hits) ? result.hits : [];
+    const count = typeof result.nbHits === 'number' ? result.nbHits : hits.length;
+
+    if (hits.length === 0) {
+      return { items: [], count };
+    }
+
+    const ids = hits
+      .map((hit) => (typeof hit.objectID === 'string' ? hit.objectID : hit.id))
+      .filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+    if (ids.length === 0) {
+      return { items: [], count };
+    }
+
+    const { data: detailData, error: detailError } = await supabase
+      .from('products')
+      .select(PRODUCT_SELECT)
+      .in('id', ids);
+
+    if (detailError) {
+      console.error('Failed to load product relations for search results', detailError);
+    }
+
+    const detailRows = Array.isArray(detailData) ? (detailData as SupabaseProductRow[]) : [];
+    const detailMap = new Map<string, ProductWithRelations>();
+    for (const row of detailRows) {
+      detailMap.set(row.id, mapProduct(row));
+    }
+
+    const fallbackMap = new Map<string, ProductWithRelations>();
+    for (const hit of hits) {
+      const row = toSupabaseRowFromAlgolia(hit);
+      if (!row.id) {
+        continue;
+      }
+      fallbackMap.set(row.id, mapProduct(row));
+    }
+
+    const orderedItems = ids
+      .map((id) => detailMap.get(id) ?? fallbackMap.get(id))
+      .filter((product): product is ProductWithRelations => Boolean(product));
+
+    const sortedItems = sortProductsInMemory(orderedItems, sort);
+    if (!detailError) {
+      await hydrateSellerProfiles(sortedItems);
+    }
+    await hydrateProductImages(sortedItems, {
+      transform: { width: 512, resize: 'cover', quality: 80, format: 'webp' },
+    });
+
+    return { items: sortedItems, count };
+  } catch (error) {
+    console.error('Algolia search failed', error);
+    return null;
+  }
+}
+
 export async function searchProducts(
   filters: ProductFilters,
   limit = 20,
@@ -475,6 +736,19 @@ export async function searchProducts(
     term.includes('مجانا') ||
     term.includes('فري') ||
     term.includes('بلاش');
+
+  const algoliaResult = await searchProductsViaAlgolia(
+    supabase,
+    searchTerm,
+    filters,
+    limit,
+    offset,
+    sort,
+    looksFree,
+  );
+  if (algoliaResult) {
+    return algoliaResult;
+  }
 
   const { data, error } = await supabase.functions.invoke('product-search', {
     body: {

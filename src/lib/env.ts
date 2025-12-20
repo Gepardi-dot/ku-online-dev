@@ -16,6 +16,10 @@ const serverSchema = baseSchema.extend({
   ADMIN_REVALIDATE_TOKEN: z.string().min(1, 'ADMIN_REVALIDATE_TOKEN is required').optional(),
   SENTRY_DSN: z.string().url().optional(),
   SENTRY_ENVIRONMENT: z.string().optional(),
+  ALGOLIA_APP_ID: z.string().min(1).optional(),
+  ALGOLIA_ADMIN_API_KEY: z.string().min(1).optional(),
+  ALGOLIA_SEARCH_API_KEY: z.string().min(1).optional(),
+  ALGOLIA_INDEX_NAME: z.string().min(1).optional(),
 });
 
 type ServerEnv = z.infer<typeof serverSchema>;
