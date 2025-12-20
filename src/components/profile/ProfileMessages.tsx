@@ -375,9 +375,13 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
       setDraft("");
     } catch (error) {
       console.error("Failed to send message", error);
+      const description =
+        error instanceof Error && error.message
+          ? error.message
+          : "Please try sending your message again.";
       toast({
         title: "Message not sent",
-        description: "Please try sending your message again.",
+        description,
         variant: "destructive",
       });
     } finally {
