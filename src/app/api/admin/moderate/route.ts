@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getEnv } from '@/lib/env';
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@supabase/supabase-js';
+import { syncAlgoliaProductById } from '@/lib/services/algolia-products';
 
 const { ADMIN_REVALIDATE_TOKEN, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = getEnv();
 const supabaseAdmin = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -30,6 +31,12 @@ export const POST = withSentryRoute(async (req: Request) => {
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  try {
+    await syncAlgoliaProductById(productId, supabaseAdmin);
+  } catch (syncError) {
+    console.warn('Algolia sync failed after moderation update', syncError);
   }
 
   return NextResponse.json({ ok: true, productId, is_active: active });

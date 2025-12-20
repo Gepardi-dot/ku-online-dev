@@ -52,6 +52,11 @@ Local .env.local
   NEXT_PUBLIC_SITE_URL=http://localhost:5000
   OPENAI_API_KEY=<openai-key-for-embeddings>
   ADMIN_REVALIDATE_TOKEN=<your-admin-revalidate-token>
+  ALGOLIA_APP_ID=<algolia-app-id>
+  ALGOLIA_SEARCH_API_KEY=<algolia-search-key>
+  ALGOLIA_ADMIN_API_KEY=<algolia-admin-key>
+  ALGOLIA_INDEX_NAME=<algolia-index-name>
+  ALGOLIA_BATCH_SIZE=500
 
 Vercel (Dev/Preview/Prod)
   NEXT_PUBLIC_SUPABASE_URL
@@ -61,6 +66,11 @@ Vercel (Dev/Preview/Prod)
   NEXT_PUBLIC_SITE_URL
   OPENAI_API_KEY
   ADMIN_REVALIDATE_TOKEN
+  ALGOLIA_APP_ID
+  ALGOLIA_SEARCH_API_KEY
+  ALGOLIA_ADMIN_API_KEY
+  ALGOLIA_INDEX_NAME
+  ALGOLIA_BATCH_SIZE
 ```
 
 - Purge caches after deploys: `ADMIN_REVALIDATE_TOKEN=... NEXT_PUBLIC_SITE_URL=https://ku-online.vercel.app node tools/revalidate.mjs categories`.
@@ -103,6 +113,16 @@ column for relevance scoring and `totalCount` reports how many listings match th
   `totalCount`.
 - Server-side normalization now hydrates seller/category relations for search results so UI components receive
   `ProductWithRelations` objects regardless of the data source.
+
+### Algolia search (optional)
+
+If Algolia is configured, the server-side search helper uses it before falling back to the Supabase edge function.
+
+1. Create an Algolia app + index.
+2. Set `ALGOLIA_APP_ID`, `ALGOLIA_SEARCH_API_KEY`, `ALGOLIA_ADMIN_API_KEY`, and `ALGOLIA_INDEX_NAME` in your environment.
+3. Index products: `node scripts/index-algolia-products.mjs` (add `--clear` to rebuild from scratch).
+4. Listing create/edit/sold/moderation actions call `/api/search/algolia-sync` to keep the index up to date.
+5. Sync category synonyms (and optional brand synonyms): `node scripts/algolia-sync-synonyms.mjs`.
 
 ### Smart recommendations and semantic search
 

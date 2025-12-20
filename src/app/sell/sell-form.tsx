@@ -584,7 +584,7 @@ export default function SellForm({ user }: SellFormProps) {
 
       const payload = validation.data;
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('products')
         .insert({
           title: payload.title,
@@ -598,10 +598,27 @@ export default function SellForm({ user }: SellFormProps) {
           currency: payload.currency ?? 'IQD',
           color_token: payload.color ?? null,
           is_active: true,
-        });
+        })
+        .select('id')
+        .maybeSingle();
 
       if (error) {
         throw error;
+      }
+
+      if (data?.id) {
+        try {
+          const syncResponse = await fetch('/api/search/algolia-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId: data.id }),
+          });
+          if (!syncResponse.ok) {
+            console.warn('Algolia sync failed after create', await syncResponse.text().catch(() => ''));
+          }
+        } catch (syncError) {
+          console.warn('Algolia sync failed after create', syncError);
+        }
       }
 
       toast({

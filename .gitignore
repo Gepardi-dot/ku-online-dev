@@ -17,3 +17,5 @@ out/
 push_*.log
 *.err
 ku-online/
+
+.vercel

@@ -324,6 +324,19 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         .eq('id', productId);
       if (error) throw error;
 
+      try {
+        const syncResponse = await fetch('/api/search/algolia-sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId }),
+        });
+        if (!syncResponse.ok) {
+          console.warn('Algolia sync failed after update', await syncResponse.text().catch(() => ''));
+        }
+      } catch (syncError) {
+        console.warn('Algolia sync failed after update', syncError);
+      }
+
       const removals = pendingRemoval.map((entry) => entry.path).filter(Boolean);
       if (removals.length > 0) {
         await Promise.allSettled(removals.map((path) => deleteImagePath(path)));

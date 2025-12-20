@@ -6,6 +6,7 @@ import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { getEnv } from '@/lib/env';
 import { buildOriginAllowList, checkRateLimit, getClientIdentifier, isOriginAllowed } from '@/lib/security/request';
+import { syncAlgoliaProductById } from '@/lib/services/algolia-products';
 import { withSentryRoute } from '@/utils/sentry-route';
 
 export const runtime = 'nodejs';
@@ -212,6 +213,12 @@ export const POST = withSentryRoute(async (request: NextRequest, context: { para
       notificationWarning = 'Sold notifications could not be delivered to all watchers.';
       console.error('Failed to emit sold notifications', { productId, error });
     }
+  }
+
+  try {
+    await syncAlgoliaProductById(productId, supabaseAdmin);
+  } catch (error) {
+    console.warn('Algolia sync failed after sold toggle', error);
   }
 
   revalidateListing(productId);
