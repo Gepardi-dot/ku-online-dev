@@ -228,11 +228,24 @@ export async function sendMessage(options: SendMessageInput): Promise<MessageRec
     body: JSON.stringify(parsed),
   });
 
-  if (!response.ok) {
-    throw new Error('Failed to send message');
+  const bodyText = await response.text().catch(() => '');
+  let payload: { message?: MessageRecord; error?: string } | null = null;
+  if (bodyText) {
+    try {
+      payload = JSON.parse(bodyText) as { message?: MessageRecord; error?: string };
+    } catch {
+      payload = null;
+    }
   }
 
-  const payload = (await response.json()) as { message: MessageRecord };
+  if (!response.ok || !payload?.message) {
+    const errorMessage =
+      typeof payload?.error === 'string'
+        ? payload.error
+        : `Failed to send message${response.status ? ` (${response.status})` : ''}`;
+    throw new Error(errorMessage);
+  }
+
   return payload.message;
 }
 

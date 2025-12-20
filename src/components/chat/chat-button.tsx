@@ -199,11 +199,19 @@ export default function ChatButton({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ conversationId, receiverId: sellerId, productId, content: trimmed }),
       });
-      const payload = await res.json().catch(() => ({}));
+      const bodyText = await res.text().catch(() => '');
+      let payload: { message?: MessageRecord; error?: string } | null = null;
+      if (bodyText) {
+        try {
+          payload = JSON.parse(bodyText) as { message?: MessageRecord; error?: string };
+        } catch {
+          payload = null;
+        }
+      }
       if (!res.ok || !payload?.message) {
         const description = typeof payload?.error === 'string'
           ? payload.error
-          : 'Please try sending your message again.';
+          : `Please try sending your message again${res.status ? ` (${res.status})` : ''}.`;
         toast({
           title: 'Message not sent',
           description,

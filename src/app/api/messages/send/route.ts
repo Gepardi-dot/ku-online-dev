@@ -73,11 +73,21 @@ const handler: (request: Request) => Promise<Response> = async (request: Request
     .limit(1);
 
   if (blockError) {
-    console.error('Failed to check blocked users', blockError);
-    return NextResponse.json({ error: 'Unable to send message right now.' }, { status: 503 });
-  }
-
-  if (blockRows && blockRows.length > 0) {
+    const code = (blockError as { code?: string }).code;
+    const message = (blockError as { message?: string }).message ?? '';
+    const missingTable = code === '42P01' || message.toLowerCase().includes('blocked_users');
+    if (missingTable) {
+      console.warn('blocked_users table missing; skipping block check.');
+    } else {
+      console.error('Failed to check blocked users', {
+        code: (blockError as { code?: string }).code,
+        message: (blockError as { message?: string }).message,
+        details: (blockError as { details?: string | null }).details,
+        hint: (blockError as { hint?: string | null }).hint,
+      });
+      return NextResponse.json({ error: 'Unable to send message right now.' }, { status: 503 });
+    }
+  } else if (blockRows && blockRows.length > 0) {
     return NextResponse.json(
       { error: 'Messages cannot be sent because one of you has blocked the other.' },
       { status: 403 },
@@ -156,7 +166,13 @@ const handler: (request: Request) => Promise<Response> = async (request: Request
     .single();
 
   if (error || !data) {
-    return NextResponse.json({ error: 'Failed to send message' }, { status: 500 });
+    console.error('Failed to send message', {
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+    });
+    return NextResponse.json({ error: error?.message ?? 'Failed to send message' }, { status: 500 });
   }
 
   const message = {
