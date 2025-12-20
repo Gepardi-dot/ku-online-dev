@@ -37,6 +37,7 @@ export default async function EditProductPage({ params }: PageProps) {
     title: product.title,
     description: product.description ?? '',
     price: String(product.price ?? 0),
+    currency: (product.currency === 'USD' ? 'USD' : 'IQD') as 'USD' | 'IQD',
     condition: product.condition ?? '',
     categoryId: product.categoryId ?? '',
     location: product.location ?? '',
@@ -52,4 +53,3 @@ export default async function EditProductPage({ params }: PageProps) {
     </AppLayout>
   );
 }
-

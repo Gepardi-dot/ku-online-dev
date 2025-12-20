@@ -45,7 +45,7 @@ create table if not exists public.abuse_reports (
     constraint abuse_reports_target_any check (
         ((product_id is not null)::int +
          (message_id is not null)::int +
-         (reported_user_id is not null)::int) >= 1
+         (reported_user_id is not null)::int) = 1
     )
 );
 
@@ -129,4 +129,3 @@ create policy "Send messages"
                 (b.user_id = receiver_id and b.blocked_user_id = sender_id)
         )
     );
-

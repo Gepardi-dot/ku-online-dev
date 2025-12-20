@@ -26,6 +26,7 @@ import {
   type UpdateProfileFormValues,
 } from './form-state';
 import { useLocale } from '@/providers/locale-provider';
+import { type Locale } from '@/lib/locale/dictionary';
 
 type Props = {
   initialValues: UpdateProfileFormValues;
@@ -48,16 +49,18 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
   const [emailState, emailAction] = useActionState(requestEmailChangeAction, SIMPLE_SETTINGS_INITIAL_STATE);
   const [passwordState, passwordAction] = useActionState(changePasswordAction, SIMPLE_SETTINGS_INITIAL_STATE);
   const { toast } = useToast();
-  const { t, messages } = useLocale();
+  const { t, messages, setLocale } = useLocale();
 
   const [notifyMessages, setNotifyMessages] = useState(initialValues.notifyMessages);
   const [notifyOffers, setNotifyOffers] = useState(initialValues.notifyOffers);
   const [notifyUpdates, setNotifyUpdates] = useState(initialValues.notifyUpdates);
+  const [notifyAnnouncements, setNotifyAnnouncements] = useState(initialValues.notifyAnnouncements);
   const [marketingEmails, setMarketingEmails] = useState(initialValues.marketingEmails);
   const [preferredLanguage, setPreferredLanguage] = useState(initialValues.preferredLanguage ?? 'en');
 
   useEffect(() => {
     if (state.status === 'success') {
+      setLocale(preferredLanguage as Locale);
       toast({
         title: t('profile.settingsPanel.preferencesUpdatedTitle'),
         description: state.message || t('profile.settingsPanel.preferencesUpdatedDescription'),
@@ -70,7 +73,7 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
         variant: 'destructive',
       });
     }
-  }, [state, toast, t]);
+  }, [state, toast, t, preferredLanguage, setLocale]);
 
   const hasGlobalError =
     state.status === 'error' && state.message && Object.keys(state.fieldErrors ?? {}).length > 0;
@@ -106,6 +109,13 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
               checked={notifyUpdates}
               onCheckedChange={setNotifyUpdates}
               name="notifyUpdates"
+            />
+            <ToggleRow
+              label={t('profile.settingsPanel.toggles.announcements.title')}
+              description={t('profile.settingsPanel.toggles.announcements.description')}
+              checked={notifyAnnouncements}
+              onCheckedChange={setNotifyAnnouncements}
+              name="notifyAnnouncements"
             />
             <ToggleRow
               label={t('profile.settingsPanel.toggles.marketingEmails.title')}
@@ -227,17 +237,22 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
           <CardTitle className="text-destructive">{t('profile.settingsPanel.dangerZoneTitle')}</CardTitle>
           <p className="text-sm text-muted-foreground">{t('profile.settingsPanel.dangerZoneDescription')}</p>
         </CardHeader>
-        <CardContent>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={async () => {
-              if (!confirm(t('profile.settingsPanel.deleteConfirm'))) return;
-              try {
-                const res = await fetch('/api/account/delete', {
-                  method: 'POST',
-                  headers: { 'x-reconfirm': 'delete' },
-                });
+      <CardContent>
+        <Button
+          type="button"
+          size="sm"
+          variant="link"
+          className="h-auto px-0 py-0 text-xs text-destructive/70 hover:text-destructive"
+          onClick={async () => {
+            const confirmationText = prompt(
+              `${t('profile.settingsPanel.deleteConfirm')}\n\nType 123 (or ١٢٣) to confirm:`,
+            );
+            if (!isDeleteConfirmationValid(confirmationText)) return;
+            try {
+              const res = await fetch('/api/account/delete', {
+                method: 'POST',
+                headers: { 'x-reconfirm': 'delete', 'x-delete-confirmation': confirmationText ?? '' },
+              });
                 if (!res.ok) {
                   const body = await res.json().catch(() => ({}));
                   throw new Error(body?.error || 'Failed to delete account');
@@ -259,6 +274,15 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
       </Card>
     </div>
   );
+}
+
+function isDeleteConfirmationValid(value: string | null) {
+  if (!value) return false;
+  const normalizedDigits = value
+    .trim()
+    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)));
+  return normalizedDigits === '123';
 }
 
 function ToggleRow({ label, description, checked, onCheckedChange, name }: ToggleRowProps) {

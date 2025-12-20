@@ -135,6 +135,10 @@ export const POST = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
+  if (body.sellerId === user.id) {
+    return NextResponse.json({ error: 'You cannot review yourself.' }, { status: 403 });
+  }
+
   const userRate = checkRateLimit(`reviews:user:${user.id}`, POST_RATE_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ error: 'You have reached the review rate limit.' }, { status: 429 });
@@ -142,8 +146,56 @@ export const POST = withSentryRoute(async (request: Request) => {
     return res;
   }
 
+  let resolvedSellerId = body.sellerId;
+  if (body.productId) {
+    const { data: product, error: productError } = await supabase
+      .from('products')
+      .select('seller_id')
+      .eq('id', body.productId)
+      .maybeSingle();
+
+    if (productError) {
+      console.error('Failed to load product for review', productError);
+      return NextResponse.json({ error: 'Unable to validate review target.' }, { status: 500 });
+    }
+
+    if (!product) {
+      return NextResponse.json({ error: 'Product not found.' }, { status: 404 });
+    }
+
+    if (!product.seller_id) {
+      return NextResponse.json({ error: 'Product is missing a seller.' }, { status: 400 });
+    }
+
+    if (product.seller_id !== body.sellerId) {
+      return NextResponse.json({ error: 'Seller does not match product.' }, { status: 400 });
+    }
+
+    if (product.seller_id === user.id) {
+      return NextResponse.json({ error: 'You cannot review yourself.' }, { status: 403 });
+    }
+
+    resolvedSellerId = product.seller_id;
+
+    const { data: existingReview, error: existingError } = await supabase
+      .from('reviews')
+      .select('id')
+      .eq('buyer_id', user.id)
+      .eq('product_id', body.productId)
+      .maybeSingle();
+
+    if (existingError) {
+      console.error('Failed to validate review uniqueness', existingError);
+      return NextResponse.json({ error: 'Unable to validate review.' }, { status: 500 });
+    }
+
+    if (existingReview) {
+      return NextResponse.json({ error: 'You already reviewed this product.' }, { status: 409 });
+    }
+  }
+
   const payload = {
-    seller_id: body.sellerId,
+    seller_id: resolvedSellerId,
     buyer_id: user.id,
     product_id: body.productId ?? null,
     rating,

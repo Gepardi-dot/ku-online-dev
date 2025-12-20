@@ -26,6 +26,9 @@ create table if not exists public.verification_requests (
 );
 
 create index if not exists idx_verification_requests_user_created on public.verification_requests (user_id, created_at desc);
+create unique index if not exists idx_verification_requests_user_pending
+  on public.verification_requests (user_id)
+  where status = 'pending';
 
 create or replace function public.trg_verification_requests_set_updated_at()
 returns trigger

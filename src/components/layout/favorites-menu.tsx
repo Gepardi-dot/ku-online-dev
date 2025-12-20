@@ -226,7 +226,7 @@ export default function FavoritesMenu({
   }, []);
 
   const ebayTriggerClass =
-    'relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E4E4E4] bg-white text-[#1F1C1C] transition hover:border-[#E67E22] hover:text-[#E67E22] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/50 focus-visible:ring-offset-2';
+    'relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-[#E67E22]/50 hover:text-[#E67E22] hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40';
 
   const handleShare = useCallback(async (favorite: FavoriteSummary) => {
     const product = favorite.product;
@@ -300,7 +300,7 @@ export default function FavoritesMenu({
         align="end"
         side="bottom"
         sideOffset={12}
-        className="z-[90] flex w-[460px] max-h-[calc(100vh-5rem)] max-w-[calc(100vw-1rem)] flex-col rounded-3xl border border-white/50 bg-gradient-to-br from-white/92 via-white/85 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40"
+        className="z-[90] flex w-[460px] max-h-[calc(100vh-5rem)] max-w-[calc(100vw-1rem)] flex-col rounded-3xl border border-[#eadbc5]/70 bg-gradient-to-br from-[#fffdf7]/95 via-[#fff6ea]/90 to-[#f4ecdf]/90 p-4 shadow-[0_22px_60px_rgba(120,72,0,0.22)] backdrop-blur-2xl ring-1 ring-white/60"
       >
         {!canLoad ? (
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
@@ -308,7 +308,7 @@ export default function FavoritesMenu({
           </div>
         ) : (
           <div className="flex h-full flex-col gap-3">
-            <div className="flex items-start justify-between gap-3 rounded-2xl border border-white/30 bg-white/80 px-4 py-3 shadow-sm">
+            <div className="flex items-start justify-between gap-3 rounded-2xl border border-[#eadbc5]/70 bg-white/75 px-4 py-3 shadow-[0_10px_26px_rgba(120,72,0,0.10)]">
               <div>
                 <p className="text-sm font-semibold text-[#2D2D2D]">{strings.label}</p>
                 <p className="text-xs text-muted-foreground">
@@ -320,7 +320,7 @@ export default function FavoritesMenu({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#eadbc5]/70 bg-[#fffdf7]/90 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
                 aria-label="Close favorites"
               >
                 <X className="h-4 w-4" />
@@ -350,11 +350,11 @@ export default function FavoritesMenu({
                       return (
                         <div
                           key={favorite.id}
-                          className="flex items-center gap-3 rounded-3xl border border-white/50 bg-white/90 p-3 shadow-[0_10px_30px_rgba(15,23,42,0.12)]"
+                          className="flex items-center gap-3 rounded-3xl border border-[#eadbc5]/70 bg-gradient-to-br from-white/90 via-[#fffaf2]/85 to-[#f6efe3]/85 p-3 shadow-[0_14px_34px_rgba(120,72,0,0.14)] transition hover:-translate-y-px hover:shadow-[0_18px_46px_rgba(120,72,0,0.18)]"
                         >
                           <Link
                             href={product ? `/product/${product.id}` : '#'}
-                            className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl bg-white/90"
+                            className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/60 bg-white/80"
                           >
                             {imageSrc ? (
                               <Image src={imageSrc} alt={product?.title ?? 'Product'} fill className="object-cover" />
@@ -382,7 +382,7 @@ export default function FavoritesMenu({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-9 w-9 rounded-full border border-white/60 bg-white/80 text-[#E67E22] shadow-sm hover:border-[#E67E22]/40 hover:bg-white"
+                              className="h-9 w-9 rounded-full border border-[#eadbc5]/70 bg-[#fffdf7]/80 text-[#E67E22] shadow-sm hover:border-[#E67E22]/40 hover:bg-white"
                               onClick={() => void handleShare(favorite)}
                               disabled={!product}
                               aria-label="Share listing"
@@ -392,7 +392,7 @@ export default function FavoritesMenu({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-9 w-9 rounded-full border border-white/60 bg-white/80 text-destructive shadow-sm hover:border-destructive/30 hover:bg-white"
+                              className="h-9 w-9 rounded-full border border-[#eadbc5]/70 bg-[#fffdf7]/80 text-destructive shadow-sm hover:border-destructive/30 hover:bg-white"
                               onClick={() => void handleRemove(favorite)}
                               aria-label="Remove from favorites"
                             >

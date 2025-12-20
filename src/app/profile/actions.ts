@@ -47,6 +47,7 @@ function validateFields(formData: FormData) {
   const notifyMessages = readBoolean(formData, 'notifyMessages', true);
   const notifyOffers = readBoolean(formData, 'notifyOffers', true);
   const notifyUpdates = readBoolean(formData, 'notifyUpdates', true);
+  const notifyAnnouncements = readBoolean(formData, 'notifyAnnouncements', false);
   const marketingEmails = readBoolean(formData, 'marketingEmails', false);
   const preferredLanguageRaw = readField(formData, 'preferredLanguage');
   const preferredLanguage = ['en', 'ar', 'ku'].includes(preferredLanguageRaw)
@@ -62,6 +63,7 @@ function validateFields(formData: FormData) {
     notifyMessages,
     notifyOffers,
     notifyUpdates,
+    notifyAnnouncements,
     marketingEmails,
     preferredLanguage,
   };
@@ -86,6 +88,7 @@ function validateFields(formData: FormData) {
       notifyMessages,
       notifyOffers,
       notifyUpdates,
+      notifyAnnouncements,
       marketingEmails,
       preferredLanguage,
     };
@@ -139,6 +142,7 @@ export async function updateProfileAction(
     notify_messages: values.notifyMessages,
     notify_offers: values.notifyOffers,
     notify_updates: values.notifyUpdates,
+    notify_announcements: values.notifyAnnouncements,
     marketing_emails: values.marketingEmails,
     preferred_language: values.preferredLanguage,
     profile_completed:
@@ -161,6 +165,11 @@ export async function updateProfileAction(
   }
 
   revalidatePath('/profile');
+  // Persist language preference in cookie for server-rendered pages.
+  cookieStore.set('ku_locale', values.preferredLanguage, {
+    path: '/',
+    maxAge: 60 * 60 * 24 * 365,
+  });
 
   return {
     status: 'success',

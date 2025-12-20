@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Eye } from 'lucide-react';
+import { MapPin, Eye, BadgeCheck } from 'lucide-react';
 import type { ProductWithRelations } from '@/lib/services/products';
 import FavoriteToggle from '@/components/product/favorite-toggle';
 import { useLocale } from '@/providers/locale-provider';
@@ -266,7 +266,15 @@ export default function ProductCard({ product, viewerId }: ProductCardProps) {
           )}
           
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{sellerDisplayName}</span>
+            <span dir="auto" className="inline-flex items-center gap-1 bidi-auto">
+              <span>{sellerDisplayName}</span>
+              {product.seller?.isVerified ? (
+                <>
+                  <BadgeCheck className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                  <span className="sr-only">{t('profile.overview.trustedBadge')}</span>
+                </>
+              ) : null}
+            </span>
             <span dir="auto" className="bidi-auto">{createdAtLabel}</span>
           </div>
         </div>

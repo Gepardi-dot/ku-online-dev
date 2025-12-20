@@ -60,6 +60,7 @@ const variants = safeImages.map((src) => ({
   const [favoriteCount, setFavoriteCount] = useState(initialFavoriteCount);
   const [inlineZoomed, setInlineZoomed] = useState(false);
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
+  const [isMobileView, setIsMobileView] = useState(false);
 
   const imagesMain = variants.map((v) => v.main);
 
@@ -91,6 +92,19 @@ const variants = safeImages.map((src) => ({
     return () => window.removeEventListener(favoritesEvents.eventName, handler);
   }, [productId]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 1024px), (pointer: coarse), (hover: none)');
+    const update = () => setIsMobileView(media.matches);
+    update();
+    if (typeof media.addEventListener === 'function') {
+      media.addEventListener('change', update);
+      return () => media.removeEventListener('change', update);
+    }
+    media.addListener(update);
+    return () => media.removeListener(update);
+  }, []);
+
   const hasGallery = variants.length > 1;
 
   const handleHeroMouseMove: React.MouseEventHandler<HTMLDivElement> = (event) => {
@@ -105,6 +119,10 @@ const variants = safeImages.map((src) => ({
   };
 
   const handleHeroClick: React.MouseEventHandler<HTMLDivElement> = (event) => {
+    if (isMobileView) {
+      openAt(activeIndex);
+      return;
+    }
     if (!inlineZoomed) {
       const rect = event.currentTarget.getBoundingClientRect();
       if (rect.width && rect.height) {
@@ -144,9 +162,11 @@ const variants = safeImages.map((src) => ({
         onClick={handleHeroClick}
         onMouseMove={handleHeroMouseMove}
         style={{
-          cursor: inlineZoomed
-            ? `url("${CURSOR_ZOOM_OUT}") 16 16, zoom-out`
-            : `url("${CURSOR_ZOOM_IN}") 16 16, zoom-in`,
+          cursor: isMobileView
+            ? 'default'
+            : inlineZoomed
+              ? `url("${CURSOR_ZOOM_OUT}") 16 16, zoom-out`
+              : `url("${CURSOR_ZOOM_IN}") 16 16, zoom-in`,
         }}
       >
         <Image
@@ -162,7 +182,7 @@ const variants = safeImages.map((src) => ({
           }}
           priority
         />
-        <div className="absolute top-3 right-3 flex items-center gap-2">
+        <div className="absolute top-3 right-3 flex flex-col items-end gap-2 lg:flex-row lg:items-center">
           <button
             type="button"
             className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary/90 text-gray-700 shadow-sm transition opacity-0 group-hover:opacity-100 hover:bg-secondary"
@@ -181,7 +201,7 @@ const variants = safeImages.map((src) => ({
           <ShareButton
             title={title}
             url={shareUrl}
-            className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary/90 text-gray-700 shadow-sm hover:bg-secondary"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary/90 text-gray-700 shadow-sm hover:bg-secondary"
             size="sm"
             variant="secondary"
           />

@@ -50,13 +50,15 @@ export default async function ModerationPage() {
           id,
           email,
           full_name,
-          name
+          name,
+          is_verified
         ),
         reported_user:users!abuse_reports_reported_user_id_fkey (
           id,
           email,
           full_name,
-          name
+          name,
+          is_verified
         )
       `)
       .order('created_at', { ascending: false })
@@ -83,6 +85,7 @@ export default async function ModerationPage() {
           ? {
               id: row.reporter.id,
               name: row.reporter.full_name ?? row.reporter.name ?? row.reporter.email ?? 'Reporter',
+              isVerified: Boolean(row.reporter.is_verified),
             }
           : null,
         reportedUser: row.reported_user
@@ -93,6 +96,7 @@ export default async function ModerationPage() {
                 row.reported_user.name ??
                 row.reported_user.email ??
                 'Reported user',
+              isVerified: Boolean(row.reported_user.is_verified),
             }
           : null,
       }));

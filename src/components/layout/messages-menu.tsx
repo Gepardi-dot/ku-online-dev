@@ -184,12 +184,10 @@ export default function MessagesMenu({
       const results = await listConversationsForUser(userId);
       setConversations(results);
 
-      if (results.length > 0) {
-        setActiveConversationId((previous) => previous ?? results[0].id);
-      } else {
-        setActiveConversationId(null);
-        setMessages([]);
-      }
+      setActiveConversationId((previous) => {
+        if (!previous) return null;
+        return results.some((conversation) => conversation.id === previous) ? previous : null;
+      });
     } catch (error) {
       console.error("Failed to load conversations", error);
       toast({
@@ -225,16 +223,12 @@ export default function MessagesMenu({
 
         setConversations((previous) =>
           previous.map((conversation) =>
-            conversation.id === conversationId ? { ...conversation, hasUnread: false } : conversation,
+            conversation.id === conversationId
+              ? { ...conversation, hasUnread: false, unreadCount: 0 }
+              : conversation,
           ),
         );
-
-        const newlyRead = history.filter(
-          (item) => !item.isRead && item.receiverId === userId,
-        ).length;
-        if (newlyRead > 0) {
-          setUnreadCount((previous) => Math.max(0, previous - newlyRead));
-        }
+        void refreshUnread();
       } catch (error) {
         console.error("Failed to load messages", error);
         toast({
@@ -246,7 +240,7 @@ export default function MessagesMenu({
         setLoadingMessages(false);
       }
     },
-    [userId, oldestCursor],
+    [userId, oldestCursor, refreshUnread],
   );
 
   // --- Initial unread + conversations when opened ---
@@ -279,11 +273,14 @@ export default function MessagesMenu({
           return previous;
         }
 
+        const nextUnreadCount =
+          shouldFlagUnread ? (existing.unreadCount ?? (existing.hasUnread ? 1 : 0)) + 1 : 0;
         const updated: ConversationSummary = {
           ...existing,
           lastMessage: message.content,
           lastMessageAt: message.createdAt,
           hasUnread: shouldFlagUnread ? true : false,
+          unreadCount: nextUnreadCount,
         };
 
         const others = previous.filter((item) => item.id !== message.conversationId);
@@ -300,7 +297,9 @@ export default function MessagesMenu({
         void fetchConversation(message.conversationId)
           .then((summary) => {
             if (!summary) return;
-            const summaryWithUnread = shouldFlagUnread ? { ...summary, hasUnread: true } : summary;
+            const summaryWithUnread = shouldFlagUnread
+              ? { ...summary, hasUnread: true, unreadCount: 1 }
+              : { ...summary, hasUnread: false, unreadCount: 0 };
 
             setConversations((previous) => {
               if (previous.some((item) => item.id === summaryWithUnread.id)) {
@@ -334,7 +333,13 @@ export default function MessagesMenu({
       if (message.receiverId === userId) {
         try {
           await markConversationRead(activeConversationId, userId);
-          setUnreadCount((previous) => Math.max(0, previous - 1));
+          setConversations((previous) =>
+            previous.map((conversation) =>
+              conversation.id === activeConversationId
+                ? { ...conversation, hasUnread: false, unreadCount: 0 }
+                : conversation,
+            ),
+          );
         } catch (error) {
           console.error("Failed to mark message read", error);
         }
@@ -405,7 +410,7 @@ export default function MessagesMenu({
     );
   }, [unreadCount]);
   const chipClass =
-    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#E4E4E4] bg-white text-[#1F1C1C] transition hover:border-[#E67E22] hover:text-[#E67E22] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/50 focus-visible:ring-offset-2";
+    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-[#E67E22]/50 hover:text-[#E67E22] hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40";
 
   const minDragOffset = useMemo(() => {
     if (!isMobile) return 0;
@@ -622,7 +627,7 @@ export default function MessagesMenu({
           isActive
             ? "border-[#E67E22]/40 bg-[rgba(255,255,255,0.72)] shadow-md ring-1 ring-[#E67E22]/10"
             : isUnread
-              ? "border-[#F3C78A]/70 bg-[rgba(255,255,255,0.56)] hover:bg-[rgba(255,255,255,0.66)]"
+              ? "border-[#E67E22]/30 bg-[#FFF3E6] shadow-md ring-1 ring-[#E67E22]/10 hover:bg-[#FFE7CF]"
               : "border-[#EBDAC8]/55 bg-[rgba(255,255,255,0.34)] hover:border-[#E7C9A3]/70 hover:bg-[rgba(255,255,255,0.52)]",
         )}
       >
@@ -656,9 +661,9 @@ export default function MessagesMenu({
                 </p>
               )}
             </div>
-            {lastActivity && (
-              <p className="ml-2 text-[11px] text-[#777777]">{lastActivity}</p>
-            )}
+            <div className="ml-2 flex items-center gap-2">
+              {lastActivity && <p className="text-[11px] text-[#777777]">{lastActivity}</p>}
+            </div>
           </div>
         </button>
         <button

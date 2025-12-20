@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { MapPin, Eye } from 'lucide-react';
+import { MapPin, Eye, BadgeCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import ChatButton from '@/components/chat/chat-button';
 import MarkSoldToggle from '@/components/product/mark-sold-toggle';
@@ -126,9 +126,29 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const isOwner = Boolean(viewerId && sellerId && viewerId === sellerId);
   const daysSince = (date: Date | null | undefined) => (date ? Math.max(0, Math.floor((Date.now() - date.getTime()) / 86_400_000)) : null);
   const createdDays = daysSince(product.createdAt);
-  const createdAtLabel = createdDays !== null
-    ? t('product.daysAgo').replace('{days}', formatNumber(createdDays))
-    : '';
+  const formatDaysAgo = (days: number) => {
+    if (locale === 'ar') {
+      if (days === 0) return 'اليوم';
+      if (days === 1) return 'أمس';
+      if (days === 2) return 'منذ يومين';
+      return `منذ ${formatNumber(days)} أيام`;
+    }
+    if (locale === 'en') {
+      if (days === 0) return 'Today';
+      if (days === 1) return '1 day ago';
+      if (days < 30) return `${formatNumber(days)} days ago`;
+      if (days < 365) {
+        const months = Math.max(1, Math.floor(days / 30));
+        return `${formatNumber(months)} month${months === 1 ? '' : 's'} ago`;
+      }
+      const years = Math.max(1, Math.floor(days / 365));
+      return `${formatNumber(years)} year${years === 1 ? '' : 's'} ago`;
+    }
+
+    return t('product.daysAgo').replace('{days}', formatNumber(days));
+  };
+
+  const createdAtLabel = createdDays !== null ? formatDaysAgo(createdDays) : '';
   const sellerJoinedLabel = (() => {
     if (!seller?.createdAt) {
       return null;
@@ -233,8 +253,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <div className="text-3xl font-bold text-primary">
-                    {formatPrice(product.price, product.currency)}
+                  <div className="space-y-1">
+                    {typeof product.originalPrice === 'number' && product.originalPrice > product.price ? (
+                      <div className="text-sm text-muted-foreground line-through">
+                        {formatPrice(product.originalPrice, product.currency)}
+                      </div>
+                    ) : null}
+                    <div className="text-3xl font-bold text-primary">
+                      {formatPrice(product.price, product.currency)}
+                    </div>
                   </div>
                   {product.isSold && (
                     <Badge variant="secondary" className="bg-gray-700 text-white">
@@ -285,13 +312,21 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     </Link>
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Link
-                          href={seller?.id ? `/seller/${seller.id}` : '#'}
-                          prefetch
-                          className="font-medium hover:underline whitespace-nowrap truncate"
-                        >
-                          {sellerDisplayName}
-                        </Link>
+                        <span dir="auto" className="inline-flex min-w-0 items-center gap-2 bidi-auto">
+                          <Link
+                            href={seller?.id ? `/seller/${seller.id}` : '#'}
+                            prefetch
+                            className="font-medium hover:underline whitespace-nowrap truncate"
+                          >
+                            {sellerDisplayName}
+                          </Link>
+                          {seller?.isVerified ? (
+                            <>
+                              <BadgeCheck className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                              <span className="sr-only">{t('profile.overview.trustedBadge')}</span>
+                            </>
+                          ) : null}
+                        </span>
                         <div className="flex items-center gap-1 whitespace-nowrap">
                           <span className="text-sm text-yellow-500">&#9733;</span>
                           <span className="text-sm">{seller?.rating != null ? formatNumber(seller.rating) : t('product.ratingNA')}</span>
@@ -303,7 +338,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       <div className="text-sm text-muted-foreground space-y-1">
                         {seller?.location && (
                           <p>
-                            {t('product.basedInPrefix')} {getCityLabel(seller.location)}
+                            {locale === 'ar'
+                              ? getCityLabel(seller.location)
+                              : `${t('product.basedInPrefix')} ${getCityLabel(seller.location)}`}
                           </p>
                         )}
                         {sellerJoinedLabel && (

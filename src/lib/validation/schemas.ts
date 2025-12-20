@@ -5,6 +5,7 @@ import { CONDITION_VALUES } from '@/lib/products/filter-params';
 const phoneRegex = /^[+0-9()\-\s]{6,20}$/;
 
 export const productConditionEnum = z.enum(CONDITION_VALUES);
+export const productCurrencyEnum = z.enum(['IQD', 'USD']);
 
 const descriptionSchema = z
   .string()
@@ -24,7 +25,7 @@ export const createProductSchema = z
     price: z.coerce
       .number({ invalid_type_error: 'Price must be a number.' })
       .min(0, 'Price must be zero or greater.'),
-    currency: z.string().trim().min(1).max(8).default('IQD'),
+    currency: productCurrencyEnum.default('IQD'),
     condition: productConditionEnum,
     categoryId: z.string().uuid({ message: 'Select a valid category.' }),
     location: z
@@ -84,6 +85,7 @@ export const updateProfileSchema = z.object({
   notifyMessages: z.boolean(),
   notifyOffers: z.boolean(),
   notifyUpdates: z.boolean(),
+  notifyAnnouncements: z.boolean().default(false),
   marketingEmails: z.boolean(),
   preferredLanguage: z.enum(['en', 'ar', 'ku']).default('en'),
 });

@@ -206,10 +206,11 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
       <input type="hidden" name="notifyMessages" value={initialValues.notifyMessages ? 'true' : 'false'} />
       <input type="hidden" name="notifyOffers" value={initialValues.notifyOffers ? 'true' : 'false'} />
       <input type="hidden" name="notifyUpdates" value={initialValues.notifyUpdates ? 'true' : 'false'} />
+      <input type="hidden" name="notifyAnnouncements" value={initialValues.notifyAnnouncements ? 'true' : 'false'} />
       <input type="hidden" name="marketingEmails" value={initialValues.marketingEmails ? 'true' : 'false'} />
 
       <Separator />
-      <section className="space-y-3 rounded-2xl border border-destructive/15 bg-destructive/5 p-4">
+      <section className="space-y-3 rounded-2xl border border-muted/40 bg-white/90 p-4 shadow-sm">
         <div className="flex flex-col gap-1">
           <h3 className="text-sm font-semibold text-destructive">
             {t('profile.settingsPanel.dangerZoneTitle')}
@@ -218,12 +219,19 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
         </div>
         <Button
           type="button"
-          className="px-4 text-sm"
-          variant="destructive"
+          size="sm"
+          variant="link"
+          className="h-auto px-0 py-0 text-xs text-destructive/70 hover:text-destructive"
           onClick={async () => {
-          if (!confirm(t('profile.settingsPanel.deleteConfirm'))) return;
+          const confirmationText = prompt(
+            `${t('profile.settingsPanel.deleteConfirm')}\n\nType 123 (or ١٢٣) to confirm:`,
+          );
+          if (!isDeleteConfirmationValid(confirmationText)) return;
           try {
-            const res = await fetch('/api/account/delete', { method: 'POST', headers: { 'x-reconfirm': 'delete' } });
+            const res = await fetch('/api/account/delete', {
+              method: 'POST',
+              headers: { 'x-reconfirm': 'delete', 'x-delete-confirmation': confirmationText ?? '' },
+            });
             if (!res.ok) {
               const body = await res.json().catch(() => ({}));
               throw new Error(body?.error || 'Failed to delete account');
@@ -404,6 +412,15 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
       <SubmitButton label={t('profile.form.save')} pendingLabel={t('profile.form.saving')} />
     </form>
   );
+}
+
+function isDeleteConfirmationValid(value: string | null) {
+  if (!value) return false;
+  const normalizedDigits = value
+    .trim()
+    .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+    .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)));
+  return normalizedDigits === '123';
 }
 
 function ToggleRow({ label, description, checked, onCheckedChange, name }: ToggleRowProps) {

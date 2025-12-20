@@ -154,37 +154,36 @@ export default function SellForm({ user }: SellFormProps) {
   };
 
   const selectTriggerClassName = [
-    'h-12 w-fit max-w-full rounded-xl border border-white/50 bg-white/65 px-4 text-sm backdrop-blur-xl',
+    'h-12 w-fit max-w-full rounded-2xl border border-[#eadbc5]/80 bg-gradient-to-b from-[#fffdf7] to-[#fff2e2] px-4 text-sm text-[#1F1C1C]',
     '[&>span]:max-w-[18rem]',
-    'shadow-[0_14px_38px_rgba(15,23,42,0.1)] ring-1 ring-black/10 transition',
-    'hover:bg-white/75 hover:shadow-[0_16px_40px_rgba(15,23,42,0.1)]',
-    'focus:ring-2 focus:ring-primary/35 focus:ring-offset-2 focus:ring-offset-white/80',
+    'shadow-[0_10px_26px_rgba(120,72,0,0.12)] ring-1 ring-white/70 backdrop-blur-xl transition',
+    'hover:-translate-y-px hover:border-[#E67E22]/45 hover:shadow-[0_14px_34px_rgba(120,72,0,0.16)]',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffaf2]',
   ].join(' ');
 
   const selectContentClassName = [
-    'rounded-2xl border border-white/45 bg-white/35',
-    'shadow-[0_30px_95px_rgba(15,23,42,0.2)] backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110',
-    'ring-1 ring-white/20',
-    'w-fit max-w-[min(22rem,calc(100vw-2rem))]',
-    '[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0',
+    'rounded-3xl border border-[#eadbc5]/80',
+    'bg-gradient-to-br from-[#fffdf7]/95 via-[#fff6ea]/90 to-[#f4ecdf]/90',
+    'shadow-[0_22px_60px_rgba(120,72,0,0.22)] backdrop-blur-2xl ring-1 ring-white/60',
+    'w-fit max-w-[min(22rem,calc(100vw-2rem))] max-h-[18rem]',
+    '[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0 [&_[data-radix-select-viewport]]:p-2',
+    '[&_[data-radix-select-viewport]]:flex [&_[data-radix-select-viewport]]:flex-col [&_[data-radix-select-viewport]]:gap-2',
   ].join(' ');
 
-  const compactSelectContentClassName = `${selectContentClassName} max-h-[15rem]`;
+  const compactSelectContentClassName = `${selectContentClassName} max-h-[15rem] w-[18rem] max-w-[min(18rem,calc(100vw-2rem))] [&_[data-radix-select-viewport]]:!w-full`;
   const colorSelectContentClassName = `${compactSelectContentClassName} w-48 px-0 py-0 [&_[data-radix-select-viewport]]:!min-w-0 [&_[data-radix-select-viewport]]:!w-48 [&_[data-radix-select-viewport]]:!p-0`;
+  const listSelectContentClassName = [
+    selectContentClassName,
+    'max-h-[16rem]',
+    '[&_[data-radix-select-viewport]]:max-h-[16rem]',
+    '[&_[data-radix-select-viewport]]:overflow-y-auto',
+  ].join(' ');
 
   const selectItemClassName = [
-    'relative isolate mb-1 last:mb-0 truncate overflow-hidden rounded-lg border border-white/35 bg-slate-50/25 py-2 ps-10 pe-3 text-sm text-foreground',
-    'backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110',
-    'shadow-[0_14px_30px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.12)]',
-    'before:pointer-events-none before:absolute before:inset-0 before:z-0 before:opacity-55',
-    'before:bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.18)_1px,transparent_0)] before:[background-size:6px_6px]',
-    'after:pointer-events-none after:absolute after:inset-0 after:z-0 after:opacity-60',
-    'after:bg-gradient-to-b after:from-white/22 after:via-transparent after:to-transparent',
-    'motion-safe:transition-[transform,background-color,border-color,box-shadow] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none',
-    'hover:bg-white/22 hover:border-white/45 focus:bg-white/22 focus:text-foreground',
-    'active:scale-[0.99] data-[highlighted]:scale-[0.99] data-[highlighted]:-translate-y-[1px]',
-    'data-[highlighted]:bg-primary/10 data-[highlighted]:border-primary/25 data-[highlighted]:shadow-[0_14px_26px_rgba(249,115,22,0.12)]',
-    'data-[state=checked]:bg-primary/10 data-[state=checked]:border-primary/30 data-[state=checked]:shadow-[0_14px_26px_rgba(249,115,22,0.14)]',
+    'w-full truncate rounded-2xl border-2 border-[#eadbc5]/70 bg-white/75 px-5 py-3.5 ps-12 text-[17px] leading-none text-[#1F1C1C] shadow-[0_10px_22px_rgba(120,72,0,0.10)] outline-none transition',
+    'hover:-translate-y-px hover:bg-white/80 hover:shadow-[0_10px_22px_rgba(120,72,0,0.12)]',
+    'data-[highlighted]:bg-white/85 data-[highlighted]:text-foreground data-[highlighted]:shadow-[0_10px_22px_rgba(120,72,0,0.12)]',
+    'data-[state=checked]:bg-[#fff1df] data-[state=checked]:font-semibold data-[state=checked]:border-[#E67E22]/30',
   ].join(' ');
 
   const colorSelectItemBaseClassName = [
@@ -636,6 +635,28 @@ export default function SellForm({ user }: SellFormProps) {
           code: (error as any).code,
         });
       }
+
+      const errorDetails = (error as any)?.details;
+      const errorMessage = (error as any)?.message;
+      if (errorDetails === 'ku_daily_listing_limit' || errorMessage === 'Daily listing limit reached') {
+        const hint = (error as any)?.hint;
+        const matchedLimit =
+          typeof hint === 'string' ? Number.parseInt(hint.match(/(\d+)/)?.[1] ?? '', 10) : Number.NaN;
+        const dailyLimit = Number.isFinite(matchedLimit) ? matchedLimit : 3;
+        const numberLocale = locale === 'ku' ? 'ku-u-nu-arab' : locale === 'ar' ? 'ar-u-nu-arab' : 'en-US';
+        const limitLabel = new Intl.NumberFormat(numberLocale).format(dailyLimit);
+        const description = t('sellForm.toast.dailyLimitDescription')
+          .replace('{limit}', limitLabel)
+          .concat(dailyLimit < 10 ? ` ${t('sellForm.toast.dailyLimitUpgradeDescription')}` : '');
+
+        toast({
+          title: t('sellForm.toast.dailyLimitTitle'),
+          description,
+          variant: 'destructive',
+        });
+        return;
+      }
+
       toast({
         title: t('sellForm.toast.createFailedTitle'),
         description: t('sellForm.toast.createFailedDescription'),
@@ -978,7 +999,7 @@ export default function SellForm({ user }: SellFormProps) {
                         </div>
 
                         <div className="relative mt-2">
-                          <div className="pointer-events-none absolute start-4 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
+                          <div className="pointer-events-none absolute start-4 top-1/2 z-10 -translate-y-1/2 text-xs font-semibold !text-emerald-600">
                             {formData.currency}
                           </div>
                           <Input
@@ -1015,7 +1036,7 @@ export default function SellForm({ user }: SellFormProps) {
                             <SelectTrigger className={selectTriggerClassName}>
                               <SelectValue placeholder={t('sellForm.fields.conditionPlaceholder')} />
                             </SelectTrigger>
-                            <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
+                            <SelectContent align={contentAlign} dir={direction} className={listSelectContentClassName}>
                               {conditionOptions.map((option) => (
                                 <SelectItem key={option.value} value={option.value} className={selectItemClassName}>
                                   {getConditionLabel(option.value)}
@@ -1053,13 +1074,13 @@ export default function SellForm({ user }: SellFormProps) {
                                     : t('sellForm.fields.categoryLoading')
                                 }
                               />
-                          </SelectTrigger>
-                          <SelectContent align={contentAlign} dir={direction} className={compactSelectContentClassName}>
-                            {categories.map((category) => (
-                              <SelectItem key={category.id} value={category.id} className={selectItemClassName}>
-                                {getCategoryLabel(category.name)}
-                              </SelectItem>
-                            ))}
+                            </SelectTrigger>
+                            <SelectContent align={contentAlign} dir={direction} className={listSelectContentClassName}>
+                              {categories.map((category) => (
+                                <SelectItem key={category.id} value={category.id} className={selectItemClassName}>
+                                  {getCategoryLabel(category.name)}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1082,7 +1103,9 @@ export default function SellForm({ user }: SellFormProps) {
                               <SelectValue placeholder={t('sellForm.fields.locationPlaceholder')} />
                             </SelectTrigger>
                             <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
-                              <SelectItem value="all" className={selectItemClassName}>{t('filters.cityAll')}</SelectItem>
+                              <SelectItem value="all" className={selectItemClassName}>
+                                {t('filters.cityAll')}
+                              </SelectItem>
                               {cityOptions.map((city) => (
                                 <SelectItem key={city.value} value={city.label} className={selectItemClassName}>
                                   {getCityLabel(city.value)}

@@ -6,7 +6,7 @@ export const translations = {
       ku: "Kurdish",
     },
     announcement: {
-      tagline: "Your best online marketplace in Kurdistan",
+      tagline: "Sell your stuff or buy from others",
     },
     header: {
       searchPlaceholder: "Search for products, brands, and categories...",
@@ -186,6 +186,9 @@ export const translations = {
       conditionUnknown: "Unknown",
       viewsLabel: "views",
       soldBadge: "Sold",
+      priceUpdatedBadge: "Price Updated",
+      listingUpdatedBadge: "Listing Updated",
+      backOnlineBadge: "Back Online",
       basedInPrefix: "Based in",
       memberSincePrefix: "Member since",
       chatWithSellerButton: "Chat with Seller",
@@ -288,6 +291,10 @@ export const translations = {
           listingUpdates: {
             title: "Listing updates",
             description: "Get alerts about expiring or promoted listings.",
+          },
+          announcements: {
+            title: "System announcements",
+            description: "Opt-in to maintenance and policy updates.",
           },
           marketingEmails: {
             title: "Marketing emails",
@@ -461,7 +468,18 @@ export const translations = {
         createSuccessDescription: "Your product has been listed successfully.",
         createFailedTitle: "Failed to create listing",
         createFailedDescription: "Please review your details and try again.",
+        dailyLimitTitle: "Daily listing limit reached",
+        dailyLimitDescription: "You can create up to {limit} listings per day. Please try again tomorrow.",
+        dailyLimitUpgradeDescription: "Get verified to raise your daily limit to 10 listings.",
       },
+    },
+    sellerPage: {
+      memberSince: "Member since {time}",
+      ratingLabel: "Rating",
+      itemSingle: "item",
+      itemPlural: "items",
+      itemsCount: "{count} items",
+      noListings: "No listings found for this seller.",
     },
     common: {
       loading: "Loading...",
@@ -499,7 +517,7 @@ export const translations = {
       ku: "الكردية",
     },
     announcement: {
-      tagline: "أفضل سوق إلكتروني في كردستان",
+      tagline: "بع أغراضك أو اشترِ أغراض الآخرين",
     },
     header: {
       searchPlaceholder: "ابحث عن المنتجات والعلامات التجارية والفئات...",
@@ -679,6 +697,9 @@ export const translations = {
       conditionUnknown: "غير محدد",
       viewsLabel: "مشاهدة",
       soldBadge: "مباع",
+      priceUpdatedBadge: "تم تحديث السعر",
+      listingUpdatedBadge: "تم تحديث الإعلان",
+      backOnlineBadge: "عاد الإعلان",
       basedInPrefix: "مقيم في",
       memberSincePrefix: "عضو منذ",
       chatWithSellerButton: "الدردشة مع البائع",
@@ -693,7 +714,7 @@ export const translations = {
       toggleSoldNotAllowed: "فقط البائع يمكنه تحديث هذا الإعلان.",
       ratingNA: "غير متوفر",
       reviewsLabel: "تقييمات",
-      daysAgo: "منذ {days} يوم",
+      daysAgo: "منذ {days} أيام",
       monthUnit: {
         one: "شهر",
         other: "شهور",
@@ -781,6 +802,10 @@ export const translations = {
           listingUpdates: {
             title: "تحديثات الإعلانات",
             description: "احصل على تنبيهات حول الإعلانات المنتهية أو المروجة.",
+          },
+          announcements: {
+            title: "إعلانات النظام",
+            description: "اشترك في تنبيهات الصيانة وتحديثات السياسات.",
           },
           marketingEmails: {
             title: "رسائل تسويقية",
@@ -954,7 +979,18 @@ export const translations = {
         createSuccessDescription: "تم إدراج منتجك بنجاح.",
         createFailedTitle: "فشل إنشاء الإعلان",
         createFailedDescription: "يرجى مراجعة بياناتك والمحاولة مرة أخرى.",
+        dailyLimitTitle: "تم الوصول إلى الحد اليومي",
+        dailyLimitDescription: "يمكنك إنشاء ما يصل إلى {limit} إعلانات في اليوم. حاول مرة أخرى غدًا.",
+        dailyLimitUpgradeDescription: "احصل على التوثيق لزيادة الحد اليومي إلى 10 إعلانات.",
       },
+    },
+    sellerPage: {
+      memberSince: "عضو منذ {time}",
+      ratingLabel: "التقييم",
+      itemSingle: "عنصر",
+      itemPlural: "عناصر",
+      itemsCount: "{count} عنصر",
+      noListings: "لا توجد إعلانات لهذا البائع.",
     },
     common: {
       loading: "جارٍ التحميل...",
@@ -992,7 +1028,7 @@ export const translations = {
       ku: "کوردی",
     },
     announcement: {
-      tagline: "باشترین بازاڕی ئۆنلاین لە هەرێمی کوردستان",
+      tagline: "شتومەکت بفرۆشە یان بکڕە لەخەڵکی تر",
     },
     header: {
       searchPlaceholder: "گەڕان بۆ کاڵا، مارکە و هاوپۆل...",
@@ -1172,6 +1208,9 @@ export const translations = {
       conditionUnknown: "نەزانراو",
       viewsLabel: "جاربینین",
       soldBadge: "فرۆشراو",
+      priceUpdatedBadge: "نرخ نوێکرایەوە",
+      listingUpdatedBadge: "ئیلان نوێکرایەوە",
+      backOnlineBadge: "دووبارە بەردەستە",
       basedInPrefix: "لە",
       memberSincePrefix: "ئەندام لە",
       chatWithSellerButton: "گفتوگۆ لەگەڵ فرۆشیار",
@@ -1186,7 +1225,7 @@ export const translations = {
       toggleSoldNotAllowed: "تەنها فرۆشیار دەتوانێت ئەم ڕیکلامە نوێ بکاتەوە.",
       ratingNA: "نییە",
       reviewsLabel: "پێداچوونەوەکان",
-      daysAgo: "{days} ڕۆژ پێشتر",
+      daysAgo: "پێش {days} ڕۆژ",
       monthUnit: {
         one: "مانگێوە",
         other: "مانگێوە",
@@ -1274,6 +1313,10 @@ export const translations = {
           listingUpdates: {
             title: "نوێکردنەوەی ئیلان",
             description: "ئاگادار بە شاردنەوە یان پڕۆمۆشنکردنی ئیلانەکان.",
+          },
+          announcements: {
+            title: "ئاگاداری سیستەم",
+            description: "هەڵبژاردن بۆ وەرگرتنی ئاگاداری چاکسازی و یاساکان.",
           },
           marketingEmails: {
             title: "ئیمەیڵی مارکێتینگ",
@@ -1447,7 +1490,18 @@ export const translations = {
         createSuccessDescription: "کاڵاکەت بە سەرکەوتوویی لە لیستدا دانرا.",
         createFailedTitle: "دروستکردنی ئیلان سەرکەوتوو نەبوو",
         createFailedDescription: "تکایە وردەکاریەکانت پشکنە و دووبارە هەوڵ بدە.",
+        dailyLimitTitle: "سنووری ڕۆژانە گەیشتووە",
+        dailyLimitDescription: "تەنها دەتوانیت تا {limit} ئیلان لە ڕۆژێکدا دروست بکەیت. سبەینێ دووبارە هەوڵ بدە.",
+        dailyLimitUpgradeDescription: "بەڵگەپێکراو ببە بۆ ئەوەی سنوورەکەت بگاتە 10 ئیلان لە ڕۆژێکدا.",
       },
+    },
+    sellerPage: {
+      memberSince: "ئەندامە لە پێش {time}",
+      ratingLabel: "هەڵسەنگاندن",
+      itemSingle: "بابەت",
+      itemPlural: "بابەت",
+      itemsCount: "{count} بابەت",
+      noListings: "هیچ ئیلانێک بۆ ئەم فرۆشیارە نەدۆزرایەوە.",
     },
     common: {
       loading: "لە بارکردندایە...",
