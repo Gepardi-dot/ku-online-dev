@@ -2,19 +2,17 @@ import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno&no-check";
 import { corsHeaders } from "../_shared/cors.ts";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL");
+const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
 const openAiApiKey = Deno.env.get("OPENAI_API_KEY");
 const openAiEmbeddingsUrl = Deno.env.get("OPENAI_EMBEDDINGS_URL") ?? "https://api.openai.com/v1/embeddings";
 const embeddingModel = Deno.env.get("EMBEDDING_MODEL") ?? "text-embedding-3-small";
-
-if (!supabaseUrl) {
-  throw new Error("SUPABASE_URL is not configured");
-}
-
-if (!serviceRoleKey) {
-  throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured");
-}
+const embeddingDimensions = Number.parseInt(Deno.env.get("EMBEDDING_DIMENSIONS") ?? "", 10);
+const expectedEmbeddingLength =
+  Number.isFinite(embeddingDimensions) && embeddingDimensions > 0
+    ? embeddingDimensions
+    : 1536;
 
 async function createEmbedding(input: string): Promise<number[] | null> {
   if (!openAiApiKey) {
@@ -80,6 +78,59 @@ function sanitizeOffset(value: unknown): number {
   return Math.max(Math.trunc(parsed), 0);
 }
 
+function shouldFallbackOnRpcError(error: { message?: string } | null | undefined): boolean {
+  const message = typeof error?.message === "string" ? error.message : "";
+  return message.includes("structure of query does not match function result type");
+}
+
+async function runFallbackSearch(
+  supabase: ReturnType<typeof createClient>,
+  params: {
+    query: string | null;
+    categoryId: string | null;
+    minPrice: number | null;
+    maxPrice: number | null;
+    city: string | null;
+    limit: number;
+    offset: number;
+  },
+) {
+  const rangeEnd = params.limit > 0 ? params.offset + params.limit - 1 : params.offset;
+  let query = supabase
+    .from("products")
+    .select(
+      "id,title,description,price,currency,condition,category_id,seller_id,location,images,is_active,is_sold,is_promoted,views,created_at,updated_at",
+    )
+    .eq("is_active", true)
+    .eq("is_sold", false);
+
+  if (params.query && params.query.trim().length > 0) {
+    query = query.textSearch("search_document", params.query, {
+      config: "simple",
+      type: "plain",
+    });
+  }
+
+  if (params.categoryId) {
+    query = query.eq("category_id", params.categoryId);
+  }
+
+  if (typeof params.minPrice === "number") {
+    query = query.gte("price", params.minPrice);
+  }
+
+  if (typeof params.maxPrice === "number") {
+    query = query.lte("price", params.maxPrice);
+  }
+
+  if (params.city && params.city.trim().length > 0) {
+    query = query.ilike("location", `${params.city}%`);
+  }
+
+  query = query.order("created_at", { ascending: false });
+  return await query.range(params.offset, rangeEnd);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -96,7 +147,18 @@ serve(async (req) => {
   }
 
   try {
-    const payload = await req.json();
+    const supabaseKey = serviceRoleKey ?? anonKey;
+    if (!supabaseUrl || !supabaseKey) {
+      return new Response(
+        JSON.stringify({ error: "Supabase credentials are not configured" }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        },
+      );
+    }
+
+    const payload = await req.json().catch(() => ({}));
 
     const query =
       typeof payload?.query === "string" ? payload.query.slice(0, 120) : null;
@@ -114,9 +176,19 @@ serve(async (req) => {
     const limit = sanitizeLimit(payload?.limit, 24);
     const offset = sanitizeOffset(payload?.offset);
 
-    const supabase = createClient(supabaseUrl, serviceRoleKey, {
+    const authHeader = req.headers.get("authorization");
+    const clientOptions: {
+      auth: { persistSession: boolean; autoRefreshToken: boolean };
+      global?: { headers: Record<string, string> };
+    } = {
       auth: { persistSession: false, autoRefreshToken: false },
-    });
+    };
+
+    if (!serviceRoleKey && authHeader) {
+      clientOptions.global = { headers: { Authorization: authHeader } };
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey, clientOptions);
 
     let queryEmbedding: number[] | null = null;
     const trimmedQuery = typeof query === "string" ? query.trim() : "";
@@ -130,9 +202,22 @@ serve(async (req) => {
       }
     }
 
-    const rpcName = queryEmbedding ? "search_products_semantic" : "search_products";
+    if (
+      queryEmbedding &&
+      (queryEmbedding.length !== expectedEmbeddingLength ||
+        queryEmbedding.some((value) => !Number.isFinite(value)))
+    ) {
+      console.warn(
+        "OpenAI embedding length mismatch or invalid values detected, falling back to keyword search",
+        {
+          expected: expectedEmbeddingLength,
+          actual: queryEmbedding.length,
+        },
+      );
+      queryEmbedding = null;
+    }
 
-    const rpcArgs: Record<string, unknown> = {
+    const baseRpcArgs: Record<string, unknown> = {
       search_term: query,
       category: categoryId,
       min_price: minPrice,
@@ -142,11 +227,38 @@ serve(async (req) => {
       offset_count: offset,
     };
 
-    if (rpcName === "search_products_semantic" && queryEmbedding) {
-      rpcArgs.query_embedding = queryEmbedding;
+    let rpcName = queryEmbedding ? "search_products_semantic" : "search_products";
+    let rpcArgs = queryEmbedding
+      ? { ...baseRpcArgs, query_embedding: queryEmbedding }
+      : baseRpcArgs;
+
+    let { data, error } = await supabase.rpc(rpcName, rpcArgs);
+
+    if (error && rpcName === "search_products_semantic") {
+      console.warn("search_products_semantic rpc failed, retrying keyword search", error);
+      rpcName = "search_products";
+      rpcArgs = baseRpcArgs;
+      const fallback = await supabase.rpc(rpcName, rpcArgs);
+      data = fallback.data;
+      error = fallback.error;
     }
 
-    const { data, error } = await supabase.rpc(rpcName, rpcArgs);
+    if (error && shouldFallbackOnRpcError(error)) {
+      console.warn("RPC search failed with result mismatch, falling back to direct query", error);
+      const fallback = await runFallbackSearch(supabase, {
+        query,
+        categoryId,
+        minPrice,
+        maxPrice,
+        city,
+        limit,
+        offset,
+      });
+      if (!fallback.error) {
+        data = fallback.data;
+        error = null;
+      }
+    }
 
     if (error) {
       console.error(`${rpcName} rpc failed`, error);

@@ -262,7 +262,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
 
           <div className="grid grid-cols-2 gap-x-2 gap-y-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} viewerId={viewerId} />
+              <ProductCard key={product.id} product={product} viewerId={viewerId} searchQuery={initialValues.search} />
             ))}
           </div>
 
