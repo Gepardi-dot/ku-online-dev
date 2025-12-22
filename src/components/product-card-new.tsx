@@ -12,12 +12,45 @@ import { useLocale } from '@/providers/locale-provider';
 interface ProductCardProps {
   product: ProductWithRelations;
   viewerId?: string | null;
+  searchQuery?: string | null;
 }
 
-export default function ProductCard({ product, viewerId }: ProductCardProps) {
+export default function ProductCard({ product, viewerId, searchQuery }: ProductCardProps) {
   const { t, locale, messages } = useLocale();
   const cityLabels = messages.header.city as Record<string, string>;
   const getCityLabel = (value: string) => cityLabels[value.trim().toLowerCase()] ?? value;
+
+  const recordSearchClick = () => {
+    const query = (searchQuery ?? '').trim();
+    if (query.length < 2) {
+      return;
+    }
+
+    const dedupeKey = `search-click:${locale}:${query.toLowerCase()}:${product.id}`;
+    try {
+      if (sessionStorage.getItem(dedupeKey)) {
+        return;
+      }
+      sessionStorage.setItem(dedupeKey, '1');
+    } catch {}
+
+    const payload = JSON.stringify({ query, productId: product.id, locale });
+
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
+        const blob = new Blob([payload], { type: 'application/json' });
+        navigator.sendBeacon('/api/search/click', blob);
+        return;
+      }
+    } catch {}
+
+    fetch('/api/search/click', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: payload,
+      keepalive: true,
+    }).catch(() => {});
+  };
 
   const formatRelativeTimeEnglish = (date: Date): string => {
     const now = Date.now();
@@ -198,6 +231,7 @@ export default function ProductCard({ product, viewerId }: ProductCardProps) {
       href={`/product/${product.id}`}
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       prefetch
+      onClick={recordSearchClick}
     >
       <Card className="overflow-hidden transition-all duration-300 group-hover:shadow-lg">
         {/* Responsive image container:

@@ -104,7 +104,7 @@ export function ProductsExplorer({
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
         {items.map((product) => (
-          <ProductCard key={product.id} product={product} viewerId={viewerId} />
+          <ProductCard key={product.id} product={product} viewerId={viewerId} searchQuery={filterValues.search} />
         ))}
         {loadingMore &&
           Array.from({ length: 6 }).map((_, i) => (

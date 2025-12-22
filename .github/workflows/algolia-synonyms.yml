@@ -1,0 +1,41 @@
+name: Algolia Synonyms
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
+      ALGOLIA_ADMIN_API_KEY: ${{ secrets.ALGOLIA_ADMIN_API_KEY }}
+      ALGOLIA_INDEX_NAME: ${{ secrets.ALGOLIA_INDEX_NAME }}
+
+      ALGOLIA_AUTO_SYNONYM_SINCE_DAYS: '90'
+      ALGOLIA_AUTO_SYNONYM_MIN_COUNT: '3'
+      ALGOLIA_AUTO_SYNONYM_MIN_PRODUCTS: '2'
+      ALGOLIA_AUTO_SYNONYM_MIN_CONFIDENCE: '0.2'
+      ALGOLIA_AUTO_SYNONYM_MAX_EXPANSIONS: '5'
+      ALGOLIA_AUTO_SYNONYM_MAX_SETS: '1000'
+      ALGOLIA_AUTO_SYNONYM_MAX_EVENTS: '50000'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync synonyms
+        run: node scripts/algolia-sync-synonyms.mjs --auto --prune-auto
+
