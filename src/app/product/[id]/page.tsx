@@ -273,10 +273,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 {(product.location || createdAtLabel) && (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     {product.location && (
-                      <>
+                      <span className="inline-flex items-center gap-1 rounded-full border border-sky-200/80 bg-sky-50 px-3 py-1 text-sm font-semibold text-sky-700">
                         <MapPin className="h-4 w-4" />
-                        {getCityLabel(product.location)}
-                      </>
+                        <span dir="auto" className="bidi-auto">
+                          {getCityLabel(product.location)}
+                        </span>
+                      </span>
                     )}
                     {product.location && createdAtLabel && <span>&bull;</span>}
                     {createdAtLabel && <span>{createdAtLabel}</span>}
@@ -290,7 +292,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       <h3 className="font-semibold mb-2">
                         {t('product.descriptionTitle')}
                       </h3>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
+                      <p className="text-base text-foreground leading-relaxed">
                         {product.description}
                       </p>
                     </div>
@@ -311,7 +313,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       </Avatar>
                     </Link>
                     <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2 min-w-0">
                         <span dir="auto" className="inline-flex min-w-0 items-center gap-2 bidi-auto">
                           <Link
                             href={seller?.id ? `/seller/${seller.id}` : '#'}
@@ -327,26 +329,24 @@ export default async function ProductPage({ params }: ProductPageProps) {
                             </>
                           ) : null}
                         </span>
-                        <div className="flex items-center gap-1 whitespace-nowrap">
-                          <span className="text-sm text-yellow-500">&#9733;</span>
-                          <span className="text-sm">{seller?.rating != null ? formatNumber(seller.rating) : t('product.ratingNA')}</span>
-                          <span className="text-sm text-muted-foreground">
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                          <span className="text-amber-500">&#9733;</span>
+                          <span>
+                            {seller?.rating != null ? formatNumber(seller.rating) : t('product.ratingNA')}
+                          </span>
+                          <span className="font-medium text-amber-700/80">
                             ({formatNumber(seller?.totalRatings ?? 0)} {t('product.reviewsLabel')})
                           </span>
-                        </div>
-                      </div>
-                      <div className="text-sm text-muted-foreground space-y-1">
-                        {seller?.location && (
-                          <p>
-                            {locale === 'ar'
-                              ? getCityLabel(seller.location)
-                              : `${t('product.basedInPrefix')} ${getCityLabel(seller.location)}`}
-                          </p>
-                        )}
+                        </span>
                         {sellerJoinedLabel && (
-                          <p dir="auto" className="bidi-auto">
+                          <span
+                            dir="auto"
+                            className="inline-flex items-center rounded-full border border-emerald-200/80 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 bidi-auto"
+                          >
                             {t('product.memberSincePrefix')} {sellerJoinedLabel}
-                          </p>
+                          </span>
                         )}
                       </div>
                     </div>
