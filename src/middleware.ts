@@ -1,19 +1,39 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
-  const url = request.nextUrl.clone();
+import { createClient } from '@/utils/supabase/middleware';
 
-  // Normalize invalid dev host 0.0.0.0 to localhost to avoid ERR_ADDRESS_INVALID
-  if (url.hostname === '0.0.0.0') {
-    url.hostname = 'localhost';
-    return NextResponse.redirect(url);
+export async function middleware(request: NextRequest) {
+  try {
+    // In dev, redirect invalid host 0.0.0.0 to localhost to keep OAuth callbacks valid
+    if (process.env.NODE_ENV !== 'production') {
+      const host = request.headers.get('host') || '';
+      if (host.startsWith('0.0.0.0')) {
+        const url = new URL(request.url.replace('://0.0.0.0', '://localhost'));
+        return NextResponse.redirect(url);
+      }
+    }
+
+    const { supabase, response } = createClient(request);
+
+    // Refresh session if expired
+    await supabase.auth.getUser();
+
+    return response;
+  } catch {
+    // If there's an error, just continue with the request
+    return;
   }
-
-  return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * Feel free to modify this pattern to include more paths.
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 };
-
