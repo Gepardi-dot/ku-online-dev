@@ -5,12 +5,22 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { normalizeMarketCityValue } from '@/data/market-cities';
 import { getEnv } from '@/lib/env';
+import { deriveThumbPath } from '@/lib/storage-public';
 
 type AlgoliaCategoryRow = {
   id: string;
   name: string | null;
   name_ar: string | null;
   name_ku: string | null;
+} | null;
+
+type AlgoliaSellerRow = {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  name: string | null;
+  avatar_url: string | null;
+  is_verified: boolean | null;
 } | null;
 
 export type AlgoliaProductRow = {
@@ -31,8 +41,10 @@ export type AlgoliaProductRow = {
   is_promoted: boolean | null;
   views: number | string | null;
   created_at: string | null;
+  expires_at?: string | null;
   updated_at: string | null;
   category?: AlgoliaCategoryRow;
+  seller?: AlgoliaSellerRow;
 };
 
 type AlgoliaProductRecord = {
@@ -50,14 +62,22 @@ type AlgoliaProductRecord = {
   category_name_ar: string | null;
   category_name_ku: string | null;
   seller_id: string | null;
+  seller_full_name: string | null;
+  seller_name: string | null;
+  seller_email: string | null;
+  seller_avatar: string | null;
+  seller_is_verified: boolean;
   location: string | null;
   location_normalized: string | null;
   images: string[];
+  image_thumb_path: string | null;
   is_active: boolean;
   is_sold: boolean;
   is_promoted: boolean;
   views: number;
   created_at: string | null;
+  created_at_ts: number | null;
+  expires_at_ts: number | null;
   updated_at: string | null;
   search_text: string;
 };
@@ -161,6 +181,14 @@ function parseOptionalNumber(value: number | string | null | undefined): number 
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function toTimestamp(value: string | null | undefined): number | null {
+  if (!value) {
+    return null;
+  }
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export type AlgoliaProductFetchResult = {
   row: AlgoliaProductRow | null;
   error?: string;
@@ -191,12 +219,21 @@ export async function fetchAlgoliaProductRow(
         is_promoted,
         views,
         created_at,
+        expires_at,
         updated_at,
         category:categories(
           id,
           name,
           name_ar,
           name_ku
+        ),
+        seller:users(
+          id,
+          email,
+          full_name,
+          name,
+          avatar_url,
+          is_verified
         )
       `,
     )
@@ -215,6 +252,14 @@ function toAlgoliaProductRecord(row: AlgoliaProductRow): AlgoliaProductRecord {
   const title = row.title ?? '';
   const description = row.description ?? '';
   const category = row.category ?? null;
+  const seller = row.seller ?? null;
+  const imagePaths = Array.isArray(row.images) ? row.images : [];
+  const primaryImage = imagePaths[0] ?? null;
+  const imageThumbPath = primaryImage ? deriveThumbPath(primaryImage) : null;
+  const createdAtTs = toTimestamp(row.created_at);
+  const expiresAtTs =
+    toTimestamp(row.expires_at ?? null) ??
+    (createdAtTs ? createdAtTs + 90 * 24 * 60 * 60 * 1000 : null);
 
   return {
     objectID: row.id,
@@ -231,14 +276,22 @@ function toAlgoliaProductRecord(row: AlgoliaProductRow): AlgoliaProductRecord {
     category_name_ar: category?.name_ar ?? null,
     category_name_ku: category?.name_ku ?? null,
     seller_id: row.seller_id ?? null,
+    seller_full_name: seller?.full_name ?? null,
+    seller_name: seller?.name ?? null,
+    seller_email: seller?.email ?? null,
+    seller_avatar: seller?.avatar_url ?? null,
+    seller_is_verified: Boolean(seller?.is_verified),
     location: row.location ?? null,
     location_normalized: normalizeLocation(row.location),
-    images: Array.isArray(row.images) ? row.images : [],
+    images: imagePaths,
+    image_thumb_path: imageThumbPath,
     is_active: row.is_active ?? true,
     is_sold: row.is_sold ?? false,
     is_promoted: row.is_promoted ?? false,
     views: parseNumber(row.views, 0),
     created_at: row.created_at ?? null,
+    created_at_ts: createdAtTs,
+    expires_at_ts: expiresAtTs,
     updated_at: row.updated_at ?? null,
     search_text: buildSearchText([
       title,

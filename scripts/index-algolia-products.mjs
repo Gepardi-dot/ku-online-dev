@@ -50,6 +50,14 @@ function parseNumber(value) {
   return null;
 }
 
+function toTimestamp(value) {
+  if (!value) {
+    return null;
+  }
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function normalizeSearchText(value) {
   if (!value) {
     return "";
@@ -94,14 +102,46 @@ function buildSearchText(parts) {
   return `${raw} ${normalized}`;
 }
 
+function deriveThumbPath(path) {
+  if (!path) {
+    return null;
+  }
+  const normalized = String(path).trim();
+  if (!normalized) {
+    return null;
+  }
+  const lastSlash = normalized.lastIndexOf("/");
+  const fileName = lastSlash >= 0 ? normalized.slice(lastSlash + 1) : normalized;
+  if (fileName.includes("-thumb.")) {
+    return normalized;
+  }
+  if (fileName.includes("-full.")) {
+    return normalized.replace("-full.", "-thumb.");
+  }
+  const dotIndex = fileName.lastIndexOf(".");
+  const baseName = dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName;
+  const extension = dotIndex > 0 ? fileName.slice(dotIndex + 1).toLowerCase() : "";
+  const thumbExtension = extension === "avif" ? "avif" : "webp";
+  const prefix = lastSlash >= 0 ? normalized.slice(0, lastSlash + 1) : "";
+  return `${prefix}${baseName}-thumb.${thumbExtension}`;
+}
+
 function toAlgoliaRecord(row) {
   if (!row?.id) {
     return null;
   }
 
   const category = row.category ?? null;
+  const seller = row.seller ?? null;
   const title = row.title ?? "";
   const description = row.description ?? "";
+  const imagePaths = Array.isArray(row.images) ? row.images : [];
+  const primaryImage = imagePaths[0] ?? null;
+  const imageThumbPath = deriveThumbPath(primaryImage);
+  const createdAtTs = toTimestamp(row.created_at);
+  const expiresAtTs =
+    toTimestamp(row.expires_at) ??
+    (createdAtTs ? createdAtTs + 90 * 24 * 60 * 60 * 1000 : null);
   const searchText = buildSearchText([
     title,
     description,
@@ -126,14 +166,22 @@ function toAlgoliaRecord(row) {
     category_name_ar: category?.name_ar ?? null,
     category_name_ku: category?.name_ku ?? null,
     seller_id: row.seller_id ?? null,
+    seller_full_name: seller?.full_name ?? null,
+    seller_name: seller?.name ?? null,
+    seller_email: seller?.email ?? null,
+    seller_avatar: seller?.avatar_url ?? null,
+    seller_is_verified: Boolean(seller?.is_verified),
     location: row.location ?? null,
     location_normalized: normalizeLocation(row.location),
-    images: Array.isArray(row.images) ? row.images : [],
+    images: imagePaths,
+    image_thumb_path: imageThumbPath,
     is_active: typeof row.is_active === "boolean" ? row.is_active : true,
     is_sold: typeof row.is_sold === "boolean" ? row.is_sold : false,
     is_promoted: typeof row.is_promoted === "boolean" ? row.is_promoted : false,
     views: parseNumber(row.views) ?? 0,
     created_at: row.created_at ?? null,
+    created_at_ts: createdAtTs,
+    expires_at_ts: expiresAtTs,
     updated_at: row.updated_at ?? null,
     search_text: searchText,
   };
@@ -160,12 +208,21 @@ async function fetchProducts(offset) {
       is_promoted,
       views,
       created_at,
+      expires_at,
       updated_at,
       category:categories(
         id,
         name,
         name_ar,
         name_ku
+      ),
+      seller:users(
+        id,
+        email,
+        full_name,
+        name,
+        avatar_url,
+        is_verified
       )
     `)
     .order("created_at", { ascending: false })
@@ -180,6 +237,13 @@ async function fetchProducts(offset) {
 
 async function configureIndex() {
   try {
+    const replicas = [
+      `${indexName}_newest`,
+      `${indexName}_price_asc`,
+      `${indexName}_price_desc`,
+      `${indexName}_views_desc`,
+    ];
+
     const task = await client.setSettings({
       indexName,
       indexSettings: {
@@ -200,11 +264,49 @@ async function configureIndex() {
           "filterOnly(is_active)",
           "filterOnly(is_sold)",
         ],
+        replicas,
       },
     });
 
     if (task?.taskID) {
       await client.waitForTask({ indexName, taskID: task.taskID });
+    }
+
+    const replicaSettings = [
+      { name: `${indexName}_newest`, customRanking: ["desc(created_at_ts)"] },
+      { name: `${indexName}_price_asc`, customRanking: ["asc(price)"] },
+      { name: `${indexName}_price_desc`, customRanking: ["desc(price)"] },
+      { name: `${indexName}_views_desc`, customRanking: ["desc(views)"] },
+    ];
+
+    for (const replica of replicaSettings) {
+      const replicaTask = await client.setSettings({
+        indexName: replica.name,
+        indexSettings: {
+          searchableAttributes: [
+            "title",
+            "description",
+            "search_text",
+            "category_name",
+            "category_name_ar",
+            "category_name_ku",
+            "location",
+          ],
+          attributesForFaceting: [
+            "filterOnly(category_id)",
+            "filterOnly(condition)",
+            "filterOnly(color_token)",
+            "filterOnly(location_normalized)",
+            "filterOnly(is_active)",
+            "filterOnly(is_sold)",
+          ],
+          customRanking: replica.customRanking,
+        },
+      });
+
+      if (replicaTask?.taskID) {
+        await client.waitForTask({ indexName: replica.name, taskID: replicaTask.taskID });
+      }
     }
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);

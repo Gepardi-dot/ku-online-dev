@@ -96,13 +96,15 @@ async function runFallbackSearch(
   },
 ) {
   const rangeEnd = params.limit > 0 ? params.offset + params.limit - 1 : params.offset;
+  const nowIso = new Date().toISOString();
   let query = supabase
     .from("products")
     .select(
-      "id,title,description,price,currency,condition,category_id,seller_id,location,images,is_active,is_sold,is_promoted,views,created_at,updated_at",
+      "id,title,description,price,currency,condition,category_id,seller_id,location,images,is_active,is_sold,is_promoted,views,created_at,updated_at,expires_at",
     )
     .eq("is_active", true)
-    .eq("is_sold", false);
+    .eq("is_sold", false)
+    .gt("expires_at", nowIso);
 
   if (params.query && params.query.trim().length > 0) {
     query = query.textSearch("search_document", params.query, {
@@ -272,12 +274,14 @@ serve(async (req) => {
     }
 
     let totalCount: number | null = null;
+    const nowIso = new Date().toISOString();
 
     const countQuery = supabase
       .from("products")
       .select("id", { count: "exact", head: true })
       .eq("is_active", true)
-      .eq("is_sold", false);
+      .eq("is_sold", false)
+      .gt("expires_at", nowIso);
 
     if (query && query.trim().length > 0) {
       countQuery.textSearch("search_document", query, {

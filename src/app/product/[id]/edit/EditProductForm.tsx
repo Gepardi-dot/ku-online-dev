@@ -232,7 +232,12 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
           continue;
         }
         const path: string = payload.path;
-        const previewUrl: string = typeof payload.signedUrl === 'string' && payload.signedUrl ? payload.signedUrl : URL.createObjectURL(file);
+        const previewUrl: string =
+          typeof payload.publicUrl === 'string' && payload.publicUrl
+            ? payload.publicUrl
+            : typeof payload.signedUrl === 'string' && payload.signedUrl
+              ? payload.signedUrl
+              : URL.createObjectURL(file);
         setUploadedImages((prev) => [...prev, { path, url: previewUrl, isNew: true }]);
         setFormData((prev) => ({ ...prev, images: [...prev.images, path] }));
       }

@@ -7,6 +7,7 @@ import { createClient as createServerClient } from '@/utils/supabase/server';
 
 import { getEnv } from '@/lib/env';
 import { buildOriginAllowList, checkRateLimit, getClientIdentifier, isOriginAllowed } from '@/lib/security/request';
+import { buildPublicStorageUrl, collectImageVariantPaths } from '@/lib/storage-public';
 import { withSentryRoute } from '@/utils/sentry-route';
 
 export const runtime = 'nodejs';
@@ -24,6 +25,8 @@ const STORAGE_BUCKET = NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'product-images';
 const MAX_EDGE_PX = Number.parseInt(process.env.UPLOAD_MAX_EDGE ?? '1600');
 const WEBP_QUALITY = Number.parseInt(process.env.UPLOAD_WEBP_QUALITY ?? '82');
 const MIN_MASTER_BYTES = Number.parseInt(process.env.UPLOAD_WEBP_MIN_BYTES ?? '80000'); // ~80KB floor
+const THUMB_MAX_EDGE_PX = Number.parseInt(process.env.UPLOAD_THUMB_MAX_EDGE ?? '640');
+const THUMB_WEBP_QUALITY = Number.parseInt(process.env.UPLOAD_THUMB_QUALITY ?? '72');
 
 // Accept up to 50MB as input; we compress to WebP before storing
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
@@ -137,6 +140,30 @@ async function uploadToBucketOnce(
   },
 ) {
   return supabaseAdmin.storage.from(STORAGE_BUCKET).upload(path, file, options);
+}
+
+async function uploadWithRetry(
+  path: string,
+  file: Buffer,
+  options: { contentType: string; cacheControl: string; upsert: boolean },
+): Promise<{ error: { status?: number; message?: string } | null }> {
+  let { error } = await uploadToBucketOnce(path, file, options);
+
+  if (isBucketMissingError(error)) {
+    console.warn('Bucket missing during upload attempt, retrying after ensuring bucket exists');
+    bucketInitialization = null;
+
+    try {
+      await ensureStorageBucket();
+    } catch (retryError) {
+      console.error('Failed to initialize storage bucket during retry', retryError);
+      return { error: { message: 'Storage bucket is not configured.' } };
+    }
+
+    ({ error } = await uploadToBucketOnce(path, file, options));
+  }
+
+  return { error };
 }
 
 type AuthenticatedUser = {
@@ -282,6 +309,7 @@ export const POST = withSentryRoute(async (request: Request) => {
   // Process with sharp: normally downscale; for high-res categories keep original size within 10MB budget.
   // If sharp fails (e.g. missing native bindings), gracefully fall back to uploading the original buffer.
   let processed: Buffer;
+  let thumbProcessed: Buffer | null = null;
   let storeAsWebp = true;
 
   try {
@@ -326,10 +354,20 @@ export const POST = withSentryRoute(async (request: Request) => {
         }
       }
     }
+    try {
+      thumbProcessed = await encodeWebp(buffer, {
+        maxEdge: THUMB_MAX_EDGE_PX,
+        quality: THUMB_WEBP_QUALITY,
+      });
+    } catch (thumbError) {
+      console.warn('Thumbnail generation failed; continuing without thumb', thumbError);
+      thumbProcessed = null;
+    }
   } catch (err) {
     console.error('Image processing failed, falling back to original buffer', err);
     processed = buffer;
     storeAsWebp = false;
+    thumbProcessed = null;
   }
 
   const { extension, contentType } = (() => {
@@ -350,49 +388,59 @@ export const POST = withSentryRoute(async (request: Request) => {
     }
   })();
 
-  const fileName = `${Date.now()}-${randomUUID()}.${extension}`;
+  const baseName = `${Date.now()}-${randomUUID()}`;
+  const fileName = `${baseName}-full.${extension}`;
   const filePath = `${user.id}/${fileName}`;
+  const thumbPath = thumbProcessed ? `${user.id}/${baseName}-thumb.webp` : null;
 
-  let { error } = await uploadToBucketOnce(filePath, processed, {
+  const { error: fullError } = await uploadWithRetry(filePath, processed, {
     contentType,
     upsert: false,
     cacheControl: '31536000',
   });
 
-  if (isBucketMissingError(error)) {
-    console.warn('Bucket missing during upload attempt, retrying after ensuring bucket exists');
-    bucketInitialization = null;
+  if (fullError) {
+    console.error('Failed to upload file to Supabase storage', fullError);
+    return NextResponse.json({ error: fullError.message ?? 'Unknown storage error.' }, { status: 400 });
+  }
 
-    try {
-      await ensureStorageBucket();
-    } catch (retryError) {
-      console.error('Failed to initialize storage bucket during retry', retryError);
-      return NextResponse.json({ error: 'Storage bucket is not configured.' }, { status: 500 });
-    }
-
-    ({ error } = await uploadToBucketOnce(filePath, processed, {
-      contentType,
+  let resolvedThumbPath = thumbPath;
+  if (thumbProcessed && thumbPath) {
+    const { error: thumbError } = await uploadWithRetry(thumbPath, thumbProcessed, {
+      contentType: 'image/webp',
       upsert: false,
       cacheControl: '31536000',
-    }));
+    });
+    if (thumbError) {
+      console.warn('Failed to upload thumbnail image', thumbError);
+      resolvedThumbPath = null;
+    }
   }
 
-  if (error) {
-    console.error('Failed to upload file to Supabase storage', error);
-    return NextResponse.json({ error: error.message ?? 'Unknown storage error.' }, { status: 400 });
+  const previewPath = resolvedThumbPath ?? filePath;
+  const publicUrl = buildPublicStorageUrl(previewPath);
+  let signedUrl: string | null = null;
+
+  if (!publicUrl) {
+    const { data: signedData, error: signedError } = await supabaseAdmin
+      .storage
+      .from(STORAGE_BUCKET)
+      .createSignedUrl(previewPath, 60 * 60);
+
+    if (signedError) {
+      console.error('Failed to create signed URL for uploaded image', signedError);
+      return NextResponse.json({ error: 'Upload succeeded but preview URL could not be generated.' }, { status: 500 });
+    }
+
+    signedUrl = signedData?.signedUrl ?? null;
   }
 
-  const { data: signedData, error: signedError } = await supabaseAdmin
-    .storage
-    .from(STORAGE_BUCKET)
-    .createSignedUrl(filePath, 60 * 60);
-
-  if (signedError) {
-    console.error('Failed to create signed URL for uploaded image', signedError);
-    return NextResponse.json({ error: 'Upload succeeded but preview URL could not be generated.' }, { status: 500 });
-  }
-
-  return NextResponse.json({ path: filePath, signedUrl: signedData?.signedUrl ?? null });
+  return NextResponse.json({
+    path: filePath,
+    thumbPath: resolvedThumbPath,
+    publicUrl,
+    signedUrl,
+  });
 });
 
 export const DELETE = withSentryRoute(async (request: Request) => {
@@ -434,7 +482,12 @@ export const DELETE = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Missing file path.' }, { status: 400 });
   }
 
-  const { error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).remove([path]);
+  const paths = collectImageVariantPaths(path);
+  if (paths.length === 0) {
+    return NextResponse.json({ error: 'Invalid file path.' }, { status: 400 });
+  }
+
+  const { error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).remove(paths);
 
   if (error) {
     console.error('Failed to delete file from Supabase storage', error);

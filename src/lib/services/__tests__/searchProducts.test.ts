@@ -105,7 +105,8 @@ test('searchProducts normalizes edge results and fetches relations', async (t) =
     error: null,
   };
 
-  const inMock = mock.fn(async () => detailResponse);
+  const gtMock = mock.fn(async () => detailResponse);
+  const inMock = mock.fn(() => ({ gt: gtMock }));
   const selectMock = mock.fn(() => ({ in: inMock }));
   const fromMock = mock.fn(() => ({ select: selectMock }));
 
@@ -156,6 +157,7 @@ test('searchProducts normalizes edge results and fetches relations', async (t) =
   assert.equal(fromMock.mock.calls.length, 1);
   assert.equal(selectMock.mock.calls.length, 1);
   assert.equal(inMock.mock.calls.length, 1);
+  assert.equal(gtMock.mock.calls.length, 1);
 });
 
 test('searchProducts falls back to edge payload when relation query fails', async (t) => {
@@ -188,7 +190,8 @@ test('searchProducts falls back to edge payload when relation query fails', asyn
     error: null,
   }));
 
-  const failingInMock = mock.fn(async () => ({ data: null, error: new Error('boom') }));
+  const failingGtMock = mock.fn(async () => ({ data: null, error: new Error('boom') }));
+  const failingInMock = mock.fn(() => ({ gt: failingGtMock }));
   const selectMock = mock.fn(() => ({ in: failingInMock }));
   const fromMock = mock.fn(() => ({ select: selectMock }));
 
