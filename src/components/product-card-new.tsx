@@ -52,122 +52,6 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
     }).catch(() => {});
   };
 
-  const formatRelativeTimeEnglish = (date: Date): string => {
-    const now = Date.now();
-    const diffMs = Math.max(0, now - date.getTime());
-    const totalMinutes = Math.floor(diffMs / 60_000);
-    const totalHours = Math.floor(diffMs / 3_600_000);
-    const totalDays = Math.floor(diffMs / 86_400_000);
-
-    if (totalMinutes < 60) {
-      const minutes = Math.max(1, totalMinutes);
-      return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
-    }
-
-    if (totalHours < 24) {
-      const hours = Math.max(1, totalHours);
-      return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-    }
-
-    if (totalDays < 7) {
-      const days = Math.max(1, totalDays);
-      return `${days} day${days === 1 ? '' : 's'} ago`;
-    }
-
-    if (totalDays < 30) {
-      const weeks = Math.max(1, Math.floor(totalDays / 7));
-      return `${weeks} week${weeks === 1 ? '' : 's'} ago`;
-    }
-
-    if (totalDays < 365) {
-      const months = Math.max(1, Math.floor(totalDays / 30));
-      return `${months} month${months === 1 ? '' : 's'} ago`;
-    }
-
-    const years = Math.max(1, Math.floor(totalDays / 365));
-    return `${years} year${years === 1 ? '' : 's'} ago`;
-  };
-
-  const formatRelativeTimeArabic = (date: Date): string => {
-    const now = Date.now();
-    const diffMs = Math.max(0, now - date.getTime());
-    const totalMinutes = Math.floor(diffMs / 60_000);
-    const totalHours = Math.floor(diffMs / 3_600_000);
-    const totalDays = Math.floor(diffMs / 86_400_000);
-
-    if (totalMinutes < 1) {
-      return 'الآن';
-    }
-
-    const formatNumber = (value: number) => new Intl.NumberFormat('ar-u-nu-arab').format(value);
-
-    if (totalHours < 1) {
-      const minutes = Math.max(1, totalMinutes);
-      if (minutes === 1) return 'منذ دقيقة';
-      if (minutes === 2) return 'منذ دقيقتين';
-      return `منذ ${formatNumber(minutes)} دقائق`;
-    }
-
-    if (totalHours < 24) {
-      const hours = Math.max(1, totalHours);
-      if (hours === 1) return 'منذ ساعة';
-      if (hours === 2) return 'منذ ساعتين';
-      return `منذ ${formatNumber(hours)} ساعات`;
-    }
-
-    if (totalDays < 31) {
-      const days = Math.max(1, totalDays);
-      if (days === 1) return 'منذ يوم';
-      if (days === 2) return 'منذ يومين';
-      return `منذ ${formatNumber(days)} أيام`;
-    }
-
-    const months = Math.floor(totalDays / 30);
-    if (months < 12) {
-      const normalizedMonths = Math.max(1, months);
-      if (normalizedMonths === 1) return 'منذ شهر';
-      if (normalizedMonths === 2) return 'منذ شهرين';
-      return `منذ ${formatNumber(normalizedMonths)} شهور`;
-    }
-
-    const years = Math.max(1, Math.floor(totalDays / 365));
-    if (years === 1) return 'منذ سنة';
-    if (years === 2) return 'منذ سنتين';
-    return `منذ ${formatNumber(years)} سنوات`;
-  };
-
-  const formatRelativeTimeKurdish = (date: Date): string => {
-    const now = Date.now();
-    const diffMs = Math.max(0, now - date.getTime());
-    const totalHours = Math.floor(diffMs / 3_600_000);
-    const totalDays = Math.floor(diffMs / 86_400_000);
-
-    const formatNumber = (value: number) => new Intl.NumberFormat('ku-u-nu-arab').format(value);
-
-    if (totalHours < 24) {
-      const hours = Math.max(1, totalHours);
-      return `پێش ${formatNumber(hours)} ساعة`;
-    }
-
-    if (totalDays < 7) {
-      const days = Math.max(1, totalDays);
-      return `پێش ${formatNumber(days)} ڕۆژ`;
-    }
-
-    if (totalDays < 30) {
-      const weeks = Math.max(1, Math.floor(totalDays / 7));
-      return `پێش ${formatNumber(weeks)} هەفتە`;
-    }
-
-    if (totalDays < 365) {
-      const months = Math.max(1, Math.floor(totalDays / 30));
-      return `پێش ${formatNumber(months)} مانگ`;
-    }
-
-    const years = Math.max(1, Math.floor(totalDays / 365));
-    return `پێش ${formatNumber(years)} ساڵ`;
-  };
-
   const formatPrice = (price: number, currency?: string | null) => {
     try {
       return new Intl.NumberFormat(locale, {
@@ -215,16 +99,15 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
     return conditionLabels[normalized] ?? value;
   };
 
-  const createdAtLabel = product.createdAt
-    ? locale === 'ar'
-      ? formatRelativeTimeArabic(product.createdAt)
-      : locale === 'ku'
-        ? formatRelativeTimeKurdish(product.createdAt)
-        : formatRelativeTimeEnglish(product.createdAt)
-    : '';
   const sellerDisplayNameRaw = product.seller?.fullName ?? product.seller?.name ?? product.seller?.email ?? '';
   const sellerDisplayName = sellerDisplayNameRaw.trim() || messages.product.sellerFallback;
   const conditionLabel = getConditionLabel(product.condition || 'New');
+  const titleLength = product.title.trim().length;
+  const titleSizeClass = titleLength > 54
+    ? 'text-[0.75rem] sm:text-[0.8rem]'
+    : titleLength > 36
+      ? 'text-[0.8rem] sm:text-[0.85rem]'
+      : 'text-[0.85rem] sm:text-sm';
 
   return (
     <Link
@@ -276,42 +159,49 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
         )}
         </div>
 
-        <CardContent className="p-3">
-        <div className="space-y-2">
-          <h3 dir="auto" className="font-semibold text-sm line-clamp-2 leading-tight bidi-auto">
+        <CardContent className="px-3 py-2">
+        <div className="space-y-1">
+          <h3
+            dir="auto"
+            className={`h-[2.4rem] font-semibold ${titleSizeClass} line-clamp-2 leading-tight bidi-auto`}
+          >
             {product.title}
           </h3>
           
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-lg font-bold text-primary">
               {formatPrice(Number(product.price), product.currency)}
             </span>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
               <Eye className="h-3 w-3" />
               {product.views}
-            </div>
+            </span>
           </div>
           
           {product.location && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="h-3 w-3" />
-              <span dir="auto" className="bidi-auto">
-                {getCityLabel(product.location)}
+            <div>
+              <span className="inline-flex items-center gap-1 rounded-full border border-sky-200/80 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
+                <MapPin className="h-3 w-3" />
+                <span dir="auto" className="bidi-auto">
+                  {getCityLabel(product.location)}
+                </span>
               </span>
             </div>
           )}
           
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span dir="auto" className="inline-flex items-center gap-1 bidi-auto">
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span
+              dir="auto"
+              className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1 font-semibold text-slate-700 bidi-auto"
+            >
               <span>{sellerDisplayName}</span>
               {product.seller?.isVerified ? (
                 <>
-                  <BadgeCheck className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                  <BadgeCheck className="h-3 w-3 text-emerald-600" aria-hidden="true" />
                   <span className="sr-only">{t('profile.overview.trustedBadge')}</span>
                 </>
               ) : null}
             </span>
-            <span dir="auto" className="bidi-auto">{createdAtLabel}</span>
           </div>
         </div>
         </CardContent>
