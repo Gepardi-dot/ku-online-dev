@@ -386,7 +386,13 @@ export default function SellForm({ user }: SellFormProps) {
 
         // Upload to compression endpoint; server stores optimized WebP and returns signed preview URL
         let uploadResponse: Response;
-        let uploadPayload: { path?: string; signedUrl?: string | null; error?: string } | null = null;
+        let uploadPayload: {
+          path?: string;
+          thumbPath?: string | null;
+          publicUrl?: string | null;
+          signedUrl?: string | null;
+          error?: string;
+        } | null = null;
         try {
         // Only pre-compress extremely large files to avoid double lossy compression on normal photos
         const shouldClientCompress = file.size > 10 * 1024 * 1024; // >10MB
@@ -424,8 +430,13 @@ export default function SellForm({ user }: SellFormProps) {
           continue;
         }
 
-        const { path, signedUrl } = uploadPayload;
-        const previewUrl = typeof signedUrl === 'string' && signedUrl.length > 0 ? signedUrl : URL.createObjectURL(file);
+        const { path, publicUrl, signedUrl } = uploadPayload;
+        const previewUrl =
+          typeof publicUrl === 'string' && publicUrl.length > 0
+            ? publicUrl
+            : typeof signedUrl === 'string' && signedUrl.length > 0
+              ? signedUrl
+              : URL.createObjectURL(file);
 
         setUploadedImages((prev) => [...prev, { url: previewUrl, path }]);
         setFormData((prev) => ({ ...prev, images: [...prev.images, path] }));
