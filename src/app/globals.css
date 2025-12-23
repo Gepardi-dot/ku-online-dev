@@ -49,7 +49,7 @@ html[lang="ku"] body,
 html[lang="ku"] .font-body,
 html[lang="ku"] .font-headline,
 html[lang="ku"] .font-sans {
-  font-family: var(--font-kurdish), "PT Sans", "Segoe UI", "Tahoma", sans-serif;
+  font-family: var(--font-arabic), "PT Sans", "Segoe UI", "Tahoma", sans-serif;
 }
 
 /* Utilities */
