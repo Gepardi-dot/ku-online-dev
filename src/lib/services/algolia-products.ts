@@ -27,6 +27,8 @@ export type AlgoliaProductRow = {
   id: string;
   title: string | null;
   description: string | null;
+  title_translations?: Record<string, unknown> | null;
+  description_translations?: Record<string, unknown> | null;
   price: number | string | null;
   original_price?: number | string | null;
   currency: string | null;
@@ -52,6 +54,10 @@ type AlgoliaProductRecord = {
   id: string;
   title: string;
   description: string;
+  title_i18n_en: string | null;
+  title_i18n_ar: string | null;
+  title_i18n_ku: string | null;
+  title_i18n_ku_latn: string | null;
   price: number;
   original_price?: number | null;
   currency: string | null;
@@ -143,6 +149,23 @@ function buildSearchText(parts: Array<string | null | undefined>): string {
   return `${raw} ${normalized}`;
 }
 
+function normalizeTranslationMap(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {};
+  }
+
+  const record = value as Record<string, unknown>;
+  const result: Record<string, string> = {};
+  for (const [key, item] of Object.entries(record)) {
+    if (typeof item !== 'string') continue;
+    const trimmed = item.trim();
+    if (!trimmed) continue;
+    result[key] = trimmed;
+  }
+
+  return result;
+}
+
 function normalizeLocation(value: string | null | undefined): string | null {
   if (!value) {
     return null;
@@ -205,6 +228,8 @@ export async function fetchAlgoliaProductRow(
         id,
         title,
         description,
+        title_translations,
+        description_translations,
         price,
         original_price,
         currency,
@@ -251,6 +276,7 @@ export async function fetchAlgoliaProductRow(
 function toAlgoliaProductRecord(row: AlgoliaProductRow): AlgoliaProductRecord {
   const title = row.title ?? '';
   const description = row.description ?? '';
+  const titleTranslations = normalizeTranslationMap(row.title_translations ?? null);
   const category = row.category ?? null;
   const seller = row.seller ?? null;
   const imagePaths = Array.isArray(row.images) ? row.images : [];
@@ -266,6 +292,10 @@ function toAlgoliaProductRecord(row: AlgoliaProductRow): AlgoliaProductRecord {
     id: row.id,
     title,
     description,
+    title_i18n_en: titleTranslations.en ?? null,
+    title_i18n_ar: titleTranslations.ar ?? null,
+    title_i18n_ku: titleTranslations.ku ?? null,
+    title_i18n_ku_latn: titleTranslations.ku_latn ?? null,
     price: parseNumber(row.price, 0),
     original_price: parseOptionalNumber(row.original_price),
     currency: row.currency ?? null,

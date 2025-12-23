@@ -8,6 +8,7 @@ import { MapPin, Eye, BadgeCheck } from 'lucide-react';
 import type { ProductWithRelations } from '@/lib/services/products';
 import FavoriteToggle from '@/components/product/favorite-toggle';
 import { useLocale } from '@/providers/locale-provider';
+import { localizeText } from '@/lib/locale/localize';
 
 interface ProductCardProps {
   product: ProductWithRelations;
@@ -19,6 +20,7 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
   const { t, locale, messages } = useLocale();
   const cityLabels = messages.header.city as Record<string, string>;
   const getCityLabel = (value: string) => cityLabels[value.trim().toLowerCase()] ?? value;
+  const localizedTitle = localizeText(product.title, product.titleTranslations, locale);
 
   const recordSearchClick = () => {
     const query = (searchQuery ?? '').trim();
@@ -102,7 +104,7 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
   const sellerDisplayNameRaw = product.seller?.fullName ?? product.seller?.name ?? product.seller?.email ?? '';
   const sellerDisplayName = sellerDisplayNameRaw.trim() || messages.product.sellerFallback;
   const conditionLabel = getConditionLabel(product.condition || 'New');
-  const titleLength = product.title.trim().length;
+  const titleLength = localizedTitle.trim().length;
   const titleSizeClass = titleLength > 54
     ? 'text-[0.75rem] sm:text-[0.8rem]'
     : titleLength > 36
@@ -123,7 +125,7 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
         <div className="relative w-full h-[clamp(160px,45vw,230px)] md:h-auto md:aspect-[4/3] overflow-hidden">
           <Image
             src={product.imageUrls?.[0] || 'https://picsum.photos/400/300'}
-            alt={product.title}
+            alt={localizedTitle}
             fill
             sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
             unoptimized
@@ -165,7 +167,7 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
             dir="auto"
             className={`h-[2.4rem] font-semibold ${titleSizeClass} line-clamp-2 leading-tight bidi-auto`}
           >
-            {product.title}
+            {localizedTitle}
           </h3>
           
           <div className="flex items-center justify-between gap-2">
