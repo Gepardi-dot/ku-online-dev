@@ -77,6 +77,42 @@ export function isOriginAllowed(originHeader: string | null, allowList: Set<stri
   }
 }
 
+export function isSameOriginRequest(request: Request): boolean {
+  const originHeader = request.headers.get('origin');
+  if (!originHeader) {
+    return false;
+  }
+
+  const forwardedHost = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
+  if (!forwardedHost) {
+    return false;
+  }
+
+  try {
+    const originUrl = new URL(originHeader);
+    const originHost = originUrl.host.toLowerCase();
+    const requestHost = forwardedHost.split(',')[0]?.trim().toLowerCase();
+
+    if (!requestHost || originHost !== requestHost) {
+      return false;
+    }
+
+    const forwardedProto = request.headers.get('x-forwarded-proto');
+    if (!forwardedProto) {
+      return true;
+    }
+
+    const requestProto = forwardedProto.split(',')[0]?.trim().toLowerCase();
+    if (!requestProto) {
+      return true;
+    }
+
+    return originUrl.protocol.toLowerCase() === `${requestProto}:`;
+  } catch {
+    return false;
+  }
+}
+
 export function buildOriginAllowList(values: Array<string | null | undefined>): Set<string> {
   const list = new Set<string>();
   for (const value of values) {
