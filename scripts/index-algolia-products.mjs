@@ -31,6 +31,7 @@ const indexName = ALGOLIA_INDEX_NAME;
 
 const args = new Set(process.argv.slice(2));
 const shouldClear = args.has("--clear");
+const DESCRIPTION_I18N_MAX = 800;
 
 const batchSize = Number(ALGOLIA_BATCH_SIZE ?? 500);
 const limit = Number.isFinite(batchSize) && batchSize > 0 ? Math.min(batchSize, 1000) : 500;
@@ -116,6 +117,17 @@ function normalizeTranslationMap(value) {
   return result;
 }
 
+function clampText(value, maxLength) {
+  if (!value) {
+    return null;
+  }
+  const trimmed = String(value).trim();
+  if (!trimmed) {
+    return null;
+  }
+  return trimmed.length > maxLength ? trimmed.slice(0, maxLength) : trimmed;
+}
+
 function deriveThumbPath(path) {
   if (!path) {
     return null;
@@ -150,6 +162,7 @@ function toAlgoliaRecord(row) {
   const title = row.title ?? "";
   const description = row.description ?? "";
   const titleTranslations = normalizeTranslationMap(row.title_translations ?? null);
+  const descriptionTranslations = normalizeTranslationMap(row.description_translations ?? null);
   const imagePaths = Array.isArray(row.images) ? row.images : [];
   const primaryImage = imagePaths[0] ?? null;
   const imageThumbPath = deriveThumbPath(primaryImage);
@@ -175,6 +188,10 @@ function toAlgoliaRecord(row) {
     title_i18n_ar: titleTranslations.ar ?? null,
     title_i18n_ku: titleTranslations.ku ?? null,
     title_i18n_ku_latn: titleTranslations.ku_latn ?? null,
+    description_i18n_en: clampText(descriptionTranslations.en, DESCRIPTION_I18N_MAX),
+    description_i18n_ar: clampText(descriptionTranslations.ar, DESCRIPTION_I18N_MAX),
+    description_i18n_ku: clampText(descriptionTranslations.ku, DESCRIPTION_I18N_MAX),
+    description_i18n_ku_latn: clampText(descriptionTranslations.ku_latn, DESCRIPTION_I18N_MAX),
     price: parseNumber(row.price) ?? 0,
     original_price: parseNumber(row.original_price),
     currency: row.currency ?? null,
@@ -214,6 +231,7 @@ async function fetchProducts(offset) {
       title,
       description,
       title_translations,
+      description_translations,
       price,
       original_price,
       currency,
@@ -274,6 +292,10 @@ async function configureIndex() {
           "title_i18n_ku",
           "title_i18n_ku_latn",
           "description",
+          "description_i18n_en",
+          "description_i18n_ar",
+          "description_i18n_ku",
+          "description_i18n_ku_latn",
           "search_text",
           "category_name",
           "category_name_ar",
@@ -314,6 +336,10 @@ async function configureIndex() {
             "title_i18n_ku",
             "title_i18n_ku_latn",
             "description",
+            "description_i18n_en",
+            "description_i18n_ar",
+            "description_i18n_ku",
+            "description_i18n_ku_latn",
             "search_text",
             "category_name",
             "category_name_ar",

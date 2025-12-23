@@ -490,6 +490,10 @@ type AlgoliaSearchHit = {
   title_i18n_ar?: string | null;
   title_i18n_ku?: string | null;
   title_i18n_ku_latn?: string | null;
+  description_i18n_en?: string | null;
+  description_i18n_ar?: string | null;
+  description_i18n_ku?: string | null;
+  description_i18n_ku_latn?: string | null;
   price?: number | string | null;
   original_price?: number | string | null;
   currency?: string | null;
@@ -705,12 +709,19 @@ function mapProductFromAlgolia(hit: AlgoliaSearchHit): ProductWithRelations | nu
     ku: hit.title_i18n_ku ?? undefined,
     ku_latn: hit.title_i18n_ku_latn ?? undefined,
   });
+  const descriptionTranslations = normalizeTranslationMap({
+    en: hit.description_i18n_en ?? undefined,
+    ar: hit.description_i18n_ar ?? undefined,
+    ku: hit.description_i18n_ku ?? undefined,
+    ku_latn: hit.description_i18n_ku_latn ?? undefined,
+  });
 
   return {
     id,
     title: hit.title ?? '',
     description: hit.description ?? null,
     titleTranslations,
+    descriptionTranslations,
     price: parseNumber(hit.price) ?? 0,
     currency: hit.currency ?? 'IQD',
     condition: hit.condition ?? null,
@@ -766,6 +777,10 @@ async function searchProductsViaAlgolia(
         'title_i18n_ku',
         'title_i18n_ku_latn',
         'description',
+        'description_i18n_en',
+        'description_i18n_ar',
+        'description_i18n_ku',
+        'description_i18n_ku_latn',
         'price',
         'original_price',
         'currency',

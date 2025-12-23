@@ -40,6 +40,7 @@ const algolia = algoliasearch(ALGOLIA_APP_ID, ALGOLIA_ADMIN_API_KEY);
 const batchSize = Number(PRODUCT_I18N_BATCH_SIZE ?? 10);
 const maxProducts = Number(PRODUCT_I18N_MAX_PRODUCTS ?? 500);
 const model = OPENAI_TRANSLATION_MODEL ?? 'gpt-4o-mini';
+const ALGOLIA_DESCRIPTION_SNIPPET_MAX = 800;
 
 function sha256(value) {
   return createHash('sha256').update(value).digest('hex');
@@ -186,7 +187,7 @@ async function updateProductTranslations(productId, translations, sourceHash) {
   }
 }
 
-async function updateAlgoliaTitles(objects) {
+async function updateAlgoliaTranslations(objects) {
   if (objects.length === 0) return;
 
   await algolia.partialUpdateObjects({
@@ -196,13 +197,18 @@ async function updateAlgoliaTitles(objects) {
   });
 }
 
-function toAlgoliaPatch(productId, titleTranslations) {
+function toAlgoliaPatch(productId, translations) {
   return {
     objectID: productId,
-    title_i18n_en: titleTranslations.en || null,
-    title_i18n_ar: titleTranslations.ar || null,
-    title_i18n_ku: titleTranslations.ku || null,
-    title_i18n_ku_latn: titleTranslations.ku_latn || null,
+    title_i18n_en: translations.title.en || null,
+    title_i18n_ar: translations.title.ar || null,
+    title_i18n_ku: translations.title.ku || null,
+    title_i18n_ku_latn: translations.title.ku_latn || null,
+    description_i18n_en: clampText(translations.description.en, ALGOLIA_DESCRIPTION_SNIPPET_MAX) || null,
+    description_i18n_ar: clampText(translations.description.ar, ALGOLIA_DESCRIPTION_SNIPPET_MAX) || null,
+    description_i18n_ku: clampText(translations.description.ku, ALGOLIA_DESCRIPTION_SNIPPET_MAX) || null,
+    description_i18n_ku_latn:
+      clampText(translations.description.ku_latn, ALGOLIA_DESCRIPTION_SNIPPET_MAX) || null,
   };
 }
 
@@ -230,13 +236,13 @@ async function main() {
       const translations = await translateFields({ title, description });
 
       await updateProductTranslations(product.id, translations, sourceHash);
-      algoliaPatches.push(toAlgoliaPatch(product.id, translations.title));
+      algoliaPatches.push(toAlgoliaPatch(product.id, translations));
 
       processed += 1;
       if (processed >= maxProducts) break;
     }
 
-    await updateAlgoliaTitles(algoliaPatches);
+    await updateAlgoliaTranslations(algoliaPatches);
     console.log(`Translated ${processed} products so far...`);
   }
 

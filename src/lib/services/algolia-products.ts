@@ -58,6 +58,10 @@ type AlgoliaProductRecord = {
   title_i18n_ar: string | null;
   title_i18n_ku: string | null;
   title_i18n_ku_latn: string | null;
+  description_i18n_en: string | null;
+  description_i18n_ar: string | null;
+  description_i18n_ku: string | null;
+  description_i18n_ku_latn: string | null;
   price: number;
   original_price?: number | null;
   currency: string | null;
@@ -91,6 +95,7 @@ type AlgoliaProductRecord = {
 let algoliaClient: Algoliasearch | null = null;
 let algoliaUnavailable = false;
 let algoliaIndexName: string | null = null;
+const DESCRIPTION_I18N_MAX = 800;
 
 function getAlgoliaAdminClient(): { client: Algoliasearch; indexName: string } | null {
   if (algoliaClient && algoliaIndexName) {
@@ -204,6 +209,17 @@ function parseOptionalNumber(value: number | string | null | undefined): number 
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function clampText(value: string | null | undefined, maxLength: number): string | null {
+  if (!value) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  return trimmed.length > maxLength ? trimmed.slice(0, maxLength) : trimmed;
+}
+
 function toTimestamp(value: string | null | undefined): number | null {
   if (!value) {
     return null;
@@ -277,6 +293,7 @@ function toAlgoliaProductRecord(row: AlgoliaProductRow): AlgoliaProductRecord {
   const title = row.title ?? '';
   const description = row.description ?? '';
   const titleTranslations = normalizeTranslationMap(row.title_translations ?? null);
+  const descriptionTranslations = normalizeTranslationMap(row.description_translations ?? null);
   const category = row.category ?? null;
   const seller = row.seller ?? null;
   const imagePaths = Array.isArray(row.images) ? row.images : [];
@@ -296,6 +313,10 @@ function toAlgoliaProductRecord(row: AlgoliaProductRow): AlgoliaProductRecord {
     title_i18n_ar: titleTranslations.ar ?? null,
     title_i18n_ku: titleTranslations.ku ?? null,
     title_i18n_ku_latn: titleTranslations.ku_latn ?? null,
+    description_i18n_en: clampText(descriptionTranslations.en ?? null, DESCRIPTION_I18N_MAX),
+    description_i18n_ar: clampText(descriptionTranslations.ar ?? null, DESCRIPTION_I18N_MAX),
+    description_i18n_ku: clampText(descriptionTranslations.ku ?? null, DESCRIPTION_I18N_MAX),
+    description_i18n_ku_latn: clampText(descriptionTranslations.ku_latn ?? null, DESCRIPTION_I18N_MAX),
     price: parseNumber(row.price, 0),
     original_price: parseOptionalNumber(row.original_price),
     currency: row.currency ?? null,
