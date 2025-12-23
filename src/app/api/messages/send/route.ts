@@ -4,7 +4,13 @@ import { z } from 'zod';
 
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@/utils/supabase/server';
-import { buildOriginAllowList, checkRateLimit, getClientIdentifier, isOriginAllowed } from '@/lib/security/request';
+import {
+  buildOriginAllowList,
+  checkRateLimit,
+  getClientIdentifier,
+  isOriginAllowed,
+  isSameOriginRequest,
+} from '@/lib/security/request';
 import { getEnv } from '@/lib/env';
 
 export const runtime = 'nodejs';
@@ -30,7 +36,7 @@ const RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 40 } as const;
 
 const handler: (request: Request) => Promise<Response> = async (request: Request) => {
   const originHeader = request.headers.get('origin');
-  if (originHeader && !isOriginAllowed(originHeader, originAllowList)) {
+  if (originHeader && !isOriginAllowed(originHeader, originAllowList) && !isSameOriginRequest(request)) {
     return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
   }
 

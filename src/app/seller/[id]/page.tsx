@@ -6,10 +6,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import ProductCard from '@/components/product-card-new';
 import { getProducts } from '@/lib/services/products';
-import { formatDistanceToNow } from 'date-fns';
+import { differenceInMonths } from 'date-fns';
 import { BadgeCheck, Phone } from 'lucide-react';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
-import { arSA } from 'date-fns/locale';
 import { getSellerProfileById } from '@/lib/services/sellers';
 
 interface SellerPageProps {
@@ -37,51 +36,17 @@ export default async function SellerPage({ params }: SellerPageProps) {
 
   const listings = await getProducts({ sellerId: id }, 24, 0);
 
-  const formatRelativeTimeKurdish = (date: Date): string => {
-    const now = Date.now();
-    const diffMs = Math.max(0, now - date.getTime());
-    const totalMinutes = Math.floor(diffMs / 60_000);
-    const totalHours = Math.floor(diffMs / 3_600_000);
-    const totalDays = Math.floor(diffMs / 86_400_000);
-
-    const formatNumber = (value: number) => new Intl.NumberFormat('ku-u-nu-arab').format(value);
-
-    if (totalMinutes < 60) {
-      const minutes = Math.max(1, totalMinutes);
-      return `${formatNumber(minutes)} خولەک`;
+  const joined = (() => {
+    if (!profile.created_at) {
+      return null;
     }
 
-    if (totalHours < 24) {
-      const hours = Math.max(1, totalHours);
-      return `${formatNumber(hours)} کاتژمێر`;
-    }
-
-    if (totalDays < 7) {
-      const days = Math.max(1, totalDays);
-      return `${formatNumber(days)} ڕۆژ`;
-    }
-
-    if (totalDays < 30) {
-      const weeks = Math.max(1, Math.floor(totalDays / 7));
-      return `${formatNumber(weeks)} هەفتە`;
-    }
-
-    if (totalDays < 365) {
-      const months = Math.max(1, Math.floor(totalDays / 30));
-      return `${formatNumber(months)} مانگ`;
-    }
-
-    const years = Math.max(1, Math.floor(totalDays / 365));
-    return `${formatNumber(years)} ساڵ`;
-  };
-
-  const joined = profile.created_at
-    ? locale === 'ar'
-      ? formatDistanceToNow(new Date(profile.created_at), { locale: arSA, addSuffix: false })
-      : locale === 'ku'
-        ? formatRelativeTimeKurdish(new Date(profile.created_at))
-        : formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })
-    : null;
+    const months = Math.max(1, differenceInMonths(new Date(), new Date(profile.created_at)));
+    const numberLocale = locale === 'ar' || locale === 'ku' ? `${locale}-u-nu-arab` : locale;
+    const count = new Intl.NumberFormat(numberLocale).format(months);
+    const unit = t(`product.monthUnit.${months === 1 ? 'one' : 'other'}`);
+    return `${count} ${unit}`;
+  })();
 
   const getCityLabel = (value: string) => {
     const normalized = value.trim().toLowerCase();
@@ -125,28 +90,39 @@ export default async function SellerPage({ params }: SellerPageProps) {
                     </span>
                   ) : null}
                 </h1>
+              </div>
+              <div className="flex flex-wrap gap-2">
                 {profile.phone && (
-                  <div dir={phoneDir} className="inline-flex items-center gap-1 text-sm text-muted-foreground bidi-auto">
-                    <Phone className="h-4 w-4" aria-hidden="true" />
+                  <span
+                    dir={phoneDir}
+                    className="inline-flex items-center gap-1 rounded-full border border-cyan-200/80 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700 bidi-auto"
+                  >
+                    <Phone className="h-3.5 w-3.5" aria-hidden="true" />
                     <span>{profile.phone}</span>
-                  </div>
+                  </span>
                 )}
                 {joined && (
-                  <p className="text-sm text-muted-foreground">
+                  <span className="inline-flex items-center rounded-full border border-emerald-200/80 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                     {t('sellerPage.memberSince').replace('{time}', joined)}
-                  </p>
+                  </span>
                 )}
-              </div>
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                 {profile.location && (
-                  <span>
+                  <span
+                    dir="auto"
+                    className="inline-flex items-center rounded-full border border-sky-200/80 bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700 bidi-auto"
+                  >
                     {locale === 'ar' || locale === 'ku'
                       ? getCityLabel(profile.location)
                       : `${t('product.basedInPrefix')} ${getCityLabel(profile.location)}`}
                   </span>
                 )}
-                <span>
-                  {t('sellerPage.ratingLabel')}: {ratingLabel} ({reviewsCount} {reviewsLabel})
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+                  <span className="text-amber-500">&#9733;</span>
+                  <span>{t('sellerPage.ratingLabel')}:</span>
+                  <span>{ratingLabel}</span>
+                  <span className="font-medium text-amber-700/80">
+                    ({reviewsCount} {reviewsLabel})
+                  </span>
                 </span>
               </div>
               {profile.bio && <p className="max-w-2xl text-sm text-muted-foreground">{profile.bio}</p>}

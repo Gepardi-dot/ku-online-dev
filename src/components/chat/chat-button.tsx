@@ -458,7 +458,7 @@ export default function ChatButton({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full">
+        <Button variant="default" className="w-full">
           <MessageCircle className="mr-2 h-4 w-4" />
           {t('product.chatWithSellerButton')}
         </Button>

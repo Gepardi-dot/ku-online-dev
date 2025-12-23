@@ -5,7 +5,13 @@ import { createClient } from '@/utils/supabase/server';
 import { addFavorite, removeFavorite, MOCK_FAVORITES_COOKIE } from '@/lib/services/favorites';
 
 import { getEnv } from '@/lib/env';
-import { buildOriginAllowList, checkRateLimit, getClientIdentifier, isOriginAllowed } from '@/lib/security/request';
+import {
+  buildOriginAllowList,
+  checkRateLimit,
+  getClientIdentifier,
+  isOriginAllowed,
+  isSameOriginRequest,
+} from '@/lib/security/request';
 import { withSentryRoute } from '@/utils/sentry-route';
 
 async function getAuthenticatedUserId() {
@@ -57,7 +63,11 @@ async function persistMockFavoritesCookie(mockFavorites?: Record<string, string[
 export const POST = withSentryRoute(async (request: Request) => {
   try {
     const originHeader = request.headers.get('origin');
-    if (originHeader && !isOriginAllowed(originHeader, favoritesOriginAllowList)) {
+    if (
+      originHeader &&
+      !isOriginAllowed(originHeader, favoritesOriginAllowList) &&
+      !isSameOriginRequest(request)
+    ) {
       return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
     }
 
@@ -103,7 +113,11 @@ export const POST = withSentryRoute(async (request: Request) => {
 export const DELETE = withSentryRoute(async (request: Request) => {
   try {
     const originHeader = request.headers.get('origin');
-    if (originHeader && !isOriginAllowed(originHeader, favoritesOriginAllowList)) {
+    if (
+      originHeader &&
+      !isOriginAllowed(originHeader, favoritesOriginAllowList) &&
+      !isSameOriginRequest(request)
+    ) {
       return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
     }
 

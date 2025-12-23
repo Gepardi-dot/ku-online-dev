@@ -3,7 +3,13 @@ import { cookies } from 'next/headers';
 
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@/utils/supabase/server';
-import { buildOriginAllowList, checkRateLimit, getClientIdentifier, isOriginAllowed } from '@/lib/security/request';
+import {
+  buildOriginAllowList,
+  checkRateLimit,
+  getClientIdentifier,
+  isOriginAllowed,
+  isSameOriginRequest,
+} from '@/lib/security/request';
 import { getEnv } from '@/lib/env';
 
 export const runtime = 'nodejs';
@@ -102,7 +108,7 @@ export const GET = withSentryRoute(async (request: Request) => {
 
 export const POST = withSentryRoute(async (request: Request) => {
   const origin = request.headers.get('origin');
-  if (origin && !isOriginAllowed(origin, originAllowList)) {
+  if (origin && !isOriginAllowed(origin, originAllowList) && !isSameOriginRequest(request)) {
     return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
   }
 
@@ -218,7 +224,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
 export const PATCH = withSentryRoute(async (request: Request) => {
   const origin = request.headers.get('origin');
-  if (origin && !isOriginAllowed(origin, originAllowList)) {
+  if (origin && !isOriginAllowed(origin, originAllowList) && !isSameOriginRequest(request)) {
     return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
   }
 
@@ -252,7 +258,7 @@ export const PATCH = withSentryRoute(async (request: Request) => {
 
 export const DELETE = withSentryRoute(async (request: Request) => {
   const origin = request.headers.get('origin');
-  if (origin && !isOriginAllowed(origin, originAllowList)) {
+  if (origin && !isOriginAllowed(origin, originAllowList) && !isSameOriginRequest(request)) {
     return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
   }
 

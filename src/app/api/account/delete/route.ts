@@ -3,7 +3,13 @@ import { cookies } from 'next/headers';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { getEnv } from '@/lib/env';
-import { buildOriginAllowList, checkRateLimit, getClientIdentifier, isOriginAllowed } from '@/lib/security/request';
+import {
+  buildOriginAllowList,
+  checkRateLimit,
+  getClientIdentifier,
+  isOriginAllowed,
+  isSameOriginRequest,
+} from '@/lib/security/request';
 import { withSentryRoute } from '@/utils/sentry-route';
 
 const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SITE_URL } = getEnv();
@@ -22,7 +28,7 @@ const originAllowList = buildOriginAllowList([
 
 export const POST = withSentryRoute(async (request: Request) => {
   const origin = request.headers.get('origin');
-  if (origin && !isOriginAllowed(origin, originAllowList)) {
+  if (origin && !isOriginAllowed(origin, originAllowList) && !isSameOriginRequest(request)) {
     return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
   }
 

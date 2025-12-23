@@ -3,7 +3,13 @@ import { cookies } from 'next/headers';
 
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@/utils/supabase/server';
-import { buildOriginAllowList, checkRateLimit, getClientIdentifier, isOriginAllowed } from '@/lib/security/request';
+import {
+  buildOriginAllowList,
+  checkRateLimit,
+  getClientIdentifier,
+  isOriginAllowed,
+  isSameOriginRequest,
+} from '@/lib/security/request';
 import { getEnv } from '@/lib/env';
 
 export const runtime = 'nodejs';
@@ -22,7 +28,7 @@ const RATE_USER = { windowMs: 60_000, max: 60 } as const;
 
 export const POST = withSentryRoute(async (request: Request) => {
   const origin = request.headers.get('origin');
-  if (origin && !isOriginAllowed(origin, originAllowList)) {
+  if (origin && !isOriginAllowed(origin, originAllowList) && !isSameOriginRequest(request)) {
     return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
   }
   const clientIdentifier = getClientIdentifier(request.headers);
@@ -67,4 +73,3 @@ export const POST = withSentryRoute(async (request: Request) => {
   const count = (rows ?? []).length;
   return NextResponse.json({ ok: true, count });
 });
-
