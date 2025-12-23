@@ -2,7 +2,13 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 
 import { getEnv } from '@/lib/env';
-import { buildOriginAllowList, checkRateLimit, getClientIdentifier, isOriginAllowed } from '@/lib/security/request';
+import {
+  buildOriginAllowList,
+  checkRateLimit,
+  getClientIdentifier,
+  isOriginAllowed,
+  isSameOriginRequest,
+} from '@/lib/security/request';
 import { withSentryRoute } from '@/utils/sentry-route';
 
 export const runtime = 'nodejs';
@@ -90,7 +96,7 @@ function tooManyRequestsResponse(retryAfter: number) {
 
 export const POST = withSentryRoute(async (req: Request) => {
   const originHeader = req.headers.get('origin');
-  if (originHeader && !isOriginAllowed(originHeader, adminOriginAllowList)) {
+  if (originHeader && !isOriginAllowed(originHeader, adminOriginAllowList) && !isSameOriginRequest(req)) {
     return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
   }
 

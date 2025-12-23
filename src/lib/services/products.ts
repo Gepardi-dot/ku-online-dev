@@ -4,7 +4,7 @@ import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { createSignedUrls, createTransformedSignedUrls } from '@/lib/storage';
 import { buildPublicStorageUrl, deriveThumbPath } from '@/lib/storage-public';
-import { MARKET_CITY_OPTIONS, getMarketCityLabel, normalizeMarketCityValue } from '@/data/market-cities';
+import { DEFAULT_MARKET_CITIES, MARKET_CITY_OPTIONS, getMarketCityLabel, normalizeMarketCityValue } from '@/data/market-cities';
 import { getEnv } from "@/lib/env";
 
 export interface SellerProfile {
@@ -1170,23 +1170,92 @@ export async function getRecommendedProducts(
 export async function getSimilarProducts(
   productId: string,
   categoryId: string | null,
+  location: string | null = null,
   limit = 6,
 ): Promise<ProductWithRelations[]> {
+  const normalizedLocation = normalizeMarketCityValue(location);
+  const cityQuery = normalizedLocation
+    ? DEFAULT_MARKET_CITIES.find((city) => normalizedLocation === city || normalizedLocation.includes(city)) ?? normalizedLocation
+    : '';
+
+  const matchesCity = (value: string | null | undefined) => {
+    if (!cityQuery) {
+      return true;
+    }
+
+    const candidate = normalizeMarketCityValue(value);
+    if (!candidate) {
+      return false;
+    }
+
+    return candidate.includes(cityQuery) || cityQuery.includes(candidate);
+  };
+
+  const matchesFilters = (product: ProductWithRelations, opts?: { requireCity?: boolean }) => {
+    if (!product || product.id === productId) {
+      return false;
+    }
+    if (product.isSold || !product.isActive) {
+      return false;
+    }
+    if (categoryId && product.categoryId !== categoryId) {
+      return false;
+    }
+    if (opts?.requireCity ?? true) {
+      return matchesCity(product.location);
+    }
+    return true;
+  };
+
   let recommended: ProductWithRelations[] = [];
   try {
-    recommended = await getRecommendedProducts(productId, limit);
+    recommended = await getRecommendedProducts(productId, limit * 4);
   } catch (error) {
     console.error('Failed to load recommendations', error);
   }
 
-  if (recommended.length > 0) {
-    return recommended.slice(0, limit);
+  const filteredRecommendedSameCity = recommended
+    .filter((product) => matchesFilters(product, { requireCity: Boolean(cityQuery) }))
+    .slice(0, limit);
+  if (filteredRecommendedSameCity.length >= limit || !categoryId) {
+    return filteredRecommendedSameCity;
   }
 
-  if (!categoryId) {
-    return [];
+  const fallbackFiltersSameCity: ProductFilters = { category: categoryId };
+  if (cityQuery) {
+    fallbackFiltersSameCity.location = cityQuery;
   }
 
-  const fallback = await getProducts({ category: categoryId }, limit * 2, 0, 'newest');
-  return fallback.filter((product) => product.id !== productId).slice(0, limit);
+  const [fallbackSameCity, fallbackSameCategory] = await Promise.all([
+    getProducts(fallbackFiltersSameCity, limit * 4, 0, 'newest'),
+    getProducts({ category: categoryId }, limit * 4, 0, 'newest'),
+  ]);
+
+  const seen = new Set<string>();
+  const merged: ProductWithRelations[] = [];
+
+  const pushUnique = (product: ProductWithRelations, opts?: { requireCity?: boolean }) => {
+    if (!matchesFilters(product, opts)) {
+      return;
+    }
+    if (seen.has(product.id)) {
+      return;
+    }
+    seen.add(product.id);
+    merged.push(product);
+  };
+
+  for (const product of [...filteredRecommendedSameCity, ...fallbackSameCity]) {
+    if (merged.length >= limit) break;
+    pushUnique(product, { requireCity: Boolean(cityQuery) });
+  }
+
+  if (merged.length < limit && cityQuery) {
+    for (const product of [...recommended, ...fallbackSameCategory]) {
+      if (merged.length >= limit) break;
+      pushUnique(product, { requireCity: false });
+    }
+  }
+
+  return merged;
 }
