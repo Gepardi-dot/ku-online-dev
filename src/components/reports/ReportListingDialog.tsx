@@ -100,7 +100,7 @@ export function ReportListingDialog({ productId, sellerId }: ReportListingDialog
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full">
+        <Button variant="destructive" className="w-full">
           <Flag className="mr-2 h-4 w-4" />
           {t('report.button')}
         </Button>

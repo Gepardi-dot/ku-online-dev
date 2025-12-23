@@ -6,7 +6,13 @@ import sharp from 'sharp';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 
 import { getEnv } from '@/lib/env';
-import { buildOriginAllowList, checkRateLimit, getClientIdentifier, isOriginAllowed } from '@/lib/security/request';
+import {
+  buildOriginAllowList,
+  checkRateLimit,
+  getClientIdentifier,
+  isOriginAllowed,
+  isSameOriginRequest,
+} from '@/lib/security/request';
 import { buildPublicStorageUrl, collectImageVariantPaths } from '@/lib/storage-public';
 import { withSentryRoute } from '@/utils/sentry-route';
 
@@ -245,7 +251,7 @@ async function encodeWebp(
 
 export const POST = withSentryRoute(async (request: Request) => {
   const originHeader = request.headers.get('origin');
-  if (originHeader && !isOriginAllowed(originHeader, uploadOriginAllowList)) {
+  if (originHeader && !isOriginAllowed(originHeader, uploadOriginAllowList) && !isSameOriginRequest(request)) {
     return NextResponse.json({ error: 'Origin is not allowed to perform uploads.' }, { status: 403 });
   }
 
@@ -445,7 +451,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
 export const DELETE = withSentryRoute(async (request: Request) => {
   const originHeader = request.headers.get('origin');
-  if (originHeader && !isOriginAllowed(originHeader, uploadOriginAllowList)) {
+  if (originHeader && !isOriginAllowed(originHeader, uploadOriginAllowList) && !isSameOriginRequest(request)) {
     return NextResponse.json({ error: 'Origin is not allowed to perform deletions.' }, { status: 403 });
   }
 

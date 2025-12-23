@@ -5,7 +5,13 @@ import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 
 import { createClient } from '@/utils/supabase/server';
 import { getEnv } from '@/lib/env';
-import { buildOriginAllowList, checkRateLimit, getClientIdentifier, isOriginAllowed } from '@/lib/security/request';
+import {
+  buildOriginAllowList,
+  checkRateLimit,
+  getClientIdentifier,
+  isOriginAllowed,
+  isSameOriginRequest,
+} from '@/lib/security/request';
 import { syncAlgoliaProductById } from '@/lib/services/algolia-products';
 import { withSentryRoute } from '@/utils/sentry-route';
 
@@ -52,7 +58,7 @@ function revalidateListing(productId: string) {
 
 export const POST = withSentryRoute(async (request: NextRequest, context: { params: Promise<{ id: string }> }) => {
   const originHeader = request.headers.get('origin');
-  if (originHeader && !isOriginAllowed(originHeader, soldOriginAllowList)) {
+  if (originHeader && !isOriginAllowed(originHeader, soldOriginAllowList) && !isSameOriginRequest(request)) {
     return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
   }
 

@@ -264,6 +264,10 @@ export default function FavoritesMenu({
     }
   }, []);
 
+  const handleNavigate = useCallback(() => {
+    setOpen(false);
+  }, []);
+
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
@@ -355,6 +359,7 @@ export default function FavoritesMenu({
                           <Link
                             href={product ? `/product/${product.id}` : '#'}
                             className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/60 bg-white/80"
+                            onClick={handleNavigate}
                           >
                             {imageSrc ? (
                               <Image src={imageSrc} alt={product?.title ?? 'Product'} fill className="object-cover" />
@@ -368,6 +373,7 @@ export default function FavoritesMenu({
                             <Link
                               href={product ? `/product/${product.id}` : '#'}
                               className="text-sm font-semibold text-[#2D2D2D] hover:underline"
+                              onClick={handleNavigate}
                             >
                               {product?.title ?? 'Listing removed'}
                             </Link>
