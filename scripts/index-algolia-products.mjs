@@ -102,6 +102,20 @@ function buildSearchText(parts) {
   return `${raw} ${normalized}`;
 }
 
+function normalizeTranslationMap(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  const result = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (typeof item !== "string") continue;
+    const trimmed = item.trim();
+    if (!trimmed) continue;
+    result[key] = trimmed;
+  }
+  return result;
+}
+
 function deriveThumbPath(path) {
   if (!path) {
     return null;
@@ -135,6 +149,7 @@ function toAlgoliaRecord(row) {
   const seller = row.seller ?? null;
   const title = row.title ?? "";
   const description = row.description ?? "";
+  const titleTranslations = normalizeTranslationMap(row.title_translations ?? null);
   const imagePaths = Array.isArray(row.images) ? row.images : [];
   const primaryImage = imagePaths[0] ?? null;
   const imageThumbPath = deriveThumbPath(primaryImage);
@@ -156,6 +171,10 @@ function toAlgoliaRecord(row) {
     id: row.id,
     title,
     description,
+    title_i18n_en: titleTranslations.en ?? null,
+    title_i18n_ar: titleTranslations.ar ?? null,
+    title_i18n_ku: titleTranslations.ku ?? null,
+    title_i18n_ku_latn: titleTranslations.ku_latn ?? null,
     price: parseNumber(row.price) ?? 0,
     original_price: parseNumber(row.original_price),
     currency: row.currency ?? null,
@@ -194,6 +213,7 @@ async function fetchProducts(offset) {
       id,
       title,
       description,
+      title_translations,
       price,
       original_price,
       currency,
@@ -249,6 +269,10 @@ async function configureIndex() {
       indexSettings: {
         searchableAttributes: [
           "title",
+          "title_i18n_en",
+          "title_i18n_ar",
+          "title_i18n_ku",
+          "title_i18n_ku_latn",
           "description",
           "search_text",
           "category_name",
@@ -285,6 +309,10 @@ async function configureIndex() {
         indexSettings: {
           searchableAttributes: [
             "title",
+            "title_i18n_en",
+            "title_i18n_ar",
+            "title_i18n_ku",
+            "title_i18n_ku_latn",
             "description",
             "search_text",
             "category_name",
@@ -318,6 +346,11 @@ async function main() {
   console.log(`Indexing Algolia index "${ALGOLIA_INDEX_NAME}"...`);
 
   await configureIndex();
+
+  if (args.has("--settings-only")) {
+    console.log("Settings updated (--settings-only).");
+    return;
+  }
 
   if (shouldClear) {
     console.log("Clearing Algolia index...");

@@ -28,10 +28,14 @@ const model = process.env.EMBEDDING_MODEL ?? "text-embedding-3-small";
 const openAiEndpoint = "https://api.openai.com/v1/embeddings";
 
 async function fetchPendingProducts(limit) {
+  const nowIso = new Date().toISOString();
   const { data, error } = await supabase
     .from("products")
     .select("id, title, description, category_id, location")
     .is("embedding", null)
+    .eq("is_active", true)
+    .eq("is_sold", false)
+    .gt("expires_at", nowIso)
     .order("created_at", { ascending: false })
     .limit(limit);
 

@@ -39,6 +39,8 @@ export interface ProductWithRelations {
   id: string;
   title: string;
   description: string | null;
+  titleTranslations?: Record<string, string> | null;
+  descriptionTranslations?: Record<string, string> | null;
   price: number;
   currency: string | null;
   condition: string | null;
@@ -109,6 +111,10 @@ export type SupabaseProductRow = {
   id: string;
   title: string;
   description: string | null;
+  title_translations?: Record<string, unknown> | null;
+  description_translations?: Record<string, unknown> | null;
+  i18n_source_hash?: string | null;
+  i18n_updated_at?: string | null;
   price: number | string | null;
   original_price?: number | string | null;
   currency: string | null;
@@ -155,6 +161,23 @@ function normalizeImages(value: unknown): string[] {
     return value.filter((item): item is string => typeof item === "string");
   }
   return [];
+}
+
+function normalizeTranslationMap(value: unknown): Record<string, string> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const result: Record<string, string> = {};
+  for (const [key, item] of Object.entries(record)) {
+    if (typeof item !== 'string') continue;
+    const trimmed = item.trim();
+    if (!trimmed) continue;
+    result[key] = trimmed;
+  }
+
+  return Object.keys(result).length > 0 ? result : null;
 }
 
 function resolvePublicImageUrl(path: string | null | undefined): string | null {
@@ -237,6 +260,8 @@ export function mapProduct(row: SupabaseProductRow): ProductWithRelations {
     id: row.id,
     title: row.title,
     description: row.description,
+    titleTranslations: normalizeTranslationMap(row.title_translations),
+    descriptionTranslations: normalizeTranslationMap(row.description_translations),
     price: typeof row.price === "number" ? row.price : row.price ? Number(row.price) : 0,
     currency: row.currency ?? "IQD",
     condition: row.condition,
@@ -461,6 +486,10 @@ type AlgoliaSearchHit = {
   id?: string;
   title?: string;
   description?: string | null;
+  title_i18n_en?: string | null;
+  title_i18n_ar?: string | null;
+  title_i18n_ku?: string | null;
+  title_i18n_ku_latn?: string | null;
   price?: number | string | null;
   original_price?: number | string | null;
   currency?: string | null;
@@ -670,11 +699,18 @@ function mapProductFromAlgolia(hit: AlgoliaSearchHit): ProductWithRelations | nu
     : null;
 
   const originalPriceValue = parseNumber(hit.original_price);
+  const titleTranslations = normalizeTranslationMap({
+    en: hit.title_i18n_en ?? undefined,
+    ar: hit.title_i18n_ar ?? undefined,
+    ku: hit.title_i18n_ku ?? undefined,
+    ku_latn: hit.title_i18n_ku_latn ?? undefined,
+  });
 
   return {
     id,
     title: hit.title ?? '',
     description: hit.description ?? null,
+    titleTranslations,
     price: parseNumber(hit.price) ?? 0,
     currency: hit.currency ?? 'IQD',
     condition: hit.condition ?? null,
@@ -725,6 +761,10 @@ async function searchProductsViaAlgolia(
         'objectID',
         'id',
         'title',
+        'title_i18n_en',
+        'title_i18n_ar',
+        'title_i18n_ku',
+        'title_i18n_ku_latn',
         'description',
         'price',
         'original_price',
@@ -812,7 +852,7 @@ export async function searchProducts(
     sort,
     looksFree,
   );
-  if (algoliaResult) {
+  if (algoliaResult && algoliaResult.items.length > 0) {
     return algoliaResult;
   }
 

@@ -22,6 +22,7 @@ import { getProductFavoriteCount } from '@/lib/services/favorites-analytics';
 import Link from 'next/link';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
+import { localizeText } from '@/lib/locale/localize';
 
 const placeholderReviews = [
   {
@@ -66,6 +67,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
   if (!product) {
     notFound();
   }
+
+  const localizedTitle = localizeText(product.title, product.titleTranslations, locale);
+  const localizedDescription = localizeText(product.description, product.descriptionTranslations, locale);
 
   incrementProductViews(product.id).catch((error) => {
     console.error('Failed to increment product views', error);
@@ -169,8 +173,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: product.title,
-    description: product.description ?? undefined,
+    name: localizedTitle,
+    description: localizedDescription || undefined,
     image: rawImages,
     offers: {
       '@type': 'Offer',
@@ -215,7 +219,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <div className="relative">
                 <ProductImages
                   images={rawImages}
-                  title={product.title}
+                  title={localizedTitle}
                   productId={product.id}
                   viewerId={viewerId}
                   initialFavoriteCount={favoriteCount}
@@ -240,7 +244,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             <Card>
               <CardContent className="p-6 space-y-4">
                 <div>
-                  <h1 dir="auto" className="text-2xl font-bold bidi-auto">{product.title}</h1>
+                  <h1 dir="auto" className="text-2xl font-bold bidi-auto">{localizedTitle}</h1>
                   <div className="flex items-center gap-2 mt-2">
                     <Badge className={`text-white ${getConditionColor(product.condition)}`}>
                       {getConditionLabel(product.condition)}
@@ -285,7 +289,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   </div>
                 )}
 
-                {product.description && (
+                {localizedDescription && (
                   <>
                     <Separator />
                     <div>
@@ -293,7 +297,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                         {t('product.descriptionTitle')}
                       </h3>
                       <p className="text-base text-foreground leading-relaxed">
-                        {product.description}
+                        {localizedDescription}
                       </p>
                     </div>
                   </>
@@ -359,7 +363,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       sellerId={seller?.id ?? product.sellerId}
                       sellerName={sellerDisplayName}
                       productId={product.id}
-                      productTitle={product.title}
+                      productTitle={localizedTitle}
                       viewerId={viewerId}
                     />
                   )}
