@@ -397,7 +397,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
           )}
         >
           <div className="mt-8">
-            <SimilarItems productId={product.id} categoryId={product.categoryId} viewerId={user?.id ?? null} />
+            <SimilarItems
+              productId={product.id}
+              categoryId={product.categoryId}
+              location={product.location}
+              viewerId={user?.id ?? null}
+            />
           </div>
         </Suspense>
       </div>
