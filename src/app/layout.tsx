@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { AnnouncementBar } from '@/components/layout/announcement-bar';
 import AppFooter from '@/components/layout/footer';
 import MobileNav from '@/components/layout/mobile-nav';
-import { Noto_Kufi_Arabic, Noto_Sans_Arabic, PT_Sans } from 'next/font/google';
+import { Noto_Kufi_Arabic, PT_Sans } from 'next/font/google';
 import { LocaleProvider } from '@/providers/locale-provider';
 import { getServerLocale } from '@/lib/locale/server';
 
@@ -20,13 +20,6 @@ const notoKufiArabic = Noto_Kufi_Arabic({
   weight: ['400', '500', '600', '700'],
   display: 'swap',
   variable: '--font-arabic',
-});
-
-const notoSansKurdish = Noto_Sans_Arabic({
-  subsets: ['arabic'],
-  weight: ['400', '500', '600', '700'],
-  display: 'swap',
-  variable: '--font-kurdish',
 });
 
 export const metadata: Metadata = {
@@ -60,7 +53,6 @@ export default async function RootLayout({
         className={cn(
           ptSans.className,
           notoKufiArabic.variable,
-          notoSansKurdish.variable,
           'font-body antialiased min-h-screen bg-background font-sans',
         )}
       >
