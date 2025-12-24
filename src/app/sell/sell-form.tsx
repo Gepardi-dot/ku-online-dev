@@ -791,143 +791,89 @@ export default function SellForm({ user }: SellFormProps) {
                   className="space-y-0 divide-y divide-black/10"
                 >
                   <section className={firstSectionClassName}>
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
-                          <Upload className="h-5 w-5" />
-                        </div>
-                        <div>
+                    <div className="flex flex-col gap-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                            <Upload className="h-5 w-5" />
+                          </div>
                           <h2 className="text-base font-semibold leading-tight">
                             {t('sellForm.fields.images')} <span className="text-primary" aria-hidden="true">*</span>
                           </h2>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {t('sellForm.upload.selectedCount')
-                              .replace('{count}', String(uploadedImages.length))
-                              .replace('{max}', String(MAX_IMAGES))}
-                          </p>
                         </div>
                       </div>
-                    </div>
 
-                    <div
-                      className={`mt-0 rounded-3xl border-2 border-dashed p-6 transition ring-1 ring-black/5 ${
-                        isDragActive
-                          ? 'border-primary bg-primary/10 shadow-md'
-                          : 'border-border/80 bg-white/70 shadow-sm'
-                      } ${
-                        storageBusy || uploadedImages.length >= MAX_IMAGES
-                          ? 'cursor-not-allowed opacity-60'
-                          : 'cursor-pointer hover:bg-white hover:shadow-md'
-                      }`}
-                      onDragEnter={handleDragOver}
-                      onDragOver={handleDragOver}
-                      onDragLeave={handleDragLeave}
-                      onDrop={handleDrop}
-                      role="presentation"
-                      tabIndex={storageBusy || uploadedImages.length >= MAX_IMAGES ? -1 : 0}
-                      aria-label={t('sellForm.upload.browse')}
-                      onClick={() => {
-                        if (storageBusy || uploadedImages.length >= MAX_IMAGES) return;
-                        handleFileButtonClick();
-                      }}
-                      onKeyDown={(event) => {
-                        if (storageBusy || uploadedImages.length >= MAX_IMAGES) return;
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
+                      <div
+                        className={`relative flex flex-col items-center justify-center gap-4 rounded-3xl border-2 border-dashed p-10 text-center transition ${
+                          isDragActive
+                            ? 'border-primary bg-primary/5'
+                            : storageBusy || uploadedImages.length >= MAX_IMAGES
+                              ? 'cursor-not-allowed opacity-60 border-border/60'
+                              : 'cursor-pointer border-border/60 hover:border-primary/50 hover:bg-muted/10'
+                        }`}
+                        onDragEnter={handleDragOver}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        role="presentation"
+                        onClick={() => {
+                          if (storageBusy || uploadedImages.length >= MAX_IMAGES) return;
                           handleFileButtonClick();
-                        }
-                      }}
-                    >
-                      <div className="relative">
-                        <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-[2.25rem]">
-                          <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/50 blur-2xl" />
-                          <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
+                        }}
+                      >
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-black/5">
+                          <Upload className="h-8 w-8 text-primary" />
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-base font-semibold">{t('sellForm.upload.dropHint')}</p>
+                          <p className="text-sm text-muted-foreground">{t('sellForm.upload.browse')}</p>
                         </div>
 
-                        <div className="relative flex min-h-[220px] flex-col items-center justify-center gap-3 text-center">
-                          <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white/75 ring-1 ring-white/70 shadow-[0_10px_26px_rgba(15,23,42,0.08)] backdrop-blur">
-                            <Upload className="h-7 w-7 text-foreground/70" />
+                        <input
+                          ref={fileInputRef}
+                          id="images-input"
+                          type="file"
+                          accept={ACCEPTED_FILE_MIME_TYPES.join(',')}
+                          multiple
+                          className="hidden"
+                          onChange={handleFileChange}
+                        />
+                      </div>
+
+                      {uploadedImages.length > 0 && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 mt-2">
+                          {uploadedImages.map((image, index) => (
                             <div
-                              aria-hidden="true"
-                              className={[
-                                'pointer-events-none absolute inset-0 rounded-full transition-opacity',
-                                isDragActive ? 'bg-primary/15 opacity-100' : 'bg-transparent opacity-0',
-                              ].join(' ')}
-                            />
-                          </div>
-
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-foreground/90">{t('sellForm.upload.dropHint')}</p>
-                            <p className="text-xs text-muted-foreground">{t('sellForm.upload.tip')}</p>
-                          </div>
-
-                          <button
-                            type="button"
-                            className="inline-flex h-10 items-center justify-center rounded-full border border-border/70 bg-white/85 px-6 text-sm font-semibold text-foreground shadow-sm ring-1 ring-black/5 backdrop-blur transition-colors hover:bg-white"
-                            onClick={(event) => {
-                              event.preventDefault();
-                              event.stopPropagation();
-                              if (storageBusy || uploadedImages.length >= MAX_IMAGES) return;
-                              handleFileButtonClick();
-                            }}
-                            disabled={storageBusy || uploadedImages.length >= MAX_IMAGES}
-                          >
-                            {t('sellForm.upload.browse')}
-                          </button>
-
-                          <div className="mt-2 inline-flex max-w-[30rem] items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-[11px] text-muted-foreground ring-1 ring-black/5 backdrop-blur">
-                            <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                            <span className="leading-snug">
-                              {t('sellForm.upload.supports')
-                                .replace('{types}', ACCEPTED_FILES_DESCRIPTION)
-                                .replace('{maxMb}', String(maxFileSizeMb))
-                                .replace('{maxImages}', String(MAX_IMAGES))}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <input
-                        ref={fileInputRef}
-                        id="images-input"
-                        type="file"
-                        accept={ACCEPTED_FILE_MIME_TYPES.join(',')}
-                        multiple
-                        className="hidden"
-                        onChange={handleFileChange}
-                      />
-                    </div>
-
-                    {uploadedImages.length > 0 && (
-                      <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
-                        {uploadedImages.map((image, index) => (
-                          <div
-                            key={image.path}
-                            className="group relative aspect-square overflow-hidden rounded-2xl border border-white/60 bg-white/50"
-                          >
-                            <Image
-                              src={image.url}
-                              alt={t('sellForm.upload.previewAlt')}
-                              fill
-                              className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                            />
-                            {index === 0 && (
-                              <div className="absolute left-2 top-2 rounded-full bg-white/75 px-2 py-1 text-[10px] font-semibold text-foreground ring-1 ring-white/70 backdrop-blur">
-                                {t('sellForm.preview.cover')}
-                              </div>
-                            )}
-                            <button
-                              type="button"
-                              className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-black/80 group-hover:opacity-100"
-                              onClick={() => handleRemoveImage(image)}
-                              disabled={storageBusy}
+                              key={image.path}
+                              className="group relative aspect-square overflow-hidden rounded-2xl border border-border bg-muted/20"
                             >
-                              <X className="h-4 w-4" />
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                              <Image
+                                src={image.url}
+                                alt="Preview"
+                                fill
+                                className="object-cover"
+                              />
+                              {index === 0 && (
+                                <div className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold text-primary shadow-sm">
+                                  {t('sellForm.preview.cover')}
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100 hover:bg-black/80"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveImage(image);
+                                }}
+                                disabled={storageBusy}
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </section>
 
                   <section className={sectionClassName}>
