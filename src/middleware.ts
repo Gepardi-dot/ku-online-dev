@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-import { createClient } from '@/utils/supabase/middleware';
+import { refreshSupabaseSession } from '@/utils/supabase/edge-session';
 
 export async function middleware(request: NextRequest) {
   try {
@@ -13,12 +13,7 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    const { supabase, response } = createClient(request);
-
-    // Refresh session if expired
-    await supabase.auth.getUser();
-
-    return response;
+    return await refreshSupabaseSession(request);
   } catch {
     // If there's an error, just continue with the request
     return;

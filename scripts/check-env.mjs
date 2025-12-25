@@ -1,5 +1,43 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
+import path from 'node:path';
 import { z } from 'zod';
+
+const loadedFromFiles = new Set();
+
+function loadEnvFile(relativePath) {
+  const absPath = path.join(process.cwd(), relativePath);
+  if (!fs.existsSync(absPath)) return;
+
+  const raw = fs.readFileSync(absPath, 'utf8');
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    const match = trimmed.match(/^([A-Z0-9_]+)\s*=\s*(.*)$/i);
+    if (!match) continue;
+
+    const [, key, rest] = match;
+    let value = rest.trim();
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+
+    if (process.env[key] === undefined || loadedFromFiles.has(key)) {
+      process.env[key] = value;
+      loadedFromFiles.add(key);
+    }
+  }
+}
+
+if (process.env.NODE_ENV !== 'production') {
+  loadEnvFile('.env');
+  loadEnvFile('.env.local');
+}
 
 const baseSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url({ message: 'NEXT_PUBLIC_SUPABASE_URL must be a valid URL' }),

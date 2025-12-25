@@ -6,7 +6,8 @@
     "dev": "node tools/scripts/dev-server.mjs",
     "build": "next build",
     "start": "next start -H 0.0.0.0 -p 5000",
-    "lint": "next lint",
+    "lint": "eslint .",
+    "lint:ci": "eslint . --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "build:test": "tsc --project tsconfig.test.json",
     "test": "node tools/scripts/run-tests.mjs",
@@ -16,8 +17,9 @@
     "supabase:apply": "node scripts/apply-supabase-schema.mjs",
     "supabase:policies": "node scripts/show-policies.mjs",
     "tooling:status": "node scripts/check-tooling-status.mjs",
+    "check:node": "node scripts/check-node.mjs",
     "check:env": "node scripts/check-env.mjs",
-    "ci": "npm run check:env && npm run typecheck && npm run lint && npm test && npm run build",
+    "ci": "npm run check:node && npm run check:env && npm run typecheck && npm run lint:ci && npm test && npm run build",
     "e2e": "playwright test --reporter=line",
     "e2e:install": "npx playwright install --with-deps"
   },
@@ -67,16 +69,21 @@
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.25.76"
   },
+  "overrides": {
+    "esbuild": "0.25.10"
+  },
   "engines": {
     "node": ">=20 <23"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
     "@playwright/test": "^1.49.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.21",
-    "drizzle-kit": "^0.18.1",
+    "baseline-browser-mapping": "2.9.11",
+    "drizzle-kit": "^0.31.8",
     "eslint": "^9.37.0",
     "eslint-config-next": "^15.5.9",
     "kill-port": "^2.0.1",
