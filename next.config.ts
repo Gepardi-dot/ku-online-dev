@@ -167,7 +167,6 @@ const nextConfig: NextConfig = {
     const shouldDebugWebpack = process.env.NEXT_DEBUG_WEBPACK_OUTPUT === 'true';
 
     if (shouldDebugWebpack && options.isServer) {
-      // eslint-disable-next-line no-console
       console.log('[webpack:before]', {
         nextRuntime: options.nextRuntime,
         outputPath: config.output?.path,
@@ -181,7 +180,6 @@ const nextConfig: NextConfig = {
     }
 
     if (shouldDebugWebpack && options.isServer) {
-      // eslint-disable-next-line no-console
       console.log('[webpack:after]', {
         nextRuntime: options.nextRuntime,
         outputPath: config.output?.path,

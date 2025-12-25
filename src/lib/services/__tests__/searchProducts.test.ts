@@ -15,9 +15,7 @@ const defaultCookies = {
 };
 
 declare global {
-  // eslint-disable-next-line no-var
   var __supabaseClientMock: SupabaseMock | undefined;
-  // eslint-disable-next-line no-var
   var __cookiesMock: typeof defaultCookies | undefined;
 }
 

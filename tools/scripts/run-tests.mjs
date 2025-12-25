@@ -14,6 +14,13 @@ try {
 const distRoot = path.resolve(process.cwd(), 'dist-tests');
 const testFiles = [];
 
+function ensureDistTestsIsEsm() {
+  if (!fs.existsSync(distRoot)) return;
+  const pkgPath = path.join(distRoot, 'package.json');
+  const pkg = { type: 'module' };
+  fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8');
+}
+
 function collectTests(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const fullPath = path.join(dir, entry.name);
@@ -29,6 +36,7 @@ function collectTests(dir) {
 }
 
 if (fs.existsSync(distRoot)) {
+  ensureDistTestsIsEsm();
   collectTests(distRoot);
 }
 
@@ -39,7 +47,13 @@ if (testFiles.length === 0) {
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'test';
 
-const nodeArgs = ['--test', '--loader', './tools/test-stubs/alias-loader.mjs', ...testFiles];
+const registerLoaderImport =
+  'data:text/javascript,' +
+  'import { register } from "node:module";' +
+  'import { pathToFileURL } from "node:url";' +
+  'register("./tools/test-stubs/alias-loader.mjs", pathToFileURL("./"));';
+
+const nodeArgs = ['--test', '--import', registerLoaderImport, ...testFiles];
 const nodeResult = spawnSync(process.execPath, nodeArgs, { stdio: 'inherit' });
 
 process.exit(nodeResult.status ?? 1);

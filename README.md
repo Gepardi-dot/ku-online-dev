@@ -10,6 +10,19 @@ This is a Next.js frontend project for the KU-ONLINE marketplace. It features a 
 - **Language**: TypeScript
 - **Data**: Mock data for demonstration
 
+## Requirements
+
+- **Node.js**: 22.x (see `.node-version` / `.nvmrc`)
+- **Package manager**: npm (bundled with Node)
+
+## Local development
+
+- `npm run dev` – start the dev server on port 5000
+- `npm run lint` – lint with ESLint (use `npm run lint:ci` for zero warnings)
+- `npm run typecheck` – TypeScript type checks
+- `npm test` – run the Node test runner
+- `npm run build` / `npm run start` – production build and local serve
+
 ## Supabase storage setup
 
 Image uploads for product listings rely on a Supabase Storage bucket. The frontend defaults to a bucket named `product-images` (or the value of `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET`). Create the bucket once in your Supabase project and make it public-read:
