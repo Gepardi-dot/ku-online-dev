@@ -393,6 +393,15 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         console.warn('Algolia sync failed after update', syncError);
       }
 
+      try {
+        fetch('/api/products/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId }),
+          keepalive: true,
+        }).catch(() => {});
+      } catch {}
+
       const removals = pendingRemoval.map((entry) => entry.path).filter(Boolean);
       if (removals.length > 0) {
         await Promise.allSettled(removals.map((path) => deleteImagePath(path)));
