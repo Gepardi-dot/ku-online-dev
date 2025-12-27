@@ -10,12 +10,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
-      SUPABASE_SERVICE_ROLE_KEY: placeholder-service-key
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-key' }}
       NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET: product-images
-      ADMIN_REVALIDATE_TOKEN: placeholder-revalidate-token
-      NEXT_PUBLIC_SITE_URL: https://ku-online.vercel.app
+      ADMIN_REVALIDATE_TOKEN: ${{ secrets.ADMIN_REVALIDATE_TOKEN || 'placeholder-revalidate-token' }}
+      NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL || 'https://ku-online.vercel.app' }}
 
     steps:
       - name: Checkout
