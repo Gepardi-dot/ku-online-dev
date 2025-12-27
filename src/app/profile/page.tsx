@@ -764,7 +764,6 @@ export default async function ProfilePage({
                                   fill
                                   sizes="96px"
                                   className="object-cover"
-                                  unoptimized
                                 />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center bg-white/70" aria-hidden="true" />
