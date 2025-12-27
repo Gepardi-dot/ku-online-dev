@@ -2,6 +2,7 @@
 import type { ReactNode } from 'react';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { differenceInMonths, formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -757,7 +758,14 @@ export default async function ProfilePage({
                               className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/70 bg-white/80 shadow-sm"
                             >
                               {sale.imageUrl ? (
-                                <img src={sale.imageUrl} alt={sale.title} className="h-full w-full object-cover" />
+                                <Image
+                                  src={sale.imageUrl}
+                                  alt={sale.title}
+                                  fill
+                                  sizes="96px"
+                                  className="object-cover"
+                                  unoptimized
+                                />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center bg-white/70" aria-hidden="true" />
                               )}
