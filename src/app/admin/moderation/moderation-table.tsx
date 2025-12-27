@@ -17,6 +17,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from '@/hooks/use-toast';
+import RemoveListingButton from '@/components/product/RemoveListingButton';
 
 type ModerationUser = { id: string; name: string; isVerified: boolean };
 
@@ -342,14 +343,27 @@ export default function ModerationTable({ reports }: ModerationTableProps) {
                     Dismiss
                   </Button>
                   {report.product ? (
-                    <Button
-                      size="sm"
-                      variant="default"
-                      onClick={() => updateReport(report.id, 'resolved', true)}
-                      disabled={isProcessing || report.product.isActive}
-                    >
-                      Reactivate listing
-                    </Button>
+                    <>
+                      <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => updateReport(report.id, 'resolved', true)}
+                        disabled={isProcessing || report.product.isActive}
+                      >
+                        Reactivate listing
+                      </Button>
+                      <RemoveListingButton
+                        productId={report.product.id}
+                        size="sm"
+                        onDeleted={() => {
+                          setRows((prev) =>
+                            prev.map((row) =>
+                              row.product?.id === report.product?.id ? { ...row, product: null } : row,
+                            ),
+                          );
+                        }}
+                      />
+                    </>
                   ) : null}
                 </TableCell>
               </TableRow>

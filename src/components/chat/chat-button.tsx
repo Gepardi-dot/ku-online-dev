@@ -463,17 +463,17 @@ export default function ChatButton({
           {t('product.chatWithSellerButton')}
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="sm:max-w-[480px] rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-6 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Avatar className="h-9 w-9">
-              <AvatarFallback>{sellerName ? sellerName[0] : 'U'}</AvatarFallback>
+          <DialogTitle className="flex items-center gap-3">
+            <Avatar className="h-10 w-10 border-2 border-white/60 shadow-sm">
+              <AvatarFallback className="bg-[#FFF8F0] text-brand font-semibold">{sellerName ? sellerName[0] : 'U'}</AvatarFallback>
             </Avatar>
             <span className="flex flex-col">
-              <span className="font-medium leading-tight">
+              <span className="font-semibold text-[#2D2D2D] leading-tight">
                 {t('product.chatWithSellerButton')} {counterpartName}
               </span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-brand">
                 {productTitle}
                 {counterpartOnline && <>
                   {' '}
@@ -490,7 +490,7 @@ export default function ChatButton({
         </DialogHeader>
 
         <div className="space-y-4">
-          <ScrollArea className="h-[300px] w-full rounded-lg border">
+          <ScrollArea className="h-[300px] w-full rounded-2xl border border-[#eadbc5]/70 bg-white/50 shadow-sm ring-1 ring-black/[0.03]">
             <div className="p-4">{renderMessages()}</div>
           </ScrollArea>
 
@@ -501,8 +501,14 @@ export default function ChatButton({
               onKeyDown={handleKeyDown}
               placeholder={viewerId ? 'Type your message…' : 'Sign in to send messages'}
               disabled={!canChat || initializing || sending}
+              className="rounded-full border-[#eadbc5]/70 bg-white/70 focus:border-brand/50 focus:ring-brand/20"
             />
-            <Button onClick={handleSendMessage} size="icon" disabled={!canChat || initializing || sending}>
+            <Button 
+              onClick={handleSendMessage} 
+              size="icon" 
+              disabled={!canChat || initializing || sending}
+              className="rounded-full h-10 w-10 bg-brand hover:bg-brand-dark shadow-md"
+            >
               {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </div>

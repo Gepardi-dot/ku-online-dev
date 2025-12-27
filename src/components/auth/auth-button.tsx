@@ -156,44 +156,40 @@ export default function AuthButton({ user }: AuthButtonProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="z-[90] w-56 rounded-3xl border border-white/50 bg-gradient-to-br from-white/85 via-white/70 to-primary/10 p-2 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40"
+          className="z-[90] w-56 rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
           align="end"
           sideOffset={10}
           forceMount
         >
-          <DropdownMenuItem className="font-normal">
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">
-                {user.user_metadata?.full_name || t('header.userMenu.defaultName')}
-              </p>
-              <p className="text-xs leading-none text-muted-foreground">
-                {user.email}
-              </p>
-            </div>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link href="/profile?tab=overview" className="flex items-center">
+          <div className="rounded-2xl bg-gradient-to-r from-brand/10 via-brand-light/10 to-brand/5 border border-brand/20 px-4 py-3 mb-3">
+            <p className="text-sm font-semibold text-[#2D2D2D]">
+              {user.user_metadata?.full_name || t('header.userMenu.defaultName')}
+            </p>
+            <p className="text-xs text-brand/80 mt-0.5">
+              {user.email}
+            </p>
+          </div>
+          <DropdownMenuItem asChild className="mb-2">
+            <Link href="/profile?tab=overview" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/[0.03] px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
               <LayoutDashboard className="mr-2 h-4 w-4" />
               {t('header.userMenu.myProfile')}
             </Link>
           </DropdownMenuItem>
           {userIsModerator && (
-            <DropdownMenuItem asChild>
-              <Link href="/admin/moderation" className="flex items-center">
+            <DropdownMenuItem asChild className="mb-2">
+              <Link href="/admin/moderation" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/[0.03] px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
                 <ShieldCheck className="mr-2 h-4 w-4" />
                 {t('header.userMenu.moderation')}
               </Link>
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem asChild>
-            <Link href="/profile?tab=settings" className="flex items-center">
+          <DropdownMenuItem asChild className="mb-3">
+            <Link href="/profile?tab=settings" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/[0.03] px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
               <Settings className="mr-2 h-4 w-4" />
               {t('header.userMenu.settings')}
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout}>
+          <DropdownMenuItem onClick={handleLogout} className="rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/[0.03] hover:bg-white/60 hover:border-[#eadbc5]/50 px-3 py-2">
             <LogOut className="mr-2 h-4 w-4" />
             <span>{t('header.userMenu.logout')}</span>
           </DropdownMenuItem>

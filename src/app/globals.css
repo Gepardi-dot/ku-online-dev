@@ -18,6 +18,9 @@
     --muted-foreground: 24 6% 45%;
     --accent: 20 50% 90%; /* lighter orange #FADFCB */
     --accent-foreground: 24 10% 20%;
+    --ku-accent: 28 80% 52%; /* #E67E22 */
+    --ku-accent-dark: 24 100% 41%; /* #d35400 */
+    --ku-accent-light: 37 90% 51%; /* #f39c12 */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 20 50% 88%; /* light orange border #F8D6C0 */
@@ -41,7 +44,7 @@ html[lang="ar"] body,
 html[lang="ar"] .font-body,
 html[lang="ar"] .font-headline,
 html[lang="ar"] .font-sans {
-  font-family: var(--font-arabic), "PT Sans", "Segoe UI", "Tahoma", sans-serif;
+  font-family: var(--font-arabic), "DM Sans", "Segoe UI", "Tahoma", sans-serif;
 }
 
 /* Kurdish locale font swap to Noto Sans (Arabic script with Kurdish coverage) */
@@ -49,7 +52,7 @@ html[lang="ku"] body,
 html[lang="ku"] .font-body,
 html[lang="ku"] .font-headline,
 html[lang="ku"] .font-sans {
-  font-family: var(--font-arabic), "PT Sans", "Segoe UI", "Tahoma", sans-serif;
+  font-family: var(--font-arabic), "DM Sans", "Segoe UI", "Tahoma", sans-serif;
 }
 
 /* Utilities */

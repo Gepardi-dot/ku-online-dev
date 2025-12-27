@@ -105,11 +105,13 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
   const sellerDisplayName = sellerDisplayNameRaw.trim() || messages.product.sellerFallback;
   const conditionLabel = getConditionLabel(product.condition || 'New');
   const titleLength = localizedTitle.trim().length;
-  const titleSizeClass = titleLength > 54
-    ? 'text-[0.75rem] sm:text-[0.8rem]'
-    : titleLength > 36
-      ? 'text-[0.8rem] sm:text-[0.85rem]'
-      : 'text-[0.85rem] sm:text-sm';
+  const titleSizeClass = titleLength > 52
+    ? 'text-[0.78rem] sm:text-[0.85rem] leading-snug'
+    : titleLength > 40
+      ? 'text-[0.85rem] sm:text-[0.9rem] leading-snug'
+      : titleLength > 28
+        ? 'text-[0.9rem] sm:text-[0.95rem] leading-tight'
+        : 'text-[0.95rem] sm:text-base leading-tight';
 
   return (
     <Link
@@ -118,7 +120,7 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
       prefetch
       onClick={recordSearchClick}
     >
-      <Card className="overflow-hidden transition-all duration-300 group-hover:shadow-lg">
+      <Card className="flex h-full flex-col overflow-hidden transition-all duration-300 group-hover:shadow-lg">
         {/* Responsive image container:
             - Mobile: height scales with viewport width using clamp for regular/pro/plus sizes
             - Desktop: fixed pleasing card ratio via aspect-ratio */}
@@ -161,11 +163,11 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
         )}
         </div>
 
-        <CardContent className="px-3 py-2">
+        <CardContent className="flex h-[146px] flex-col justify-between overflow-hidden px-3 py-3">
         <div className="space-y-1">
           <h3
             dir="auto"
-            className={`h-[2.4rem] font-semibold ${titleSizeClass} line-clamp-2 leading-tight bidi-auto`}
+            className={`min-h-[2.4rem] font-bold ${titleSizeClass} line-clamp-2 bidi-auto`}
           >
             {localizedTitle}
           </h3>
@@ -194,9 +196,9 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span
               dir="auto"
-              className="inline-flex items-center gap-1 rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1 font-semibold text-slate-700 bidi-auto"
+              className="inline-flex max-w-full items-center gap-1 overflow-hidden rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1 font-semibold text-slate-700 bidi-auto"
             >
-              <span>{sellerDisplayName}</span>
+              <span className="truncate">{sellerDisplayName}</span>
               {product.seller?.isVerified ? (
                 <>
                   <BadgeCheck className="h-3 w-3 text-emerald-600" aria-hidden="true" />

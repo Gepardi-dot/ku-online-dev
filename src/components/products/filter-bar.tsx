@@ -177,9 +177,16 @@ export function ProductsFilterBar({
   const filterBarClassName =
     "w-full rounded-2xl border border-white/50 bg-white/60 px-3 py-2 shadow-[0_18px_48px_rgba(15,23,42,0.1)] backdrop-blur-xl md:mx-auto md:w-fit";
 
+  const framedControlClassName =
+    "rounded-xl border border-slate-200/90 bg-white/80 shadow-[0_6px_18px_rgba(15,23,42,0.10)] ring-1 ring-black/5 backdrop-blur-xl " +
+    "hover:border-slate-300/90 hover:bg-white/90 hover:shadow-[0_8px_22px_rgba(15,23,42,0.12)] " +
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white/80";
+
   const selectTriggerClassName =
-    "h-10 w-fit max-w-full rounded-xl border border-white/55 bg-white/65 px-3.5 text-[15px] shadow-sm ring-1 ring-white/25 backdrop-blur-xl " +
-    "hover:bg-white/75 hover:shadow-md focus:ring-2 focus:ring-primary/35 focus:ring-offset-2 focus:ring-offset-white/80";
+    "h-10 w-fit max-w-full px-3.5 text-[15px] " + framedControlClassName;
+
+  const chipTriggerClassName =
+    "inline-flex h-9 w-fit shrink-0 items-center gap-2 px-3.5 text-sm " + framedControlClassName;
 
   const selectContentClassName =
     "max-h-[18rem] w-fit max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[#d6d6d6]/70 bg-white/90 p-1 " +
@@ -249,7 +256,7 @@ export function ProductsFilterBar({
           <PopoverTrigger asChild>
             <Button
               variant="outline"
-              className="inline-flex h-9 w-fit shrink-0 items-center gap-2 rounded-xl border-white/55 bg-white/65 px-3.5 text-sm shadow-sm ring-1 ring-white/25 backdrop-blur-xl hover:bg-white/75 hover:shadow-md"
+              className={chipTriggerClassName}
             >
               {color && (
                 <span
@@ -318,7 +325,7 @@ export function ProductsFilterBar({
           <PopoverTrigger asChild>
             <Button
               variant="outline"
-              className="h-9 w-fit shrink-0 rounded-xl border-white/55 bg-white/65 px-3.5 text-sm shadow-sm ring-1 ring-white/25 backdrop-blur-xl hover:bg-white/75 hover:shadow-md"
+              className={chipTriggerClassName}
             >
               {priceChipLabel}
             </Button>

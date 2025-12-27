@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Heart, Loader2, Share2, Trash, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -201,7 +202,7 @@ export default function FavoritesMenu({
     }
     const display = count > 9 ? '9+' : String(count);
     return (
-      <span className="pointer-events-none absolute -top-1 -right-1 inline-flex h-5 min-w-[1.1rem] items-center justify-center rounded-full border-2 border-white bg-[#E67E22] px-1 text-[10px] font-semibold text-white shadow-sm">
+      <span className="pointer-events-none absolute -top-1 -right-1 inline-flex h-5 min-w-[1.1rem] items-center justify-center rounded-full border-2 border-white bg-brand px-1 text-[10px] font-semibold text-white shadow-sm">
         {display}
       </span>
     );
@@ -226,7 +227,7 @@ export default function FavoritesMenu({
   }, []);
 
   const ebayTriggerClass =
-    'relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-[#E67E22]/50 hover:text-[#E67E22] hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40';
+    'relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40';
 
   const handleShare = useCallback(async (favorite: FavoriteSummary) => {
     const product = favorite.product;
@@ -269,7 +270,7 @@ export default function FavoritesMenu({
   }, []);
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={handleOpenChange} modal={true}>
       <PopoverTrigger asChild>
         {compactTrigger ? (
           <button
@@ -304,7 +305,7 @@ export default function FavoritesMenu({
         align="end"
         side="bottom"
         sideOffset={12}
-        className="z-[90] flex w-[460px] max-h-[calc(100vh-5rem)] max-w-[calc(100vw-1rem)] flex-col rounded-3xl border border-[#eadbc5]/70 bg-gradient-to-br from-[#fffdf7]/95 via-[#fff6ea]/90 to-[#f4ecdf]/90 p-4 shadow-[0_22px_60px_rgba(120,72,0,0.22)] backdrop-blur-2xl ring-1 ring-white/60"
+        className="z-[90] flex w-[420px] max-h-[calc(100vh-5rem)] max-w-[calc(100vw-1rem)] flex-col overscroll-contain rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
       >
         {!canLoad ? (
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
@@ -312,26 +313,19 @@ export default function FavoritesMenu({
           </div>
         ) : (
           <div className="flex h-full flex-col gap-3">
-            <div className="flex items-start justify-between gap-3 rounded-2xl border border-[#eadbc5]/70 bg-white/75 px-4 py-3 shadow-[0_10px_26px_rgba(120,72,0,0.10)]">
-              <div>
-                <p className="text-sm font-semibold text-[#2D2D2D]">{strings.label}</p>
-                <p className="text-xs text-muted-foreground">
-                  {favorites.length > 0
-                    ? `${favorites.length} ${favorites.length === 1 ? 'listing' : 'listings'} saved`
-                    : strings.empty}
-                </p>
-              </div>
+            <div className="flex items-center justify-between px-3 py-2 mb-2">
+              <span className="text-xs font-bold uppercase tracking-widest text-brand">{strings.label}</span>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#eadbc5]/70 bg-[#fffdf7]/90 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#eadbc5]/70 bg-white/80 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-brand hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
                 aria-label="Close favorites"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-hidden">
+
               {loading ? (
                 <div className="flex h-64 items-center justify-center text-muted-foreground">
                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -341,8 +335,8 @@ export default function FavoritesMenu({
                   {strings.empty}
                 </div>
               ) : (
-                <div className="max-h-[320px] overflow-y-auto overscroll-contain pr-1">
-                  <div className="space-y-3 bg-transparent">
+                <div className="max-h-[360px] overflow-y-auto w-full pr-3 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-brand [&::-webkit-scrollbar-thumb]:to-brand-light [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-brand-dark hover:[&::-webkit-scrollbar-thumb]:to-brand">
+                  <div className="space-y-3 p-0.5">
                     {favorites.map((favorite) => {
                       const product = favorite.product;
                       const firstUrl = (product?.imageUrls ?? []).find(
@@ -354,7 +348,7 @@ export default function FavoritesMenu({
                       return (
                         <div
                           key={favorite.id}
-                          className="flex items-center gap-3 rounded-3xl border border-[#eadbc5]/70 bg-gradient-to-br from-white/90 via-[#fffaf2]/85 to-[#f6efe3]/85 p-3 shadow-[0_14px_34px_rgba(120,72,0,0.14)] transition hover:-translate-y-px hover:shadow-[0_18px_46px_rgba(120,72,0,0.18)]"
+                          className="relative flex w-full items-start gap-3 rounded-3xl border border-[#eadbc5]/70 bg-white/50 p-3 shadow-sm ring-1 ring-black/[0.05] transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-[#eadbc5]"
                         >
                           <Link
                             href={product ? `/product/${product.id}` : '#'}
@@ -364,45 +358,49 @@ export default function FavoritesMenu({
                             {imageSrc ? (
                               <Image src={imageSrc} alt={product?.title ?? 'Product'} fill className="object-cover" />
                             ) : (
-                              <div className="flex h-full w-full items-center justify-center bg-muted text-[10px] text-muted-foreground">
+                              <div className="flex h-full w-full items-center justify-center bg-muted/20 text-xs font-bold text-muted-foreground">
                                 No image
                               </div>
                             )}
                           </Link>
-                          <div className="flex-1 space-y-1">
-                            <Link
-                              href={product ? `/product/${product.id}` : '#'}
-                              className="text-sm font-semibold text-[#2D2D2D] hover:underline"
-                              onClick={handleNavigate}
-                            >
-                              {product?.title ?? 'Listing removed'}
-                            </Link>
-                            <p className="text-xs text-[#E67E22]">
-                              {formatPrice(product?.price ?? null, product?.currency ?? null)}
-                            </p>
+                          <div className="flex-1 min-w-0 flex flex-col justify-center">
+                            <div className="flex items-center gap-2">
+                              <Link
+                                href={product ? `/product/${product.id}` : '#'}
+                                className="truncate text-sm font-bold text-[#2D2D2D] hover:underline"
+                                onClick={handleNavigate}
+                              >
+                                {product?.title ?? 'Listing removed'}
+                              </Link>
+                            </div>
+                            <div className="mt-0.5 flex items-center justify-between">
+                              <p className="truncate text-sm font-bold text-brand">
+                                {formatPrice(product?.price ?? null, product?.currency ?? null)}
+                              </p>
+                            </div>
                             {product?.location && (
-                              <p className="text-xs text-muted-foreground">{product.location}</p>
+                              <p className="mt-0.5 truncate text-sm font-medium text-[#777777]">{product.location}</p>
                             )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col gap-1.5 shrink-0">
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-9 w-9 rounded-full border border-[#eadbc5]/70 bg-[#fffdf7]/80 text-[#E67E22] shadow-sm hover:border-[#E67E22]/40 hover:bg-white"
+                              className="h-8 w-8 rounded-full border border-[#eadbc5]/70 bg-white text-brand shadow-sm hover:border-brand/40 hover:bg-white"
                               onClick={() => void handleShare(favorite)}
                               disabled={!product}
                               aria-label="Share listing"
                             >
-                              <Share2 className="h-4 w-4" />
+                              <Share2 className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-9 w-9 rounded-full border border-[#eadbc5]/70 bg-[#fffdf7]/80 text-destructive shadow-sm hover:border-destructive/30 hover:bg-white"
+                              className="h-8 w-8 rounded-full border border-[#eadbc5]/70 bg-white text-destructive shadow-sm hover:border-destructive/30 hover:bg-white"
                               onClick={() => void handleRemove(favorite)}
                               aria-label="Remove from favorites"
                             >
-                              <Trash className="h-4 w-4" />
+                              <Trash className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
@@ -411,7 +409,7 @@ export default function FavoritesMenu({
                   </div>
                 </div>
               )}
-            </div>
+
           </div>
         )}
       </PopoverContent>

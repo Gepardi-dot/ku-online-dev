@@ -81,9 +81,9 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
   return (
     <div className="space-y-6">
       <form action={formAction} className="space-y-6">
-        <Card>
+        <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
           <CardHeader>
-            <CardTitle>{t('profile.settingsPanel.notificationsTitle')}</CardTitle>
+            <CardTitle className="text-brand">{t('profile.settingsPanel.notificationsTitle')}</CardTitle>
             <p className="text-sm text-muted-foreground">
               {t('profile.settingsPanel.notificationsDescription')}
             </p>
@@ -127,9 +127,9 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
           <CardHeader>
-            <CardTitle>{t('profile.settingsPanel.languageTitle')}</CardTitle>
+            <CardTitle className="text-brand">{t('profile.settingsPanel.languageTitle')}</CardTitle>
             <p className="text-sm text-muted-foreground">
               {t('profile.settingsPanel.languageDescription')}
             </p>
@@ -140,7 +140,7 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
               value={preferredLanguage}
               onValueChange={(value) => setPreferredLanguage(value as 'en' | 'ar' | 'ku')}
             >
-              <SelectTrigger id="preferredLanguage">
+              <SelectTrigger id="preferredLanguage" className="rounded-xl border-[#eadbc5]/70 bg-white/70 focus:border-brand/50 focus:ring-brand/20">
                 <SelectValue placeholder={t('profile.settingsPanel.languagePlaceholder')} />
               </SelectTrigger>
               <SelectContent>
@@ -162,9 +162,9 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
         </div>
       </form>
 
-      <Card>
+      <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
         <CardHeader>
-          <CardTitle>{t('profile.settingsPanel.accountEmailTitle')}</CardTitle>
+          <CardTitle className="text-brand">{t('profile.settingsPanel.accountEmailTitle')}</CardTitle>
           <p className="text-sm text-muted-foreground">
             {t('profile.settingsPanel.accountEmailDescription').replace('{email}', currentEmail)}
           </p>
@@ -176,6 +176,7 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
               name="newEmail"
               placeholder={t('profile.settingsPanel.accountEmailPlaceholder')}
               required
+              className="rounded-xl border-[#eadbc5]/70 bg-white/70 focus:border-brand/50 focus:ring-brand/20"
             />
             <div className="flex items-center gap-3">
               <NamedSubmitButton
@@ -196,9 +197,9 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
         <CardHeader>
-          <CardTitle>{t('profile.settingsPanel.passwordTitle')}</CardTitle>
+          <CardTitle className="text-brand">{t('profile.settingsPanel.passwordTitle')}</CardTitle>
           <p className="text-sm text-muted-foreground">
             {t('profile.settingsPanel.passwordDescription')}
           </p>
@@ -207,11 +208,11 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
           <form action={passwordAction} className="space-y-3 max-w-md">
             <div className="space-y-2">
               <Label htmlFor="newPassword">{t('profile.settingsPanel.newPasswordLabel')}</Label>
-              <Input type="password" name="newPassword" id="newPassword" minLength={8} required />
+              <Input type="password" name="newPassword" id="newPassword" minLength={8} required className="rounded-xl border-[#eadbc5]/70 bg-white/70 focus:border-brand/50 focus:ring-brand/20" />
             </div>
             <div className="space-y-2">
               <Label htmlFor="confirmPassword">{t('profile.settingsPanel.confirmPasswordLabel')}</Label>
-              <Input type="password" name="confirmPassword" id="confirmPassword" minLength={8} required />
+              <Input type="password" name="confirmPassword" id="confirmPassword" minLength={8} required className="rounded-xl border-[#eadbc5]/70 bg-white/70 focus:border-brand/50 focus:ring-brand/20" />
             </div>
             <div className="flex items-center gap-3">
               <NamedSubmitButton
@@ -232,12 +233,12 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-destructive">{t('profile.settingsPanel.dangerZoneTitle')}</CardTitle>
-          <p className="text-sm text-muted-foreground">{t('profile.settingsPanel.dangerZoneDescription')}</p>
+      <Card className="p-3 rounded-[24px] border border-red-200/60 bg-gradient-to-br from-red-50/50 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.08)] ring-1 ring-red-100/40">
+        <CardHeader className="p-2 pb-1">
+          <CardTitle className="text-destructive text-sm">{t('profile.settingsPanel.dangerZoneTitle')}</CardTitle>
+          <p className="text-xs text-muted-foreground">{t('profile.settingsPanel.dangerZoneDescription')}</p>
         </CardHeader>
-      <CardContent>
+      <CardContent className="p-2 pt-0">
         <Button
           type="button"
           size="sm"
@@ -287,9 +288,9 @@ function isDeleteConfirmationValid(value: string | null) {
 
 function ToggleRow({ label, description, checked, onCheckedChange, name }: ToggleRowProps) {
   return (
-    <div className="flex items-center justify-between rounded-lg border p-4">
+    <div className="flex items-center justify-between rounded-2xl border border-[#eadbc5]/50 bg-white/50 p-4 shadow-sm ring-1 ring-black/[0.03] transition hover:bg-white/70">
       <div className="pr-4">
-        <p className="text-sm font-medium text-foreground">{label}</p>
+        <p className="text-sm font-medium text-[#2D2D2D]">{label}</p>
         <p className="text-xs text-muted-foreground">{description}</p>
       </div>
       <Switch checked={checked} onCheckedChange={onCheckedChange} aria-label={label} />
@@ -308,7 +309,7 @@ function SubmitButton({
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" disabled={pending} className="rounded-xl bg-brand hover:bg-brand-dark shadow-md">
       {pending ? pendingLabel : label}
     </Button>
   );
@@ -324,7 +325,7 @@ function NamedSubmitButton({
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" disabled={pending}>
+    <Button type="submit" disabled={pending} className="rounded-xl bg-brand hover:bg-brand-dark shadow-md">
       {pending ? pendingLabel : label}
     </Button>
   );

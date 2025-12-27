@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Info, Loader2, Upload, X } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { CONDITION_OPTIONS } from '@/lib/products/filter-params';
 import { createProductSchema } from '@/lib/validation/schemas';
@@ -60,6 +60,7 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
   const { t, messages, locale } = useLocale();
   const direction = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
   const contentAlign = direction === 'rtl' ? 'end' : 'start';
+  const requiredFieldMessage = t('common.validation.required');
   const cityLabels = messages.header.city as Record<string, string>;
   const getCityLabel = (value: string) => cityLabels[value.toLowerCase()] ?? value;
 
@@ -277,6 +278,36 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
     setPendingRemoval((prev) => [...prev, image]);
   };
 
+  const handleRequiredInvalid = (event: React.FormEvent<HTMLInputElement>) => {
+    if (event.currentTarget.validity.valueMissing) {
+      event.currentTarget.setCustomValidity(requiredFieldMessage);
+    }
+  };
+
+  const handleRequiredInput = (event: React.FormEvent<HTMLInputElement>) => {
+    event.currentTarget.setCustomValidity('');
+  };
+
+  const handleSetCover = (targetPath: string) => {
+    setUploadedImages((prev) => {
+      const index = prev.findIndex((item) => item.path === targetPath);
+      if (index <= 0) return prev;
+      const next = [...prev];
+      const [selected] = next.splice(index, 1);
+      next.unshift(selected);
+      return next;
+    });
+    setFormData((prev) => {
+      const index = prev.images.findIndex((path) => path === targetPath);
+      if (index <= 0) return prev;
+      const nextImages = [...prev.images];
+      const [selected] = nextImages.splice(index, 1);
+      nextImages.unshift(selected);
+      return { ...prev, images: nextImages };
+    });
+    setHasUnsaved(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -314,18 +345,38 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
 
       const payload = validation.data;
 
+      const normalizedInitialTitle = initial.title.trim();
+      const normalizedInitialDescription = (initial.description ?? '').trim();
+      const normalizedNextTitle = payload.title.trim();
+      const normalizedNextDescription = (payload.description ?? '').trim();
+      const titleChanged = normalizedNextTitle !== normalizedInitialTitle;
+      const descriptionChanged = normalizedNextDescription !== normalizedInitialDescription;
+
+      const updates: Record<string, unknown> = {
+        title: payload.title,
+        description: payload.description,
+        price: payload.price,
+        currency: payload.currency ?? 'IQD',
+        condition: payload.condition,
+        location: payload.location,
+        category_id: payload.categoryId,
+        images: payload.images,
+      };
+
+      if (titleChanged) {
+        updates.title_translations = {};
+      }
+      if (descriptionChanged) {
+        updates.description_translations = {};
+      }
+      if (titleChanged || descriptionChanged) {
+        updates.i18n_source_hash = null;
+        updates.i18n_updated_at = null;
+      }
+
       const { error } = await supabase
         .from('products')
-        .update({
-          title: payload.title,
-          description: payload.description,
-          price: payload.price,
-          currency: payload.currency ?? 'IQD',
-          condition: payload.condition,
-          location: payload.location,
-          category_id: payload.categoryId,
-          images: payload.images,
-        })
+        .update(updates)
         .eq('id', productId);
       if (error) throw error;
 
@@ -354,6 +405,7 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
       });
       setHasUnsaved(false);
       router.push(`/product/${productId}`);
+      router.refresh();
     } catch (err) {
       console.error('Failed to update product', err);
       toast({
@@ -393,29 +445,31 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
   };
 
   const selectTriggerClassName = [
-    'h-12 w-fit max-w-full rounded-2xl border border-[#eadbc5]/80 bg-gradient-to-b from-[#fffdf7] to-[#fff2e2] px-4 text-sm text-[#1F1C1C]',
+    'h-12 w-fit max-w-full rounded-md border border-white/40 bg-white/60 px-4 text-sm text-[#1F1C1C] backdrop-blur-md',
     '[&>span]:max-w-[18rem]',
-    'shadow-[0_10px_26px_rgba(120,72,0,0.12)] ring-1 ring-white/70 backdrop-blur-xl transition',
-    'hover:-translate-y-px hover:border-[#E67E22]/45 hover:shadow-[0_14px_34px_rgba(120,72,0,0.16)]',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/45 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fffaf2]',
+    'shadow-[0_8px_22px_rgba(15,23,42,0.10)] ring-1 ring-white/40 transition',
+    'hover:border-white/70 hover:bg-white/75',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
+    'focus-visible:ring-offset-1 focus-visible:ring-offset-white/80',
   ].join(' ');
 
   const selectContentClassName = [
-    'rounded-3xl border border-[#eadbc5]/80',
-    'bg-gradient-to-br from-[#fffdf7]/95 via-[#fff6ea]/90 to-[#f4ecdf]/90',
-    'shadow-[0_22px_60px_rgba(120,72,0,0.22)] backdrop-blur-2xl ring-1 ring-white/60',
-    'w-fit max-w-[min(22rem,calc(100vw-2rem))]',
-    '[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0 [&_[data-radix-select-viewport]]:p-2',
-    '[&_[data-radix-select-viewport]]:flex [&_[data-radix-select-viewport]]:flex-col [&_[data-radix-select-viewport]]:gap-2',
+    'max-h-[18rem] w-fit max-w-[min(18rem,calc(100vw-2rem))] rounded-md border border-white/60',
+    'bg-white/75 p-1.5 shadow-[0_28px_70px_rgba(15,23,42,0.28)] ring-1 ring-black/10 backdrop-blur-xl',
+    '[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0 [&_[data-radix-select-viewport]]:p-1.5',
+    '[&_[data-radix-select-viewport]]:flex [&_[data-radix-select-viewport]]:flex-col [&_[data-radix-select-viewport]]:gap-1.5',
+    '[&_[data-radix-select-viewport]]:!max-h-[18rem] [&_[data-radix-select-viewport]]:!overflow-y-auto',
   ].join(' ');
 
-  const listSelectContentClassName = `${selectContentClassName} max-h-[16rem]`;
+  const listSelectContentClassName = selectContentClassName;
 
   const selectItemClassName = [
-    'rounded-2xl border-2 border-[#eadbc5]/70 bg-white/75 px-5 py-3.5 ps-12 text-[17px] leading-none text-[#1F1C1C] shadow-[0_10px_22px_rgba(120,72,0,0.10)] outline-none transition',
-    'hover:-translate-y-px hover:bg-white/80 hover:shadow-[0_10px_22px_rgba(120,72,0,0.12)]',
-    'data-[highlighted]:bg-white/85 data-[highlighted]:text-foreground data-[highlighted]:shadow-[0_10px_22px_rgba(120,72,0,0.12)]',
-    'data-[state=checked]:bg-[#fff1df] data-[state=checked]:font-semibold data-[state=checked]:border-[#E67E22]/30',
+    'w-full rounded-md border border-white/70 bg-white/65 px-2 py-2 ps-8 text-[16px] leading-snug text-[#1F1C1C] backdrop-blur-md',
+    'whitespace-normal break-words text-left',
+    'shadow-[0_12px_26px_rgba(15,23,42,0.12)] outline-none transition',
+    'hover:border-white/90 hover:bg-white/80 hover:shadow-[0_16px_34px_rgba(15,23,42,0.18)]',
+    'data-[highlighted]:border-white/90 data-[highlighted]:bg-white/80 data-[highlighted]:shadow-[0_16px_34px_rgba(15,23,42,0.18)]',
+    'data-[state=checked]:border-white data-[state=checked]:bg-white/90 data-[state=checked]:font-medium',
   ].join(' ');
 
   const textFieldClassName = [
@@ -430,6 +484,11 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
     'shadow-[0_14px_38px_rgba(15,23,42,0.1)] ring-1 ring-black/10 transition',
     'placeholder:text-muted-foreground/70',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white/80',
+  ].join(' ');
+
+  const uploadDropZoneBaseClassName = [
+    'relative flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed p-10 text-center transition',
+    'bg-white/92 shadow-[0_8px_18px_rgba(124,45,18,0.08)]',
   ].join(' ');
 
   return (
@@ -457,6 +516,8 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
                         setHasUnsaved(true);
                         setFormData((p) => ({ ...p, title: e.target.value }));
                       }}
+                      onInvalid={handleRequiredInvalid}
+                      onInput={handleRequiredInput}
                       placeholder={t('sellForm.fields.titlePlaceholder')}
                       required
                     />
@@ -551,6 +612,8 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
                         setHasUnsaved(true);
                         setFormData((p) => ({ ...p, price: e.target.value }));
                       }}
+                      onInvalid={handleRequiredInvalid}
+                      onInput={handleRequiredInput}
                       placeholder="0"
                       min="0"
                       step="0.01"
@@ -668,12 +731,12 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
                 </div>
 
                 <div
-                  className={`mt-2 rounded-3xl border-2 border-dashed p-6 transition ring-1 ring-black/5 ${
-                    isDragActive ? 'border-primary bg-primary/10 shadow-md' : 'border-border/80 bg-white/70 shadow-sm'
-                  } ${
-                    storageBusy || uploadedImages.length >= MAX_IMAGES
-                      ? 'cursor-not-allowed opacity-60'
-                      : 'cursor-pointer hover:bg-white hover:shadow-md'
+                  className={`${uploadDropZoneBaseClassName} ${
+                    isDragActive
+                      ? 'border-[#f97316] bg-white/95'
+                      : storageBusy || uploadedImages.length >= MAX_IMAGES
+                        ? 'cursor-not-allowed opacity-60 border-[#f6dcc2]'
+                        : 'cursor-pointer border-[#f6dcc2] hover:border-[#f97316] hover:bg-white/95'
                   }`}
                   onDragEnter={handleDragOver}
                   onDragOver={handleDragOver}
@@ -694,60 +757,12 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
                     }
                   }}
                 >
-                  <div className="relative">
-                    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden rounded-[2.25rem]">
-                      <div className="absolute left-1/2 top-1/2 h-40 w-40 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/50 blur-2xl" />
-                      <div className="absolute left-1/2 top-1/2 h-72 w-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/10 blur-3xl" />
-                    </div>
-
-                    <div className="relative flex min-h-[220px] flex-col items-center justify-center gap-3 text-center">
-                      <div className="relative flex h-16 w-16 items-center justify-center rounded-full bg-white/75 ring-1 ring-white/70 shadow-[0_10px_26px_rgba(15,23,42,0.08)] backdrop-blur">
-                        <Upload className="h-7 w-7 text-foreground/70" />
-                        <div
-                          aria-hidden="true"
-                          className={[
-                            'pointer-events-none absolute inset-0 rounded-full transition-opacity',
-                            isDragActive ? 'bg-primary/15 opacity-100' : 'bg-transparent opacity-0',
-                          ].join(' ')}
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-foreground/90">{t('sellForm.upload.dropHint')}</p>
-                        <p className="text-xs text-muted-foreground">{t('sellForm.upload.tip')}</p>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="inline-flex h-10 items-center justify-center rounded-full border border-border/70 bg-white/85 px-6 text-sm font-semibold text-foreground shadow-sm ring-1 ring-black/5 backdrop-blur transition-colors hover:bg-white"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          if (storageBusy || uploadedImages.length >= MAX_IMAGES) return;
-                          handleFileButtonClick();
-                        }}
-                        disabled={storageBusy || uploadedImages.length >= MAX_IMAGES}
-                      >
-                        {storageBusy ? (
-                          <span className="inline-flex items-center gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            {t('sellForm.upload.processing')}
-                          </span>
-                        ) : (
-                          t('sellForm.upload.browse')
-                        )}
-                      </button>
-
-                      <div className="mt-2 inline-flex max-w-[30rem] items-center gap-2 rounded-full bg-white/70 px-3 py-1 text-[11px] text-muted-foreground ring-1 ring-black/5 backdrop-blur">
-                        <Info className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                        <span className="leading-snug">
-                          {t('sellForm.upload.supports')
-                            .replace('{types}', ACCEPTED_FILES_DESCRIPTION)
-                            .replace('{maxMb}', String(maxFileSizeMb))
-                            .replace('{maxImages}', String(MAX_IMAGES))}
-                        </span>
-                      </div>
-                    </div>
+                  <div className="text-[#f97316]">
+                    <Upload className="h-7 w-7" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-base font-semibold text-[#3f2a1e]">{t('sellForm.upload.dropHint')}</p>
+                    <p className="text-sm text-muted-foreground">{t('sellForm.upload.browse')}</p>
                   </div>
 
                   <input
@@ -765,14 +780,14 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
                     {uploadedImages.map((image, index) => (
                       <div
                         key={image.path}
-                        className="group relative aspect-square overflow-hidden rounded-2xl border border-white/60 bg-white/50"
+                        className="group relative aspect-square overflow-hidden rounded-2xl border border-white/70 bg-white/90 shadow-[0_8px_18px_rgba(124,45,18,0.08)]"
                       >
                         {image.url ? (
                           <Image
                             src={image.url}
                             alt={t('sellForm.upload.previewAlt')}
                             fill
-                            className="object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                            className="object-cover"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center bg-muted text-[10px] text-muted-foreground">
@@ -780,13 +795,22 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
                           </div>
                         )}
                         {index === 0 && (
-                          <div className="absolute left-2 top-2 rounded-full bg-white/75 px-2 py-1 text-[10px] font-semibold text-foreground ring-1 ring-white/70 backdrop-blur">
+                          <div className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-700 shadow-sm">
                             {t('sellForm.preview.cover')}
                           </div>
                         )}
+                        {index !== 0 && (
+                          <button
+                            type="button"
+                            className="absolute bottom-2 left-2 rounded-full bg-white/90 px-2 py-1 text-[10px] font-semibold text-slate-700 shadow-sm opacity-0 transition group-hover:opacity-100"
+                            onClick={() => handleSetCover(image.path)}
+                          >
+                            {t('sellForm.upload.setCover')}
+                          </button>
+                        )}
                         <button
                           type="button"
-                          className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-black/80 group-hover:opacity-100"
+                          className="absolute right-2 top-2 inline-flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition group-hover:opacity-100 hover:bg-black/80"
                           onClick={() => void handleRemoveImage(image)}
                           disabled={storageBusy}
                         >

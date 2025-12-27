@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { ArrowRight, Bell, Loader2 } from "lucide-react";
+import { ArrowRight, Bell, Loader2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -263,17 +263,17 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
     }
     const displayCount = unreadCount > 9 ? "9+" : String(unreadCount);
     return (
-      <span className="pointer-events-none absolute -top-1 -right-1 inline-flex h-5 min-w-[1.1rem] items-center justify-center rounded-full border-2 border-white bg-[#E67E22] px-1 text-[10px] font-semibold text-white shadow-sm">
+      <span className="pointer-events-none absolute -top-1 -right-1 inline-flex h-5 min-w-[1.1rem] items-center justify-center rounded-full border-2 border-white bg-brand px-1 text-[10px] font-semibold text-white shadow-sm">
         {displayCount}
       </span>
     );
   }, [unreadCount]);
 
   const ebayTriggerClass =
-    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-[#E67E22]/50 hover:text-[#E67E22] hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40";
+    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40";
 
     return (
-      <Popover open={open} onOpenChange={handleOpenChange}>
+      <Popover open={open} onOpenChange={handleOpenChange} modal={true}>
         <PopoverTrigger asChild>
           <button type="button" className={ebayTriggerClass} aria-label={strings.label}>
             <Bell className="h-6 w-6" strokeWidth={1.6} />
@@ -284,18 +284,30 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
           align="end"
           side="bottom"
           sideOffset={12}
-          className="z-[90] w-96 max-w-[calc(100vw-1rem)] rounded-3xl border border-[#eadbc5]/70 bg-gradient-to-br from-[#fffdf7]/95 via-[#fff6ea]/90 to-[#f4ecdf]/90 p-3 shadow-[0_22px_60px_rgba(120,72,0,0.22)] backdrop-blur-2xl ring-1 ring-white/60"
+          className="z-[90] flex w-[420px] max-h-[calc(100vh-5rem)] max-w-[calc(100vw-1rem)] flex-col overscroll-contain rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
         >
-        <div className="flex items-center justify-between rounded-2xl border border-[#eadbc5]/70 bg-white/70 px-4 py-3 shadow-[0_10px_26px_rgba(120,72,0,0.10)]">
-          <div className="text-sm font-semibold text-[#2D2D2D]">{strings.label}</div>
-          {unreadCount > 0 && (
-            <Button variant="ghost" size="sm" onClick={handleMarkAllRead} className="h-8 text-[#E67E22] hover:bg-white/50">
-              {strings.markAll}
-            </Button>
-          )}
-        </div>
-        <ScrollArea className="mt-3 max-h-[440px]">
-          <div className="space-y-2.5 px-1 py-2">
+        <div className="flex h-full flex-col gap-3">
+
+          <div className="flex items-center justify-between px-3 py-2 mb-2">
+            <span className="text-xs font-bold uppercase tracking-widest text-brand">{strings.label}</span>
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <Button variant="ghost" size="sm" onClick={handleMarkAllRead} className="h-7 rounded-full text-xs text-brand hover:bg-brand/10 px-2">
+                  {strings.markAll}
+                </Button>
+              )}
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#eadbc5]/70 bg-white/80 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-brand hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
+                aria-label="Close notifications"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        <div className="max-h-[360px] overflow-y-auto w-full pr-3 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-brand [&::-webkit-scrollbar-thumb]:to-brand-light [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-brand-dark hover:[&::-webkit-scrollbar-thumb]:to-brand">
+            <div className="space-y-3 p-0.5">
             {loading ? (
               <div className="flex h-48 items-center justify-center text-muted-foreground">
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -329,28 +341,29 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                 const isListingUpdated = metaKind === "listing_updated" || listingTitle === "Listing Updated";
 
                 const listingBadge = (() => {
+                  const baseClasses = "shadow-sm border";
                   if (isSold) {
-                    return { label: t("product.soldBadge"), className: "bg-red-500 text-white" };
+                    return { label: t("product.soldBadge"), className: `${baseClasses} bg-red-500 text-white border-red-600` };
                   }
                   if (isPriceUpdated) {
                     return {
                       label: t("product.priceUpdatedBadge"),
-                      className: "bg-[#fff1df] text-[#9a4a00] border border-[#eadbc5]/70",
+                      className: `${baseClasses} bg-amber-50 text-amber-700 border-amber-200`,
                     };
                   }
                   if (isBackOnline) {
                     return {
                       label: t("product.backOnlineBadge"),
-                      className: "bg-emerald-600 text-white",
+                      className: `${baseClasses} bg-emerald-50 text-emerald-700 border-emerald-200`,
                     };
                   }
                   if (isListingUpdated) {
                     return {
                       label: t("product.listingUpdatedBadge"),
-                      className: "bg-[#f6efe3] text-[#2D2D2D] border border-[#eadbc5]/70",
+                      className: `${baseClasses} bg-slate-50 text-slate-700 border-slate-200`,
                     };
                   }
-                  return { label: "Update", className: "bg-[#f6efe3] text-[#2D2D2D] border border-[#eadbc5]/70" };
+                  return { label: "Update", className: `${baseClasses} bg-slate-50 text-slate-700 border-slate-200` };
                 })();
 
                 return (
@@ -358,20 +371,22 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                     key={notification.id}
                     type="button"
                     onClick={() => void handleNotificationClick(notification)}
-                    className={`group w-full rounded-2xl border border-[#eadbc5]/70 bg-gradient-to-br from-white/85 via-[#fffaf2]/90 to-[#f6efe3]/85 p-3 text-left transition hover:-translate-y-0.5 hover:border-[#eadbc5] hover:shadow-[0_12px_28px_rgba(120,72,0,0.12)] ${
-                      notification.isRead ? "opacity-75" : "shadow-[0_8px_24px_rgba(120,72,0,0.08)]"
+                    className={`relative flex w-full items-start gap-3 rounded-3xl border p-3 text-left transition hover:-translate-y-px ${
+                      notification.isRead
+                        ? "border-[#eadbc5]/70 bg-white/50 shadow-sm ring-1 ring-black/[0.05] hover:border-[#eadbc5] hover:shadow-md hover:-translate-y-0.5"
+                        : "border-[#eadbc5]/70 bg-white/60 shadow-sm ring-1 ring-black/[0.05] hover:border-[#eadbc5] hover:shadow-md hover:-translate-y-0.5"
                     }`}
                   >
                     {isListing ? (
-                      <div className="flex items-center gap-3">
-                        <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/80 bg-white/40 shadow-sm">
+                      <div className="flex w-full items-center gap-3">
+                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/60 bg-white/80">
                           {thumbUrl ? (
                             <Image
                               src={thumbUrl}
                               alt={productName}
                               fill
-                              sizes="48px"
-                              className="object-cover transition-transform group-hover:scale-110"
+                              sizes="64px"
+                              className="object-cover"
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center bg-muted/20 text-xs font-bold text-muted-foreground">
@@ -387,10 +402,13 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                             >
                               {listingBadge.label}
                             </span>
+                            {!notification.isRead && (
+                               <div className="absolute right-0 top-0 h-2 w-2 -translate-y-1/2 translate-x-1/2 rounded-full bg-orange-500 ring-4 ring-white" />
+                            )}
                           </div>
                           <div className="mt-0.5 flex items-center justify-between">
                             {formattedPrice && (
-                              <p className="truncate text-xs font-medium text-[#E67E22]">{formattedPrice}</p>
+                              <p className="truncate text-sm font-bold text-brand">{formattedPrice}</p>
                             )}
                             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5" />
                           </div>
@@ -411,10 +429,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                           <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{notification.content}</p>
                         )}
                         {!notification.isRead && (
-                          <div className="mt-1 flex items-center gap-1">
-                            <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-                            <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">New Update</span>
-                          </div>
+                          <div className="absolute right-4 top-4 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-white" />
                         )}
                       </div>
                     )}
@@ -423,7 +438,8 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
               })
             )}
           </div>
-        </ScrollArea>
+          </div>
+      </div>
       </PopoverContent>
     </Popover>
   );

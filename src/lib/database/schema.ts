@@ -17,6 +17,7 @@ import {
 // Type exports
 export type User = typeof users.$inferSelect;
 export type Product = typeof products.$inferSelect;
+export type ProductSale = typeof productSales.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Message = typeof messages.$inferSelect;
 export type Review = typeof reviews.$inferSelect;
@@ -80,6 +81,13 @@ export const products = pgTable('products', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
   searchDocument: tsvector('search_document'),
+});
+
+// Product sales table
+export const productSales = pgTable('product_sales', {
+  productId: uuid('product_id').primaryKey().references(() => products.id, { onDelete: 'cascade' }),
+  buyerId: uuid('buyer_id').references(() => users.id, { onDelete: 'set null' }),
+  soldAt: timestamp('sold_at', { withTimezone: true }).defaultNow(),
 });
 
 // Conversations table
