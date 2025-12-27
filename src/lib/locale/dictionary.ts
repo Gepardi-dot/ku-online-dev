@@ -181,6 +181,7 @@ export const translations = {
     },
     product: {
       descriptionTitle: "Description",
+      photosTitle: "Photos",
       sellerInformationTitle: "Seller Information",
       sellerFallback: "Seller",
       conditionUnknown: "Unknown",
@@ -194,8 +195,21 @@ export const translations = {
       chatWithSellerButton: "Chat with Seller",
       loadingSimilar: "Loading similar items...",
       editListing: "Edit Listing",
+      removeListing: "Remove listing",
+      removeListingConfirmTitle: "Remove this listing?",
+      removeListingConfirmDescription: "This will permanently delete the listing and its photos. This cannot be undone.",
+      removeListingConfirmAction: "Remove",
+      removeListingSuccess: "Listing removed",
+      removeListingFailed: "Failed to remove listing",
+      removeListingFailedHint: "Please try again in a moment.",
       markAsSold: "Mark as Sold",
       markAsAvailable: "Mark as Available",
+      buyerLabel: "Buyer",
+      buyerPlaceholder: "Choose a buyer",
+      buyerFallback: "Buyer",
+      buyerUnknown: "Buyer not set",
+      buyerEmpty: "No buyer messages yet.",
+      selectBuyerRequired: "Select a buyer before marking as sold.",
       markedSold: "Marked as sold",
       markedAvailable: "Marked as available",
       toggleSoldFailed: "Failed to update",
@@ -213,6 +227,7 @@ export const translations = {
       tabs: {
         overview: "Overview",
         listings: "Listings",
+        sales: "Sales",
         reviews: "Reviews",
         messages: "Messages",
         settings: "Settings",
@@ -259,6 +274,14 @@ export const translations = {
       listings: {
         title: "My Listings",
         empty: "You have not published any listings yet.",
+      },
+      sales: {
+        title: "Sales",
+        empty: "Sold listings will appear here.",
+        buyerLabel: "Buyer",
+        buyerFallback: "Buyer",
+        noBuyer: "Buyer not set",
+        soldAtLabel: "Sold",
       },
       reviewsTab: {
         title: "Reviews & Feedback",
@@ -405,6 +428,9 @@ export const translations = {
         cover: "Cover",
         checklistTitle: "Checklist",
       },
+      progress: {
+        completion: "{count} of {total}",
+      },
       fields: {
         title: "Product Title",
         titlePlaceholder: "What are you selling?",
@@ -431,6 +457,7 @@ export const translations = {
         supports: "Supports {types} up to {maxMb}MB each. Max {maxImages} images.",
         tip: "Tip: Cars and Property keep original resolution (up to 10MB per image) after upload.",
         selectedCount: "{count} of {max} images selected",
+        setCover: "Set as cover",
         previewAlt: "Uploaded preview",
       },
       currency: {
@@ -487,6 +514,9 @@ export const translations = {
       showOriginal: "Show original",
       comingSoonTitle: "Coming soon",
       comingSoonDescription: "This feature is currently under construction.",
+      validation: {
+        required: "Please fill out this field.",
+      },
     },
     report: {
       button: "Report Listing",
@@ -692,6 +722,7 @@ export const translations = {
     },
     product: {
       descriptionTitle: "الوصف",
+      photosTitle: "الصور",
       sellerInformationTitle: "معلومات البائع",
       sellerFallback: "البائع",
       conditionUnknown: "غير محدد",
@@ -705,8 +736,21 @@ export const translations = {
       chatWithSellerButton: "الدردشة مع البائع",
       loadingSimilar: "جارٍ تحميل عناصر مشابهة...",
       editListing: "تعديل الإعلان",
+      removeListing: "حذف الإعلان",
+      removeListingConfirmTitle: "حذف هذا الإعلان؟",
+      removeListingConfirmDescription: "سيتم حذف الإعلان وصوره نهائيًا. لا يمكن التراجع عن ذلك.",
+      removeListingConfirmAction: "حذف",
+      removeListingSuccess: "تم حذف الإعلان",
+      removeListingFailed: "فشل حذف الإعلان",
+      removeListingFailedHint: "حاول مرة أخرى بعد قليل.",
       markAsSold: "تحديد كمباع",
       markAsAvailable: "وضع علامة متاح",
+      buyerLabel: "المشتري",
+      buyerPlaceholder: "اختر مشتريًا",
+      buyerFallback: "المشتري",
+      buyerUnknown: "لم يتم تحديد المشتري",
+      buyerEmpty: "لا توجد رسائل مشترين حتى الآن.",
+      selectBuyerRequired: "اختر مشتريًا قبل تمييز الإعلان كمباع.",
       markedSold: "تم وضع علامة مباع",
       markedAvailable: "تم وضع علامة متاح",
       toggleSoldFailed: "فشل التحديث",
@@ -724,6 +768,7 @@ export const translations = {
       tabs: {
         overview: "نظرة عامة",
         listings: "الإعلانات",
+        sales: "المبيعات",
         reviews: "المراجعات",
         messages: "الرسائل",
         settings: "الإعدادات",
@@ -770,6 +815,14 @@ export const translations = {
       listings: {
         title: "إعلاناتي",
         empty: "لم تنشر أي إعلانات بعد.",
+      },
+      sales: {
+        title: "المبيعات",
+        empty: "ستظهر الإعلانات المباعة هنا.",
+        buyerLabel: "المشتري",
+        buyerFallback: "المشتري",
+        noBuyer: "لم يتم تحديد المشتري",
+        soldAtLabel: "تم البيع",
       },
       reviewsTab: {
         title: "المراجعات والتعليقات",
@@ -916,6 +969,9 @@ export const translations = {
         cover: "الصورة الرئيسية",
         checklistTitle: "قائمة التحقق",
       },
+      progress: {
+        completion: "{count} من {total}",
+      },
       fields: {
         title: "عنوان المنتج",
         titlePlaceholder: "ماذا تبيع؟",
@@ -942,6 +998,7 @@ export const translations = {
         supports: "يدعم {types} حتى {maxMb}MB لكل صورة. بحد أقصى {maxImages} صور.",
         tip: "نصيحة: فئتا السيارات والعقارات تحتفظان بالدقة الأصلية (حتى 10MB لكل صورة) بعد الرفع.",
         selectedCount: "تم اختيار {count} من {max} صور",
+        setCover: "تعيين كصورة رئيسية",
         previewAlt: "معاينة الصورة المرفوعة",
       },
       currency: {
@@ -996,6 +1053,9 @@ export const translations = {
       loading: "جارٍ التحميل...",
       comingSoonTitle: "قريبًا",
       comingSoonDescription: "هذه الميزة قيد التطوير حاليًا.",
+      validation: {
+        required: "يرجى تعبئة هذا الحقل.",
+      },
     },
     report: {
       button: "التبليغ عن منتج",
@@ -1203,6 +1263,7 @@ export const translations = {
     },
     product: {
       descriptionTitle: "وەسف",
+      photosTitle: "وێنەکان",
       sellerInformationTitle: "زانیاری فرۆشیار",
       sellerFallback: "فرۆشیار",
       conditionUnknown: "نەزانراو",
@@ -1216,8 +1277,21 @@ export const translations = {
       chatWithSellerButton: "گفتوگۆ لەگەڵ فرۆشیار",
       loadingSimilar: "کالاکانی هاوشێوە بار دەکرێن...",
       editListing: "دەستکاری ئیلان",
+      removeListing: "سڕینەوەی ئیلان",
+      removeListingConfirmTitle: "ئەم ئیلانە بسڕدرێتەوە؟",
+      removeListingConfirmDescription: "ئیلانەکە و وێنەکانی بە تەواوی دەسڕێندرێنەوە. گەڕانەوە نییە.",
+      removeListingConfirmAction: "سڕینەوە",
+      removeListingSuccess: "ئیلان سڕایەوە",
+      removeListingFailed: "سڕینەوە سەرکەوتوو نەبوو",
+      removeListingFailedHint: "تکایە دواتر هەوڵ بدە.",
       markAsSold: "نیشانکردن فڕۆشراو",
       markAsAvailable: "ئەلامەی بەردەست",
+      buyerLabel: "کڕیار",
+      buyerPlaceholder: "کڕیار هەڵبژێرە",
+      buyerFallback: "کڕیار",
+      buyerUnknown: "کڕیار دیاری نەکراوە",
+      buyerEmpty: "هێشتا هیچ نامەی کڕیارێک نییە.",
+      selectBuyerRequired: "پێش نیشانکردنی فڕۆشراو کڕیارێک هەڵبژێرە.",
       markedSold: "ئەلامە کرا بە فرۆشراو",
       markedAvailable: "ئەلامە کرا بە بەردەست",
       toggleSoldFailed: "نوێکردنەوە سەرکەوتوو نەبوو",
@@ -1235,6 +1309,7 @@ export const translations = {
       tabs: {
         overview: "کورتە",
         listings: "ئیلانەکان",
+        sales: "فرۆشەکان",
         reviews: "پـێداچوونەوەکان",
         messages: "نامەکان",
         settings: "ڕێکخستن",
@@ -1281,6 +1356,14 @@ export const translations = {
       listings: {
         title: "ئیلانەکانم",
         empty: "هێشتا هیچ ئیلانت بڵاو نەکردووە.",
+      },
+      sales: {
+        title: "فرۆشەکان",
+        empty: "ئیلانە فرۆشراوەکان لێرە دەردەکەون.",
+        buyerLabel: "کڕیار",
+        buyerFallback: "کڕیار",
+        noBuyer: "کڕیار دیاری نەکراوە",
+        soldAtLabel: "فرۆشراو",
       },
       reviewsTab: {
         title: "پـێداچوونەوە و فیدبـاک",
@@ -1427,6 +1510,9 @@ export const translations = {
         cover: "وێنەی سەرەکی",
         checklistTitle: "لیستی پشکنین",
       },
+      progress: {
+        completion: "{count} لە {total}",
+      },
       fields: {
         title: "ناونیشانی کاڵا",
         titlePlaceholder: "چی دەفرۆشیت؟",
@@ -1453,6 +1539,7 @@ export const translations = {
         supports: "پشتگیری {types} تا {maxMb}MB بۆ هەر یەک. زۆرترین {maxImages} وێنە.",
         tip: "ئاگاداری: ئۆتۆمبێل و خاوەنخانە قەبارەی ڕەسەن دەپارێزن (تا 10MB بۆ هەر وێنە) لە دوای بارکردن.",
         selectedCount: "{count} لە {max} وێنە هەڵبژێردرا",
+        setCover: "وێنەی سەرەکی بکە",
         previewAlt: "پێشبینی وێنەی بارکراو",
       },
       currency: {
@@ -1507,6 +1594,9 @@ export const translations = {
       loading: "لە بارکردندایە...",
       comingSoonTitle: "بەمزوان",
       comingSoonDescription: "ئەم تایبەتمەندییە هێشتا لە ژێر پڕۆژەدا دەگەڕێت.",
+      validation: {
+        required: "تکایە ئەم خانەیە پڕ بکە.",
+      },
     },
     report: {
       button: "ڕاپۆرتکردنی بەرھەم",

@@ -1,6 +1,8 @@
 
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import { unstable_noStore as noStore } from 'next/cache';
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 import AppLayout from '@/components/layout/app-layout';
 import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
@@ -23,6 +25,10 @@ import Link from 'next/link';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
 import { localizeText } from '@/lib/locale/localize';
+import { translateUserText } from '@/lib/ai/translate-user-text';
+import { getEnv } from '@/lib/env';
+import { isModerator } from '@/lib/auth/roles';
+import RemoveListingButton from '@/components/product/RemoveListingButton';
 
 const placeholderReviews = [
   {
@@ -48,6 +54,7 @@ interface ProductPageProps {
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
+  noStore();
   const { id } = await params;
 
   if (!id) {
@@ -66,6 +73,53 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   if (!product) {
     notFound();
+  }
+
+  const normalizeText = (value: string | null | undefined) => (typeof value === 'string' ? value.trim() : '');
+  const looksEnglish = (value: string | null | undefined) => /[A-Za-z]/.test(value ?? '');
+
+  if (locale === 'ar') {
+    const currentTitleAr = normalizeText(product.titleTranslations?.ar ?? null);
+    const currentTitleKu = normalizeText(product.titleTranslations?.ku ?? null);
+    const currentDescriptionAr = normalizeText(product.descriptionTranslations?.ar ?? null);
+    const currentDescriptionKu = normalizeText(product.descriptionTranslations?.ku ?? null);
+    const shouldTranslateTitle =
+      looksEnglish(product.title) && (!currentTitleAr || (currentTitleKu && currentTitleAr === currentTitleKu));
+    const shouldTranslateDescription =
+      looksEnglish(product.description ?? '') &&
+      (!currentDescriptionAr || (currentDescriptionKu && currentDescriptionAr === currentDescriptionKu));
+
+    if (shouldTranslateTitle || shouldTranslateDescription) {
+      const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = getEnv();
+      const supabaseAdmin = createSupabaseAdmin(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      const updates: Record<string, unknown> = {};
+
+      if (shouldTranslateTitle) {
+        const translatedTitle = await translateUserText(product.title, 'en', 'ar');
+        const nextTitleTranslations = { ...(product.titleTranslations ?? {}), ar: translatedTitle };
+        product.titleTranslations = nextTitleTranslations;
+        updates.title_translations = nextTitleTranslations;
+      }
+
+      if (shouldTranslateDescription) {
+        const translatedDescription = await translateUserText(product.description ?? '', 'en', 'ar');
+        const nextDescriptionTranslations = { ...(product.descriptionTranslations ?? {}), ar: translatedDescription };
+        product.descriptionTranslations = nextDescriptionTranslations;
+        updates.description_translations = nextDescriptionTranslations;
+      }
+
+      updates.i18n_source_hash = null;
+      updates.i18n_updated_at = new Date().toISOString();
+
+      const { error: translationError } = await supabaseAdmin
+        .from('products')
+        .update(updates)
+        .eq('id', product.id);
+
+      if (translationError) {
+        console.warn('Failed to persist product translations', translationError);
+      }
+    }
   }
 
   const localizedTitle = localizeText(product.title, product.titleTranslations, locale);
@@ -134,6 +188,50 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const sellerId = seller?.id ?? product.sellerId;
   const viewerId = user?.id ?? null;
   const isOwner = Boolean(viewerId && sellerId && viewerId === sellerId);
+  const userIsModerator = isModerator(user);
+  let buyerOptions: Array<{ id: string; fullName: string | null; avatarUrl: string | null }> = [];
+  let soldBuyerId: string | null = null;
+
+  if (isOwner) {
+    const [{ data: conversations, error: conversationsError }, { data: saleRow, error: saleError }] = await Promise.all([
+      supabase
+        .from('conversations')
+        .select('buyer_id, buyer:public_user_profiles!conversations_buyer_id_fkey(id, full_name, avatar_url)')
+        .eq('product_id', product.id)
+        .eq('seller_id', sellerId)
+        .order('updated_at', { ascending: false }),
+      supabase
+        .from('product_sales')
+        .select('buyer_id')
+        .eq('product_id', product.id)
+        .maybeSingle(),
+    ]);
+
+    if (conversationsError) {
+      console.error('Failed to load buyers for sold toggle', conversationsError);
+    }
+
+    if (saleError) {
+      console.error('Failed to load sold buyer details', saleError);
+    } else if (saleRow?.buyer_id) {
+      soldBuyerId = String(saleRow.buyer_id);
+    }
+
+    const buyersMap = new Map<string, { id: string; fullName: string | null; avatarUrl: string | null }>();
+    for (const row of conversations ?? []) {
+      const buyer = Array.isArray((row as any)?.buyer) ? (row as any).buyer[0] ?? null : (row as any)?.buyer ?? null;
+      const buyerId = (row as any)?.buyer_id ? String((row as any).buyer_id) : buyer?.id ? String(buyer.id) : null;
+      if (!buyerId || buyersMap.has(buyerId)) {
+        continue;
+      }
+      buyersMap.set(buyerId, {
+        id: buyerId,
+        fullName: (buyer?.full_name as string | null) ?? null,
+        avatarUrl: (buyer?.avatar_url as string | null) ?? null,
+      });
+    }
+    buyerOptions = Array.from(buyersMap.values());
+  }
   const daysSince = (date: Date | null | undefined) => (date ? Math.max(0, Math.floor((Date.now() - date.getTime()) / 86_400_000)) : null);
   const createdDays = daysSince(product.createdAt);
   const formatDaysAgo = (days: number) => {
@@ -226,6 +324,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <ProductImages
                   images={rawImages}
                   title={localizedTitle}
+                  description={localizedDescription}
+                  price={product.price}
+                  currency={product.currency}
+                  condition={product.condition}
+                  location={product.location}
+                  views={product.views}
+                  isSold={product.isSold}
+                  sellerName={seller?.fullName ?? seller?.name ?? seller?.email ?? null}
                   productId={product.id}
                   viewerId={viewerId}
                   initialFavoriteCount={favoriteCount}
@@ -267,7 +373,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <div className="flex items-center gap-3">
                   <div className="space-y-1">
                     {typeof product.originalPrice === 'number' && product.originalPrice > product.price ? (
-                      <div className="text-sm text-muted-foreground line-through">
+                      <div className="text-[0.95rem] font-semibold text-muted-foreground line-through decoration-[1px]">
                         {formatPrice(product.originalPrice, product.currency)}
                       </div>
                     ) : null}
@@ -381,6 +487,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       sellerId={sellerId ?? ''}
                       viewerId={viewerId}
                       isSold={product.isSold}
+                      buyers={buyerOptions}
+                      soldBuyerId={soldBuyerId}
                     />
                   )}
                   {isOwner && (
@@ -390,7 +498,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       </Link>
                     </Button>
                   )}
-                  <ReportListingDialog productId={product.id} sellerId={seller?.id ?? null} />
+                  {!isOwner && (
+                    <ReportListingDialog productId={product.id} sellerId={seller?.id ?? null} />
+                  )}
+                  {userIsModerator ? (
+                    <RemoveListingButton productId={product.id} redirectTo="/products" className="w-full" />
+                  ) : null}
                 </div>
               </CardContent>
             </Card>

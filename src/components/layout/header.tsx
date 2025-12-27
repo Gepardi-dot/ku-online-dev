@@ -175,7 +175,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                      className="w-56 rounded-3xl border border-white/60 bg-gradient-to-br from-white/95 via-white/90 to-primary/5 p-3 shadow-[0_18px_48px_rgba(15,23,42,0.18)] backdrop-blur-xl ring-1 ring-white/40"
+                      className="w-56 rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-3 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
                       align="end"
                     >
                       <DropdownMenuLabel>{t('header.filterLabel')}</DropdownMenuLabel>
@@ -300,7 +300,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
                 </Button>
               </DropdownMenuTrigger>
                     <DropdownMenuContent
-                      className="w-56 rounded-3xl border border-white/60 bg-gradient-to-br from-white/95 via-white/90 to-primary/5 p-3 shadow-[0_18px_48px_rgba(15,23,42,0.18)] backdrop-blur-xl ring-1 ring-white/40"
+                      className="w-56 rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-3 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
                       align="end"
                     >
                 <DropdownMenuLabel>{t('header.filterLabel')}</DropdownMenuLabel>

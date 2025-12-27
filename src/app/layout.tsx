@@ -5,13 +5,13 @@ import { cn } from '@/lib/utils';
 import { AnnouncementBar } from '@/components/layout/announcement-bar';
 import AppFooter from '@/components/layout/footer';
 import MobileNav from '@/components/layout/mobile-nav';
-import { Noto_Kufi_Arabic, PT_Sans } from 'next/font/google';
+import { DM_Sans, Noto_Kufi_Arabic } from 'next/font/google';
 import { LocaleProvider } from '@/providers/locale-provider';
 import { getServerLocale } from '@/lib/locale/server';
 
-const ptSans = PT_Sans({
+const dmSans = DM_Sans({
   subsets: ['latin'],
-  weight: ['400', '700'],
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
 });
 
@@ -51,7 +51,7 @@ export default async function RootLayout({
       </head>
       <body
         className={cn(
-          ptSans.className,
+          dmSans.className,
           notoKufiArabic.variable,
           'font-body antialiased min-h-screen bg-background font-sans',
         )}

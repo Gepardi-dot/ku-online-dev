@@ -45,7 +45,7 @@ import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
 
 const clampValue = (input: number, min: number, max: number) => Math.min(max, Math.max(min, input));
-const MOBILE_BOTTOM_GAP_PX = 38; // roughly 1cm spacing so the sheet clears the mobile nav
+const MOBILE_BOTTOM_GAP_PX = 92; // Increased spacing to ensure sheet clears mobile nav
 
 interface DragState {
   active: boolean;
@@ -404,13 +404,13 @@ export default function MessagesMenu({
     const displayCount = unreadCount > 9 ? "9+" : String(unreadCount);
 
     return (
-      <span className="pointer-events-none absolute -top-1 -right-1 inline-flex h-5 min-w-[1.1rem] items-center justify-center rounded-full border-2 border-white bg-[#E67E22] px-1 text-[10px] font-semibold text-white shadow-sm">
+      <span className="pointer-events-none absolute -top-1 -right-1 inline-flex h-5 min-w-[1.1rem] items-center justify-center rounded-full border-2 border-white bg-brand px-1 text-[10px] font-semibold text-white shadow-sm">
         {displayCount}
       </span>
     );
   }, [unreadCount]);
   const chipClass =
-    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-[#E67E22]/50 hover:text-[#E67E22] hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40";
+    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40";
 
   const minDragOffset = useMemo(() => {
     if (!isMobile) return 0;
@@ -494,9 +494,10 @@ export default function MessagesMenu({
           return;
         }
         setMobileView("list");
-        // Let the automatic alignment effect position the
-        // sheet so its bottom edge rests on the nav bar.
-        setDragOffset(0);
+        // On mobile, start with a negative offset to lift the window
+        // above the bottom navigation bar by default.
+        const initialOffset = isMobile ? -50 : 0;
+        setDragOffset(initialOffset);
         dragStateRef.current.active = false;
         setIsDragging(false);
         setOpen(true);
@@ -507,7 +508,7 @@ export default function MessagesMenu({
         setOpen(false);
       }
     },
-    [canLoad, strings.loginRequired],
+    [canLoad, strings.loginRequired, isMobile],
   );
 
   const handleConversationSelect = useCallback(
@@ -627,12 +628,12 @@ export default function MessagesMenu({
       <div
         key={conversation.id}
         className={cn(
-          "flex w-full items-center gap-3 rounded-2xl border px-3 py-2 text-left text-sm shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md active:translate-y-0",
+          "flex w-full items-center gap-3 rounded-3xl border p-3 text-left text-sm shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md active:translate-y-0",
           isActive
-            ? "border-[#E67E22]/40 bg-[rgba(255,255,255,0.72)] shadow-md ring-1 ring-[#E67E22]/10"
+            ? "border-brand/40 bg-[#FFF8F0]/90 shadow-md ring-1 ring-brand/20"
             : isUnread
-              ? "border-[#E67E22]/30 bg-[#FFF3E6] shadow-md ring-1 ring-[#E67E22]/10 hover:bg-[#FFE7CF]"
-              : "border-[#EBDAC8]/55 bg-[rgba(255,255,255,0.34)] hover:border-[#E7C9A3]/70 hover:bg-[rgba(255,255,255,0.52)]",
+              ? "border-brand/30 bg-[#FFF3E6]/90 shadow-md ring-1 ring-brand/15 hover:bg-[#FFEDD8]/95"
+              : "border-[#eadbc5]/60 bg-[#FFFBF5]/80 ring-1 ring-black/[0.03] hover:border-brand/30 hover:bg-[#FFF8F0]/90",
         )}
       >
         <button
@@ -674,7 +675,7 @@ export default function MessagesMenu({
           type="button"
           onClick={() => void handleDeleteConversation(conversation.id)}
           aria-label="Delete conversation"
-          className="ml-1 text-[#E67E22] hover:text-[#c76a16]"
+          className="ml-1 text-brand hover:text-[#c76a16]"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -718,7 +719,7 @@ export default function MessagesMenu({
           <div className="flex justify-center">
             <button
               type="button"
-              className="text-[11px] text-[#E67E22] underline-offset-2 hover:underline"
+              className="text-[11px] text-brand underline-offset-2 hover:underline"
               onClick={handleLoadMore}
               disabled={loadingMessages}
             >
@@ -744,7 +745,7 @@ export default function MessagesMenu({
                 className={cn(
                   "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-sm shadow-sm",
                   isViewer
-                    ? "bg-[#E67E22] text-white"
+                    ? "bg-brand text-white"
                     : "bg-[#EBDAC8] text-[#2D2D2D]",
                 )}
               >
@@ -761,9 +762,9 @@ export default function MessagesMenu({
   };
 
   const renderConversationListSection = () => (
-    <div className="flex h-full flex-col rounded-[24px] border border-white/60 bg-[rgba(255,249,217,0.28)] p-4 shadow-[0_16px_40px_rgba(15,23,42,0.18)] backdrop-blur-md">
-      <div className="mb-4 flex items-center justify-start">
-        <span className="text-base font-semibold text-[#2D2D2D]">Contacts</span>
+    <div className="flex h-full flex-col rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40">
+      <div className="flex items-center justify-between px-3 py-2 mb-3">
+        <span className="text-xs font-bold uppercase tracking-widest text-brand">Contacts</span>
       </div>
       <ScrollArea className="flex-1 pr-1">
         {loadingConversations ? (
@@ -775,7 +776,7 @@ export default function MessagesMenu({
             {strings.empty}
           </p>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {conversations.map((conversation) => renderConversationSummary(conversation))}
           </div>
         )}
@@ -794,7 +795,7 @@ export default function MessagesMenu({
           {showBackButton && (
             <button
               type="button"
-              className="mr-2 inline-flex items-center gap-1 text-xs text-[#E67E22] hover:underline md:hidden"
+              className="mr-2 inline-flex items-center gap-1 text-xs text-brand hover:underline md:hidden"
               onClick={() => setMobileView("list")}
             >
               <ArrowLeft className="h-3 w-3" />
@@ -856,7 +857,7 @@ export default function MessagesMenu({
               onClick={() => void handleSendMessage()}
               disabled={!activeConversation || sending}
               aria-label={strings.send}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#E67E22] text-white shadow-md disabled:opacity-60"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-brand text-white shadow-md disabled:opacity-60"
             >
               {sending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -941,7 +942,7 @@ export default function MessagesMenu({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+                className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#eadbc5]/70 bg-white/80 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-brand hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
                 aria-label={strings.label}
               >
                 <X className="h-4 w-4" />
@@ -953,7 +954,7 @@ export default function MessagesMenu({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#E67E22]/60 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+                className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#eadbc5]/70 bg-white/80 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-brand hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
                 aria-label={strings.label}
               >
                 <X className="h-4 w-4" />

@@ -2,15 +2,24 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import Image from 'next/image';
-import { Maximize2, X } from 'lucide-react';
+import { Eye, MapPin, Maximize2, Tag, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { Dialog, DialogContent, DialogClose, DialogTitle } from '@/components/ui/dialog';
 import { transformSignedImageUrl } from '@/lib/storage-transform';
 import FavoriteToggle, { favoritesEvents } from '@/components/product/favorite-toggle';
 import ShareButton from '@/components/share-button';
+import { useLocale } from '@/providers/locale-provider';
 
 type ProductImagesProps = {
   images: string[];
   title: string;
+  description?: string;
+  price?: number | null;
+  currency?: string | null;
+  condition?: string | null;
+  location?: string | null;
+  views?: number | null;
+  isSold?: boolean;
+  sellerName?: string | null;
   productId: string;
   viewerId: string | null;
   initialFavoriteCount: number;
@@ -20,11 +29,20 @@ type ProductImagesProps = {
 export default function ProductImages({
   images,
   title,
+  description,
+  price,
+  currency,
+  condition,
+  location,
+  views,
+  isSold,
+  sellerName,
   productId,
   viewerId,
   initialFavoriteCount,
   shareUrl,
 }: ProductImagesProps) {
+  const { t, locale, messages } = useLocale();
   const cleaned = images
     .filter((src) => typeof src === 'string' && src.trim().length > 0)
     .map((src) => src.trim());
@@ -32,12 +50,9 @@ export default function ProductImages({
   const fallback = 'https://placehold.co/1200x900?text=KU-ONLINE';
   const safeImages = cleaned.length > 0 ? cleaned : [fallback];
 
-  const CURSOR_ZOOM_IN =
-    'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyOCIgaGVpZ2h0PSIyOCIgdmlld0JveD0iMCAwIDI4IDI4IiBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxMi41IiBjeT0iMTIuNSIgcj0iNi41IiBzdHJva2U9IiMxMTExMTEiIHN0cm9rZS13aWR0aD0iMi4yIi8+PGxpbmUgeDE9IjEyLjUiIHkxPSI5LjIiIHgyPSIxMi41IiB5Mj0iMTUuOCIgc3Ryb2tlPSIjMTExMTExIiBzdHJva2Utd2lkdGg9IjIuMiIvPjxsaW5lIHgxPSI5LjIiIHkxPSIxMi41IiB4Mj0iMTUuOCIgeTI9IjEyLjUiIHN0cm9rZT0iIzExMTExMSIgc3Ryb2tlLXdpZHRoPSIyLjIiLz48bGluZSB4MT0iMTYuOCIgeTE9IjE2LjgiIHgyPSIyMy41IiB5Mj0iMjMuNSIgc3Ryb2tlPSIjMTExMTExIiBzdHJva2Utd2lkdGg9IjIuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+';
-  const CURSOR_ZOOM_OUT =
-    'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyOCIgaGVpZ2h0PSIyOCIgdmlld0JveD0iMCAwIDI4IDI4IiBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxMi41IiBjeT0iMTIuNSIgcj0iNi41IiBzdHJva2U9IiMxMTExMTEiIHN0cm9rZS13aWR0aD0iMi4yIi8+PGxpbmUgeDE9IjkuMiIgeTE9IjEyLjUiIHgyPSIxNS44IiB5Mj0iMTIuNSIgc3Ryb2tlPSIjMTExMTExIiBzdHJva2Utd2lkdGg9IjIuMiIvPjxsaW5lIHgxPSIxNi44IiB5MT0iMTYuOCIgeDI9IjIzLjUiIHkyPSIyMy41IiBzdHJva2U9IiMxMTExMTEiIHN0cm9rZS13aWR0aD0iMi4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=';
 
-const variants = safeImages.map((src) => ({
+
+  const variants = safeImages.map((src) => ({
   main:
     transformSignedImageUrl(src, {
         width: 1200,
@@ -62,7 +77,56 @@ const variants = safeImages.map((src) => ({
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
   const [isMobileView, setIsMobileView] = useState(false);
 
+  const cursorRef = useRef<HTMLDivElement>(null);
+  const [showCursor, setShowCursor] = useState(false);
+  const [isOverButtons, setIsOverButtons] = useState(false);
+
   const imagesMain = variants.map((v) => v.main);
+
+  const numberLocale = locale === 'ku' ? 'ku-u-nu-arab' : locale === 'ar' ? 'ar-u-nu-arab' : 'en-US';
+  const formatNumber = (value: number) => new Intl.NumberFormat(numberLocale).format(value);
+  const currencyLabel = locale === 'ar' || locale === 'ku' ? 'دينار' : 'IQD';
+  const formattedPrice = (() => {
+    if (typeof price !== 'number' || !Number.isFinite(price)) return '—';
+    try {
+      return new Intl.NumberFormat(numberLocale, {
+        style: 'currency',
+        currency: currency ?? 'IQD',
+        currencyDisplay: 'code',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      })
+        .format(price)
+        .replace(/IQD/g, currencyLabel)
+        .trim();
+    } catch {
+      return `${price}`;
+    }
+  })();
+
+  const conditionLabels: Record<string, string> = {
+    new: t('filters.conditionNew'),
+    'used - like new': t('filters.conditionLikeNew'),
+    'used - good': t('filters.conditionGood'),
+    'used - fair': t('filters.conditionFair'),
+  };
+  const conditionLabel = (() => {
+    const raw = (condition ?? '').trim();
+    if (!raw) return null;
+    const normalized = raw.toLowerCase();
+    return conditionLabels[normalized] ?? raw;
+  })();
+
+  const cityLabels = messages.header.city as Record<string, string>;
+  const locationLabel = (() => {
+    const raw = (location ?? '').trim();
+    if (!raw) return null;
+    const normalized = raw.toLowerCase();
+    return cityLabels[normalized] ?? raw;
+  })();
+
+  const viewsLabel = typeof views === 'number' && Number.isFinite(views) ? `${formatNumber(views)} ${t('product.viewsLabel')}` : null;
+  const normalizedSellerName = typeof sellerName === 'string' ? sellerName.trim() : '';
 
   const openAt = useCallback((i: number) => {
     setIndex(i);
@@ -108,14 +172,23 @@ const variants = safeImages.map((src) => ({
   const hasGallery = variants.length > 1;
 
   const handleHeroMouseMove: React.MouseEventHandler<HTMLDivElement> = (event) => {
-    if (!inlineZoomed) return;
     const rect = event.currentTarget.getBoundingClientRect();
-    if (!rect.width || !rect.height) return;
-    const x = ((event.clientX - rect.left) / rect.width) * 100;
-    const y = ((event.clientY - rect.top) / rect.height) * 100;
-    const clampedX = Math.min(100, Math.max(0, x));
-    const clampedY = Math.min(100, Math.max(0, y));
-    setZoomOrigin({ x: clampedX, y: clampedY });
+    if (rect.width && rect.height) {
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      
+      if (cursorRef.current) {
+        cursorRef.current.style.transform = `translate(${x}px, ${y}px)`;
+      }
+
+      if (inlineZoomed) {
+        const xPct = (x / rect.width) * 100;
+        const yPct = (y / rect.height) * 100;
+        const clampedX = Math.min(100, Math.max(0, xPct));
+        const clampedY = Math.min(100, Math.max(0, yPct));
+        setZoomOrigin({ x: clampedX, y: clampedY });
+      }
+    }
   };
 
   const handleHeroClick: React.MouseEventHandler<HTMLDivElement> = (event) => {
@@ -124,6 +197,7 @@ const variants = safeImages.map((src) => ({
       return;
     }
     if (!inlineZoomed) {
+      // Initialize zoom origin on click if needed, though mouse move usually handles it
       const rect = event.currentTarget.getBoundingClientRect();
       if (rect.width && rect.height) {
         const x = ((event.clientX - rect.left) / rect.width) * 100;
@@ -156,18 +230,12 @@ const variants = safeImages.map((src) => ({
     >
       {/* Hero image (desktop order second) */}
       <div
-        className={`relative w-full rounded-lg overflow-hidden bg-white min-h-[260px] sm:min-h-[360px] md:min-h-[420px] max-h-[75vh] group ${
-          inlineZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'
-        } ${hasGallery ? 'lg:order-2' : ''}`}
+        className={`relative w-full rounded-lg overflow-hidden bg-white min-h-[260px] sm:min-h-[360px] md:min-h-[420px] max-h-[75vh] group ${hasGallery ? 'lg:order-2' : ''}`}
+        style={{ cursor: isMobileView ? undefined : 'none' }}
         onClick={handleHeroClick}
         onMouseMove={handleHeroMouseMove}
-        style={{
-          cursor: isMobileView
-            ? 'default'
-            : inlineZoomed
-              ? `url("${CURSOR_ZOOM_OUT}") 16 16, zoom-out`
-              : `url("${CURSOR_ZOOM_IN}") 16 16, zoom-in`,
-        }}
+        onMouseEnter={() => setShowCursor(true)}
+        onMouseLeave={() => setShowCursor(false)}
       >
         <Image
           src={imagesMain[activeIndex]}
@@ -182,10 +250,31 @@ const variants = safeImages.map((src) => ({
           }}
           priority
         />
-        <div className="absolute top-3 right-3 flex flex-col items-end gap-2 lg:flex-row lg:items-center">
+
+        {showCursor && !isMobileView && !isOverButtons && (
+          <div
+            ref={cursorRef}
+            className="pointer-events-none absolute left-0 top-0 z-10 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center text-white mix-blend-difference"
+          >
+            {inlineZoomed ? (
+              <ZoomOut className="h-10 w-10" strokeWidth={1.5} />
+            ) : (
+              <ZoomIn className="h-10 w-10" strokeWidth={1.5} />
+            )}
+          </div>
+        )}
+
+        {/* Action buttons - hide custom cursor when hovering here */}
+        <div
+          className="absolute top-3 right-3 flex flex-col items-end gap-2 lg:flex-row lg:items-center z-30"
+          onMouseEnter={() => setIsOverButtons(true)}
+          onMouseLeave={() => setIsOverButtons(false)}
+          onClick={(e) => e.stopPropagation()}
+        >
           <button
             type="button"
             className="hidden lg:inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary/90 text-gray-700 shadow-sm transition opacity-0 group-hover:opacity-100 hover:bg-secondary"
+            style={{ cursor: 'pointer' }}
             onClick={(e) => {
               e.stopPropagation();
               openAt(activeIndex);
@@ -194,14 +283,17 @@ const variants = safeImages.map((src) => ({
           >
             <Maximize2 className="h-4 w-4" />
           </button>
-          <div className="inline-flex items-center gap-2 rounded-full bg-secondary/90 px-3 py-1 shadow-sm text-xs text-gray-700">
+          <div 
+            className="inline-flex items-center gap-2 rounded-full bg-secondary/90 px-3 py-1 shadow-sm text-xs text-gray-700"
+            style={{ cursor: 'pointer' }}
+          >
             <FavoriteToggle productId={productId} userId={viewerId} size="sm" className="h-7 w-7" />
             <span className="text-sm font-medium">{formatFavoriteCount(favoriteCount)}</span>
           </div>
           <ShareButton
             title={title}
             url={shareUrl}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary/90 text-gray-700 shadow-sm hover:bg-secondary"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary/90 text-gray-700 shadow-sm hover:bg-secondary cursor-pointer"
             size="sm"
             variant="secondary"
           />
@@ -233,20 +325,65 @@ const variants = safeImages.map((src) => ({
         </div>
       )}
 
-      <Lightbox images={imagesMain} index={index} open={open} onOpenChange={setOpen} title={title} />
+      <Lightbox
+        images={imagesMain}
+        thumbs={variants.map((variant) => variant.thumb)}
+        index={index}
+        open={open}
+        onOpenChange={setOpen}
+        title={title}
+        description={description ?? ''}
+        price={formattedPrice}
+        condition={conditionLabel}
+        location={locationLabel}
+        views={viewsLabel}
+        isSold={Boolean(isSold)}
+        sellerName={normalizedSellerName || null}
+        soldBadgeLabel={t('product.soldBadge')}
+        descriptionTitle={t('product.descriptionTitle')}
+        photosTitle={t('product.photosTitle')}
+      />
     </div>
   );
 }
 
 type LightboxProps = {
   images: string[];
+  thumbs: string[];
   index: number;
   open: boolean;
   onOpenChange: (v: boolean) => void;
   title: string;
+  description: string;
+  price: string;
+  condition: string | null;
+  location: string | null;
+  views: string | null;
+  isSold: boolean;
+  sellerName: string | null;
+  soldBadgeLabel: string;
+  descriptionTitle: string;
+  photosTitle: string;
 };
 
-function Lightbox({ images, index, open, onOpenChange, title }: LightboxProps) {
+function Lightbox({
+  images,
+  thumbs,
+  index,
+  open,
+  onOpenChange,
+  title,
+  description,
+  price,
+  condition,
+  location,
+  views,
+  isSold,
+  sellerName,
+  soldBadgeLabel,
+  descriptionTitle,
+  photosTitle,
+}: LightboxProps) {
   const [current, setCurrent] = useState(index);
   const [scale, setScale] = useState(1);
   const [tx, setTx] = useState(0);
@@ -272,6 +409,14 @@ function Lightbox({ images, index, open, onOpenChange, title }: LightboxProps) {
     handleOpenChange(false);
   }, [handleOpenChange]);
 
+  const selectImage = useCallback(
+    (nextIndex: number) => {
+      setCurrent(nextIndex);
+      resetZoom();
+    },
+    [resetZoom],
+  );
+
   const isInteractiveTarget = (target: EventTarget | null) => {
     if (!(target instanceof HTMLElement)) return false;
     return Boolean(target.closest('button, a, input, textarea, select, [role="button"]'));
@@ -284,14 +429,31 @@ function Lightbox({ images, index, open, onOpenChange, title }: LightboxProps) {
     setTy(0);
   }, [index]);
 
-  const onPrev = () => {
+  const onPrev = useCallback(() => {
     setCurrent((c) => (c > 0 ? c - 1 : images.length - 1));
     resetZoom();
-  };
-  const onNext = () => {
+  }, [images.length, resetZoom]);
+  const onNext = useCallback(() => {
     setCurrent((c) => (c + 1) % images.length);
     resetZoom();
-  };
+  }, [images.length, resetZoom]);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        onPrev();
+      }
+      if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        onNext();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onNext, onPrev, open]);
 
   const onWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
@@ -340,56 +502,158 @@ function Lightbox({ images, index, open, onOpenChange, title }: LightboxProps) {
       open={open}
       onOpenChange={handleOpenChange}
     >
-      <DialogContent className="max-w-full w-full h-[100dvh] p-0 bg-black/90 text-white">
+      <DialogContent className="inset-0 left-0 top-0 translate-x-0 translate-y-0 max-w-none w-screen h-[100dvh] border-0 bg-white/10 p-0 shadow-none backdrop-blur-3xl">
         <DialogTitle className="sr-only">
           {title ? `${title} image ${current + 1} of ${images.length}` : 'Product image viewer'}
         </DialogTitle>
-        <DialogClose asChild>
-          <button
-            type="button"
-            className="absolute right-4 top-4 z-[11] inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-black/60"
-            aria-label="Close"
-            onClick={(e) => {
-              e.stopPropagation();
-              closeLightbox();
-            }}
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </DialogClose>
-        <div
-          className="relative w-full h-full select-none touch-none"
-          style={{ touchAction: 'none' }}
-          onWheel={onWheel}
-          onPointerDown={onPointerDown}
-          onPointerUp={onPointerUp}
-          onPointerMove={onPointerMove}
-        >
-          <button
-            type="button"
-            className="absolute left-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 hover:bg-white/20"
-            onClick={onPrev}
-            aria-label="Previous"
-          >
-            ‹
-          </button>
-          <button
-            type="button"
-            className="absolute right-2 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/10 p-2 hover:bg-white/20"
-            onClick={onNext}
-            aria-label="Next"
-          >
-            ›
-          </button>
-          <div className="absolute inset-0">
-            <Image
-              src={images[current]}
-              alt={title}
-              fill
-              sizes="100vw"
-              className="object-contain"
-              style={{ transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})` }}
-            />
+
+        <div className="relative flex h-full w-full flex-col p-3 md:p-6">
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+            <div className="absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/20 blur-3xl" />
+            <div className="absolute bottom-[-9rem] right-[-9rem] h-96 w-96 rounded-full bg-orange-200/25 blur-3xl" />
+          </div>
+
+          <div className="relative mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-[28px] border border-white/60 bg-white/70 shadow-[0_30px_90px_rgba(15,23,42,0.25)] ring-1 ring-white/30 backdrop-blur-2xl lg:flex-row">
+            <div className="relative flex-1 bg-gradient-to-br from-white/65 via-white/55 to-white/40">
+              <div className="absolute inset-0">
+                <div
+                  className="relative h-full w-full select-none touch-none"
+                  style={{ touchAction: 'none' }}
+                  onWheel={onWheel}
+                  onPointerDown={onPointerDown}
+                  onPointerUp={onPointerUp}
+                  onPointerMove={onPointerMove}
+                >
+                  <button
+                    type="button"
+                    className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-[#f97316]/60 bg-[#f97316] p-2 text-white shadow-[0_10px_24px_rgba(249,115,22,0.35)] transition hover:bg-[#ea580c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f97316]/40"
+                    onClick={onPrev}
+                    aria-label="Previous"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full border border-[#f97316]/60 bg-[#f97316] p-2 text-white shadow-[0_10px_24px_rgba(249,115,22,0.35)] transition hover:bg-[#ea580c] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f97316]/40"
+                    onClick={onNext}
+                    aria-label="Next"
+                  >
+                    ›
+                  </button>
+
+                  <div className="absolute inset-0">
+                    <Image
+                      src={images[current]}
+                      alt={title}
+                      fill
+                      sizes="(max-width: 1024px) 100vw, 70vw"
+                      className="object-contain"
+                      style={{ transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <aside className="flex w-full shrink-0 flex-col border-t border-white/60 bg-white/75 backdrop-blur-2xl lg:w-[420px] lg:border-t-0 lg:border-l">
+              <div className="flex items-start justify-between gap-3 p-4 pb-0">
+                <div className="min-w-0">
+                  <h2 dir="auto" className="truncate text-base font-bold text-slate-900">
+                    {title}
+                  </h2>
+                  <p className="mt-1 text-xs font-medium text-slate-500">
+                    {current + 1} / {images.length}
+                  </p>
+                </div>
+                <DialogClose asChild>
+                  <button
+                    type="button"
+                    className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200/80 bg-white text-slate-900 shadow-[0_14px_28px_rgba(15,23,42,0.18)] transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f97316]/40"
+                    aria-label="Close"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      closeLightbox();
+                    }}
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </DialogClose>
+              </div>
+
+              <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 pt-4">
+                <div className="shrink-0 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-none">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Tag className="h-4 w-4 text-primary" aria-hidden="true" />
+                      <span className="text-lg font-bold text-primary">{price}</span>
+                      {isSold ? (
+                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                          {soldBadgeLabel}
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-700">
+                      {condition ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+                          {condition}
+                        </span>
+                      ) : null}
+                      {location ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-sky-50 px-2.5 py-1 text-sky-700">
+                          <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+                          <span dir="auto" className="bidi-auto">{location}</span>
+                        </span>
+                      ) : null}
+                      {views ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-1 text-amber-700">
+                          <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                          {views}
+                        </span>
+                      ) : null}
+                    </div>
+                  </div>
+                  {sellerName ? (
+                    <p className="mt-2 text-sm font-medium text-slate-600" dir="auto">
+                      {sellerName}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-none">
+                  <h3 className="text-sm font-semibold text-slate-900">{descriptionTitle}</h3>
+                  <p dir="auto" className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
+                    {description.trim() ? description : '—'}
+                  </p>
+                </div>
+
+                {images.length > 1 && (
+                  <div className="shrink-0 rounded-2xl border border-white/70 bg-white/60 p-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-slate-900">{photosTitle}</h3>
+                      <span className="text-xs font-medium text-slate-500">
+                        {images.length}
+                      </span>
+                    </div>
+                    <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                      {thumbs.map((src, i) => (
+                        <button
+                          key={`${src}-${i}`}
+                          type="button"
+                          className={[
+                            'relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-white/60 shadow-sm transition',
+                            i === current ? 'border-primary ring-2 ring-primary/25' : 'border-white/70 hover:border-primary/50',
+                          ].join(' ')}
+                          onClick={() => selectImage(i)}
+                          aria-label={`Select image ${i + 1}`}
+                        >
+                          <Image src={src} alt={`${title} ${i + 1}`} fill sizes="64px" className="object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </aside>
           </div>
         </div>
       </DialogContent>
