@@ -83,7 +83,7 @@
     "autoprefixer": "^10.4.21",
     "baseline-browser-mapping": "2.9.11",
     "drizzle-kit": "^0.31.8",
-    "eslint": "^9.37.0",
+    "eslint": "^9.39.2",
     "eslint-config-next": "^15.5.9",
     "kill-port": "^2.0.1",
     "msw": "^2.11.6",
