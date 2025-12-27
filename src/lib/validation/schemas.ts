@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { CONDITION_VALUES } from '@/lib/products/filter-params';
+import { isAllowedProductImageInput } from '@/lib/storage-public';
 
 const phoneRegex = /^[+0-9()\-\s]{6,20}$/;
 
@@ -38,7 +39,8 @@ export const createProductSchema = z
         z
           .string()
           .trim()
-          .min(1, 'Image URL is required.'),
+          .min(1, 'Image URL is required.')
+          .refine(isAllowedProductImageInput, 'Images must be stored in Supabase Storage.'),
       )
       .min(1, 'Add at least one image.')
       .max(5, 'You can upload up to 5 images.'),

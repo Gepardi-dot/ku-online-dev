@@ -30,7 +30,7 @@ const remotePatterns: RemotePattern[] = [
   },
 ];
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
 let supabaseHostname: string | null = null;
 
 if (supabaseUrl) {
@@ -50,7 +50,7 @@ if (supabaseUrl) {
       pathname: '/storage/v1/render/**',
     });
   } catch (error) {
-    console.warn('Invalid NEXT_PUBLIC_SUPABASE_URL, Supabase storage images will not be whitelisted.');
+    console.warn('Invalid Supabase URL, storage images will not be whitelisted.');
   }
 }
 

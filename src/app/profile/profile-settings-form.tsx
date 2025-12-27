@@ -272,6 +272,7 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
               onPointerLeave={() => { draggingRef.current = false; }}
               onPointerCancel={() => { draggingRef.current = false; }}
             >
+              {/* Uses a local blob URL; disable optimization for the crop preview. */}
               <NextImage
                 src={cropImageUrl}
                 alt="Crop"
