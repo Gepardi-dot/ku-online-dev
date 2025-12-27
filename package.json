@@ -48,7 +48,7 @@
     "@sentry/nextjs": "^10.22.0",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.57.4",
-    "algoliasearch": "^5.46.1",
+    "algoliasearch": "^5.46.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
