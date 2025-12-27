@@ -558,7 +558,7 @@ export default async function ProfilePage({
 
           <div className="lg:col-span-2">
             <Tabs key={activeTab} defaultValue={activeTab} className="space-y-6 -mt-3 sm:-mt-5">
-              <TabsList className="grid w-full grid-cols-2 items-center gap-1 rounded-full border border-white/60 bg-[linear-gradient(160deg,rgba(255,255,255,0.85),rgba(255,255,255,0.35)),radial-gradient(circle_at_top_left,rgba(255,214,170,0.35),transparent_60%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.6),transparent_50%),repeating-linear-gradient(90deg,rgba(255,255,255,0.12)_0,rgba(255,255,255,0.12)_2px,transparent_2px,transparent_6px)] p-1 shadow-[0_12px_30px_rgba(120,72,0,0.14)] backdrop-blur-xl ring-1 ring-white/60 sm:grid-cols-3 lg:grid-cols-5">
+              <TabsList className="mb-3 grid h-auto w-full grid-cols-3 items-center gap-1 rounded-full border border-white/60 bg-[linear-gradient(160deg,rgba(255,255,255,0.85),rgba(255,255,255,0.35)),radial-gradient(circle_at_top_left,rgba(255,214,170,0.35),transparent_60%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.6),transparent_50%),repeating-linear-gradient(90deg,rgba(255,255,255,0.12)_0,rgba(255,255,255,0.12)_2px,transparent_2px,transparent_6px)] p-1 shadow-[0_12px_30px_rgba(120,72,0,0.14)] backdrop-blur-xl ring-1 ring-white/60 sm:grid-cols-3 lg:grid-cols-5">
                 <TabsTrigger
                   value="overview"
                   className="inline-flex w-full items-center justify-center gap-2 !rounded-full !px-3 !py-2 text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
@@ -582,14 +582,14 @@ export default async function ProfilePage({
                 </TabsTrigger>
                 <TabsTrigger
                   value="profile"
-                  className="inline-flex w-full items-center justify-center gap-2 !rounded-full !px-3 !py-2 text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+                  className="hidden w-full items-center justify-center gap-2 !rounded-full !px-3 !py-2 text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30 sm:inline-flex"
                 >
                   <User className="h-4 w-4" />
                   {t('nav.profile')}
                 </TabsTrigger>
                 <TabsTrigger
                   value="settings"
-                  className="inline-flex w-full items-center justify-center gap-2 !rounded-full !px-3 !py-2 text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+                  className="hidden w-full items-center justify-center gap-2 !rounded-full !px-3 !py-2 text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30 sm:inline-flex"
                 >
                   <Settings className="h-4 w-4" />
                   {t('profile.tabs.settings')}
@@ -654,9 +654,11 @@ export default async function ProfilePage({
                           {t('profile.overview.latestListingsEmpty')}
                         </p>
                       ) : (
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                        <div className="no-scrollbar -mx-2 flex gap-3 overflow-x-auto px-2 pb-2 snap-x snap-proximity md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3">
                           {featuredListings.map((listing) => (
-                            <ProductCard key={listing.id} product={listing} />
+                            <div key={listing.id} className="w-[220px] shrink-0 snap-start md:w-auto">
+                              <ProductCard product={listing} />
+                            </div>
                           ))}
                         </div>
                       )}

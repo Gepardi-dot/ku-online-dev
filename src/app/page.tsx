@@ -137,7 +137,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
             <SwipeHint
               label={messages.homepage.swipeHint}
               direction={categoriesDirection}
-              containerClassName="no-scrollbar flex gap-[0.25rem] overflow-x-auto pb-1 snap-x snap-mandatory lg:gap-1.5 lg:overflow-visible lg:justify-center"
+              containerClassName="no-scrollbar flex gap-[0.25rem] overflow-x-auto pb-1 snap-x snap-proximity scroll-px-4 [-webkit-overflow-scrolling:touch] overscroll-x-contain touch-pan-x lg:gap-1.5 lg:overflow-visible lg:justify-center"
             >
               {categories.map((category, idx) => {
                 const baseName = category.name ?? '';

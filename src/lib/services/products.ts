@@ -3,7 +3,7 @@ import { algoliasearch, type Algoliasearch } from "algoliasearch";
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { createSignedUrls, createTransformedSignedUrls } from '@/lib/storage';
-import { buildPublicStorageUrl, deriveThumbPath } from '@/lib/storage-public';
+import { assertAllowedProductImagePaths, buildPublicStorageUrl, deriveThumbPath, isAllowedProductImageInput } from '@/lib/storage-public';
 import { DEFAULT_MARKET_CITIES, MARKET_CITY_OPTIONS, getMarketCityLabel, normalizeMarketCityValue } from '@/data/market-cities';
 import { getEnv } from "@/lib/env";
 
@@ -158,7 +158,11 @@ function toDate(value: string | null): Date | null {
 
 function normalizeImages(value: unknown): string[] {
   if (Array.isArray(value)) {
-    return value.filter((item): item is string => typeof item === "string");
+    return value
+      .filter((item): item is string => typeof item === 'string')
+      .map((item) => item.trim())
+      .filter((item) => item.length > 0)
+      .filter((item) => isAllowedProductImageInput(item));
   }
   return [];
 }
@@ -1127,6 +1131,7 @@ export async function createProduct(productData: {
   sellerId: string;
 }): Promise<ProductWithRelations | null> {
   const supabase = await getSupabase();
+  const images = assertAllowedProductImagePaths(productData.images);
 
   const payload = {
     title: productData.title,
@@ -1136,7 +1141,7 @@ export async function createProduct(productData: {
     condition: productData.condition,
     category_id: productData.categoryId ?? null,
     location: productData.location ?? null,
-    images: productData.images ?? [],
+    images,
     seller_id: productData.sellerId,
     is_active: true,
   };
