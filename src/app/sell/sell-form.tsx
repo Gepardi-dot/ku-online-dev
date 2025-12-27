@@ -810,6 +810,15 @@ export default function SellForm({ user }: SellFormProps) {
         } catch (syncError) {
           console.warn('Algolia sync failed after create', syncError);
         }
+
+        try {
+          fetch('/api/products/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId: data.id }),
+            keepalive: true,
+          }).catch(() => {});
+        } catch {}
       }
 
       toast({

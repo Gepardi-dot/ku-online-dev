@@ -322,7 +322,11 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                 const productId = notification.relatedId ?? undefined;
                 const meta = productId ? productMeta[productId] : undefined;
                 const productName = (meta?.title ?? rawName) || notification.title || "";
-                const productInitial = productName.trim().charAt(0).toUpperCase() || "•";
+                const localizedProductName = localizeText(productName, meta?.titleTranslations ?? null, locale);
+                const localizedDescription = meta?.description
+                  ? localizeText(meta.description, meta?.descriptionTranslations ?? null, locale)
+                  : "";
+                const productInitial = localizedProductName.trim().charAt(0).toUpperCase() || "•";
                 const thumbUrl = meta?.thumbUrl;
                 const price = meta?.price;
                 const currency = meta?.currency ?? "IQD";
@@ -384,7 +388,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                           {thumbUrl ? (
                             <Image
                               src={thumbUrl}
-                              alt={productName}
+                              alt={localizedProductName}
                               fill
                               sizes="64px"
                               className="object-cover"
@@ -397,7 +401,9 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                         </div>
                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                           <div className="flex items-center gap-2">
-                            <h4 className="flex-1 truncate text-sm font-bold text-[#2D2D2D] min-w-0">{productName}</h4>
+                            <h4 dir="auto" className="flex-1 truncate text-sm font-bold text-[#2D2D2D] min-w-0 bidi-auto">
+                              {localizedProductName}
+                            </h4>
                             <span
                               className={`shrink-0 inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-tight ${listingBadge.className}`}
                             >
@@ -407,6 +413,11 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                                <div className="absolute right-0 top-0 h-2 w-2 -translate-y-1/2 translate-x-1/2 rounded-full bg-orange-500 ring-4 ring-white" />
                             )}
                           </div>
+                          {localizedDescription && (
+                            <p dir="auto" className="mt-0.5 truncate text-xs text-muted-foreground bidi-auto">
+                              {localizedDescription}
+                            </p>
+                          )}
                           <div className="mt-0.5 flex items-center justify-between">
                             {formattedPrice && (
                               <p dir="auto" className="truncate text-sm font-bold text-brand bidi-auto">{formattedPrice}</p>
