@@ -30,6 +30,7 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
+import { formatCurrency } from "@/lib/locale/formatting";
 
 interface ProfileMessagesProps {
   userId: string;
@@ -402,6 +403,8 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
       const productPrice =
         typeof conversation.product?.price === "number" ? conversation.product.price : null;
       const productCurrency = conversation.product?.currency ?? "IQD";
+      const formattedPrice =
+        productPrice !== null ? formatCurrency(productPrice, productCurrency, locale) : null;
 
       return (
         <button
@@ -429,10 +432,12 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
             {productTitle ? (
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {productTitle}
-                {productPrice !== null ? (
+                {formattedPrice ? (
                   <>
                     {" · "}
-                    {productPrice.toLocaleString()} {productCurrency}
+                    <span dir="auto" className="bidi-auto">
+                      {formattedPrice}
+                    </span>
                   </>
                 ) : null}
               </p>
@@ -449,7 +454,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         </button>
       );
     },
-    [activeConversationId, userId, handleConversationSelect],
+    [activeConversationId, userId, handleConversationSelect, locale],
   );
 
   const renderMessages = useCallback(() => {
@@ -645,9 +650,9 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold line-clamp-1">{product.title}</p>
-                <p className="text-xs text-muted-foreground line-clamp-1">
+                <p dir="auto" className="text-xs text-muted-foreground line-clamp-1 bidi-auto">
                   {typeof product.price === "number"
-                    ? `${product.price.toLocaleString()} ${product.currency ?? "IQD"}`
+                    ? formatCurrency(product.price, product.currency ?? "IQD", locale)
                     : product.currency ?? null}
                 </p>
               </div>
