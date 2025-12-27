@@ -29,6 +29,7 @@ import { translateUserText } from '@/lib/ai/translate-user-text';
 import { getEnv } from '@/lib/env';
 import { isModerator } from '@/lib/auth/roles';
 import RemoveListingButton from '@/components/product/RemoveListingButton';
+import { formatCurrency, getNumberLocale } from '@/lib/locale/formatting';
 
 const placeholderReviews = [
   {
@@ -135,23 +136,11 @@ export default async function ProductPage({ params }: ProductPageProps) {
     console.error('Failed to increment product views', error);
   });
 
-  const numberLocale = locale === 'ku' ? 'ku-Arab-IQ' : locale === 'ar' ? 'ar-IQ' : 'en-US';
+  const numberLocale = getNumberLocale(locale);
   const numberFormatter = new Intl.NumberFormat(numberLocale);
   const formatNumber = (value: number) => numberFormatter.format(value);
 
-  const currencyLabel = locale === 'ar' || locale === 'ku' ? 'دينار' : 'IQD';
-
-  const formatPrice = (price: number, currency: string | null) => {
-    const formatter = new Intl.NumberFormat(numberLocale, {
-      style: 'currency',
-      currency: currency ?? 'IQD',
-      currencyDisplay: 'code',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
-
-    return formatter.format(price).replace(/IQD/g, currencyLabel).trim();
-  };
+  const formatPrice = (price: number, currency: string | null) => formatCurrency(price, currency, locale);
 
   const conditionLabels: Record<string, string> = {
     'new': t('filters.conditionNew'),
@@ -363,7 +352,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     <Badge className={`text-white ${getConditionColor(product.condition)}`}>
                       {getConditionLabel(product.condition)}
                     </Badge>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <div dir="auto" className="flex items-center gap-1 text-sm text-muted-foreground bidi-auto">
                       <Eye className="h-4 w-4" />
                       {formatNumber(product.views)} {t('product.viewsLabel')}
                     </div>
@@ -373,13 +362,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <div className="flex items-center gap-3">
                   <div className="space-y-1">
                     {typeof product.originalPrice === 'number' && product.originalPrice > product.price ? (
-                      <div className="text-[0.95rem] font-semibold text-muted-foreground line-through decoration-[1px]">
-                        {formatPrice(product.originalPrice, product.currency)}
-                      </div>
-                    ) : null}
-                    <div className="text-3xl font-bold text-primary">
-                      {formatPrice(product.price, product.currency)}
+                    <div dir="auto" className="text-[0.95rem] font-semibold text-muted-foreground line-through decoration-[1px] bidi-auto">
+                      {formatPrice(product.originalPrice, product.currency)}
                     </div>
+                  ) : null}
+                  <div dir="auto" className="text-3xl font-bold text-primary bidi-auto">
+                    {formatPrice(product.price, product.currency)}
+                  </div>
                   </div>
                   {product.isSold && (
                     <Badge variant="secondary" className="bg-gray-700 text-white">

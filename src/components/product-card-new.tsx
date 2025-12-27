@@ -9,6 +9,7 @@ import type { ProductWithRelations } from '@/lib/services/products';
 import FavoriteToggle from '@/components/product/favorite-toggle';
 import { useLocale } from '@/providers/locale-provider';
 import { localizeText } from '@/lib/locale/localize';
+import { formatCurrency } from '@/lib/locale/formatting';
 
 interface ProductCardProps {
   product: ProductWithRelations;
@@ -54,27 +55,7 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
     }).catch(() => {});
   };
 
-  const formatPrice = (price: number, currency?: string | null) => {
-    try {
-      return new Intl.NumberFormat(locale, {
-        style: 'currency',
-        currency: currency ?? 'IQD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      })
-        .format(price)
-        .replace('IQD', 'IQD');
-    } catch {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency ?? 'IQD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      })
-        .format(price)
-        .replace('IQD', 'IQD');
-    }
-  };
+  const formatPrice = (price: number, currency?: string | null) => formatCurrency(price, currency ?? null, locale);
 
   const conditionColorMap: Record<string, string> = {
     new: 'bg-green-500',
@@ -172,10 +153,13 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
           </h3>
           
           <div className="flex items-center justify-between gap-2">
-            <span className="text-lg font-bold text-primary">
+            <span dir="auto" className="text-lg font-bold text-primary bidi-auto">
               {formatPrice(Number(product.price), product.currency)}
             </span>
-            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+            <span
+              dir="auto"
+              className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 bidi-auto"
+            >
               <Eye className="h-3 w-3" />
               {product.views}
             </span>

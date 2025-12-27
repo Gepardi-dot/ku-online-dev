@@ -22,6 +22,7 @@ import { signStoragePaths } from "@/lib/services/storage-sign-client";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/providers/locale-provider";
 import { localizeText } from "@/lib/locale/localize";
+import { formatCurrency } from "@/lib/locale/formatting";
 
 interface NotificationMenuStrings {
   label: string;
@@ -326,7 +327,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                 const price = meta?.price;
                 const currency = meta?.currency ?? "IQD";
                 const formattedPrice =
-                  typeof price === "number" ? `${price.toLocaleString(locale)} ${currency}` : null;
+                  typeof price === "number" ? formatCurrency(price, currency, locale) : null;
 
                 const metaKind =
                   notification.meta && typeof notification.meta === "object" && "kind" in (notification.meta as any)
@@ -408,7 +409,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                           </div>
                           <div className="mt-0.5 flex items-center justify-between">
                             {formattedPrice && (
-                              <p className="truncate text-sm font-bold text-brand">{formattedPrice}</p>
+                              <p dir="auto" className="truncate text-sm font-bold text-brand bidi-auto">{formattedPrice}</p>
                             )}
                             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5" />
                           </div>

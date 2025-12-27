@@ -8,6 +8,7 @@ import { transformSignedImageUrl } from '@/lib/storage-transform';
 import FavoriteToggle, { favoritesEvents } from '@/components/product/favorite-toggle';
 import ShareButton from '@/components/share-button';
 import { useLocale } from '@/providers/locale-provider';
+import { formatCurrency, getNumberLocale } from '@/lib/locale/formatting';
 
 type ProductImagesProps = {
   images: string[];
@@ -83,26 +84,9 @@ export default function ProductImages({
 
   const imagesMain = variants.map((v) => v.main);
 
-  const numberLocale = locale === 'ku' ? 'ku-u-nu-arab' : locale === 'ar' ? 'ar-u-nu-arab' : 'en-US';
+  const numberLocale = getNumberLocale(locale);
   const formatNumber = (value: number) => new Intl.NumberFormat(numberLocale).format(value);
-  const currencyLabel = locale === 'ar' || locale === 'ku' ? 'دينار' : 'IQD';
-  const formattedPrice = (() => {
-    if (typeof price !== 'number' || !Number.isFinite(price)) return '—';
-    try {
-      return new Intl.NumberFormat(numberLocale, {
-        style: 'currency',
-        currency: currency ?? 'IQD',
-        currencyDisplay: 'code',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      })
-        .format(price)
-        .replace(/IQD/g, currencyLabel)
-        .trim();
-    } catch {
-      return `${price}`;
-    }
-  })();
+  const formattedPrice = formatCurrency(price ?? null, currency ?? null, locale);
 
   const conditionLabels: Record<string, string> = {
     new: t('filters.conditionNew'),
@@ -585,7 +569,7 @@ function Lightbox({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <Tag className="h-4 w-4 text-primary" aria-hidden="true" />
-                      <span className="text-lg font-bold text-primary">{price}</span>
+                      <span dir="auto" className="text-lg font-bold text-primary bidi-auto">{price}</span>
                       {isSold ? (
                         <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                           {soldBadgeLabel}
@@ -605,7 +589,10 @@ function Lightbox({
                         </span>
                       ) : null}
                       {views ? (
-                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-1 text-amber-700">
+                        <span
+                          dir="auto"
+                          className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-1 text-amber-700 bidi-auto"
+                        >
                           <Eye className="h-3.5 w-3.5" aria-hidden="true" />
                           {views}
                         </span>

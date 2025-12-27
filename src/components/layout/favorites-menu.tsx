@@ -16,6 +16,8 @@ import {
 } from '@/lib/services/favorites-client';
 import { favoritesEvents } from '@/components/product/favorite-toggle';
 import { toast } from '@/hooks/use-toast';
+import { useLocale } from '@/providers/locale-provider';
+import { formatCurrency } from '@/lib/locale/formatting';
 
 interface FavoritesMenuStrings {
   label: string;
@@ -43,6 +45,7 @@ export default function FavoritesMenu({
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const recentMutationsRef = useRef(new Set<string>());
+  const { locale } = useLocale();
 
   const canLoad = Boolean(userId);
 
@@ -208,23 +211,10 @@ export default function FavoritesMenu({
     );
   }, [count]);
 
-  const formatPrice = useCallback((price: number | null, currency: string | null) => {
-    if (price === null) {
-      return '�?"';
-    }
-    try {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: currency ?? 'IQD',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      })
-        .format(price)
-        .replace('IQD', 'IQD');
-    } catch {
-      return `${price} ${currency ?? 'IQD'}`;
-    }
-  }, []);
+  const formatPrice = useCallback(
+    (price: number | null, currency: string | null) => formatCurrency(price, currency, locale),
+    [locale],
+  );
 
   const ebayTriggerClass =
     'relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40';
@@ -374,12 +364,14 @@ export default function FavoritesMenu({
                               </Link>
                             </div>
                             <div className="mt-0.5 flex items-center justify-between">
-                              <p className="truncate text-sm font-bold text-brand">
+                              <p dir="auto" className="truncate text-sm font-bold text-brand bidi-auto">
                                 {formatPrice(product?.price ?? null, product?.currency ?? null)}
                               </p>
                             </div>
                             {product?.location && (
-                              <p className="mt-0.5 truncate text-sm font-medium text-[#777777]">{product.location}</p>
+                              <p dir="auto" className="mt-0.5 truncate text-sm font-medium text-[#777777] bidi-auto">
+                                {product.location}
+                              </p>
                             )}
                           </div>
                           <div className="flex flex-col gap-1.5 shrink-0">

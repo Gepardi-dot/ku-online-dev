@@ -8,6 +8,7 @@ import MobileNav from '@/components/layout/mobile-nav';
 import { DM_Sans, Noto_Kufi_Arabic } from 'next/font/google';
 import { LocaleProvider } from '@/providers/locale-provider';
 import { getServerLocale } from '@/lib/locale/server';
+import { rtlLocales } from '@/lib/locale/dictionary';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -33,6 +34,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const locale = await getServerLocale();
+  const direction = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
   const supabaseOrigin = (() => {
     try {
       const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -42,7 +44,7 @@ export default async function RootLayout({
     }
   })();
   return (
-    <html lang={locale} dir="ltr" suppressHydrationWarning>
+    <html lang={locale} dir={direction} suppressHydrationWarning>
       <head>
         {supabaseOrigin ? (
           <link rel="preconnect" href={supabaseOrigin} crossOrigin="" />

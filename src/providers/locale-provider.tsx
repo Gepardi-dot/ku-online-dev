@@ -14,6 +14,7 @@ import {
   defaultLocale,
   Locale,
   LocaleMessages,
+  rtlLocales,
   translations,
   translateFromDictionary,
   isLocale,
@@ -34,6 +35,7 @@ function applyDocumentLocale(nextLocale: Locale) {
   }
 
   document.documentElement.lang = nextLocale;
+  document.documentElement.dir = rtlLocales.includes(nextLocale) ? "rtl" : "ltr";
 }
 
 export function LocaleProvider({ children }: { children: React.ReactNode }) {
