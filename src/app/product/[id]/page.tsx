@@ -29,7 +29,8 @@ import { translateUserText } from '@/lib/ai/translate-user-text';
 import { getEnv } from '@/lib/env';
 import { isModerator } from '@/lib/auth/roles';
 import RemoveListingButton from '@/components/product/RemoveListingButton';
-import { formatCurrency, getNumberLocale } from '@/lib/locale/formatting';
+import { CurrencyText } from '@/components/currency-text';
+import { getNumberLocale } from '@/lib/locale/formatting';
 
 const placeholderReviews = [
   {
@@ -139,8 +140,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const numberLocale = getNumberLocale(locale);
   const numberFormatter = new Intl.NumberFormat(numberLocale);
   const formatNumber = (value: number) => numberFormatter.format(value);
-
-  const formatPrice = (price: number, currency: string | null) => formatCurrency(price, currency, locale);
 
   const conditionLabels: Record<string, string> = {
     'new': t('filters.conditionNew'),
@@ -362,13 +361,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <div className="flex items-center gap-3">
                   <div className="space-y-1">
                     {typeof product.originalPrice === 'number' && product.originalPrice > product.price ? (
-                    <div dir="auto" className="text-[0.95rem] font-semibold text-muted-foreground line-through decoration-[1px] bidi-auto">
-                      {formatPrice(product.originalPrice, product.currency)}
+                      <div
+                        dir="auto"
+                        className="text-[0.95rem] font-semibold text-muted-foreground line-through decoration-[1px] bidi-auto"
+                      >
+                        <CurrencyText amount={product.originalPrice} currencyCode={product.currency} locale={locale} />
+                      </div>
+                    ) : null}
+                    <div dir="auto" className="text-3xl font-bold text-primary bidi-auto">
+                      <CurrencyText amount={product.price} currencyCode={product.currency} locale={locale} />
                     </div>
-                  ) : null}
-                  <div dir="auto" className="text-3xl font-bold text-primary bidi-auto">
-                    {formatPrice(product.price, product.currency)}
-                  </div>
                   </div>
                   {product.isSold && (
                     <Badge variant="secondary" className="bg-gray-700 text-white">
@@ -488,10 +490,18 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     </Button>
                   )}
                   {!isOwner && (
-                    <ReportListingDialog productId={product.id} sellerId={seller?.id ?? null} />
+                    <div className="pt-2 flex flex-col items-center gap-2">
+                      <ReportListingDialog productId={product.id} sellerId={seller?.id ?? null} />
+                    </div>
                   )}
                   {userIsModerator ? (
-                    <RemoveListingButton productId={product.id} redirectTo="/products" className="w-full" />
+                    <div className="pt-1 flex flex-col items-center gap-2">
+                      <RemoveListingButton
+                        productId={product.id}
+                        redirectTo="/products"
+                        className="w-full md:w-[78%]"
+                      />
+                    </div>
                   ) : null}
                 </div>
               </CardContent>

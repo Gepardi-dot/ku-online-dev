@@ -44,7 +44,7 @@ html[lang="ar"] body,
 html[lang="ar"] .font-body,
 html[lang="ar"] .font-headline,
 html[lang="ar"] .font-sans {
-  font-family: var(--font-arabic), "DM Sans", "Segoe UI", "Tahoma", sans-serif;
+  font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
 }
 
 /* Kurdish locale font swap to Noto Sans (Arabic script with Kurdish coverage) */
@@ -52,7 +52,7 @@ html[lang="ku"] body,
 html[lang="ku"] .font-body,
 html[lang="ku"] .font-headline,
 html[lang="ku"] .font-sans {
-  font-family: var(--font-arabic), "DM Sans", "Segoe UI", "Tahoma", sans-serif;
+  font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
 }
 
 /* Utilities */
@@ -67,4 +67,10 @@ html[lang="ku"] .font-sans {
 /* Bidi helper: keep overall UI LTR but render text in its natural direction */
 .bidi-auto {
   unicode-bidi: plaintext;
+  font-family: var(--font-sans), var(--font-arabic), "Segoe UI", "Tahoma", sans-serif;
+}
+
+html[lang="ar"] .bidi-auto,
+html[lang="ku"] .bidi-auto {
+  font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
 }

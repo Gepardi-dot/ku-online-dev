@@ -18,6 +18,8 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { ar, ckb, enUS } from "date-fns/locale";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -40,9 +42,9 @@ import {
   type MessageRecord,
 } from "@/lib/services/messages-client";
 import { toast } from "@/hooks/use-toast";
-import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
+import { rtlLocales } from "@/lib/locale/dictionary";
 
 const clampValue = (input: number, min: number, max: number) => Math.min(max, Math.max(min, input));
 const MOBILE_BOTTOM_GAP_PX = 92; // Increased spacing to ensure sheet clears mobile nav
@@ -76,7 +78,63 @@ export default function MessagesMenu({
   triggerClassName,
   triggerIcon,
 }: MessagesMenuProps) {
-  const { locale } = useLocale();
+  const { locale, t } = useLocale();
+  const isRtl = rtlLocales.includes(locale);
+  const relativeTimeLocales = useMemo(() => {
+    if (locale === "ku") return ["ckb-u-nu-arab", "ckb", "ku-u-nu-arab", "ku"];
+    if (locale === "ar") return ["ar-u-nu-arab", "ar"];
+    return [locale, "en-US"];
+  }, [locale]);
+  const resolvedRelativeTimeLocale = useMemo(() => {
+    const supported = Intl.RelativeTimeFormat.supportedLocalesOf(relativeTimeLocales);
+    return supported[0] ?? null;
+  }, [relativeTimeLocales]);
+  const relativeTimeFormatter = useMemo(
+    () => (resolvedRelativeTimeLocale ? new Intl.RelativeTimeFormat(resolvedRelativeTimeLocale, { numeric: "auto" }) : null),
+    [resolvedRelativeTimeLocale],
+  );
+  const dateFnsLocale = useMemo(() => {
+    if (locale === "ku") return ckb;
+    if (locale === "ar") return ar;
+    return enUS;
+  }, [locale]);
+  const formatRelativeTime = useCallback(
+    (date: Date) => {
+      if (!relativeTimeFormatter) {
+        return formatDistanceToNow(date, { addSuffix: true, locale: dateFnsLocale });
+      }
+      const diffSeconds = Math.round((date.getTime() - Date.now()) / 1000);
+      const absSeconds = Math.abs(diffSeconds);
+
+      if (absSeconds < 60) {
+        return relativeTimeFormatter.format(diffSeconds, "second");
+      }
+
+      const diffMinutes = Math.round(diffSeconds / 60);
+      if (Math.abs(diffMinutes) < 60) {
+        return relativeTimeFormatter.format(diffMinutes, "minute");
+      }
+
+      const diffHours = Math.round(diffMinutes / 60);
+      if (Math.abs(diffHours) < 24) {
+        return relativeTimeFormatter.format(diffHours, "hour");
+      }
+
+      const diffDays = Math.round(diffHours / 24);
+      if (Math.abs(diffDays) < 30) {
+        return relativeTimeFormatter.format(diffDays, "day");
+      }
+
+      const diffMonths = Math.round(diffDays / 30);
+      if (Math.abs(diffMonths) < 12) {
+        return relativeTimeFormatter.format(diffMonths, "month");
+      }
+
+      const diffYears = Math.round(diffMonths / 12);
+      return relativeTimeFormatter.format(diffYears, "year");
+    },
+    [relativeTimeFormatter, dateFnsLocale],
+  );
 
   const [open, setOpen] = useState(false);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -410,7 +468,7 @@ export default function MessagesMenu({
     );
   }, [unreadCount]);
   const chipClass =
-    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40";
+    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_16px_38px_rgba(247,111,29,0.18)]";
 
   const minDragOffset = useMemo(() => {
     if (!isMobile) return 0;
@@ -430,6 +488,18 @@ export default function MessagesMenu({
       setIsDragging(false);
     }
   }, [open]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ source?: string }>).detail;
+      if (detail?.source !== "messages-menu") {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("ku-menu-open", handler);
+    return () => window.removeEventListener("ku-menu-open", handler);
+  }, []);
 
   useEffect(() => {
     if (!isMobile) {
@@ -501,6 +571,9 @@ export default function MessagesMenu({
         dragStateRef.current.active = false;
         setIsDragging(false);
         setOpen(true);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("ku-menu-open", { detail: { source: "messages-menu" } }));
+        }
       } else {
         dragStateRef.current.active = false;
         setDragOffset(0);
@@ -613,12 +686,8 @@ export default function MessagesMenu({
     const isActive = conversation.id === activeConversationId;
     const isUnread = conversation.hasUnread;
 
-    const lastActivity = conversation.lastMessageAt
-      ? formatDistanceToNow(new Date(conversation.lastMessageAt), { addSuffix: true })
-      : null;
-
     const target = conversation.sellerId === userId ? conversation.buyer : conversation.seller;
-    const targetName = target?.fullName?.trim() || target?.id || "Unknown user";
+    const targetName = target?.fullName?.trim() || target?.id || t("header.chatUnknownUser");
     const avatarLetter = targetName.charAt(0).toUpperCase() || "U";
     const avatarUrl = target?.avatarUrl ?? null;
 
@@ -628,7 +697,7 @@ export default function MessagesMenu({
       <div
         key={conversation.id}
         className={cn(
-          "flex w-full items-center gap-3 rounded-3xl border p-3 text-left text-sm shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md active:translate-y-0",
+          "flex w-full items-center gap-3 rounded-3xl border p-3 text-sm shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md active:translate-y-0",
           isActive
             ? "border-brand/40 bg-[#FFF8F0]/90 shadow-md ring-1 ring-brand/20"
             : isUnread
@@ -639,26 +708,29 @@ export default function MessagesMenu({
         <button
           type="button"
           onClick={() => handleConversationSelect(conversation.id)}
+          dir="ltr"
           className="flex flex-1 items-center gap-3 text-left"
         >
           <Avatar className="h-9 w-9">
             <AvatarImage src={avatarUrl ?? undefined} alt={targetName} />
             <AvatarFallback className="bg-[#F6ECE0] text-[#2D2D2D]">{avatarLetter}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-1 items-start justify-between gap-2">
-            <div className="flex-1">
+          <div className="flex flex-1 min-w-0 items-start gap-2">
+            <div className="flex-1 min-w-0">
               <p
+                dir="auto"
                 className={cn(
-                  "text-sm text-[#2D2D2D]",
-                  isUnread ? "font-semibold" : "font-medium",
+                  "text-sm font-semibold font-sans text-[#2D2D2D] bidi-auto",
+                  isUnread ? "font-bold" : "font-semibold",
                 )}
               >
-                {target?.fullName ?? target?.id?.slice(0, 8) ?? "Unknown user"}
+                {targetName}
               </p>
               {preview && (
                 <p
+                  dir="auto"
                   className={cn(
-                    "mt-0.5 line-clamp-1 text-xs",
+                    "mt-0.5 line-clamp-1 text-[13px] leading-snug font-sans bidi-auto",
                     isUnread ? "text-[#2D2D2D]" : "text-[#777777]",
                   )}
                 >
@@ -666,16 +738,14 @@ export default function MessagesMenu({
                 </p>
               )}
             </div>
-            <div className="ml-2 flex items-center gap-2">
-              {lastActivity && <p className="text-[11px] text-[#777777]">{lastActivity}</p>}
-            </div>
+            <div className={cn("flex items-center gap-2", isRtl ? "mr-2" : "ml-2")} />
           </div>
         </button>
         <button
           type="button"
           onClick={() => void handleDeleteConversation(conversation.id)}
-          aria-label="Delete conversation"
-          className="ml-1 text-brand hover:text-[#c76a16]"
+          aria-label={t("header.chatDeleteConversation")}
+          className={cn(isRtl ? "mr-1" : "ml-1", "text-brand hover:text-[#c76a16]")}
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -723,15 +793,13 @@ export default function MessagesMenu({
               onClick={handleLoadMore}
               disabled={loadingMessages}
             >
-              {loadingMessages ? 'Loading…' : 'Load earlier messages'}
+              {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
             </button>
           </div>
         )}
         {messages.map((message) => {
           const isViewer = message.senderId === userId;
-          const timestamp = formatDistanceToNow(new Date(message.createdAt), {
-            addSuffix: true,
-          });
+          const timestamp = formatRelativeTime(new Date(message.createdAt));
 
           return (
             <div
@@ -743,15 +811,17 @@ export default function MessagesMenu({
             >
               <div
                 className={cn(
-                  "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-sm shadow-sm",
+                  "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-[15px] font-sans leading-relaxed shadow-sm",
                   isViewer
                     ? "bg-brand text-white"
                     : "bg-[#EBDAC8] text-[#2D2D2D]",
                 )}
               >
-                <p className="whitespace-pre-line">{message.content}</p>
+                <p dir="auto" className="whitespace-pre-line bidi-auto">
+                  {message.content}
+                </p>
               </div>
-              <span className="text-[10px] uppercase tracking-wide text-[#777777]">
+              <span dir="auto" className="text-[10px] uppercase tracking-wide text-[#777777] bidi-auto">
                 {timestamp}
               </span>
             </div>
@@ -764,9 +834,11 @@ export default function MessagesMenu({
   const renderConversationListSection = () => (
     <div className="flex h-full flex-col rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40">
       <div className="flex items-center justify-between px-3 py-2 mb-3">
-        <span className="text-xs font-bold uppercase tracking-widest text-brand">Contacts</span>
+        <span className="text-xs font-bold uppercase tracking-widest text-brand">
+          {t("header.chatContacts")}
+        </span>
       </div>
-      <ScrollArea className="flex-1 pr-1">
+      <ScrollArea className={cn("flex-1", isRtl ? "pl-1" : "pr-1")}>
         {loadingConversations ? (
           <div className="flex h-full items-center justify-center text-[#777777]">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -795,11 +867,14 @@ export default function MessagesMenu({
           {showBackButton && (
             <button
               type="button"
-              className="mr-2 inline-flex items-center gap-1 text-xs text-brand hover:underline md:hidden"
+              className={cn(
+                "inline-flex items-center gap-1 text-xs text-brand hover:underline md:hidden",
+                isRtl ? "ml-2" : "mr-2",
+              )}
               onClick={() => setMobileView("list")}
             >
-              <ArrowLeft className="h-3 w-3" />
-              <span>Back</span>
+              {isRtl ? <ArrowRight className="h-3 w-3" /> : <ArrowLeft className="h-3 w-3" />}
+              <span>{t("header.chatBack")}</span>
             </button>
           )}
           <div className="flex flex-1 items-center gap-3">
@@ -812,20 +887,32 @@ export default function MessagesMenu({
                   <Image src={productImageSrc} alt={product.title} fill className="object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-[10px] text-[#777777]">
-                    No image
+                    {t("header.chatNoImage")}
                   </div>
                 )}
               </Link>
             )}
             <div className="flex flex-col">
               <p className="text-sm font-semibold text-[#2D2D2D]">
-                {counterpart?.fullName ? `Chat with ${counterpart.fullName}` : "Chat"}
+                {counterpart?.fullName
+                  ? `${t("header.chatWith")} ${counterpart.fullName}`
+                  : t("header.chatTitle")}
               </p>
               <div className="mt-1 flex items-center gap-2 text-xs text-[#777777]">
                 <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                <span>Status</span>
-                <span className="text-[#C4A98A]">{"\u00B7"}</span>
-                <span>On</span>
+                {isRtl ? (
+                  <>
+                    <span>{t("header.chatOnline")}</span>
+                    <span className="text-[#C4A98A]">{"\u00B7"}</span>
+                    <span>{t("header.chatStatus")}</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{t("header.chatStatus")}</span>
+                    <span className="text-[#C4A98A]">{"\u00B7"}</span>
+                    <span>{t("header.chatOnline")}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -880,7 +967,7 @@ export default function MessagesMenu({
           <button
             type="button"
             className={cn(
-              "relative inline-flex h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] items-center justify-center bg-transparent p-0 text-current",
+              "relative inline-flex h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] items-center justify-center bg-transparent p-0 text-current transition active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:text-brand",
               triggerClassName,
             )}
             aria-label={strings.label}
@@ -917,11 +1004,15 @@ export default function MessagesMenu({
         side="bottom"
         align="center"
         sideOffset={12}
+        dir={isRtl ? "rtl" : "ltr"}
         className="relative z-[90] w-[960px] max-w-[min(1100px,calc(100vw-1.5rem))] border-none bg-transparent p-0 shadow-none ring-0"
       >
         <div
           ref={sheetRef}
-          className="relative rounded-[32px] border border-white/50 bg-gradient-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40"
+          className={cn(
+            "relative rounded-[32px] border border-white/50 bg-gradient-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40",
+            isRtl ? "text-right" : "text-left",
+          )}
           style={{
             transform: `translateY(${dragOffset}px)`,
             transition: isDragging ? "none" : "transform 180ms ease-out",

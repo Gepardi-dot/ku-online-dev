@@ -14,6 +14,7 @@ const dmSans = DM_Sans({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   display: 'swap',
+  variable: '--font-sans',
 });
 
 const notoKufiArabic = Noto_Kufi_Arabic({
@@ -54,6 +55,7 @@ export default async function RootLayout({
       <body
         className={cn(
           dmSans.className,
+          dmSans.variable,
           notoKufiArabic.variable,
           'font-body antialiased min-h-screen bg-background font-sans',
         )}

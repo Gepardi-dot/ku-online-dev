@@ -146,7 +146,10 @@ export default function AuthButton({ user }: AuthButtonProps) {
         }}
       >
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <Button
+            variant="ghost"
+            className="relative h-8 w-8 rounded-full transition active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:shadow-[0_14px_32px_rgba(247,111,29,0.18)] data-[state=open]:ring-2 data-[state=open]:ring-brand/40"
+          >
             <Avatar className="h-8 w-8">
               <AvatarImage src={user.user_metadata?.avatar_url} alt={user.user_metadata?.full_name} />
               <AvatarFallback>
@@ -201,7 +204,11 @@ export default function AuthButton({ user }: AuthButtonProps) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          className="transition active:scale-[0.98] data-[state=open]:scale-[1.02] data-[state=open]:shadow-[0_12px_28px_rgba(247,111,29,0.16)]"
+        >
           <User className="mr-2 h-4 w-4" />
           {t('header.signIn')}
         </Button>

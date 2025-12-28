@@ -7,6 +7,7 @@ import { Loader2, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useLocale } from '@/providers/locale-provider';
 import { Button, type ButtonProps } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,9 +83,27 @@ export default function RemoveListingButton({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button type="button" variant="destructive" size={size} className={className} disabled={loading}>
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-          {t('product.removeListing')}
+        <Button
+          type="button"
+          variant="outline"
+          size={size}
+          className={cn(
+            size === 'sm' ? 'h-9 rounded-md' : 'h-10 rounded-md',
+            "border border-dashed border-red-200/80 bg-white/70 text-red-700 shadow-[0_8px_20px_rgba(248,113,113,0.18)] hover:bg-red-50 hover:text-red-700",
+            className,
+          )}
+          disabled={loading}
+        >
+          {loading ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-red-50 text-red-600 ring-1 ring-red-200/70">
+              <Trash2 className="h-4 w-4" />
+            </span>
+          )}
+          <span className="text-sm font-semibold">
+            {t('product.removeListing')}
+          </span>
         </Button>
       </AlertDialogTrigger>
       <AlertDialogContent>

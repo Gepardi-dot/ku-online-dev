@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
 import Image from 'next/image';
 import { Eye, MapPin, Maximize2, Tag, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { Dialog, DialogContent, DialogClose, DialogTitle } from '@/components/ui/dialog';
@@ -8,7 +8,8 @@ import { transformSignedImageUrl } from '@/lib/storage-transform';
 import FavoriteToggle, { favoritesEvents } from '@/components/product/favorite-toggle';
 import ShareButton from '@/components/share-button';
 import { useLocale } from '@/providers/locale-provider';
-import { formatCurrency, getNumberLocale } from '@/lib/locale/formatting';
+import { CurrencyText } from '@/components/currency-text';
+import { getNumberLocale } from '@/lib/locale/formatting';
 
 type ProductImagesProps = {
   images: string[];
@@ -86,7 +87,15 @@ export default function ProductImages({
 
   const numberLocale = getNumberLocale(locale);
   const formatNumber = (value: number) => new Intl.NumberFormat(numberLocale).format(value);
-  const formattedPrice = formatCurrency(price ?? null, currency ?? null, locale);
+  const priceDisplay = (
+    <CurrencyText
+      amount={price ?? null}
+      currencyCode={currency ?? null}
+      locale={locale}
+      dir="auto"
+      className="text-lg font-bold text-primary bidi-auto"
+    />
+  );
 
   const conditionLabels: Record<string, string> = {
     new: t('filters.conditionNew'),
@@ -317,7 +326,7 @@ export default function ProductImages({
         onOpenChange={setOpen}
         title={title}
         description={description ?? ''}
-        price={formattedPrice}
+        price={priceDisplay}
         condition={conditionLabel}
         location={locationLabel}
         views={viewsLabel}
@@ -339,7 +348,7 @@ type LightboxProps = {
   onOpenChange: (v: boolean) => void;
   title: string;
   description: string;
-  price: string;
+  price: ReactNode;
   condition: string | null;
   location: string | null;
   views: string | null;
@@ -569,7 +578,7 @@ function Lightbox({
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <Tag className="h-4 w-4 text-primary" aria-hidden="true" />
-                      <span dir="auto" className="text-lg font-bold text-primary bidi-auto">{price}</span>
+                      {price}
                       {isSold ? (
                         <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
                           {soldBadgeLabel}

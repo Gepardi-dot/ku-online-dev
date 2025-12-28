@@ -22,7 +22,6 @@ import { signStoragePaths } from "@/lib/services/storage-sign-client";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/providers/locale-provider";
 import { localizeText } from "@/lib/locale/localize";
-import { formatCurrency } from "@/lib/locale/formatting";
 
 interface NotificationMenuStrings {
   label: string;
@@ -98,6 +97,18 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
   useEffect(() => {
     void refreshCount();
   }, [refreshCount]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ source?: string }>).detail;
+      if (detail?.source !== "notification-menu") {
+        setOpen(false);
+      }
+    };
+    window.addEventListener("ku-menu-open", handler);
+    return () => window.removeEventListener("ku-menu-open", handler);
+  }, []);
 
   // Hydrate product thumbnails and basic info for listing notifications.
   useEffect(() => {
@@ -207,6 +218,9 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
           return;
         }
         setOpen(true);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("ku-menu-open", { detail: { source: "notification-menu" } }));
+        }
         void loadNotifications();
       } else {
         setOpen(false);
@@ -271,7 +285,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
   }, [unreadCount]);
 
   const ebayTriggerClass =
-    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40";
+    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_16px_38px_rgba(247,111,29,0.18)]";
 
     return (
       <Popover open={open} onOpenChange={handleOpenChange} modal={true}>
@@ -322,16 +336,12 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                 const productId = notification.relatedId ?? undefined;
                 const meta = productId ? productMeta[productId] : undefined;
                 const productName = (meta?.title ?? rawName) || notification.title || "";
-                const localizedProductName = localizeText(productName, meta?.titleTranslations ?? null, locale);
-                const localizedDescription = meta?.description
-                  ? localizeText(meta.description, meta?.descriptionTranslations ?? null, locale)
-                  : "";
-                const productInitial = localizedProductName.trim().charAt(0).toUpperCase() || "•";
+                const productInitial = productName.trim().charAt(0).toUpperCase() || "•";
                 const thumbUrl = meta?.thumbUrl;
                 const price = meta?.price;
                 const currency = meta?.currency ?? "IQD";
                 const formattedPrice =
-                  typeof price === "number" ? formatCurrency(price, currency, locale) : null;
+                  typeof price === "number" ? `${price.toLocaleString(locale)} ${currency}` : null;
 
                 const metaKind =
                   notification.meta && typeof notification.meta === "object" && "kind" in (notification.meta as any)
@@ -388,7 +398,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                           {thumbUrl ? (
                             <Image
                               src={thumbUrl}
-                              alt={localizedProductName}
+                              alt={productName}
                               fill
                               sizes="64px"
                               className="object-cover"
@@ -401,9 +411,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                         </div>
                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                           <div className="flex items-center gap-2">
-                            <h4 dir="auto" className="flex-1 truncate text-sm font-bold text-[#2D2D2D] min-w-0 bidi-auto">
-                              {localizedProductName}
-                            </h4>
+                            <h4 className="flex-1 truncate text-sm font-bold text-[#2D2D2D] min-w-0">{productName}</h4>
                             <span
                               className={`shrink-0 inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-tight ${listingBadge.className}`}
                             >
@@ -413,14 +421,9 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                                <div className="absolute right-0 top-0 h-2 w-2 -translate-y-1/2 translate-x-1/2 rounded-full bg-orange-500 ring-4 ring-white" />
                             )}
                           </div>
-                          {localizedDescription && (
-                            <p dir="auto" className="mt-0.5 truncate text-xs text-muted-foreground bidi-auto">
-                              {localizedDescription}
-                            </p>
-                          )}
                           <div className="mt-0.5 flex items-center justify-between">
                             {formattedPrice && (
-                              <p dir="auto" className="truncate text-sm font-bold text-brand bidi-auto">{formattedPrice}</p>
+                              <p className="truncate text-sm font-bold text-brand">{formattedPrice}</p>
                             )}
                             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5" />
                           </div>
