@@ -5,6 +5,7 @@ import { Flag } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -100,9 +101,19 @@ export function ReportListingDialog({ productId, sellerId }: ReportListingDialog
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="destructive" className="w-full">
-          <Flag className="mr-2 h-4 w-4" />
-          {t('report.button')}
+        <Button
+          variant="outline"
+          className={cn(
+            "h-9 w-full rounded-xl border border-white/20 bg-[linear-gradient(110deg,#ef4444,#dc2626)] text-white shadow-[0_14px_34px_rgba(220,38,38,0.32)] hover:shadow-[0_18px_40px_rgba(220,38,38,0.4)] md:w-[78%] md:self-center",
+            "flex items-center gap-3",
+          )}
+        >
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-white/15 text-white ring-1 ring-white/25">
+            <Flag className="h-4 w-4" />
+          </span>
+          <span className="text-sm font-semibold">
+            {t('report.button')}
+          </span>
         </Button>
       </DialogTrigger>
       <DialogContent>

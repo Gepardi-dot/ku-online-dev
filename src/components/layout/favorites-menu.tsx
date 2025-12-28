@@ -16,8 +16,6 @@ import {
 } from '@/lib/services/favorites-client';
 import { favoritesEvents } from '@/components/product/favorite-toggle';
 import { toast } from '@/hooks/use-toast';
-import { useLocale } from '@/providers/locale-provider';
-import { formatCurrency } from '@/lib/locale/formatting';
 
 interface FavoritesMenuStrings {
   label: string;
@@ -45,7 +43,6 @@ export default function FavoritesMenu({
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const recentMutationsRef = useRef(new Set<string>());
-  const { locale } = useLocale();
 
   const canLoad = Boolean(userId);
 
@@ -147,6 +144,18 @@ export default function FavoritesMenu({
     }
   }, [open, favorites.length]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ source?: string }>).detail;
+      if (detail?.source !== 'favorites-menu') {
+        setOpen(false);
+      }
+    };
+    window.addEventListener('ku-menu-open', handler);
+    return () => window.removeEventListener('ku-menu-open', handler);
+  }, []);
+
   const handleOpenChange = useCallback(
     (next: boolean) => {
       if (next) {
@@ -157,6 +166,9 @@ export default function FavoritesMenu({
           return;
         }
         setOpen(true);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ku-menu-open', { detail: { source: 'favorites-menu' } }));
+        }
         void loadFavorites();
       } else {
         setOpen(false);
@@ -211,13 +223,26 @@ export default function FavoritesMenu({
     );
   }, [count]);
 
-  const formatPrice = useCallback(
-    (price: number | null, currency: string | null) => formatCurrency(price, currency, locale),
-    [locale],
-  );
+  const formatPrice = useCallback((price: number | null, currency: string | null) => {
+    if (price === null) {
+      return '�?"';
+    }
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency ?? 'IQD',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      })
+        .format(price)
+        .replace('IQD', 'IQD');
+    } catch {
+      return `${price} ${currency ?? 'IQD'}`;
+    }
+  }, []);
 
   const ebayTriggerClass =
-    'relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40';
+    'relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_16px_38px_rgba(247,111,29,0.18)]';
 
   const handleShare = useCallback(async (favorite: FavoriteSummary) => {
     const product = favorite.product;
@@ -265,7 +290,7 @@ export default function FavoritesMenu({
         {compactTrigger ? (
           <button
             type="button"
-            className={`relative inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0 bg-transparent text-current ${triggerClassName ?? ''}`}
+            className={`relative inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0 bg-transparent text-current transition active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:text-brand ${triggerClassName ?? ''}`}
             aria-label={strings.label}
           >
             {triggerIcon ? (
@@ -364,14 +389,12 @@ export default function FavoritesMenu({
                               </Link>
                             </div>
                             <div className="mt-0.5 flex items-center justify-between">
-                              <p dir="auto" className="truncate text-sm font-bold text-brand bidi-auto">
+                              <p className="truncate text-sm font-bold text-brand">
                                 {formatPrice(product?.price ?? null, product?.currency ?? null)}
                               </p>
                             </div>
                             {product?.location && (
-                              <p dir="auto" className="mt-0.5 truncate text-sm font-medium text-[#777777] bidi-auto">
-                                {product.location}
-                              </p>
+                              <p className="mt-0.5 truncate text-sm font-medium text-[#777777]">{product.location}</p>
                             )}
                           </div>
                           <div className="flex flex-col gap-1.5 shrink-0">

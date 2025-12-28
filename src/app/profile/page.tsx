@@ -5,10 +5,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import { differenceInMonths, formatDistanceToNow } from 'date-fns';
+import { ar, ckb, enUS } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import EditProfileButton from '@/components/profile/EditProfileButton';
 import AppLayout from '@/components/layout/app-layout';
+import { CurrencyText } from '@/components/currency-text';
 import {
   Avatar,
   AvatarFallback,
@@ -45,7 +47,6 @@ import {
   Settings,
   ShieldCheck,
   Star,
-  User,
 } from 'lucide-react';
 import { createClient } from '@/utils/supabase/server';
 import { createTransformedSignedUrls } from '@/lib/storage';
@@ -56,6 +57,7 @@ import ProfileSettingsForm from './profile-settings-form';
 import AccountSettingsPanel from './account-settings-panel';
 import type { UpdateProfileFormValues } from './form-state';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
+import { localizeText } from '@/lib/locale/localize';
 import { rtlLocales } from '@/lib/locale/dictionary';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
 type ProfilePageSearchParams = {
@@ -84,6 +86,7 @@ type ReviewRow = {
 type SoldListingRow = {
   id: string;
   title: string | null;
+  title_translations?: Record<string, unknown> | null;
   price: number | string | null;
   currency: string | null;
   images: string[] | null;
@@ -104,6 +107,23 @@ function normalizeImages(value: unknown): string[] {
     return [];
   }
   return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+function normalizeTranslationMap(value: unknown): Record<string, string> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const result: Record<string, string> = {};
+  for (const [key, item] of Object.entries(record)) {
+    if (typeof item !== 'string') continue;
+    const trimmed = item.trim();
+    if (!trimmed) continue;
+    result[key] = trimmed;
+  }
+
+  return Object.keys(result).length > 0 ? result : null;
 }
 
 function InsightTile({ icon, label, value, helper }: InsightTileProps) {
@@ -133,6 +153,7 @@ export default async function ProfilePage({
   const locale = await getServerLocale();
   const t = (key: string) => serverTranslate(locale, key);
   const isRtl = rtlLocales.includes(locale);
+  const dateFnsLocale = locale === 'ar' ? ar : locale === 'ku' ? ckb : enUS;
   const supabase = await createClient(cookieStore);
   const {
     data: { user },
@@ -229,7 +250,7 @@ export default async function ProfilePage({
   const { data: soldRows, error: soldError } = await supabase
     .from('products')
     .select(
-      'id, title, price, currency, images, location, updated_at, created_at',
+      'id, title, title_translations, price, currency, images, location, updated_at, created_at',
     )
     .eq('seller_id', user.id)
     .eq('is_sold', true)
@@ -377,24 +398,6 @@ export default async function ProfilePage({
     (completionChecks.filter(Boolean).length / completionChecks.length) * 100,
   );
 
-  const priceLocale = locale === 'ku' ? 'ku-Arab-IQ' : locale === 'ar' ? 'ar-IQ' : 'en-US';
-  const currencyLabel = locale === 'ar' || locale === 'ku' ? 'دينار' : 'IQD';
-  const formatPrice = (value: number | string | null, currency: string | null) => {
-    const parsed =
-      typeof value === 'number' ? value : typeof value === 'string' && value.trim() ? Number(value) : NaN;
-    if (!Number.isFinite(parsed)) {
-      return '—';
-    }
-    const formatter = new Intl.NumberFormat(priceLocale, {
-      style: 'currency',
-      currency: currency ?? 'IQD',
-      currencyDisplay: 'code',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
-    return formatter.format(parsed).replace(/IQD/g, currencyLabel).trim();
-  };
-
   const totalViews = activeListings.reduce((acc, item) => acc + (item.views ?? 0), 0);
   const featuredListingsSource = activeListings.length > 0 ? activeListings : listings;
   const featuredListings = featuredListingsSource.slice(0, 3);
@@ -441,14 +444,15 @@ export default async function ProfilePage({
     const imageUrl = buildPublicStorageUrl(thumbPath);
     const soldAtRaw = sale?.sold_at ?? row?.updated_at ?? row?.created_at ?? null;
     const soldAt = soldAtRaw ? new Date(soldAtRaw) : null;
+    const titleTranslations = normalizeTranslationMap(row?.title_translations);
     const soldAtLabel =
       soldAt && !Number.isNaN(soldAt.getTime())
-        ? formatDistanceToNow(soldAt, { addSuffix: true })
+        ? formatDistanceToNow(soldAt, { addSuffix: true, locale: dateFnsLocale })
         : null;
 
     return {
       id: String(row?.id ?? ''),
-      title: (row?.title as string) ?? '',
+      title: localizeText((row?.title as string) ?? '', titleTranslations, locale),
       price: row?.price ?? null,
       currency: row?.currency ?? null,
       location: row?.location ?? null,
@@ -558,7 +562,7 @@ export default async function ProfilePage({
 
           <div className="lg:col-span-2">
             <Tabs key={activeTab} defaultValue={activeTab} className="space-y-6 -mt-3 sm:-mt-5">
-              <TabsList className="mb-3 grid h-auto w-full grid-cols-3 items-center gap-1 rounded-full border border-white/60 bg-[linear-gradient(160deg,rgba(255,255,255,0.85),rgba(255,255,255,0.35)),radial-gradient(circle_at_top_left,rgba(255,214,170,0.35),transparent_60%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.6),transparent_50%),repeating-linear-gradient(90deg,rgba(255,255,255,0.12)_0,rgba(255,255,255,0.12)_2px,transparent_2px,transparent_6px)] p-1 shadow-[0_12px_30px_rgba(120,72,0,0.14)] backdrop-blur-xl ring-1 ring-white/60 sm:grid-cols-3 lg:grid-cols-5">
+              <TabsList className="mb-3 grid h-auto w-full grid-cols-3 items-center gap-1 rounded-full border border-white/60 bg-[linear-gradient(160deg,rgba(255,255,255,0.85),rgba(255,255,255,0.35)),radial-gradient(circle_at_top_left,rgba(255,214,170,0.35),transparent_60%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.6),transparent_50%),repeating-linear-gradient(90deg,rgba(255,255,255,0.12)_0,rgba(255,255,255,0.12)_2px,transparent_2px,transparent_6px)] p-1 shadow-[0_12px_30px_rgba(120,72,0,0.14)] backdrop-blur-xl ring-1 ring-white/60">
                 <TabsTrigger
                   value="overview"
                   className="inline-flex w-full items-center justify-center gap-2 !rounded-full !px-3 !py-2 text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
@@ -579,20 +583,6 @@ export default async function ProfilePage({
                 >
                   <Receipt className="h-4 w-4" />
                   {t('profile.tabs.sales')}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="profile"
-                  className="hidden w-full items-center justify-center gap-2 !rounded-full !px-3 !py-2 text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30 sm:inline-flex"
-                >
-                  <User className="h-4 w-4" />
-                  {t('nav.profile')}
-                </TabsTrigger>
-                <TabsTrigger
-                  value="settings"
-                  className="hidden w-full items-center justify-center gap-2 !rounded-full !px-3 !py-2 text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30 sm:inline-flex"
-                >
-                  <Settings className="h-4 w-4" />
-                  {t('profile.tabs.settings')}
                 </TabsTrigger>
               </TabsList>
 
@@ -697,8 +687,8 @@ export default async function ProfilePage({
                                     {Number(review.rating).toFixed(1)}
                                   </Badge>
                                 </div>
-                                <p className="text-xs text-muted-foreground">
-                                  {formatDistanceToNow(new Date(review.created_at), { addSuffix: true })}
+                                <p dir="auto" className="text-xs text-muted-foreground bidi-auto">
+                                  {formatDistanceToNow(new Date(review.created_at), { addSuffix: true, locale: dateFnsLocale })}
                                 </p>
                                 {review.comment ? (
                                   <p className="text-sm text-muted-foreground">{review.comment}</p>
@@ -783,7 +773,11 @@ export default async function ProfilePage({
                                     </span>
                                   </Link>
                                   <p className="text-sm font-medium text-brand">
-                                    {formatPrice(sale.price, sale.currency)}
+                                    <CurrencyText
+                                      amount={typeof sale.price === 'string' ? Number(sale.price) : sale.price}
+                                      currencyCode={sale.currency}
+                                      locale={locale}
+                                    />
                                   </p>
                                 </div>
                                 <Badge variant="secondary" className="bg-gray-700 text-white">
@@ -792,7 +786,9 @@ export default async function ProfilePage({
                               </div>
                               <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                                 {sale.soldAtLabel ? (
-                                  <span>{t('profile.sales.soldAtLabel')} {sale.soldAtLabel}</span>
+                                  <span dir="auto" className="bidi-auto">
+                                    {t('profile.sales.soldAtLabel')} {sale.soldAtLabel}
+                                  </span>
                                 ) : null}
                                 {sale.location ? (
                                   <span dir="auto" className="bidi-auto">
@@ -800,9 +796,9 @@ export default async function ProfilePage({
                                   </span>
                                 ) : null}
                               </div>
-                              <div className="flex flex-wrap items-center gap-2 text-sm">
-                                <span className="text-muted-foreground">{t('profile.sales.buyerLabel')}:</span>
-                                {sale.buyer ? (
+                              {sale.buyer ? (
+                                <div className="flex flex-wrap items-center gap-2 text-sm">
+                                  <span className="text-muted-foreground">{t('profile.sales.buyerLabel')}:</span>
                                   <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-2.5 py-1 text-sm">
                                     <Avatar className="h-6 w-6">
                                       <AvatarImage src={sale.buyer.avatarUrl ?? undefined} />
@@ -814,10 +810,8 @@ export default async function ProfilePage({
                                       {sale.buyer.fullName ?? t('profile.sales.buyerFallback')}
                                     </span>
                                   </span>
-                                ) : (
-                                  <span className="text-muted-foreground">{t('profile.sales.noBuyer')}</span>
-                                )}
-                              </div>
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                         ))}

@@ -20,6 +20,7 @@ import { CONDITION_OPTIONS } from '@/lib/products/filter-params';
 import { createProductSchema } from '@/lib/validation/schemas';
 import { Switch } from '@/components/ui/switch';
 import { compressToWebp } from '@/lib/images/client-compress';
+import { CurrencyText, highlightDollar } from '@/components/currency-text';
 import { useLocale } from '@/providers/locale-provider';
 import { rtlLocales } from '@/lib/locale/dictionary';
 import { CATEGORY_LABEL_MAP } from '@/data/category-ui-config';
@@ -910,8 +911,15 @@ export default function SellForm({ user }: SellFormProps) {
     const redSteps = ['#dc2626', '#ef4444', '#f97316', '#f59e0b', '#fbbf24'];
     return redSteps[Math.max(0, Math.min(completedChecklistCount - 1, redSteps.length - 1))] ?? '#dc2626';
   })();
-  const currencyInputLabel =
-    formData.currency === 'IQD' && (locale === 'ar' || locale === 'ku') ? 'د.ع' : formData.currency;
+  const currencyInputLabel = (() => {
+    if (formData.currency === 'IQD' && (locale === 'ar' || locale === 'ku')) {
+      return 'د.ع';
+    }
+    if (formData.currency === 'USD' && (locale === 'ar' || locale === 'ku')) {
+      return '$';
+    }
+    return formData.currency;
+  })();
   const selectedCategory = categories.find((category) => category.id === formData.categoryId) ?? null;
   const previewTitle = formData.title.trim().length > 0 ? formData.title.trim() : t('sellForm.preview.placeholderTitle');
   const previewCategory = selectedCategory ? getCategoryLabel(selectedCategory.name) : t('sellForm.fields.category');
@@ -930,25 +938,7 @@ export default function SellForm({ user }: SellFormProps) {
       return '—';
     }
 
-    try {
-      return new Intl.NumberFormat(locale, {
-        style: 'currency',
-        currency: formData.currency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      })
-        .format(numericPrice)
-        .replace('IQD', 'IQD');
-    } catch {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: formData.currency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      })
-        .format(numericPrice)
-        .replace('IQD', 'IQD');
-    }
+    return <CurrencyText amount={numericPrice} currencyCode={formData.currency} locale={locale} />;
   })();
 
   return (
@@ -1193,32 +1183,37 @@ export default function SellForm({ user }: SellFormProps) {
                           </Label>
                           <div className="mt-3 flex flex-wrap items-center gap-2">
                             <div dir="ltr" role="group" aria-label="Currency" className={currencyToggleClassName}>
-                              {currencyToggleOptions.map((option) => (
-                                <button
-                                  key={option.value}
-                                  type="button"
-                                  aria-pressed={formData.currency === option.value}
-                                  className={[
-                                    currencyToggleButtonBaseClassName,
-                                    formData.currency === option.value
-                                      ? 'bg-[color:var(--sell-panel-accent)] text-white shadow-[0_6px_12px_var(--sell-panel-glow)]'
-                                      : 'text-[color:var(--sell-panel-ink)] hover:bg-white/80',
-                                  ].join(' ')}
-                                  onClick={() => {
-                                    setHasUnsaved(true);
-                                    setFormData((prev) => ({ ...prev, currency: option.value }));
-                                  }}
-                                >
-                                  {option.label.includes('$') ? (
-                                    <span className="inline-flex items-center gap-1 leading-none">
-                                      <span className="text-lg leading-none">$</span>
-                                      <span className="text-sm leading-none">{option.label.replace('$', '').trim()}</span>
-                                    </span>
-                                  ) : (
-                                    <span className="text-sm leading-none">{option.label}</span>
-                                  )}
-                                </button>
-                              ))}
+                              {currencyToggleOptions.map((option) => {
+                                const labelText = option.label.replace('$', '').trim();
+                                return (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    aria-pressed={formData.currency === option.value}
+                                    className={[
+                                      currencyToggleButtonBaseClassName,
+                                      formData.currency === option.value
+                                        ? 'bg-[color:var(--sell-panel-accent)] text-white shadow-[0_6px_12px_var(--sell-panel-glow)]'
+                                        : 'text-[color:var(--sell-panel-ink)] hover:bg-white/80',
+                                    ].join(' ')}
+                                    onClick={() => {
+                                      setHasUnsaved(true);
+                                      setFormData((prev) => ({ ...prev, currency: option.value }));
+                                    }}
+                                  >
+                                    {option.label.includes('$') ? (
+                                      <span className="inline-flex items-center gap-1 leading-none">
+                                        <span className="text-lg leading-none text-emerald-600">$</span>
+                                        {labelText ? (
+                                          <span className="text-sm leading-none">{labelText}</span>
+                                        ) : null}
+                                      </span>
+                                    ) : (
+                                      <span className="text-sm leading-none">{option.label}</span>
+                                    )}
+                                  </button>
+                                );
+                              })}
                             </div>
 
                             <div className={freeToggleClassName}>
@@ -1239,7 +1234,7 @@ export default function SellForm({ user }: SellFormProps) {
 
                             <div className="relative mt-3">
                               <div className="pointer-events-none absolute start-4 top-1/2 z-10 -translate-y-1/2 text-xs font-semibold text-[color:var(--sell-panel-accent)]">
-                              {currencyInputLabel}
+                                {highlightDollar(currencyInputLabel)}
                               </div>
                             <Input
                               id="price"

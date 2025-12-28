@@ -20,6 +20,7 @@ import { CONDITION_OPTIONS } from '@/lib/products/filter-params';
 import { createProductSchema } from '@/lib/validation/schemas';
 import { Switch } from '@/components/ui/switch';
 import { compressToWebp } from '@/lib/images/client-compress';
+import { highlightDollar } from '@/components/currency-text';
 import { useLocale } from '@/providers/locale-provider';
 import { rtlLocales } from '@/lib/locale/dictionary';
 
@@ -107,6 +108,15 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
   const [isFree, setIsFree] = useState(formData.price === '0');
+  const currencyInputLabel = (() => {
+    if (formData.currency === 'IQD' && (locale === 'ar' || locale === 'ku')) {
+      return 'د.ع';
+    }
+    if (formData.currency === 'USD' && (locale === 'ar' || locale === 'ku')) {
+      return '$';
+    }
+    return formData.currency;
+  })();
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<UploadedImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -565,33 +575,38 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
                       aria-label="Currency"
                       className="inline-flex items-center gap-1 rounded-2xl border border-border/80 bg-white/95 p-1 shadow-sm ring-1 ring-black/5"
                     >
-                      {currencyToggleOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          type="button"
-                          aria-pressed={formData.currency === option.value}
-                          className={[
-                            'flex h-8 items-center rounded-xl px-3 py-0 text-xs font-semibold transition-colors',
-                            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2',
-                            formData.currency === option.value
-                              ? 'bg-primary text-primary-foreground shadow-sm'
-                              : 'text-muted-foreground hover:bg-primary/10 hover:text-foreground',
-                          ].join(' ')}
-                          onClick={() => {
-                            setHasUnsaved(true);
-                            setFormData((prev) => ({ ...prev, currency: option.value }));
-                          }}
-                        >
-                          {option.label.includes('$') ? (
-                            <span className="inline-flex items-center gap-1 leading-none">
-                              <span className="text-lg leading-none">$</span>
-                              <span className="text-sm leading-none">{option.label.replace('$', '').trim()}</span>
-                            </span>
-                          ) : (
-                            <span className="text-sm leading-none">{option.label}</span>
-                          )}
-                        </button>
-                      ))}
+                      {currencyToggleOptions.map((option) => {
+                        const labelText = option.label.replace('$', '').trim();
+                        return (
+                          <button
+                            key={option.value}
+                            type="button"
+                            aria-pressed={formData.currency === option.value}
+                            className={[
+                              'flex h-8 items-center rounded-xl px-3 py-0 text-xs font-semibold transition-colors',
+                              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2',
+                              formData.currency === option.value
+                                ? 'bg-primary text-primary-foreground shadow-sm'
+                                : 'text-muted-foreground hover:bg-primary/10 hover:text-foreground',
+                            ].join(' ')}
+                            onClick={() => {
+                              setHasUnsaved(true);
+                              setFormData((prev) => ({ ...prev, currency: option.value }));
+                            }}
+                          >
+                            {option.label.includes('$') ? (
+                              <span className="inline-flex items-center gap-1 leading-none">
+                                <span className="text-lg leading-none text-emerald-600">$</span>
+                                {labelText ? (
+                                  <span className="text-sm leading-none">{labelText}</span>
+                                ) : null}
+                              </span>
+                            ) : (
+                              <span className="text-sm leading-none">{option.label}</span>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
 
                     <div className="flex items-center gap-2 rounded-2xl border border-border/80 bg-white/95 px-3 py-2 shadow-sm ring-1 ring-black/5">
@@ -609,8 +624,8 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
                   </div>
 
                   <div className="relative mt-2">
-                    <div className="pointer-events-none absolute start-4 top-1/2 z-10 -translate-y-1/2 text-xs font-semibold !text-emerald-600">
-                      {formData.currency}
+                    <div className="pointer-events-none absolute start-4 top-1/2 z-10 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
+                      {highlightDollar(currencyInputLabel)}
                     </div>
                     <Input
                       id="price"

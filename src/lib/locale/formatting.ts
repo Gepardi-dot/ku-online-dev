@@ -1,19 +1,18 @@
 import type { Locale } from '@/lib/locale/dictionary';
 
 export function getNumberLocale(locale: Locale): string {
-  if (locale === 'ku') return 'ku-u-nu-arab';
+  if (locale === 'ku') return 'ar-u-nu-arab';
   if (locale === 'ar') return 'ar-u-nu-arab';
   return 'en-US';
 }
 
 function getLocalizedCurrencyLabel(currencyCode: string, locale: Locale): string | null {
+  if (currencyCode === 'USD') return '$';
   if (locale === 'ar') {
-    if (currencyCode === 'USD') return 'دولار';
-    if (currencyCode === 'IQD') return 'دينار';
+    if (currencyCode === 'IQD') return 'د.ع';
   }
   if (locale === 'ku') {
-    if (currencyCode === 'USD') return 'دۆلار';
-    if (currencyCode === 'IQD') return 'دینار';
+    if (currencyCode === 'IQD') return 'د.ع';
   }
   return null;
 }

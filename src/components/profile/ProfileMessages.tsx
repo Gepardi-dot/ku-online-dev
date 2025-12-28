@@ -9,8 +9,9 @@ import {
 } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { formatDistanceToNow } from "date-fns";
 import { ArrowRight, Loader2, Send } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { ar, ckb, enUS } from "date-fns/locale";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -30,7 +31,8 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
-import { formatCurrency } from "@/lib/locale/formatting";
+import { CurrencyText } from "@/components/currency-text";
+import { rtlLocales } from "@/lib/locale/dictionary";
 
 interface ProfileMessagesProps {
   userId: string;
@@ -38,6 +40,62 @@ interface ProfileMessagesProps {
 
 export default function ProfileMessages({ userId }: ProfileMessagesProps) {
   const { messages, t, locale } = useLocale();
+  const isRtl = rtlLocales.includes(locale);
+  const relativeTimeLocales = useMemo(() => {
+    if (locale === "ku") return ["ckb-u-nu-arab", "ckb", "ku-u-nu-arab", "ku"];
+    if (locale === "ar") return ["ar-u-nu-arab", "ar"];
+    return [locale, "en-US"];
+  }, [locale]);
+  const resolvedRelativeTimeLocale = useMemo(() => {
+    const supported = Intl.RelativeTimeFormat.supportedLocalesOf(relativeTimeLocales);
+    return supported[0] ?? null;
+  }, [relativeTimeLocales]);
+  const relativeTimeFormatter = useMemo(
+    () => (resolvedRelativeTimeLocale ? new Intl.RelativeTimeFormat(resolvedRelativeTimeLocale, { numeric: "auto" }) : null),
+    [resolvedRelativeTimeLocale],
+  );
+  const dateFnsLocale = useMemo(() => {
+    if (locale === "ku") return ckb;
+    if (locale === "ar") return ar;
+    return enUS;
+  }, [locale]);
+  const formatRelativeTime = useCallback(
+    (date: Date) => {
+      if (!relativeTimeFormatter) {
+        return formatDistanceToNow(date, { addSuffix: true, locale: dateFnsLocale });
+      }
+      const diffSeconds = Math.round((date.getTime() - Date.now()) / 1000);
+      const absSeconds = Math.abs(diffSeconds);
+
+      if (absSeconds < 60) {
+        return relativeTimeFormatter.format(diffSeconds, "second");
+      }
+
+      const diffMinutes = Math.round(diffSeconds / 60);
+      if (Math.abs(diffMinutes) < 60) {
+        return relativeTimeFormatter.format(diffMinutes, "minute");
+      }
+
+      const diffHours = Math.round(diffMinutes / 60);
+      if (Math.abs(diffHours) < 24) {
+        return relativeTimeFormatter.format(diffHours, "hour");
+      }
+
+      const diffDays = Math.round(diffHours / 24);
+      if (Math.abs(diffDays) < 30) {
+        return relativeTimeFormatter.format(diffDays, "day");
+      }
+
+      const diffMonths = Math.round(diffDays / 30);
+      if (Math.abs(diffMonths) < 12) {
+        return relativeTimeFormatter.format(diffMonths, "month");
+      }
+
+      const diffYears = Math.round(diffMonths / 12);
+      return relativeTimeFormatter.format(diffYears, "year");
+    },
+    [relativeTimeFormatter, dateFnsLocale],
+  );
 
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
@@ -65,7 +123,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
   const strings = {
     emptyConversations: messages.header.messagesEmpty,
     emptyMessages: messages.header.messagesEmpty,
-    typePlaceholder: messages.header.typeMessage,
+    typePlaceholder: t("header.chatInputPlaceholder"),
     send: messages.header.sendMessage,
   };
 
@@ -394,23 +452,23 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     (conversation: ConversationSummary) => {
       const isActive = conversation.id === activeConversationId;
       const isUnread = conversation.hasUnread;
-      const lastActivity = conversation.lastMessageAt
-        ? formatDistanceToNow(new Date(conversation.lastMessageAt), { addSuffix: true })
-        : null;
-      const target = conversation.sellerId === userId ? conversation.buyer : conversation.seller;
+    const target = conversation.sellerId === userId ? conversation.buyer : conversation.seller;
       const avatarLetter = target?.fullName ? target.fullName[0] : "U";
       const productTitle = conversation.product?.title ?? null;
       const productPrice =
         typeof conversation.product?.price === "number" ? conversation.product.price : null;
       const productCurrency = conversation.product?.currency ?? "IQD";
       const formattedPrice =
-        productPrice !== null ? formatCurrency(productPrice, productCurrency, locale) : null;
+        productPrice !== null ? (
+          <CurrencyText amount={productPrice} currencyCode={productCurrency} locale={locale} />
+        ) : null;
 
       return (
         <button
           key={conversation.id}
           type="button"
           onClick={() => handleConversationSelect(conversation.id)}
+          dir="ltr"
           className={cn(
             "flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md active:translate-y-0",
             isActive
@@ -425,8 +483,8 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
           </Avatar>
           <div className="flex-1">
             <div className="flex items-start justify-between gap-2">
-              <p className={cn("text-sm", isUnread ? "font-semibold" : "font-medium")}>
-                {target?.fullName ?? target?.id?.slice(0, 8) ?? "Unknown user"}
+              <p dir="auto" className={cn("text-sm font-semibold font-sans bidi-auto", isUnread ? "font-bold" : "font-semibold")}>
+                {target?.fullName ?? target?.id?.slice(0, 8) ?? t("header.chatUnknownUser")}
               </p>
             </div>
             {productTitle ? (
@@ -443,12 +501,9 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
               </p>
             ) : null}
             {conversation.lastMessage ? (
-              <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+              <p className="mt-1 line-clamp-2 text-[13px] leading-snug font-sans text-muted-foreground">
                 {conversation.lastMessage}
               </p>
-            ) : null}
-            {lastActivity ? (
-              <p className="mt-1 text-[11px] uppercase tracking-wide text-muted-foreground">{lastActivity}</p>
             ) : null}
           </div>
         </button>
@@ -497,7 +552,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
               className="text-[11px] text-primary underline-offset-2 hover:underline"
               disabled={loadingMessages}
             >
-              {loadingMessages ? t("common.loading") : "Load earlier messages"}
+              {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
             </button>
           </div>
         ) : null}
@@ -507,7 +562,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
           const showTranslated = !isViewer && translationState?.translated && translationState.showing;
           const contentToShow = showTranslated ? translationState?.translated ?? message.content : message.content;
           const isTranslating = Boolean(translationState?.loading);
-          const timestamp = formatDistanceToNow(new Date(message.createdAt), { addSuffix: true });
+          const timestamp = formatRelativeTime(new Date(message.createdAt));
 
           return (
             <div
@@ -516,11 +571,11 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
             >
               <div
                 className={cn(
-                  "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-sm shadow-sm",
+                  "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-[15px] font-sans leading-relaxed shadow-sm",
                   isViewer ? "bg-primary text-primary-foreground" : "bg-muted",
                 )}
               >
-                <p className="whitespace-pre-line">{contentToShow}</p>
+                <p dir="auto" className="whitespace-pre-line bidi-auto">{contentToShow}</p>
                 <div className="mt-1 flex items-center justify-end gap-2">
                   {!isViewer && (
                     <button
@@ -551,9 +606,9 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
                             const description =
                               typeof payload?.error === "string"
                                 ? payload.error
-                                : "We could not delete this message. Please try again.";
+                                : t("header.chatMessageNotDeletedBody");
                             toast({
-                              title: "Message not deleted",
+                              title: t("header.chatMessageNotDeletedTitle"),
                               description,
                               variant: "destructive",
                             });
@@ -563,8 +618,8 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
                         } catch (error) {
                           console.error("Failed to delete message", error);
                           toast({
-                            title: "Message not deleted",
-                            description: "We could not delete this message. Please try again.",
+                            title: t("header.chatMessageNotDeletedTitle"),
+                            description: t("header.chatMessageNotDeletedBody"),
                             variant: "destructive",
                           });
                         } finally {
@@ -574,12 +629,12 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
                       className="text-[11px] underline-offset-2 hover:underline text-muted-foreground"
                       disabled={deletingMessageId === message.id}
                     >
-                      {deletingMessageId === message.id ? t("common.loading") : "Delete"}
+                      {deletingMessageId === message.id ? t("header.chatLoading") : t("header.chatDeleteMessage")}
                     </button>
                   )}
                 </div>
               </div>
-              <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              <span dir="auto" className="text-[10px] uppercase tracking-wide text-muted-foreground bidi-auto">
                 {timestamp}
               </span>
             </div>
@@ -598,6 +653,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     messageTranslations,
     messagesState,
     strings.emptyMessages,
+    formatRelativeTime,
     t,
     userId,
   ]);
@@ -606,7 +662,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     <div className="grid gap-4 md:grid-cols-[240px_1fr]">
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">Contacts</span>
+          <span className="text-sm font-semibold">{t("header.chatContacts")}</span>
         </div>
         <ScrollArea className="h-[320px] rounded-lg border p-2">
           {loadingConversations ? (
@@ -626,13 +682,23 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         <div className="flex items-center justify-between border-b px-4 py-3">
           <div>
             <p className="text-sm font-semibold">
-              {counterpart?.fullName ? `Chat with ${counterpart.fullName}` : "Chat"}
+              {counterpart?.fullName ? `${t("header.chatWith")} ${counterpart.fullName}` : t("header.chatTitle")}
             </p>
             <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
               <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-              <span>Status</span>
-              <span>·</span>
-              <span>Online</span>
+              {isRtl ? (
+                <>
+                  <span>{t("header.chatOnline")}</span>
+                  <span>·</span>
+                  <span>{t("header.chatStatus")}</span>
+                </>
+              ) : (
+                <>
+                  <span>{t("header.chatStatus")}</span>
+                  <span>·</span>
+                  <span>{t("header.chatOnline")}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -644,16 +710,18 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
                   <Image src={productImageSrc} alt={product.title} fill className="object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-[10px] text-muted-foreground">
-                    No image
+                    {t("header.chatNoImage")}
                   </div>
                 )}
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold line-clamp-1">{product.title}</p>
                 <p dir="auto" className="text-xs text-muted-foreground line-clamp-1 bidi-auto">
-                  {typeof product.price === "number"
-                    ? formatCurrency(product.price, product.currency ?? "IQD", locale)
-                    : product.currency ?? null}
+                  {typeof product.price === "number" ? (
+                    <CurrencyText amount={product.price} currencyCode={product.currency ?? "IQD"} locale={locale} />
+                  ) : (
+                    product.currency ?? null
+                  )}
                 </p>
               </div>
               <ArrowRight className="h-4 w-4 text-muted-foreground" />

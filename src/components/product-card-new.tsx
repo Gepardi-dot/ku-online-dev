@@ -9,7 +9,8 @@ import type { ProductWithRelations } from '@/lib/services/products';
 import FavoriteToggle from '@/components/product/favorite-toggle';
 import { useLocale } from '@/providers/locale-provider';
 import { localizeText } from '@/lib/locale/localize';
-import { formatCurrency } from '@/lib/locale/formatting';
+import { rtlLocales } from '@/lib/locale/dictionary';
+import { CurrencyText } from '@/components/currency-text';
 
 interface ProductCardProps {
   product: ProductWithRelations;
@@ -19,6 +20,7 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, viewerId, searchQuery }: ProductCardProps) {
   const { t, locale, messages } = useLocale();
+  const isRtl = rtlLocales.includes(locale);
   const cityLabels = messages.header.city as Record<string, string>;
   const getCityLabel = (value: string) => cityLabels[value.trim().toLowerCase()] ?? value;
   const localizedTitle = localizeText(product.title, product.titleTranslations, locale);
@@ -54,8 +56,6 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
       keepalive: true,
     }).catch(() => {});
   };
-
-  const formatPrice = (price: number, currency?: string | null) => formatCurrency(price, currency ?? null, locale);
 
   const conditionColorMap: Record<string, string> = {
     new: 'bg-green-500',
@@ -143,7 +143,10 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
         )}
         </div>
 
-        <CardContent className="flex h-[146px] flex-col justify-between overflow-hidden px-3 py-3">
+        <CardContent
+          dir={isRtl ? 'rtl' : 'ltr'}
+          className={`flex h-[146px] flex-col justify-between overflow-hidden px-3 py-3 ${isRtl ? 'text-right' : 'text-left'}`}
+        >
         <div className="space-y-1">
           <h3
             dir="auto"
@@ -152,36 +155,45 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
             {localizedTitle}
           </h3>
           
-          <div className="flex items-center justify-between gap-2">
-            <span dir="auto" className="text-lg font-bold text-primary bidi-auto">
-              {formatPrice(Number(product.price), product.currency)}
-            </span>
-            <span
-              dir="auto"
-              className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 bidi-auto"
-            >
-              <Eye className="h-3 w-3" />
-              {product.views}
-            </span>
+          <div className="flex items-center justify-start gap-2">
+            <CurrencyText
+              amount={Number(product.price)}
+              currencyCode={product.currency ?? null}
+              locale={locale}
+              className="text-lg font-bold text-primary bidi-auto"
+            />
           </div>
           
-          {product.location && (
-            <div>
+          <div
+            className={`flex items-center gap-2 ${
+              product.location ? 'justify-between' : isRtl ? 'justify-start' : 'justify-end'
+            }`}
+          >
+            {product.location ? (
               <span className="inline-flex items-center gap-1 rounded-full border border-sky-200/80 bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
                 <MapPin className="h-3 w-3" />
                 <span dir="auto" className="bidi-auto">
                   {getCityLabel(product.location)}
                 </span>
               </span>
-            </div>
-          )}
+            ) : (
+              <span aria-hidden="true" />
+            )}
+            <span className="inline-flex items-center gap-1 rounded-full border border-amber-200/80 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
+              <Eye className="h-3 w-3" />
+              <span dir="auto" className="bidi-auto">
+                {product.views}
+              </span>
+            </span>
+          </div>
           
           <div className="flex flex-wrap items-center gap-2 text-xs">
             <span
-              dir="auto"
               className="inline-flex max-w-full items-center gap-1 overflow-hidden rounded-full border border-slate-200/80 bg-slate-50 px-2.5 py-1 font-semibold text-slate-700 bidi-auto"
             >
-              <span className="truncate">{sellerDisplayName}</span>
+              <span dir="auto" className="truncate bidi-auto">
+                {sellerDisplayName}
+              </span>
               {product.seller?.isVerified ? (
                 <>
                   <BadgeCheck className="h-3 w-3 text-emerald-600" aria-hidden="true" />

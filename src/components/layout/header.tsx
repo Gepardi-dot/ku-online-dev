@@ -38,6 +38,8 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
   const [city, setCity] = useState<CityKey>('all');
+  const [desktopCityOpen, setDesktopCityOpen] = useState(false);
+  const [mobileCityOpen, setMobileCityOpen] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -50,6 +52,19 @@ export default function AppHeader({ user }: AppHeaderProps) {
     setSearchTerm(currentSearch);
     setCity(CITY_KEYS.includes(currentCity) ? currentCity : 'all');
   }, [searchParams]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ source?: string }>).detail;
+      if (detail?.source !== 'header-city-desktop' && detail?.source !== 'header-city-mobile') {
+        setDesktopCityOpen(false);
+        setMobileCityOpen(false);
+      }
+    };
+    window.addEventListener('ku-menu-open', handler);
+    return () => window.removeEventListener('ku-menu-open', handler);
+  }, []);
 
   const updateQueryString = useCallback(
     (updates: Record<string, string | null>) => {
@@ -118,6 +133,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
   return (
     <header
       id="ku-main-header"
+      dir="ltr"
       className="sticky top-0 z-[60] w-full bg-white/80 shadow-sm backdrop-blur-md pointer-events-auto"
     >
       <div className="container mx-auto px-4">
@@ -137,22 +153,22 @@ export default function AppHeader({ user }: AppHeaderProps) {
               aria-label="KU-ONLINE home"
             >
               <BrandLogo
-                className="h-16 w-16 overflow-visible transform scale-[2.5] translate-y-[12px] transition-transform duration-200 group-hover:scale-[2.55] group-hover:translate-y-[10px] pointer-events-none"
+                className="h-16 w-16 overflow-visible transform scale-[2.95] translate-y-[20px] transition-transform duration-200 group-hover:scale-[3.0] group-hover:translate-y-[18px] pointer-events-none"
                 size={64}
               />
             </Link>
           </div>
 
-          {/* Desktop: logo anchored next to the search bar */}
-          <div className="hidden md:flex flex-1 max-w-2xl mx-4 items-center relative">
+          {/* Desktop: logo inline with search bar */}
+          <div className="hidden md:flex flex-1 max-w-4xl mx-4 items-center gap-4">
             <Link
               href="/"
               aria-label="KU-ONLINE home"
-              className="group absolute -left-[4.56rem] top-[calc(50%+10px)] -translate-y-1/2 h-16 w-16 flex items-center justify-center"
+              className="group flex h-14 w-14 items-center justify-center"
             >
               <BrandLogo
-                className="h-16 w-16 overflow-visible transform scale-[2.3] transition-transform duration-200 group-hover:scale-[2.36] group-hover:translate-y-[2px] pointer-events-none"
-                size={64}
+                className="h-14 w-14 overflow-visible transform scale-[2.55] translate-y-[8px] transition-transform duration-200 group-hover:scale-[2.61] group-hover:translate-y-[10px] pointer-events-none"
+                size={56}
               />
             </Link>
 
@@ -164,13 +180,29 @@ export default function AppHeader({ user }: AppHeaderProps) {
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder={t('header.searchPlaceholder')}
                   aria-label={t('header.searchPlaceholder')}
-                  className="w-full rounded-full border-gray-300 pr-56 focus:border-primary focus:ring-primary focus:ring-2"
+                  className="h-11 w-full rounded-full border-gray-300 pr-60 focus:border-primary focus:ring-primary focus:ring-2"
                 />
-                <div className="absolute right-0 top-0 h-full flex items-center">
-                  <DropdownMenu>
+                <div className="absolute right-0 top-0 flex h-full items-center gap-2 pr-1.5">
+                  <DropdownMenu
+                    open={desktopCityOpen}
+                    onOpenChange={(next) => {
+                      setDesktopCityOpen(next);
+                      if (next) {
+                        setMobileCityOpen(false);
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(
+                            new CustomEvent('ku-menu-open', { detail: { source: 'header-city-desktop' } }),
+                          );
+                        }
+                      }
+                    }}
+                  >
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="rounded-full h-full px-4 border-l">
-                        <Filter className="h-5 w-5 mr-2" aria-hidden="true" />
+                      <Button
+                        variant="ghost"
+                        className="h-9 rounded-full border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-800 transition active:scale-[0.98] data-[state=open]:scale-[1.02] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_12px_28px_rgba(247,111,29,0.16)]"
+                      >
+                        <Filter className="h-4.5 w-4.5 mr-2" aria-hidden="true" />
                         <span className="truncate max-w-[7.5rem]">{currentCityLabel}</span>
                       </Button>
                     </DropdownMenuTrigger>
@@ -192,7 +224,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
                   <Button
                     type="button"
                     variant="ghost"
-                    className="h-full px-4 border-l"
+                    className="h-9 w-10 rounded-full bg-secondary text-gray-800"
                     aria-label={t('header.searchByImage')}
                     onClick={handleImageSearchClick}
                   >
@@ -200,7 +232,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
                   </Button>
                   <Button
                     type="submit"
-                    className="h-full rounded-r-full px-5 bg-primary hover:bg-accent-foreground"
+                    className="h-9 w-12 rounded-full bg-primary hover:bg-accent-foreground"
                     aria-label={t('header.searchButton')}
                   >
                     <Search className="h-5 w-5" aria-hidden="true" />
@@ -287,12 +319,25 @@ export default function AppHeader({ user }: AppHeaderProps) {
                 <Search className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
-            <DropdownMenu>
+            <DropdownMenu
+              open={mobileCityOpen}
+              onOpenChange={(next) => {
+                setMobileCityOpen(next);
+                if (next) {
+                  setDesktopCityOpen(false);
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(
+                      new CustomEvent('ku-menu-open', { detail: { source: 'header-city-mobile' } }),
+                    );
+                  }
+                }
+              }}
+            >
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-full px-2.5 flex items-center gap-1 min-w-[78px] justify-center"
+                  className="rounded-full px-2.5 flex items-center gap-1 min-w-[78px] justify-center transition active:scale-[0.98] data-[state=open]:scale-[1.02] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_12px_28px_rgba(247,111,29,0.16)]"
                 >
                   <Filter className="h-4 w-4" aria-hidden="true" />
                   <span className="text-sm font-semibold truncate">{currentCityLabel}</span>

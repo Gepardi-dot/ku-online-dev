@@ -15,7 +15,6 @@ import {
   type MessageRecord,
 } from '@/lib/services/messages-client';
 import { toast } from '@/hooks/use-toast';
-import { formatDistanceToNow } from 'date-fns';
 import { createClient as createSupabaseClient } from '@/utils/supabase/client';
 import { useLocale } from '@/providers/locale-provider';
 
@@ -35,6 +34,49 @@ export default function ChatButton({
   viewerId,
 }: ChatButtonProps) {
   const { t, locale } = useLocale();
+  const relativeTimeLocale = useMemo(() => {
+    if (locale === 'ku') return 'ku-u-nu-arab';
+    if (locale === 'ar') return 'ar-u-nu-arab';
+    return 'en-US';
+  }, [locale]);
+  const relativeTimeFormatter = useMemo(
+    () => new Intl.RelativeTimeFormat(relativeTimeLocale, { numeric: 'auto' }),
+    [relativeTimeLocale],
+  );
+  const formatRelativeTime = useCallback(
+    (date: Date) => {
+      const diffSeconds = Math.round((date.getTime() - Date.now()) / 1000);
+      const absSeconds = Math.abs(diffSeconds);
+
+      if (absSeconds < 60) {
+        return relativeTimeFormatter.format(diffSeconds, 'second');
+      }
+
+      const diffMinutes = Math.round(diffSeconds / 60);
+      if (Math.abs(diffMinutes) < 60) {
+        return relativeTimeFormatter.format(diffMinutes, 'minute');
+      }
+
+      const diffHours = Math.round(diffMinutes / 60);
+      if (Math.abs(diffHours) < 24) {
+        return relativeTimeFormatter.format(diffHours, 'hour');
+      }
+
+      const diffDays = Math.round(diffHours / 24);
+      if (Math.abs(diffDays) < 30) {
+        return relativeTimeFormatter.format(diffDays, 'day');
+      }
+
+      const diffMonths = Math.round(diffDays / 30);
+      if (Math.abs(diffMonths) < 12) {
+        return relativeTimeFormatter.format(diffMonths, 'month');
+      }
+
+      const diffYears = Math.round(diffMonths / 12);
+      return relativeTimeFormatter.format(diffYears, 'year');
+    },
+    [relativeTimeFormatter],
+  );
   const [open, setOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageRecord[]>([]);
@@ -83,8 +125,8 @@ export default function ChatButton({
     } catch (error) {
       console.error('Failed to start chat', error);
       toast({
-        title: 'Unable to start chat',
-        description: 'We could not open the conversation. Please try again shortly.',
+        title: t('header.chatUnavailableTitle'),
+        description: t('header.chatUnavailableBody'),
         variant: 'destructive',
       });
       setOpen(false);
@@ -101,18 +143,18 @@ export default function ChatButton({
     if (!canChat) {
       if (!viewerId) {
         toast({
-          title: 'Sign in to chat',
-          description: 'Create an account or log in to message the seller.',
+          title: t('header.chatSignInTitle'),
+          description: t('header.chatSignInBody'),
         });
       } else if (viewerId === sellerId) {
         toast({
-          title: 'This is your listing',
-          description: 'You cannot start a chat with yourself.',
+          title: t('header.chatSelfTitle'),
+          description: t('header.chatSelfBody'),
         });
       } else {
         toast({
-          title: 'Chat unavailable',
-          description: 'This listing does not have an available seller to message.',
+          title: t('header.chatUnavailableTitle'),
+          description: t('header.chatUnavailableBody'),
         });
       }
       setOpen(false);
@@ -213,7 +255,7 @@ export default function ChatButton({
           ? payload.error
           : `Please try sending your message again${res.status ? ` (${res.status})` : ''}.`;
         toast({
-          title: 'Message not sent',
+          title: t('header.chatMessageNotSentTitle'),
           description,
           variant: 'destructive',
         });
@@ -231,8 +273,8 @@ export default function ChatButton({
     } catch (error) {
       console.error('Failed to send message', error);
       toast({
-        title: 'Message not sent',
-        description: 'Please try sending your message again.',
+        title: t('header.chatMessageNotSentTitle'),
+        description: t('header.chatMessageNotSentBody'),
         variant: 'destructive',
       });
     } finally {
@@ -257,9 +299,9 @@ export default function ChatButton({
           const description =
             typeof payload?.error === 'string'
               ? payload.error
-              : 'We could not delete this message. Please try again.';
+              : t('header.chatMessageNotDeletedBody');
           toast({
-            title: 'Message not deleted',
+            title: t('header.chatMessageNotDeletedTitle'),
             description,
             variant: 'destructive',
           });
@@ -269,11 +311,11 @@ export default function ChatButton({
         setMessages((previous) => previous.filter((item) => item.id !== messageId));
       } catch (error) {
         console.error('Failed to delete message', error);
-        toast({
-          title: 'Message not deleted',
-          description: 'We could not delete this message. Please try again.',
-          variant: 'destructive',
-        });
+      toast({
+        title: t('header.chatMessageNotDeletedTitle'),
+        description: t('header.chatMessageNotDeletedBody'),
+        variant: 'destructive',
+      });
       } finally {
         setDeletingMessageId((current) => (current === messageId ? null : current));
       }
@@ -386,7 +428,7 @@ export default function ChatButton({
       return (
         <div className="flex h-full items-center justify-center">
           <p className="text-sm text-muted-foreground text-center px-6">
-            Start a conversation about this item.
+            {t('header.chatStartConversation')}
           </p>
         </div>
       );
@@ -410,7 +452,7 @@ export default function ChatButton({
                   isViewer ? 'bg-primary text-primary-foreground' : 'bg-muted'
                 }`}
               >
-                <p dir="auto" className="whitespace-pre-line bidi-auto">
+                <p dir="auto" className="whitespace-pre-line text-[15px] font-sans leading-relaxed bidi-auto">
                   {contentToShow}
                 </p>
                   <div className="mt-1 flex items-center justify-between gap-2">
@@ -419,7 +461,7 @@ export default function ChatButton({
                       isViewer ? 'text-primary-foreground/80' : ''
                     }`}
                   >
-                    {formatDistanceToNow(new Date(message.createdAt), { addSuffix: true })}
+                    {formatRelativeTime(new Date(message.createdAt))}
                   </p>
                   <div className="flex items-center gap-2">
                     {!isViewer && (
@@ -442,7 +484,7 @@ export default function ChatButton({
                         className="text-[11px] underline-offset-2 hover:underline text-muted-foreground"
                         disabled={deletingMessageId === message.id}
                       >
-                        {deletingMessageId === message.id ? t('common.loading') : 'Delete'}
+                        {deletingMessageId === message.id ? t('common.loading') : t('header.chatDeleteMessage')}
                       </button>
                     )}
                   </div>
@@ -458,9 +500,16 @@ export default function ChatButton({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button variant="default" className="w-full">
-          <MessageCircle className="mr-2 h-4 w-4" />
-          {t('product.chatWithSellerButton')}
+        <Button
+          variant="default"
+          className="relative w-full h-14 rounded-full bg-[linear-gradient(110deg,#ff8a2a,#f97316,#fb7185)] text-white shadow-[0_18px_40px_rgba(249,115,22,0.35)] ring-1 ring-white/40 hover:shadow-[0_22px_46px_rgba(249,115,22,0.45)] hover:brightness-[1.02] focus-visible:ring-2 focus-visible:ring-white/70"
+        >
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-white/20 ring-1 ring-white/30">
+            <MessageCircle className="h-4 w-4" />
+          </span>
+          <span className="text-sm font-semibold">
+            {t('product.chatWithSellerButton')}
+          </span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[480px] rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-6 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40">
@@ -471,18 +520,20 @@ export default function ChatButton({
             </Avatar>
             <span className="flex flex-col">
               <span className="font-semibold text-[#2D2D2D] leading-tight">
-                {t('product.chatWithSellerButton')} {counterpartName}
+                {t('header.chatWith')} {counterpartName}
               </span>
               <span className="text-xs text-brand">
-                {productTitle}
-                {counterpartOnline && <>
-                  {' '}
-                  <span className="ml-2 inline-flex items-center gap-1 text-green-600">
-                    <span className="h-2 w-2 rounded-full bg-green-600" /> Online
-                  </span>
-                </>}
+                <span dir="auto" className="bidi-auto">{productTitle}</span>
+                {counterpartOnline && (
+                  <>
+                    {' '}
+                    <span className="ml-2 inline-flex items-center gap-1 text-green-600">
+                      <span className="h-2 w-2 rounded-full bg-green-600" /> {t('header.chatOnline')}
+                    </span>
+                  </>
+                )}
                 {counterpartTyping && (
-                  <span className="ml-2 text-xs italic text-muted-foreground">typing…</span>
+                  <span className="ml-2 text-xs italic text-muted-foreground">{t('header.chatTyping')}</span>
                 )}
               </span>
             </span>
@@ -499,7 +550,7 @@ export default function ChatButton({
               value={newMessage}
               onChange={(event) => setNewMessage(event.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={viewerId ? 'Type your message…' : 'Sign in to send messages'}
+              placeholder={viewerId ? t('header.chatInputPlaceholder') : t('header.chatInputPlaceholderSignedOut')}
               disabled={!canChat || initializing || sending}
               className="rounded-full border-[#eadbc5]/70 bg-white/70 focus:border-brand/50 focus:ring-brand/20"
             />
@@ -514,7 +565,7 @@ export default function ChatButton({
           </div>
           {!canChat && (
             <p className="text-xs text-muted-foreground">
-              {viewerId ? 'You cannot chat with yourself.' : 'Sign in to start chatting with sellers.'}
+              {viewerId ? t('header.chatCannotChatSelf') : t('header.chatCannotChatSignedOut')}
             </p>
           )}
         </div>
