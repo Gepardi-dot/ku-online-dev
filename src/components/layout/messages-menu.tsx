@@ -997,7 +997,11 @@ export default function MessagesMenu({
         )}
       </PopoverTrigger>
       <PopoverAnchor asChild>
-        <div className="fixed left-1/2 top-[56px] -translate-x-1/2 pointer-events-none" aria-hidden />
+        <div
+          className="fixed left-1/2 -translate-x-1/2 pointer-events-none"
+          style={{ top: isMobile ? cardOffsetTop : 56 }}
+          aria-hidden
+        />
       </PopoverAnchor>
 
       <PopoverContent

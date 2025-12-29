@@ -1526,7 +1526,7 @@ export default function SellForm({ user }: SellFormProps) {
         </div>
       </div>
 
-      <div className="md:hidden fixed inset-x-0 bottom-20 z-30 border-t border-white/60 bg-white/70 backdrop-blur-2xl">
+      <div className="md:hidden fixed inset-x-0 bottom-[var(--mobile-nav-offset)] z-30 border-t border-white/60 bg-white/70 backdrop-blur-2xl">
         <div className="mx-auto max-w-6xl px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className="flex items-center gap-3">
             <div className="flex-1">

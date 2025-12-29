@@ -57,12 +57,12 @@ export default async function RootLayout({
           dmSans.className,
           dmSans.variable,
           notoKufiArabic.variable,
-          'font-body antialiased min-h-screen bg-background font-sans',
+          'font-body antialiased min-h-screen bg-background font-sans pb-[var(--mobile-nav-offset)] md:pb-0',
         )}
       >
         <LocaleProvider>
           <AnnouncementBar />
-          <div className="pb-16 md:pb-0">{children}</div>
+          <div>{children}</div>
           <MobileNav />
           <AppFooter />
           <Toaster />
