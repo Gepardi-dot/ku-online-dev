@@ -44,7 +44,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     key: 'home-appliance',
     label: 'Home Appliance',
     labelAr: 'أجهزة منزلية',
-    labelKu: 'کەرەساتی ماڵەوە',
+    labelKu: 'کەرەساتی ناو ماڵ',
     icon: '/Home appliance.png',
     matchNames: ['home appliance', 'home & garden', 'home and garden'],
   },
@@ -128,4 +128,3 @@ export const CATEGORY_LABEL_MAP: Record<string, CategoryUiConfig> = CATEGORY_UI_
 
 export const CATEGORY_BLUR_PLACEHOLDER =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP4BwQACfsD/QwZk48AAAAASUVORK5CYII=';
-

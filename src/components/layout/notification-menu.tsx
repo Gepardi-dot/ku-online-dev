@@ -214,6 +214,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
         if (!canLoad) {
           toast({
             title: strings.loginRequired,
+            variant: "brand",
           });
           return;
         }

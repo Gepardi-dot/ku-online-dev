@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User, LogOut, Phone, Mail, LayoutDashboard, Settings, ShieldCheck } from 'lucide-react';
+import { User, LogOut, Phone, LayoutDashboard, Settings, ShieldCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Icons } from '@/components/icons';
 
 import { getPublicEnv } from '@/lib/env-public';
 import { useLocale } from '@/providers/locale-provider';
@@ -24,6 +25,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { t, locale } = useLocale();
   const isRtl = locale === 'ar' || locale === 'ku';
+  const isKurdish = locale === 'ku';
   const [isLoading, setIsLoading] = useState(false);
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -72,7 +74,8 @@ export default function AuthButton({ user }: AuthButtonProps) {
     try {
       const raw = phone.trim();
       if (!raw) {
-        setPhoneError('Please enter your phone number.');
+        setPhoneError(t('auth.phoneRequiredError'));
+        setIsLoading(false);
         return;
       }
 
@@ -84,7 +87,8 @@ export default function AuthButton({ user }: AuthButtonProps) {
 
       // Basic E.164-style validation; Supabase/Twilio expect international format.
       if (!/^\+?[0-9]{7,15}$/.test(normalized)) {
-        setPhoneError('Enter a valid phone number in international format (e.g. +9647501234567).');
+        setPhoneError(t('auth.phoneInvalidError'));
+        setIsLoading(false);
         return;
       }
 
@@ -97,11 +101,11 @@ export default function AuthButton({ user }: AuthButtonProps) {
       if (!error) {
         setShowOtpInput(true);
       } else {
-        setPhoneError(error.message ?? 'Could not send verification code. Please try again.');
+        setPhoneError(t('auth.sendVerificationFailed'));
       }
     } catch (error) {
       console.error('Error sending OTP:', error);
-      setPhoneError('Could not send verification code. Please try again.');
+      setPhoneError(t('auth.sendVerificationFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -119,11 +123,11 @@ export default function AuthButton({ user }: AuthButtonProps) {
       if (!error) {
         window.location.reload();
       } else {
-        setOtpError(error.message ?? 'Invalid or expired code. Please try again.');
+        setOtpError(t('auth.verifyCodeFailed'));
       }
     } catch (error) {
       console.error('Error verifying OTP:', error);
-      setOtpError('Invalid or expired code. Please try again.');
+      setOtpError(t('auth.verifyCodeFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -228,12 +232,37 @@ export default function AuthButton({ user }: AuthButtonProps) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Sign in to KU-ONLINE</DialogTitle>
+          <DialogTitle
+            className={cn(
+              "flex items-center gap-1",
+              isKurdish && "flex-row-reverse",
+              isRtl && "w-full justify-end text-right",
+            )}
+            dir={isKurdish ? "rtl" : undefined}
+          >
+            {isKurdish ? (
+              <>
+                <span className="text-primary text-[1.05em] font-semibold">
+                  {t('auth.signInTitleBrand')}
+                </span>
+                <span>{t('auth.signInTitlePrefix')}</span>
+              </>
+            ) : (
+              <>
+                <span dir={isRtl ? "rtl" : undefined}>{t('auth.signInTitlePrefix')}</span>
+                <span dir="ltr">KU-ONLINE</span>
+              </>
+            )}
+          </DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <Button onClick={handleGoogleLogin} disabled={isLoading} className="w-full">
-            <Mail className="mr-2 h-4 w-4" />
-            Continue with Google
+          <Button
+            onClick={handleGoogleLogin}
+            disabled={isLoading}
+            className={cn("w-full gap-2", isRtl && "flex-row-reverse")}
+          >
+            <Icons.google className="h-5 w-5" />
+            {t('auth.continueWithGoogle')}
           </Button>
           
           <div className="relative">
@@ -241,17 +270,17 @@ export default function AuthButton({ user }: AuthButtonProps) {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or</span>
+              <span className="bg-background px-2 text-muted-foreground">{t('auth.orLabel')}</span>
             </div>
           </div>
 
           {!showOtpInput ? (
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
+              <Label htmlFor="phone">{t('auth.phoneLabel')}</Label>
               <Input
                 id="phone"
                 type="tel"
-                placeholder="+964 750 123 4567"
+                placeholder={t('auth.phonePlaceholder')}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
@@ -262,16 +291,16 @@ export default function AuthButton({ user }: AuthButtonProps) {
               )}
               <Button onClick={handlePhoneLogin} disabled={isLoading || !phone} className="w-full">
                 <Phone className="mr-2 h-4 w-4" />
-                Send Verification Code
+                {t('auth.sendVerificationCode')}
               </Button>
             </div>
           ) : (
             <div className="space-y-2">
-              <Label htmlFor="otp">Verification Code</Label>
+              <Label htmlFor="otp">{t('auth.verificationCodeLabel')}</Label>
               <Input
                 id="otp"
                 type="text"
-                placeholder="Enter 6-digit code"
+                placeholder={t('auth.verificationCodePlaceholder')}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 maxLength={6}
@@ -282,7 +311,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
                 </p>
               )}
               <Button onClick={handleOtpVerification} disabled={isLoading || otp.length !== 6} className="w-full">
-                Verify Code
+                {t('auth.verifyCode')}
               </Button>
             </div>
           )}
