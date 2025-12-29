@@ -378,17 +378,76 @@ function Lightbox({
   photosTitle,
 }: LightboxProps) {
   const [current, setCurrent] = useState(index);
-  const [scale, setScale] = useState(1);
-  const [tx, setTx] = useState(0);
-  const [ty, setTy] = useState(0);
+  const [transform, setTransform] = useState({ scale: 1, tx: 0, ty: 0 });
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchStartDistanceRef = useRef<number | null>(null);
+  const pinchStartScaleRef = useRef(1);
+  const scaleRef = useRef(1);
+  const txRef = useRef(0);
+  const tyRef = useRef(0);
+  const targetScaleRef = useRef(1);
+  const rafRef = useRef<number | null>(null);
   const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
-  const resetZoom = useCallback(() => {
-    setScale(1);
-    setTx(0);
-    setTy(0);
+  const scheduleRender = useCallback((smoothScale: boolean) => {
+    if (rafRef.current !== null) return;
+    rafRef.current = window.requestAnimationFrame(() => {
+      rafRef.current = null;
+      if (smoothScale) {
+        const target = targetScaleRef.current;
+        const currentScale = scaleRef.current;
+        const nextScale =
+          Math.abs(target - currentScale) < 0.002
+            ? target
+            : currentScale + (target - currentScale) * 0.35;
+        scaleRef.current = nextScale;
+      }
+
+      setTransform({
+        scale: scaleRef.current,
+        tx: txRef.current,
+        ty: tyRef.current,
+      });
+
+      if (smoothScale && Math.abs(targetScaleRef.current - scaleRef.current) >= 0.002) {
+        scheduleRender(true);
+      }
+    });
   }, []);
+
+  const setTransformImmediate = useCallback((nextScale: number, nextTx = 0, nextTy = 0) => {
+    if (rafRef.current !== null) {
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    scaleRef.current = nextScale;
+    targetScaleRef.current = nextScale;
+    txRef.current = nextTx;
+    tyRef.current = nextTy;
+    setTransform({ scale: nextScale, tx: nextTx, ty: nextTy });
+  }, []);
+
+  const resetZoom = useCallback(() => {
+    pinchStartDistanceRef.current = null;
+    setTransformImmediate(1, 0, 0);
+  }, [setTransformImmediate]);
+
+  const setTargetScale = useCallback(
+    (nextScale: number) => {
+      targetScaleRef.current = nextScale;
+      scheduleRender(true);
+    },
+    [scheduleRender],
+  );
+
+  const setPan = useCallback(
+    (nextTx: number, nextTy: number) => {
+      txRef.current = nextTx;
+      tyRef.current = nextTy;
+      scheduleRender(false);
+    },
+    [scheduleRender],
+  );
 
   const handleOpenChange = useCallback(
     (v: boolean) => {
@@ -417,10 +476,16 @@ function Lightbox({
 
   useEffect(() => {
     setCurrent(index);
-    setScale(1);
-    setTx(0);
-    setTy(0);
-  }, [index]);
+    resetZoom();
+  }, [index, resetZoom]);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) {
+        window.cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, []);
 
   const onPrev = useCallback(() => {
     setCurrent((c) => (c > 0 ? c - 1 : images.length - 1));
@@ -451,13 +516,19 @@ function Lightbox({
   const onWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
     const delta = -e.deltaY * 0.001;
-    setScale((s) => clamp(s + delta, 1, 4));
+    const nextScale = clamp(targetScaleRef.current + delta, 1, 4);
+    setTargetScale(nextScale);
   };
 
   const onPointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
     if (isInteractiveTarget(e.target)) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pointers.current.size === 2) {
+      const pts = Array.from(pointers.current.values());
+      pinchStartDistanceRef.current = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      pinchStartScaleRef.current = scaleRef.current;
+    }
   };
   const onPointerUp: React.PointerEventHandler<HTMLDivElement> = (e) => {
     if (isInteractiveTarget(e.target)) return;
@@ -465,7 +536,10 @@ function Lightbox({
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
     }
     pointers.current.delete(e.pointerId);
-    if (pointers.current.size === 0 && scale < 1.02) resetZoom();
+    if (pointers.current.size < 2) {
+      pinchStartDistanceRef.current = null;
+    }
+    if (pointers.current.size === 0 && scaleRef.current < 1.02) resetZoom();
   };
   const onPointerMove: React.PointerEventHandler<HTMLDivElement> = (e) => {
     if (isInteractiveTarget(e.target)) return;
@@ -475,18 +549,22 @@ function Lightbox({
 
     if (pointers.current.size === 1) {
       // Pan
-      setTx((x) => x + (e.clientX - prev.x));
-      setTy((y) => y + (e.clientY - prev.y));
+      setPan(txRef.current + (e.clientX - prev.x), tyRef.current + (e.clientY - prev.y));
     } else if (pointers.current.size === 2) {
       // Pinch
       const pts = Array.from(pointers.current.values());
-      const d = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
-      const [p1, p2] = pts;
-      const [q1, q2] = pts;
-      const dist = d(p1, p2);
-      const prevDist = d({ x: p1.x - (e.clientX - prev.x), y: p1.y - (e.clientY - prev.y) }, q2);
-      const delta = (dist - prevDist) / 200;
-      setScale((s) => clamp(s + delta, 1, 4));
+      if (pts.length !== 2) return;
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      if (pinchStartDistanceRef.current === null || pinchStartDistanceRef.current <= 0) {
+        pinchStartDistanceRef.current = dist;
+        pinchStartScaleRef.current = scaleRef.current;
+      }
+      const nextScale = clamp(
+        pinchStartScaleRef.current * (dist / pinchStartDistanceRef.current),
+        1,
+        4,
+      );
+      setTargetScale(nextScale);
     }
   };
 
@@ -540,8 +618,10 @@ function Lightbox({
                       alt={title}
                       fill
                       sizes="(max-width: 1024px) 100vw, 70vw"
-                      className="object-contain"
-                      style={{ transform: `translate3d(${tx}px, ${ty}px, 0) scale(${scale})` }}
+                      className="object-contain will-change-transform"
+                      style={{
+                        transform: `translate3d(${transform.tx}px, ${transform.ty}px, 0) scale(${transform.scale})`,
+                      }}
                     />
                   </div>
                 </div>
@@ -579,7 +659,7 @@ function Lightbox({
                 </DialogClose>
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col gap-3 p-4 pt-4 sm:gap-4">
+              <div className="flex min-h-0 flex-1 flex-col gap-2 p-4 pt-3 sm:gap-3">
                 <div className="shrink-0 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-none">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -629,7 +709,7 @@ function Lightbox({
                         {images.length}
                       </span>
                     </div>
-                    <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                    <div className="mt-2 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                       {thumbs.map((src, i) => (
                         <button
                           key={`${src}-${i}`}

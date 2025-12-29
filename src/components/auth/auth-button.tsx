@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { getPublicEnv } from '@/lib/env-public';
 import { useLocale } from '@/providers/locale-provider';
 import { isModerator } from '@/lib/auth/roles';
+import { cn } from '@/lib/utils';
 
 interface AuthButtonProps {
   user: any;
@@ -21,7 +22,8 @@ interface AuthButtonProps {
 
 export default function AuthButton({ user }: AuthButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
+  const isRtl = locale === 'ar' || locale === 'ku';
   const [isLoading, setIsLoading] = useState(false);
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
@@ -207,10 +209,21 @@ export default function AuthButton({ user }: AuthButtonProps) {
         <Button
           variant="outline"
           size="sm"
-          className="transition active:scale-[0.98] data-[state=open]:scale-[1.02] data-[state=open]:shadow-[0_12px_28px_rgba(247,111,29,0.16)]"
+          className={cn(
+            "transition active:scale-[0.98] data-[state=open]:scale-[1.02] data-[state=open]:shadow-[0_12px_28px_rgba(247,111,29,0.16)]",
+            isRtl && "px-2 text-[12px]",
+          )}
         >
           <User className="mr-2 h-4 w-4" />
-          {t('header.signIn')}
+          <span
+            dir="auto"
+            className={cn(
+              "bidi-auto inline-block",
+              isRtl && "max-w-[6.5rem] truncate text-[12px] leading-tight",
+            )}
+          >
+            {t('header.signIn')}
+          </span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">

@@ -58,6 +58,17 @@ html[lang="ku"] .font-sans {
   font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
 }
 
+html[lang="ar"],
+html[lang="ku"] {
+  --mobile-nav-height: 5.5rem;
+}
+
+html[lang="ar"] [data-mobile-nav] .mobile-nav-label,
+html[lang="ku"] [data-mobile-nav] .mobile-nav-label {
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
 /* Utilities */
 @layer utilities {
   /* Hide scrollbars for horizontal scrollers where we provide our own affordances */

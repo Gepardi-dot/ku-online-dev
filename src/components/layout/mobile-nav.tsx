@@ -37,6 +37,8 @@ export default function MobileNav() {
   const [favoritesCount, setFavoritesCount] = useState<number>(0);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const labelClassName =
+    "mobile-nav-label mt-1 h-[1.1rem] max-w-[4.75rem] truncate text-[11px] leading-tight";
 
   useEffect(() => {
     const supabase = createClient();
@@ -85,7 +87,9 @@ export default function MobileNav() {
                   aria-label={t(item.labelKey)}
                 >
                   <Icon className="h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]" aria-hidden="true" />
-                  <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
+                  <span dir="auto" className={cn("bidi-auto", labelClassName)}>
+                    {t(item.labelKey)}
+                  </span>
                 </Link>
               </div>
             );
@@ -115,7 +119,9 @@ export default function MobileNav() {
                   triggerClassName="text-muted-foreground hover:text-foreground h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0"
                   triggerIcon={<MessageSquare className="h-full w-full" strokeWidth={2} />}
                 />
-                <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
+                <span dir="auto" className={cn("bidi-auto", labelClassName)}>
+                  {t(item.labelKey)}
+                </span>
               </div>
             );
           }
@@ -142,7 +148,9 @@ export default function MobileNav() {
                   triggerClassName="text-muted-foreground hover:text-foreground h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0"
                   triggerIcon={<ShoppingBag className="h-full w-full" strokeWidth={2} />}
                 />
-                <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
+                <span dir="auto" className={cn("bidi-auto", labelClassName)}>
+                  {t(item.labelKey)}
+                </span>
               </div>
             );
           }
@@ -168,20 +176,24 @@ export default function MobileNav() {
                     })
                   }
                 >
-                  <span className="inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]">
-                    <Icon className="h-full w-full" aria-hidden="true" />
-                  </span>
-                  <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
-                </button>
-              );
-            }
+                <span className="inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]">
+                  <Icon className="h-full w-full" aria-hidden="true" />
+                </span>
+                <span dir="auto" className={cn("bidi-auto", labelClassName)}>
+                  {t(item.labelKey)}
+                </span>
+              </button>
+            );
+          }
 
             return (
               <Link key={item.key} href={item.href} className={baseClass} aria-label={t(item.labelKey)}>
                 <span className="inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]">
                   <Icon className="h-full w-full" aria-hidden="true" />
                 </span>
-                <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
+                <span dir="auto" className={cn("bidi-auto", labelClassName)}>
+                  {t(item.labelKey)}
+                </span>
               </Link>
             );
           }
@@ -199,7 +211,9 @@ export default function MobileNav() {
               <span className="inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]">
                 <Icon className="h-full w-full" aria-hidden="true" />
               </span>
-              <span className="mt-1 text-xs leading-none h-4">{t(item.labelKey)}</span>
+              <span dir="auto" className={cn("bidi-auto", labelClassName)}>
+                {t(item.labelKey)}
+              </span>
             </Link>
           );
         })}
