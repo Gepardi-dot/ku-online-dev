@@ -86,7 +86,6 @@ export const products = pgTable('products', {
 // Product sales table
 export const productSales = pgTable('product_sales', {
   productId: uuid('product_id').primaryKey().references(() => products.id, { onDelete: 'cascade' }),
-  buyerId: uuid('buyer_id').references(() => users.id, { onDelete: 'set null' }),
   soldAt: timestamp('sold_at', { withTimezone: true }).defaultNow(),
 });
 

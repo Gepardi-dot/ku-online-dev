@@ -379,39 +379,70 @@ function Lightbox({
 }: LightboxProps) {
   const [current, setCurrent] = useState(index);
   const [transform, setTransform] = useState({ scale: 1, tx: 0, ty: 0 });
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const imageSizeRef = useRef({ width: 0, height: 0 });
   const pointers = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchStartDistanceRef = useRef<number | null>(null);
   const pinchStartScaleRef = useRef(1);
   const scaleRef = useRef(1);
   const txRef = useRef(0);
   const tyRef = useRef(0);
-  const targetScaleRef = useRef(1);
   const rafRef = useRef<number | null>(null);
   const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
+  const getBounds = useCallback((scale: number) => {
+    const container = containerRef.current;
+    if (!container) return null;
+    const rect = container.getBoundingClientRect();
+    const containerWidth = rect.width;
+    const containerHeight = rect.height;
+    if (!containerWidth || !containerHeight) return null;
 
-  const scheduleRender = useCallback((smoothScale: boolean) => {
+    const { width: naturalWidth, height: naturalHeight } = imageSizeRef.current;
+    let baseWidth = containerWidth;
+    let baseHeight = containerHeight;
+
+    if (naturalWidth > 0 && naturalHeight > 0) {
+      const imageAspect = naturalWidth / naturalHeight;
+      const containerAspect = containerWidth / containerHeight;
+      if (imageAspect > containerAspect) {
+        baseWidth = containerWidth;
+        baseHeight = containerWidth / imageAspect;
+      } else {
+        baseHeight = containerHeight;
+        baseWidth = containerHeight * imageAspect;
+      }
+    }
+
+    const scaledWidth = baseWidth * scale;
+    const scaledHeight = baseHeight * scale;
+    const maxTx = Math.max(0, (scaledWidth - containerWidth) / 2);
+    const maxTy = Math.max(0, (scaledHeight - containerHeight) / 2);
+
+    return { rect, maxTx, maxTy };
+  }, []);
+  const clampPan = useCallback(
+    (nextTx: number, nextTy: number, scale: number, bounds?: { maxTx: number; maxTy: number }) => {
+      const resolvedBounds = bounds ?? getBounds(scale);
+      if (!resolvedBounds) {
+        return { tx: nextTx, ty: nextTy };
+      }
+      return {
+        tx: clamp(nextTx, -resolvedBounds.maxTx, resolvedBounds.maxTx),
+        ty: clamp(nextTy, -resolvedBounds.maxTy, resolvedBounds.maxTy),
+      };
+    },
+    [getBounds],
+  );
+
+  const scheduleRender = useCallback(() => {
     if (rafRef.current !== null) return;
     rafRef.current = window.requestAnimationFrame(() => {
       rafRef.current = null;
-      if (smoothScale) {
-        const target = targetScaleRef.current;
-        const currentScale = scaleRef.current;
-        const nextScale =
-          Math.abs(target - currentScale) < 0.002
-            ? target
-            : currentScale + (target - currentScale) * 0.35;
-        scaleRef.current = nextScale;
-      }
-
       setTransform({
         scale: scaleRef.current,
         tx: txRef.current,
         ty: tyRef.current,
       });
-
-      if (smoothScale && Math.abs(targetScaleRef.current - scaleRef.current) >= 0.002) {
-        scheduleRender(true);
-      }
     });
   }, []);
 
@@ -421,7 +452,6 @@ function Lightbox({
       rafRef.current = null;
     }
     scaleRef.current = nextScale;
-    targetScaleRef.current = nextScale;
     txRef.current = nextTx;
     tyRef.current = nextTy;
     setTransform({ scale: nextScale, tx: nextTx, ty: nextTy });
@@ -432,21 +462,34 @@ function Lightbox({
     setTransformImmediate(1, 0, 0);
   }, [setTransformImmediate]);
 
-  const setTargetScale = useCallback(
-    (nextScale: number) => {
-      targetScaleRef.current = nextScale;
-      scheduleRender(true);
-    },
-    [scheduleRender],
-  );
-
   const setPan = useCallback(
     (nextTx: number, nextTy: number) => {
-      txRef.current = nextTx;
-      tyRef.current = nextTy;
-      scheduleRender(false);
+      const clamped = clampPan(nextTx, nextTy, scaleRef.current);
+      txRef.current = clamped.tx;
+      tyRef.current = clamped.ty;
+      scheduleRender();
     },
-    [scheduleRender],
+    [scheduleRender, clampPan],
+  );
+
+  const applyScale = useCallback(
+    (nextScale: number, anchor?: { x: number; y: number }) => {
+      const currentScale = scaleRef.current;
+      const bounds = getBounds(nextScale);
+      let nextTx = txRef.current;
+      let nextTy = tyRef.current;
+
+      if (bounds?.rect && anchor) {
+        const dx = anchor.x - bounds.rect.left - bounds.rect.width / 2;
+        const dy = anchor.y - bounds.rect.top - bounds.rect.height / 2;
+        nextTx = dx - ((dx - txRef.current) / currentScale) * nextScale;
+        nextTy = dy - ((dy - tyRef.current) / currentScale) * nextScale;
+      }
+
+      const clamped = clampPan(nextTx, nextTy, nextScale, bounds ?? undefined);
+      setTransformImmediate(nextScale, clamped.tx, clamped.ty);
+    },
+    [getBounds, clampPan, setTransformImmediate],
   );
 
   const handleOpenChange = useCallback(
@@ -478,6 +521,17 @@ function Lightbox({
     setCurrent(index);
     resetZoom();
   }, [index, resetZoom]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleResize = () => {
+      const clamped = clampPan(txRef.current, tyRef.current, scaleRef.current);
+      setTransformImmediate(scaleRef.current, clamped.tx, clamped.ty);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [open, clampPan, setTransformImmediate]);
 
   useEffect(() => {
     return () => {
@@ -516,8 +570,8 @@ function Lightbox({
   const onWheel: React.WheelEventHandler<HTMLDivElement> = (e) => {
     e.preventDefault();
     const delta = -e.deltaY * 0.001;
-    const nextScale = clamp(targetScaleRef.current + delta, 1, 4);
-    setTargetScale(nextScale);
+    const nextScale = clamp(scaleRef.current + delta, 1, 4);
+    applyScale(nextScale, { x: e.clientX, y: e.clientY });
   };
 
   const onPointerDown: React.PointerEventHandler<HTMLDivElement> = (e) => {
@@ -549,6 +603,7 @@ function Lightbox({
 
     if (pointers.current.size === 1) {
       // Pan
+      if (scaleRef.current <= 1.01) return;
       setPan(txRef.current + (e.clientX - prev.x), tyRef.current + (e.clientY - prev.y));
     } else if (pointers.current.size === 2) {
       // Pinch
@@ -564,7 +619,11 @@ function Lightbox({
         1,
         4,
       );
-      setTargetScale(nextScale);
+      const midpoint = {
+        x: (pts[0].x + pts[1].x) / 2,
+        y: (pts[0].y + pts[1].y) / 2,
+      };
+      applyScale(nextScale, midpoint);
     }
   };
 
@@ -588,11 +647,13 @@ function Lightbox({
             <div className="relative flex-1 bg-gradient-to-br from-white/65 via-white/55 to-white/40">
               <div className="absolute inset-0">
                 <div
+                  ref={containerRef}
                   className="relative h-full w-full select-none touch-none"
                   style={{ touchAction: 'none' }}
                   onWheel={onWheel}
                   onPointerDown={onPointerDown}
                   onPointerUp={onPointerUp}
+                  onPointerCancel={onPointerUp}
                   onPointerMove={onPointerMove}
                 >
                   <button
@@ -621,6 +682,12 @@ function Lightbox({
                       className="object-contain will-change-transform"
                       style={{
                         transform: `translate3d(${transform.tx}px, ${transform.ty}px, 0) scale(${transform.scale})`,
+                        transformOrigin: 'center',
+                      }}
+                      onLoadingComplete={(img) => {
+                        imageSizeRef.current = { width: img.naturalWidth, height: img.naturalHeight };
+                        const clamped = clampPan(txRef.current, tyRef.current, scaleRef.current);
+                        setTransformImmediate(scaleRef.current, clamped.tx, clamped.ty);
                       }}
                     />
                   </div>

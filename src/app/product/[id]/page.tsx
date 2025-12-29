@@ -177,49 +177,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const viewerId = user?.id ?? null;
   const isOwner = Boolean(viewerId && sellerId && viewerId === sellerId);
   const userIsModerator = isModerator(user);
-  let buyerOptions: Array<{ id: string; fullName: string | null; avatarUrl: string | null }> = [];
-  let soldBuyerId: string | null = null;
-
-  if (isOwner) {
-    const [{ data: conversations, error: conversationsError }, { data: saleRow, error: saleError }] = await Promise.all([
-      supabase
-        .from('conversations')
-        .select('buyer_id, buyer:public_user_profiles!conversations_buyer_id_fkey(id, full_name, avatar_url)')
-        .eq('product_id', product.id)
-        .eq('seller_id', sellerId)
-        .order('updated_at', { ascending: false }),
-      supabase
-        .from('product_sales')
-        .select('buyer_id')
-        .eq('product_id', product.id)
-        .maybeSingle(),
-    ]);
-
-    if (conversationsError) {
-      console.error('Failed to load buyers for sold toggle', conversationsError);
-    }
-
-    if (saleError) {
-      console.error('Failed to load sold buyer details', saleError);
-    } else if (saleRow?.buyer_id) {
-      soldBuyerId = String(saleRow.buyer_id);
-    }
-
-    const buyersMap = new Map<string, { id: string; fullName: string | null; avatarUrl: string | null }>();
-    for (const row of conversations ?? []) {
-      const buyer = Array.isArray((row as any)?.buyer) ? (row as any).buyer[0] ?? null : (row as any)?.buyer ?? null;
-      const buyerId = (row as any)?.buyer_id ? String((row as any).buyer_id) : buyer?.id ? String(buyer.id) : null;
-      if (!buyerId || buyersMap.has(buyerId)) {
-        continue;
-      }
-      buyersMap.set(buyerId, {
-        id: buyerId,
-        fullName: (buyer?.full_name as string | null) ?? null,
-        avatarUrl: (buyer?.avatar_url as string | null) ?? null,
-      });
-    }
-    buyerOptions = Array.from(buyersMap.values());
-  }
+  
   const daysSince = (date: Date | null | undefined) => (date ? Math.max(0, Math.floor((Date.now() - date.getTime()) / 86_400_000)) : null);
   const createdDays = daysSince(product.createdAt);
   const formatDaysAgo = (days: number) => {
@@ -478,8 +436,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       sellerId={sellerId ?? ''}
                       viewerId={viewerId}
                       isSold={product.isSold}
-                      buyers={buyerOptions}
-                      soldBuyerId={soldBuyerId}
                     />
                   )}
                   {isOwner && (
