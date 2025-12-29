@@ -560,7 +560,7 @@ export default function MessagesMenu({
     (next: boolean) => {
       if (next) {
         if (!canLoad) {
-          toast({ title: strings.loginRequired });
+          toast({ title: strings.loginRequired, variant: "brand" });
           return;
         }
         setMobileView("list");

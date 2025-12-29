@@ -173,6 +173,7 @@ export default function MobileNav() {
                   onClick={() =>
                     toast({
                       title: messages.header.loginRequired,
+                      variant: "brand",
                     })
                   }
                 >

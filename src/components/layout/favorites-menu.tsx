@@ -162,6 +162,7 @@ export default function FavoritesMenu({
         if (!canLoad) {
           toast({
             title: strings.loginRequired,
+            variant: 'brand',
           });
           return;
         }
