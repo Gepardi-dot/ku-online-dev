@@ -27,6 +27,9 @@
     --input: 20 50% 88%;
     --ring: 25 95% 53%;
     --radius: 0.75rem; /* rounded-xl */
+    --mobile-nav-height: 5rem;
+    --mobile-safe-area-bottom: env(safe-area-inset-bottom);
+    --mobile-nav-offset: calc(var(--mobile-nav-height) + var(--mobile-safe-area-bottom));
   }
 }
 

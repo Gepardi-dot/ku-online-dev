@@ -548,7 +548,13 @@ function Lightbox({
               </div>
             </div>
 
-            <aside className="flex w-full shrink-0 flex-col border-t border-white/60 bg-white/75 backdrop-blur-2xl lg:w-[420px] lg:border-t-0 lg:border-l">
+            <aside
+              className={[
+                'flex w-full flex-col border-t border-white/60 bg-white/75 backdrop-blur-2xl',
+                'max-h-[42dvh] overflow-y-auto',
+                'lg:w-[420px] lg:shrink-0 lg:max-h-none lg:overflow-visible lg:border-t-0 lg:border-l',
+              ].join(' ')}
+            >
               <div className="flex items-start justify-between gap-3 p-4 pb-0">
                 <div className="min-w-0">
                   <h2 dir="auto" className="truncate text-base font-bold text-slate-900">
@@ -573,7 +579,7 @@ function Lightbox({
                 </DialogClose>
               </div>
 
-              <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 pt-4">
+              <div className="flex min-h-0 flex-1 flex-col gap-3 p-4 pt-4 sm:gap-4">
                 <div className="shrink-0 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-none">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
@@ -615,13 +621,6 @@ function Lightbox({
                   ) : null}
                 </div>
 
-                <div className="min-h-0 flex-1 overflow-auto rounded-2xl border border-slate-200 bg-white/90 p-5 shadow-none">
-                  <h3 className="text-sm font-semibold text-slate-900">{descriptionTitle}</h3>
-                  <p dir="auto" className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">
-                    {description.trim() ? description : '—'}
-                  </p>
-                </div>
-
                 {images.length > 1 && (
                   <div className="shrink-0 rounded-2xl border border-white/70 bg-white/60 p-4 shadow-sm">
                     <div className="flex items-center justify-between">
@@ -636,13 +635,13 @@ function Lightbox({
                           key={`${src}-${i}`}
                           type="button"
                           className={[
-                            'relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border bg-white/60 shadow-sm transition',
+                            'relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border bg-white/60 shadow-sm transition lg:h-16 lg:w-16',
                             i === current ? 'border-primary ring-2 ring-primary/25' : 'border-white/70 hover:border-primary/50',
                           ].join(' ')}
                           onClick={() => selectImage(i)}
                           aria-label={`Select image ${i + 1}`}
                         >
-                          <Image src={src} alt={`${title} ${i + 1}`} fill sizes="64px" className="object-cover" />
+                          <Image src={src} alt={`${title} ${i + 1}`} fill sizes="(max-width: 1024px) 80px, 64px" className="object-cover" />
                         </button>
                       ))}
                     </div>

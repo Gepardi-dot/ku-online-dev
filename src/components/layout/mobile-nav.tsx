@@ -63,11 +63,11 @@ export default function MobileNav() {
   return (
     <div
       dir="ltr"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm pb-[var(--mobile-safe-area-bottom)]"
       data-mobile-nav
     >
       <nav
-        className="flex items-end justify-between h-20 px-3 pb-2 pt-1"
+        className="flex items-end justify-between h-[var(--mobile-nav-height)] px-3 pb-2 pt-1"
         style={{ ["--nav-icon-size" as any]: "calc(24px + 2mm)" }}
       >
         {NAV_ITEMS.map((item) => {

@@ -509,7 +509,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         </button>
       );
     },
-    [activeConversationId, userId, handleConversationSelect, locale],
+    [activeConversationId, userId, handleConversationSelect, locale, t],
   );
 
   const renderMessages = useCallback(() => {

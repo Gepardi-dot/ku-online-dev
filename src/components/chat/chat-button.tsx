@@ -133,7 +133,7 @@ export default function ChatButton({
     } finally {
       setInitializing(false);
     }
-  }, [canChat, viewerId, sellerId, productId]);
+  }, [canChat, viewerId, sellerId, productId, t]);
 
   useEffect(() => {
     if (!open) {
@@ -162,7 +162,7 @@ export default function ChatButton({
     }
 
     loadConversation();
-  }, [open, canChat, viewerId, sellerId, loadConversation]);
+  }, [open, canChat, viewerId, sellerId, loadConversation, t]);
 
   useEffect(() => {
     if (!conversationId || !viewerId || !open) {
@@ -280,7 +280,7 @@ export default function ChatButton({
     } finally {
       setSending(false);
     }
-    }, [conversationId, viewerId, sellerId, productId, newMessage, sending]);
+    }, [conversationId, viewerId, sellerId, productId, newMessage, sending, t]);
 
   const handleDeleteMessage = useCallback(
     async (messageId: string) => {
@@ -320,7 +320,7 @@ export default function ChatButton({
         setDeletingMessageId((current) => (current === messageId ? null : current));
       }
     },
-    [viewerId],
+    [viewerId, t],
   );
 
   const handleKeyDown = useCallback(
