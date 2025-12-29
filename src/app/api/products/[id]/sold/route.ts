@@ -90,8 +90,6 @@ export const POST = withSentryRoute(async (request: NextRequest, context: { para
   if (typeof isSold !== 'boolean') {
     return NextResponse.json({ error: 'isSold must be a boolean' }, { status: 400 });
   }
-  const buyerId =
-    typeof payload?.buyerId === 'string' && payload.buyerId.trim().length > 0 ? payload.buyerId.trim() : null;
 
   const { data: product, error: productError } = await supabaseAdmin
     .from('products')
@@ -110,27 +108,6 @@ export const POST = withSentryRoute(async (request: NextRequest, context: { para
 
   if (product.seller_id !== userId) {
     return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
-  }
-
-  if (isSold && buyerId) {
-    if (buyerId === userId) {
-      return NextResponse.json({ error: 'Buyer must be different from seller' }, { status: 400 });
-    }
-
-    const { data: buyerRow, error: buyerError } = await supabaseAdmin
-      .from('users')
-      .select('id')
-      .eq('id', buyerId)
-      .maybeSingle();
-
-    if (buyerError) {
-      console.error('Failed to validate buyer for sold toggle', buyerError);
-      return NextResponse.json({ error: 'Unable to validate buyer' }, { status: 500 });
-    }
-
-    if (!buyerRow) {
-      return NextResponse.json({ error: 'Buyer not found' }, { status: 400 });
-    }
   }
 
   const previousSold = Boolean(product.is_sold);
@@ -179,7 +156,6 @@ export const POST = withSentryRoute(async (request: NextRequest, context: { para
           .upsert(
             {
               product_id: productId,
-              buyer_id: buyerId,
               sold_at: new Date().toISOString(),
             },
             { onConflict: 'product_id' },
@@ -188,19 +164,26 @@ export const POST = withSentryRoute(async (request: NextRequest, context: { para
         if (saleUpsertError) {
           throw saleUpsertError;
         }
-      } else if (buyerId) {
-        const { error: saleUpdateError } = await supabaseAdmin
-          .from('product_sales')
-          .update({ buyer_id: buyerId })
-          .eq('product_id', productId);
-
-        if (saleUpdateError) {
-          throw saleUpdateError;
-        }
       }
     } catch (error) {
       saleWarning = 'Sale record could not be updated.';
       console.error('Failed to update sale record', { productId, error });
+    }
+  }
+
+  if (!effectiveSold && previousSold) {
+    try {
+      const { error: saleDeleteError } = await supabaseAdmin
+        .from('product_sales')
+        .delete()
+        .eq('product_id', productId);
+
+      if (saleDeleteError) {
+        throw saleDeleteError;
+      }
+    } catch (error) {
+      saleWarning = 'Sale record could not be cleared.';
+      console.error('Failed to clear sale record', { productId, error });
     }
   }
 

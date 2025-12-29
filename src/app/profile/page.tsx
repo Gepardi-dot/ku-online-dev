@@ -262,17 +262,8 @@ export default async function ProfilePage({
 
   type SaleRow = {
     product_id: string;
-    buyer_id: string | null;
     sold_at: string | null;
-    buyer: {
-      id: string;
-      full_name: string | null;
-      avatar_url: string | null;
-    } | null;
   };
-
-  type SaleBuyerRow = NonNullable<SaleRow['buyer']>;
-  type SaleRowRaw = Omit<SaleRow, 'buyer'> & { buyer: SaleBuyerRow[] | SaleBuyerRow | null };
 
   const salesByProductId = new Map<string, SaleRow>();
   const soldIds = (soldRows ?? [])
@@ -282,9 +273,7 @@ export default async function ProfilePage({
   if (soldIds.length > 0) {
     const { data: saleRows, error: saleError } = await supabase
       .from('product_sales')
-      .select(
-        'product_id, buyer_id, sold_at, buyer:public_user_profiles!product_sales_buyer_id_fkey(id, full_name, avatar_url)',
-      )
+      .select('product_id, sold_at')
       .in('product_id', soldIds);
 
     if (saleError) {
@@ -292,17 +281,14 @@ export default async function ProfilePage({
       const code = (saleError as { code?: string }).code ?? '';
       const isMissingRelation = code === '42P01' || message.includes('product_sales') || message.includes('relationship');
       if (!isMissingRelation) {
-        console.error('Failed to load sold buyer details', saleError);
+        console.error('Failed to load sold listing details', saleError);
       }
     } else {
-      for (const row of (saleRows ?? []) as unknown as SaleRowRaw[]) {
+      for (const row of (saleRows ?? []) as unknown as SaleRow[]) {
         if (!row?.product_id) continue;
-        const buyer = Array.isArray(row.buyer) ? row.buyer[0] ?? null : row.buyer ?? null;
         salesByProductId.set(String(row.product_id), {
           product_id: String(row.product_id),
-          buyer_id: row.buyer_id ? String(row.buyer_id) : null,
           sold_at: row.sold_at ? String(row.sold_at) : null,
-          buyer,
         });
       }
     }
@@ -437,7 +423,6 @@ export default async function ProfilePage({
 
   const sales = ((soldRows ?? []) as SoldListingRow[]).map((row) => {
     const sale = row?.id ? salesByProductId.get(String(row.id)) ?? null : null;
-    const buyer = Array.isArray(sale?.buyer) ? (sale?.buyer[0] ?? null) : sale?.buyer ?? null;
     const images = normalizeImages(row?.images);
     const primaryImage = images[0] ?? null;
     const thumbPath = deriveThumbPath(primaryImage) ?? primaryImage;
@@ -457,13 +442,6 @@ export default async function ProfilePage({
       currency: row?.currency ?? null,
       location: row?.location ?? null,
       imageUrl,
-      buyer: buyer
-        ? {
-            id: String(buyer.id),
-            fullName: (buyer.full_name as string | null) ?? null,
-            avatarUrl: (buyer.avatar_url as string | null) ?? null,
-          }
-        : null,
       soldAtLabel,
     };
   });
@@ -796,22 +774,6 @@ export default async function ProfilePage({
                                   </span>
                                 ) : null}
                               </div>
-                              {sale.buyer ? (
-                                <div className="flex flex-wrap items-center gap-2 text-sm">
-                                  <span className="text-muted-foreground">{t('profile.sales.buyerLabel')}:</span>
-                                  <span className="inline-flex items-center gap-2 rounded-full bg-white/70 px-2.5 py-1 text-sm">
-                                    <Avatar className="h-6 w-6">
-                                      <AvatarImage src={sale.buyer.avatarUrl ?? undefined} />
-                                      <AvatarFallback>
-                                        {sale.buyer.fullName?.[0] ?? '?'}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <span dir="auto" className="bidi-auto">
-                                      {sale.buyer.fullName ?? t('profile.sales.buyerFallback')}
-                                    </span>
-                                  </span>
-                                </div>
-                              ) : null}
                             </div>
                           </div>
                         ))}
