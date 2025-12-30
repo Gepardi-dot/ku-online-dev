@@ -57,7 +57,7 @@ import ProfileSettingsForm from './profile-settings-form';
 import AccountSettingsPanel from './account-settings-panel';
 import type { UpdateProfileFormValues } from './form-state';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
-import { localizeText } from '@/lib/locale/localize';
+import { localizeListingText } from '@/lib/locale/localize';
 import { rtlLocales } from '@/lib/locale/dictionary';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
 type ProfilePageSearchParams = {
@@ -437,7 +437,7 @@ export default async function ProfilePage({
 
     return {
       id: String(row?.id ?? ''),
-      title: localizeText((row?.title as string) ?? '', titleTranslations, locale),
+      title: localizeListingText((row?.title as string) ?? '', titleTranslations, locale),
       price: row?.price ?? null,
       currency: row?.currency ?? null,
       location: row?.location ?? null,

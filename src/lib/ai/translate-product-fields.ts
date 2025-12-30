@@ -81,8 +81,8 @@ export async function translateProductFields(input: {
           content: JSON.stringify({
             input: { title: safeTitle, description: safeDescription },
             output_schema: {
-              title: { en: 'string', ar: 'string', ku: 'string', ku_latn: 'string' },
-              description: { en: 'string', ar: 'string', ku: 'string', ku_latn: 'string' },
+              title: { ar: 'string', ku: 'string', ku_latn: 'string' },
+              description: { ar: 'string', ku: 'string', ku_latn: 'string' },
             },
           }),
         },
@@ -115,17 +115,14 @@ export async function translateProductFields(input: {
   return {
     sourceHash,
     title: {
-      en: clampText(titleMap.en, 140),
       ar: clampText(titleMap.ar, 140),
       ku: clampText(titleMap.ku, 140),
       ku_latn: clampText(titleMap.ku_latn, 140),
     },
     description: {
-      en: clampText(descriptionMap.en, 1000),
       ar: clampText(descriptionMap.ar, 1000),
       ku: clampText(descriptionMap.ku, 1000),
       ku_latn: clampText(descriptionMap.ku_latn, 1000),
     },
   };
 }
-

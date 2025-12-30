@@ -8,7 +8,7 @@ import { MapPin, Eye, BadgeCheck } from 'lucide-react';
 import type { ProductWithRelations } from '@/lib/services/products';
 import FavoriteToggle from '@/components/product/favorite-toggle';
 import { useLocale } from '@/providers/locale-provider';
-import { localizeText } from '@/lib/locale/localize';
+import { localizeListingText } from '@/lib/locale/localize';
 import { rtlLocales } from '@/lib/locale/dictionary';
 import { CurrencyText } from '@/components/currency-text';
 
@@ -23,7 +23,7 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
   const isRtl = rtlLocales.includes(locale);
   const cityLabels = messages.header.city as Record<string, string>;
   const getCityLabel = (value: string) => cityLabels[value.trim().toLowerCase()] ?? value;
-  const localizedTitle = localizeText(product.title, product.titleTranslations, locale);
+  const localizedTitle = localizeListingText(product.title, product.titleTranslations, locale);
 
   const recordSearchClick = () => {
     const query = (searchQuery ?? '').trim();

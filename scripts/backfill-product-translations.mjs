@@ -103,8 +103,8 @@ async function translateFields({ title, description }) {
               description: safeDescription,
             },
             output_schema: {
-              title: { en: 'string', ar: 'string', ku: 'string', ku_latn: 'string' },
-              description: { en: 'string', ar: 'string', ku: 'string', ku_latn: 'string' },
+              title: { ar: 'string', ku: 'string', ku_latn: 'string' },
+              description: { ar: 'string', ku: 'string', ku_latn: 'string' },
             },
           }),
         },
@@ -136,13 +136,11 @@ async function translateFields({ title, description }) {
 
   const result = {
     title: {
-      en: clampText(titleMap.en, 140),
       ar: clampText(titleMap.ar, 140),
       ku: clampText(titleMap.ku, 140),
       ku_latn: clampText(titleMap.ku_latn, 140),
     },
     description: {
-      en: clampText(descriptionMap.en, 1000),
       ar: clampText(descriptionMap.ar, 1000),
       ku: clampText(descriptionMap.ku, 1000),
       ku_latn: clampText(descriptionMap.ku_latn, 1000),
@@ -200,11 +198,11 @@ async function updateAlgoliaTranslations(objects) {
 function toAlgoliaPatch(productId, translations) {
   return {
     objectID: productId,
-    title_i18n_en: translations.title.en || null,
+    title_i18n_en: null,
     title_i18n_ar: translations.title.ar || null,
     title_i18n_ku: translations.title.ku || null,
     title_i18n_ku_latn: translations.title.ku_latn || null,
-    description_i18n_en: clampText(translations.description.en, ALGOLIA_DESCRIPTION_SNIPPET_MAX) || null,
+    description_i18n_en: null,
     description_i18n_ar: clampText(translations.description.ar, ALGOLIA_DESCRIPTION_SNIPPET_MAX) || null,
     description_i18n_ku: clampText(translations.description.ku, ALGOLIA_DESCRIPTION_SNIPPET_MAX) || null,
     description_i18n_ku_latn:
