@@ -15,3 +15,16 @@ export function localizeText(
   return typeof original === 'string' ? original : '';
 }
 
+// For user-generated listing content, avoid translating into English. When the UI locale is `en`,
+// show the original text even if an English translation exists in the database.
+export function localizeListingText(
+  original: string | null | undefined,
+  translations: LocalizedTextTranslations,
+  locale: Locale,
+): string {
+  if (locale === 'en') {
+    return typeof original === 'string' ? original : '';
+  }
+
+  return localizeText(original, translations, locale);
+}

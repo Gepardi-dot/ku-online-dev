@@ -21,7 +21,7 @@ import { createClient } from "@/utils/supabase/client";
 import { signStoragePaths } from "@/lib/services/storage-sign-client";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/providers/locale-provider";
-import { localizeText } from "@/lib/locale/localize";
+import { localizeListingText } from "@/lib/locale/localize";
 import { rtlLocales } from "@/lib/locale/dictionary";
 import { CurrencyText } from "@/components/currency-text";
 import { cn } from "@/lib/utils";
@@ -341,7 +341,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                 const productId = notification.relatedId ?? undefined;
                 const meta = productId ? productMeta[productId] : undefined;
                 const productName = isListing
-                  ? localizeText((meta?.title ?? rawName) || notification.title || "", meta?.titleTranslations, locale)
+                  ? localizeListingText((meta?.title ?? rawName) || notification.title || "", meta?.titleTranslations, locale)
                   : notification.title || "";
                 const productInitial = productName.trim().charAt(0).toUpperCase() || "•";
                 const thumbUrl = meta?.thumbUrl;

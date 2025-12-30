@@ -24,7 +24,7 @@ import { getProductFavoriteCount } from '@/lib/services/favorites-analytics';
 import Link from 'next/link';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
-import { localizeText } from '@/lib/locale/localize';
+import { localizeListingText } from '@/lib/locale/localize';
 import { translateUserText } from '@/lib/ai/translate-user-text';
 import { getEnv } from '@/lib/env';
 import { isModerator } from '@/lib/auth/roles';
@@ -124,8 +124,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
     }
   }
 
-  const localizedTitle = localizeText(product.title, product.titleTranslations, locale);
-  const rawDescription = localizeText(product.description, product.descriptionTranslations, locale);
+  const localizedTitle = localizeListingText(product.title, product.titleTranslations, locale);
+  const rawDescription = localizeListingText(product.description, product.descriptionTranslations, locale);
 
   // Temporary fix for missing Arabic translation on this specific product
   const localizedDescription = (locale === 'ar' && rawDescription.includes('هيو بوس') && rawDescription.includes('شتا'))
