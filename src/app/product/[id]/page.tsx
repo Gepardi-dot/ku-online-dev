@@ -198,6 +198,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
       const years = Math.max(1, Math.floor(days / 365));
       return `${formatNumber(years)} year${years === 1 ? '' : 's'} ago`;
     }
+    if (locale === 'ku' && days === 0) {
+      return 'ئەمڕۆ';
+    }
 
     return t('product.daysAgo').replace('{days}', formatNumber(days));
   };
