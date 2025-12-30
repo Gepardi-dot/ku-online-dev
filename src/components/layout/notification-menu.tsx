@@ -22,6 +22,9 @@ import { signStoragePaths } from "@/lib/services/storage-sign-client";
 import { toast } from "@/hooks/use-toast";
 import { useLocale } from "@/providers/locale-provider";
 import { localizeText } from "@/lib/locale/localize";
+import { rtlLocales } from "@/lib/locale/dictionary";
+import { CurrencyText } from "@/components/currency-text";
+import { cn } from "@/lib/utils";
 
 interface NotificationMenuStrings {
   label: string;
@@ -52,6 +55,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
   const [unreadCount, setUnreadCount] = useState(0);
   const [productMeta, setProductMeta] = useState<Record<string, ProductMeta>>({});
   const { locale, t } = useLocale();
+  const isRtl = rtlLocales.includes(locale);
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
@@ -336,13 +340,13 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                 const rawName = notification.content ?? "";
                 const productId = notification.relatedId ?? undefined;
                 const meta = productId ? productMeta[productId] : undefined;
-                const productName = (meta?.title ?? rawName) || notification.title || "";
+                const productName = isListing
+                  ? localizeText((meta?.title ?? rawName) || notification.title || "", meta?.titleTranslations, locale)
+                  : notification.title || "";
                 const productInitial = productName.trim().charAt(0).toUpperCase() || "•";
                 const thumbUrl = meta?.thumbUrl;
                 const price = meta?.price;
                 const currency = meta?.currency ?? "IQD";
-                const formattedPrice =
-                  typeof price === "number" ? `${price.toLocaleString(locale)} ${currency}` : null;
 
                 const metaKind =
                   notification.meta && typeof notification.meta === "object" && "kind" in (notification.meta as any)
@@ -395,37 +399,59 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                   >
                     {isListing ? (
                       <div className="flex w-full items-center gap-3">
-                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-2xl border border-white/60 bg-white/80">
-                          {thumbUrl ? (
-                            <Image
-                              src={thumbUrl}
-                              alt={productName}
-                              fill
-                              sizes="64px"
-                              className="object-cover"
+                        <div className="relative h-16 w-16 shrink-0">
+                          <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-white/60 bg-white/80">
+                            {thumbUrl ? (
+                              <Image
+                                src={thumbUrl}
+                                alt={productName}
+                                fill
+                                sizes="64px"
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center bg-muted/20 text-xs font-bold text-muted-foreground">
+                                {productInitial}
+                              </div>
+                            )}
+                          </div>
+                          {!notification.isRead && (
+                            <div
+                              className={cn(
+                                "absolute top-1/2 h-2 w-2 -translate-y-1/2 rounded-full bg-orange-500 ring-4 ring-white",
+                                isRtl ? "-right-1 translate-x-1/2" : "-left-1 -translate-x-1/2",
+                              )}
                             />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-muted/20 text-xs font-bold text-muted-foreground">
-                              {productInitial}
-                            </div>
                           )}
                         </div>
                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                           <div className="flex items-center gap-2">
-                            <h4 className="flex-1 truncate text-sm font-bold text-[#2D2D2D] min-w-0">{productName}</h4>
+                            <h4
+                              dir="auto"
+                              className={`flex-1 truncate text-sm font-bold text-[#2D2D2D] min-w-0 bidi-auto ${
+                                isRtl ? "text-right" : "text-left"
+                              }`}
+                            >
+                              {productName}
+                            </h4>
                             <span
                               className={`shrink-0 inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-tight ${listingBadge.className}`}
                             >
                               {listingBadge.label}
                             </span>
-                            {!notification.isRead && (
-                               <div className="absolute right-0 top-0 h-2 w-2 -translate-y-1/2 translate-x-1/2 rounded-full bg-orange-500 ring-4 ring-white" />
-                            )}
                           </div>
                           <div className="mt-0.5 flex items-center justify-between">
-                            {formattedPrice && (
-                              <p className="truncate text-sm font-bold text-brand">{formattedPrice}</p>
-                            )}
+                            <p
+                              dir="auto"
+                              className={`truncate text-sm font-bold text-brand bidi-auto ${isRtl ? "text-right" : "text-left"}`}
+                            >
+                              <CurrencyText
+                                amount={price}
+                                currencyCode={currency}
+                                locale={locale}
+                                usdClassName="text-brand"
+                              />
+                            </p>
                             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5" />
                           </div>
                         </div>
@@ -433,7 +459,14 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                     ) : (
                       <div className="flex flex-col gap-1.5 min-w-0">
                         <div className="flex items-center gap-2">
-                          <h4 className="flex-1 truncate text-sm font-bold text-[#2D2D2D] min-w-0">{notification.title}</h4>
+                          <h4
+                            dir="auto"
+                            className={`flex-1 truncate text-sm font-bold text-[#2D2D2D] min-w-0 bidi-auto ${
+                              isRtl ? "text-right" : "text-left"
+                            }`}
+                          >
+                            {notification.title}
+                          </h4>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <Badge variant="secondary" className="bg-[#f6efe3] text-[9px] font-bold uppercase tracking-tight text-[#2D2D2D] border-[#eadbc5]/70">
                               {notification.type}
@@ -442,7 +475,14 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                           </div>
                         </div>
                         {notification.content && (
-                          <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{notification.content}</p>
+                          <p
+                            dir="auto"
+                            className={`text-xs text-muted-foreground line-clamp-2 leading-relaxed bidi-auto ${
+                              isRtl ? "text-right" : "text-left"
+                            }`}
+                          >
+                            {notification.content}
+                          </p>
                         )}
                         {!notification.isRead && (
                           <div className="absolute right-4 top-4 h-2 w-2 rounded-full bg-orange-500 ring-2 ring-white" />
