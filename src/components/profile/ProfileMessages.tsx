@@ -470,7 +470,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
           onClick={() => handleConversationSelect(conversation.id)}
           dir="ltr"
           className={cn(
-            "flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md active:translate-y-0",
+            "flex w-full items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm shadow-sm transition-all hover:-translate-y-px hover:shadow-md active:translate-y-0",
             isActive
               ? "border-primary/40 bg-primary/10 shadow-md ring-1 ring-primary/10"
               : isUnread

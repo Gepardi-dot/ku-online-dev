@@ -19,7 +19,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center justify-between rounded-2xl border border-[#eadbc5]/70 bg-gradient-to-b from-white/90 to-[#fff3e3]/80 px-4 py-2 text-sm shadow-sm ring-1 ring-white/60 ring-offset-background transition hover:border-[#E67E22]/45 hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus:outline-none focus:ring-2 focus:ring-[#E67E22]/40 focus:ring-offset-2 focus:ring-offset-white/60 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "flex h-10 w-full items-center justify-between rounded-2xl border border-[#eadbc5]/70 bg-linear-to-b from-white/90 to-[#fff3e3]/80 px-4 py-2 text-sm shadow-sm ring-1 ring-white/60 ring-offset-background transition hover:border-[#E67E22]/45 hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus:outline-none focus:ring-2 focus:ring-[#E67E22]/40 focus:ring-offset-2 focus:ring-offset-white/60 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
       className
     )}
     {...props}
@@ -39,7 +39,7 @@ const SelectScrollUpButton = React.forwardRef<
   <SelectPrimitive.ScrollUpButton
     ref={ref}
     className={cn(
-      "flex cursor-default items-center justify-center py-1 text-[color:var(--select-scroll-color)]",
+      "flex cursor-default items-center justify-center py-1 text-(--select-scroll-color)",
       className
     )}
     {...props}
@@ -56,7 +56,7 @@ const SelectScrollDownButton = React.forwardRef<
   <SelectPrimitive.ScrollDownButton
     ref={ref}
     className={cn(
-      "flex cursor-default items-center justify-center py-1 text-[color:var(--select-scroll-color)]",
+      "flex cursor-default items-center justify-center py-1 text-(--select-scroll-color)",
       className
     )}
     {...props}
@@ -86,7 +86,7 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-[90] max-h-96 min-w-[8rem] overflow-hidden rounded-3xl border border-[#eadbc5]/70 bg-gradient-to-br from-[#fffdf7]/95 via-[#fff6ea]/90 to-[#f4ecdf]/90 text-popover-foreground shadow-[0_22px_60px_rgba(120,72,0,0.22)] backdrop-blur-2xl ring-1 ring-white/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "relative z-90 max-h-96 min-w-32 overflow-hidden rounded-3xl border border-[#eadbc5]/70 bg-linear-to-br from-[#fffdf7]/95 via-[#fff6ea]/90 to-[#f4ecdf]/90 text-popover-foreground shadow-[0_22px_60px_rgba(120,72,0,0.22)] backdrop-blur-2xl ring-1 ring-white/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className
@@ -104,7 +104,7 @@ const SelectContent = React.forwardRef<
         className={cn(
           "p-2 overscroll-contain",
           position === "popper" &&
-            "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]"
+            "h-(--radix-select-trigger-height) w-full min-w-(--radix-select-trigger-width)"
         )}
       >
         {children}
@@ -135,7 +135,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-2xl px-3 py-2 ps-9 pe-3 text-sm outline-none transition hover:bg-white/70 focus:bg-white/80 focus:text-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-default select-none items-center rounded-2xl px-3 py-2 ps-9 pe-3 text-sm outline-none transition hover:bg-white/70 focus:bg-white/80 focus:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
       className
     )}
     {...props}

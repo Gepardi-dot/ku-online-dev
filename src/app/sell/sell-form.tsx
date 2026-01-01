@@ -156,7 +156,7 @@ export default function SellForm({ user }: SellFormProps) {
   };
 
   const selectTriggerClassName = [
-    'h-12 w-fit max-w-full rounded-2xl border border-[#eadbc5]/80 bg-gradient-to-b from-[#fffdf7] to-[#fff2e2] px-4 text-sm text-[#1F1C1C]',
+    'h-12 w-fit max-w-full rounded-2xl border border-[#eadbc5]/80 bg-linear-to-b from-[#fffdf7] to-[#fff2e2] px-4 text-sm text-[#1F1C1C]',
     '[&>span]:max-w-[18rem]',
     'shadow-[0_10px_26px_rgba(120,72,0,0.12)] ring-1 ring-white/70 backdrop-blur-xl transition',
     'hover:-translate-y-px hover:border-[#E67E22]/45 hover:shadow-[0_14px_34px_rgba(120,72,0,0.16)]',
@@ -164,29 +164,29 @@ export default function SellForm({ user }: SellFormProps) {
   ].join(' ');
 
   const selectContentClassName = [
-    '!rounded-2xl !border-slate-200/80',
-    '!bg-[linear-gradient(180deg,#ffffff_0%,#f6f7f9_100%)]',
-    '!shadow-[0_18px_40px_rgba(15,23,42,0.14)] !ring-1 !ring-black/5 !backdrop-blur-0',
-    'w-fit max-w-[min(22rem,calc(100vw-2rem))] max-h-[18rem]',
-    '[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0 [&_[data-radix-select-viewport]]:p-2',
-    '[&_[data-radix-select-viewport]]:flex [&_[data-radix-select-viewport]]:flex-col [&_[data-radix-select-viewport]]:gap-1.5',
+    'rounded-2xl! border-slate-200/80!',
+    'bg-[linear-gradient(180deg,#ffffff_0%,#f6f7f9_100%)]!',
+    'shadow-[0_18px_40px_rgba(15,23,42,0.14)]! ring-1! ring-black/5! !backdrop-blur-0',
+    'w-fit max-w-[min(22rem,calc(100vw-2rem))] max-h-72',
+    '**:data-radix-select-viewport:w-auto! **:data-radix-select-viewport:min-w-0! **:data-radix-select-viewport:p-2',
+    '**:data-radix-select-viewport:flex **:data-radix-select-viewport:flex-col **:data-radix-select-viewport:gap-1.5',
   ].join(' ');
 
-  const compactSelectContentClassName = `${selectContentClassName} max-h-[15rem] w-[18rem] max-w-[min(18rem,calc(100vw-2rem))] [&_[data-radix-select-viewport]]:!w-full`;
-  const colorSelectContentClassName = `${compactSelectContentClassName} w-48 px-0 py-0 [&_[data-radix-select-viewport]]:!min-w-0 [&_[data-radix-select-viewport]]:!w-48 [&_[data-radix-select-viewport]]:!p-0`;
+  const compactSelectContentClassName = `${selectContentClassName} max-h-60 w-[18rem] max-w-[min(18rem,calc(100vw-2rem))] **:data-radix-select-viewport:w-full!`;
+  const colorSelectContentClassName = `${compactSelectContentClassName} w-48 px-0 py-0 **:data-radix-select-viewport:min-w-0! **:data-radix-select-viewport:w-48! **:data-radix-select-viewport:p-0!`;
   const listSelectContentClassName = [
     selectContentClassName,
-    'max-h-[16rem]',
-    '[&_[data-radix-select-viewport]]:max-h-[16rem]',
-    '[&_[data-radix-select-viewport]]:overflow-y-auto',
+    'max-h-64',
+    '**:data-radix-select-viewport:max-h-64',
+    '**:data-radix-select-viewport:overflow-y-auto',
   ].join(' ');
 
   const selectItemClassName = [
-    'w-full truncate !rounded-xl border border-transparent !px-4 !py-3 !ps-10 !text-[15px] font-medium text-slate-700 outline-none transition-colors',
+    'w-full truncate rounded-xl! border border-transparent px-4! py-3! ps-10! text-[15px]! font-medium text-slate-700 outline-none transition-colors',
     'hover:bg-slate-100/80 hover:text-slate-900',
-    'data-[highlighted]:bg-slate-100 data-[highlighted]:text-slate-900',
+    'data-highlighted:bg-slate-100 data-highlighted:text-slate-900',
     'data-[state=checked]:bg-slate-900 data-[state=checked]:text-white data-[state=checked]:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)]',
-    '[&_svg]:!text-slate-400 data-[state=checked]:[&_svg]:!text-emerald-300',
+    '[&_svg]:text-slate-400! data-[state=checked]:[&_svg]:text-emerald-300!',
   ].join(' ');
 
   const listingSelectTriggerClassName = [
@@ -195,23 +195,23 @@ export default function SellForm({ user }: SellFormProps) {
     'hover:bg-white/75 hover:shadow-md',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35',
     'focus-visible:ring-offset-2 focus-visible:ring-offset-white/80',
-    'min-w-[9.5rem]',
+    'min-w-38',
   ].join(' ');
 
   const listingSelectContentClassName = [
-    'max-h-[19rem] w-fit min-w-[9.5rem] max-w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-[#d6d6d6]/70',
+    'max-h-76 w-fit min-w-38 max-w-[min(18rem,calc(100vw-2rem))] rounded-2xl border border-[#d6d6d6]/70',
     'bg-white/90 p-2 shadow-[0_18px_48px_rgba(15,23,42,0.18)] ring-1 ring-white/40 backdrop-blur-xl',
-    '[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0 [&_[data-radix-select-viewport]]:p-2',
-    '[&_[data-radix-select-viewport]]:flex [&_[data-radix-select-viewport]]:flex-col [&_[data-radix-select-viewport]]:gap-2',
-    '[&_[data-radix-select-viewport]]:!max-h-[19rem] [&_[data-radix-select-viewport]]:!overflow-y-auto',
+    '**:data-radix-select-viewport:w-auto! **:data-radix-select-viewport:min-w-0! **:data-radix-select-viewport:p-2',
+    '**:data-radix-select-viewport:flex **:data-radix-select-viewport:flex-col **:data-radix-select-viewport:gap-2',
+    '**:data-radix-select-viewport:max-h-76! **:data-radix-select-viewport:overflow-y-auto!',
   ].join(' ');
 
   const listingSelectItemClassName = [
     'w-full rounded-xl border border-slate-200/70 bg-white px-2.5 py-2.5 ps-9 text-[15px] leading-snug text-[#1F1C1C]',
-    'whitespace-normal break-words text-left',
+    'whitespace-normal wrap-break-word text-left',
     'shadow-sm outline-none transition',
     'hover:border-slate-300/70 hover:bg-slate-50/80',
-    'data-[highlighted]:border-slate-300/70 data-[highlighted]:bg-slate-50/80',
+    'data-highlighted:border-slate-300/70 data-highlighted:bg-slate-50/80',
     'data-[state=checked]:border-primary/25 data-[state=checked]:bg-primary/10 data-[state=checked]:font-medium',
   ].join(' ');
 
@@ -221,37 +221,37 @@ export default function SellForm({ user }: SellFormProps) {
     'hover:border-white/70 hover:bg-white/75',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
     'focus-visible:ring-offset-1 focus-visible:ring-offset-white/80',
-    'min-w-[8.5rem]',
+    'min-w-34',
   ].join(' ');
 
   const categorySelectContentClassName = [
-    'max-h-[18rem] w-fit min-w-[8.5rem] max-w-[min(18rem,calc(100vw-2rem))] rounded-md border border-white/60',
+    'max-h-72 w-fit min-w-34 max-w-[min(18rem,calc(100vw-2rem))] rounded-md border border-white/60',
     'bg-white/75 p-1.5 shadow-[0_28px_70px_rgba(15,23,42,0.28)] ring-1 ring-black/10 backdrop-blur-xl',
-    '[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0 [&_[data-radix-select-viewport]]:p-1.5',
-    '[&_[data-radix-select-viewport]]:flex [&_[data-radix-select-viewport]]:flex-col [&_[data-radix-select-viewport]]:gap-1.5',
-    '[&_[data-radix-select-viewport]]:!max-h-[18rem] [&_[data-radix-select-viewport]]:!overflow-y-auto',
+    '**:data-radix-select-viewport:w-auto! **:data-radix-select-viewport:min-w-0! **:data-radix-select-viewport:p-1.5',
+    '**:data-radix-select-viewport:flex **:data-radix-select-viewport:flex-col **:data-radix-select-viewport:gap-1.5',
+    '**:data-radix-select-viewport:max-h-72! **:data-radix-select-viewport:overflow-y-auto!',
   ].join(' ');
 
   const categorySelectItemClassName = [
     'w-full rounded-md border border-white/70 bg-white/65 px-2 py-2 ps-8 text-[16px] leading-snug text-[#1F1C1C] backdrop-blur-md',
-    'whitespace-normal break-words text-left',
+    'whitespace-normal wrap-break-word text-left',
     'shadow-[0_12px_26px_rgba(15,23,42,0.12)] outline-none transition',
     'motion-safe:transition-[transform,box-shadow,border-color,background-color] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none',
-    'hover:-translate-y-[1px] hover:border-white/90 hover:bg-white/80 hover:shadow-[0_16px_34px_rgba(15,23,42,0.18)]',
-    'data-[highlighted]:-translate-y-[1px] data-[highlighted]:border-white/90 data-[highlighted]:bg-white/80 data-[highlighted]:shadow-[0_16px_34px_rgba(15,23,42,0.18)]',
+    'hover:-translate-y-px hover:border-white/90 hover:bg-white/80 hover:shadow-[0_16px_34px_rgba(15,23,42,0.18)]',
+    'data-highlighted:-translate-y-px data-highlighted:border-white/90 data-highlighted:bg-white/80 data-highlighted:shadow-[0_16px_34px_rgba(15,23,42,0.18)]',
     'data-[state=checked]:border-white data-[state=checked]:bg-white/90 data-[state=checked]:font-medium',
   ].join(' ');
 
   const colorSelectItemBaseClassName = [
     'flex h-12 w-full items-center justify-center rounded-none px-3 text-center text-sm font-semibold uppercase tracking-wide',
-    '!ps-0 !pe-0',
-    'border border-transparent [&_[data-indicator]]:hidden select-none outline-none',
-    'bg-[var(--chip-bg)] text-[var(--chip-fg)]',
-    'hover:bg-[var(--chip-bg)] hover:text-[var(--chip-fg)]',
-    'focus:bg-[var(--chip-bg)] focus:text-[var(--chip-fg)]',
-    'data-[highlighted]:bg-[var(--chip-bg)] data-[highlighted]:text-[var(--chip-fg)]',
+    'ps-0! pe-0!',
+    'border border-transparent **:data-indicator:hidden select-none outline-none',
+    'bg-(--chip-bg) text-(--chip-fg)',
+    'hover:bg-(--chip-bg) hover:text-(--chip-fg)',
+    'focus:bg-(--chip-bg) focus:text-(--chip-fg)',
+    'data-highlighted:bg-(--chip-bg) data-highlighted:text-(--chip-fg)',
     'motion-safe:transition-[transform,border-color] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none',
-    'active:scale-[0.98] data-[highlighted]:scale-[0.99] data-[highlighted]:border-white/60',
+    'active:scale-[0.98] data-highlighted:scale-[0.99] data-highlighted:border-white/60',
     'data-[state=checked]:border-white data-[state=checked]:shadow-none',
   ].join(' ');
 
@@ -301,7 +301,7 @@ export default function SellForm({ user }: SellFormProps) {
   } as CSSProperties;
 
   const detailsPanelClassName = [
-    'relative overflow-hidden rounded-3xl border border-[color:var(--sell-panel-border)]',
+    'relative overflow-hidden rounded-3xl border border-(--sell-panel-border)',
     'bg-[linear-gradient(135deg,var(--sell-panel-start),var(--sell-panel-mid),var(--sell-panel-end))]',
     'p-4 md:p-6 shadow-[0_12px_30px_rgba(124,45,18,0.12)]',
     'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-4 motion-safe:duration-500',
@@ -312,10 +312,10 @@ export default function SellForm({ user }: SellFormProps) {
     'motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-3 motion-safe:duration-500',
   ].join(' ');
 
-  const detailsLabelClassName = 'flex items-center gap-2 text-sm font-semibold text-[color:var(--sell-panel-ink)]';
+  const detailsLabelClassName = 'flex items-center gap-2 text-sm font-semibold text-(--sell-panel-ink)';
 
   const detailsIconClassName = [
-    'inline-flex items-center justify-center text-[color:var(--sell-panel-ink)] opacity-80',
+    'inline-flex items-center justify-center text-(--sell-panel-ink) opacity-80',
     '[text-shadow:0_1px_0_rgba(255,255,255,0.75)]',
   ].join(' ');
 
@@ -330,7 +330,7 @@ export default function SellForm({ user }: SellFormProps) {
   } as CSSProperties;
 
   const upperPanelClassName = [
-    'relative overflow-hidden rounded-3xl border border-[color:var(--sell-panel-border)]',
+    'relative overflow-hidden rounded-3xl border border-(--sell-panel-border)',
     'bg-[linear-gradient(150deg,var(--sell-panel-start),var(--sell-panel-mid),var(--sell-panel-end))]',
     'p-4 md:p-6 shadow-[0_10px_26px_rgba(124,45,18,0.10)]',
   ].join(' ');
@@ -342,7 +342,7 @@ export default function SellForm({ user }: SellFormProps) {
 
   const detailsTextareaClassName = [
     textareaClassName,
-    '!bg-white/92 !shadow-[0_8px_18px_rgba(124,45,18,0.10)]',
+    'bg-white/92! shadow-[0_8px_18px_rgba(124,45,18,0.10)]!',
   ].join(' ');
 
   const detailsInputClassName = [
@@ -351,7 +351,7 @@ export default function SellForm({ user }: SellFormProps) {
   ].join(' ');
 
   const heroBadgeClassName = [
-    'inline-flex items-center gap-2 rounded-full border border-[#f1e2d2] bg-white/80 px-3 py-1 text-[color:#7a5b46]',
+    'inline-flex items-center gap-2 rounded-full border border-[#f1e2d2] bg-white/80 px-3 py-1 text-[#7a5b46]',
     'shadow-[0_6px_14px_rgba(124,45,18,0.08)]',
   ].join(' ');
 
@@ -361,17 +361,17 @@ export default function SellForm({ user }: SellFormProps) {
   ].join(' ');
 
   const currencyToggleClassName = [
-    'inline-flex items-center gap-1 rounded-2xl border border-[color:var(--sell-panel-border)] bg-white/92 p-1',
+    'inline-flex items-center gap-1 rounded-2xl border border-(--sell-panel-border) bg-white/92 p-1',
     'shadow-[0_6px_14px_rgba(124,45,18,0.10)]',
   ].join(' ');
 
   const currencyToggleButtonBaseClassName = [
     'flex h-8 items-center rounded-xl px-3 text-xs font-semibold transition',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--sell-panel-accent)] focus-visible:ring-offset-2',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--sell-panel-accent) focus-visible:ring-offset-2',
   ].join(' ');
 
   const freeToggleClassName = [
-    'flex items-center gap-2 rounded-2xl border border-[color:var(--sell-panel-border)] bg-white/92 px-3 py-2',
+    'flex items-center gap-2 rounded-2xl border border-(--sell-panel-border) bg-white/92 px-3 py-2',
     'shadow-[0_6px_14px_rgba(124,45,18,0.10)]',
   ].join(' ');
 
@@ -945,16 +945,16 @@ export default function SellForm({ user }: SellFormProps) {
     <div dir={direction} className="relative">
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/20 blur-3xl" />
-        <div className="absolute top-32 left-[-6rem] h-72 w-72 rounded-full bg-orange-200/40 blur-3xl" />
-        <div className="absolute bottom-[-10rem] right-[-10rem] h-96 w-96 rounded-full bg-amber-200/40 blur-3xl" />
+        <div className="absolute top-32 -left-24 h-72 w-72 rounded-full bg-orange-200/40 blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 h-96 w-96 rounded-full bg-amber-200/40 blur-3xl" />
       </div>
 
       <div className="mx-auto max-w-6xl px-4 py-8 pb-28 md:pb-10">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr),360px] lg:items-start">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start">
           <Card className="relative overflow-hidden rounded-3xl border-white/50 bg-white/70 shadow-[0_28px_80px_rgba(15,23,42,0.10)] backdrop-blur-2xl">
             <div
               aria-hidden="true"
-              className="absolute inset-0 bg-gradient-to-br from-white/85 via-white/70 to-[#fff4ea]/70"
+              className="absolute inset-0 bg-linear-to-br from-white/85 via-white/70 to-[#fff4ea]/70"
             />
             <div className="relative">
               <CardHeader className="p-6 pb-0 md:p-8 md:pb-3">
@@ -1012,9 +1012,9 @@ export default function SellForm({ user }: SellFormProps) {
                             <span className={detailsIconClassName}>
                               <Upload className="h-4 w-4" />
                             </span>
-                            <h2 className="text-base font-semibold leading-tight text-[color:var(--sell-panel-ink)]">
+                            <h2 className="text-base font-semibold leading-tight text-(--sell-panel-ink)">
                               {t('sellForm.fields.images')}{' '}
-                              <span className="text-[color:var(--sell-panel-accent)]" aria-hidden="true">
+                              <span className="text-(--sell-panel-accent)" aria-hidden="true">
                                 *
                               </span>
                             </h2>
@@ -1024,10 +1024,10 @@ export default function SellForm({ user }: SellFormProps) {
                         <div
                           className={`${upperDropZoneBaseClassName} ${
                             isDragActive
-                              ? 'border-[color:var(--sell-panel-accent)] bg-white/95'
+                              ? 'border-(--sell-panel-accent) bg-white/95'
                               : storageBusy || uploadedImages.length >= MAX_IMAGES
-                                ? 'cursor-not-allowed opacity-60 border-[color:var(--sell-panel-border)]'
-                                : 'cursor-pointer border-[color:var(--sell-panel-border)] hover:border-[color:var(--sell-panel-accent)] hover:bg-white/95'
+                                ? 'cursor-not-allowed opacity-60 border-(--sell-panel-border)'
+                                : 'cursor-pointer border-(--sell-panel-border) hover:border-(--sell-panel-accent) hover:bg-white/95'
                           }`}
                           onDragEnter={handleDragOver}
                           onDragOver={handleDragOver}
@@ -1039,11 +1039,11 @@ export default function SellForm({ user }: SellFormProps) {
                             handleFileButtonClick();
                           }}
                         >
-                          <div className="text-[color:var(--sell-panel-accent)]">
+                          <div className="text-(--sell-panel-accent)">
                             <Upload className="h-7 w-7" />
                           </div>
                           <div className="space-y-1">
-                            <p className="text-base font-semibold text-[color:var(--sell-panel-ink)]">
+                            <p className="text-base font-semibold text-(--sell-panel-ink)">
                               {t('sellForm.upload.dropHint')}
                             </p>
                             <p className="text-sm text-muted-foreground">{t('sellForm.upload.browse')}</p>
@@ -1119,7 +1119,7 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                             <span className="flex items-center gap-1">
                               <span>{t('sellForm.fields.title')}</span>
-                              <span className="text-[color:var(--sell-panel-accent)]" aria-hidden="true">
+                              <span className="text-(--sell-panel-accent)" aria-hidden="true">
                                 *
                               </span>
                             </span>
@@ -1176,7 +1176,7 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                             <span className="flex items-center gap-1">
                               <span>{t('sellForm.fields.price')}</span>
-                              <span className="text-[color:var(--sell-panel-accent)]" aria-hidden="true">
+                              <span className="text-(--sell-panel-accent)" aria-hidden="true">
                                 *
                               </span>
                             </span>
@@ -1193,8 +1193,8 @@ export default function SellForm({ user }: SellFormProps) {
                                     className={[
                                       currencyToggleButtonBaseClassName,
                                       formData.currency === option.value
-                                        ? 'bg-[color:var(--sell-panel-accent)] text-white shadow-[0_6px_12px_var(--sell-panel-glow)]'
-                                        : 'text-[color:var(--sell-panel-ink)] hover:bg-white/80',
+                                        ? 'bg-(--sell-panel-accent) text-white shadow-[0_6px_12px_var(--sell-panel-glow)]'
+                                        : 'text-(--sell-panel-ink) hover:bg-white/80',
                                     ].join(' ')}
                                     onClick={() => {
                                       setHasUnsaved(true);
@@ -1233,7 +1233,7 @@ export default function SellForm({ user }: SellFormProps) {
                           </div>
 
                             <div className="relative mt-3">
-                              <div className="pointer-events-none absolute start-4 top-1/2 z-10 -translate-y-1/2 text-xs font-semibold text-[color:var(--sell-panel-accent)]">
+                              <div className="pointer-events-none absolute start-4 top-1/2 z-10 -translate-y-1/2 text-xs font-semibold text-(--sell-panel-accent)">
                                 {highlightDollar(currencyInputLabel)}
                               </div>
                             <Input
@@ -1263,7 +1263,7 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                             <span className="flex items-center gap-1">
                               <span>{t('sellForm.fields.condition')}</span>
-                              <span className="text-[color:var(--sell-panel-accent)]" aria-hidden="true">
+                              <span className="text-(--sell-panel-accent)" aria-hidden="true">
                                 *
                               </span>
                             </span>
@@ -1305,7 +1305,7 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                             <span className="flex items-center gap-1">
                               <span>{t('sellForm.fields.category')}</span>
-                              <span className="text-[color:var(--sell-panel-accent)]" aria-hidden="true">
+                              <span className="text-(--sell-panel-accent)" aria-hidden="true">
                                 *
                               </span>
                             </span>
@@ -1356,7 +1356,7 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                             <span className="flex items-center gap-1">
                               <span>{t('sellForm.fields.location')}</span>
-                              <span className="text-[color:var(--sell-panel-accent)]" aria-hidden="true">
+                              <span className="text-(--sell-panel-accent)" aria-hidden="true">
                                 *
                               </span>
                             </span>
@@ -1472,7 +1472,7 @@ export default function SellForm({ user }: SellFormProps) {
                 </CardHeader>
                 <CardContent className="p-6 pt-4">
                   <div className="overflow-hidden rounded-2xl border border-white/60 bg-white/50">
-                    <div className="relative aspect-[4/3] bg-gradient-to-br from-secondary/60 via-white/40 to-primary/10">
+                    <div className="relative aspect-4/3 bg-linear-to-br from-secondary/60 via-white/40 to-primary/10">
                       {previewImage ? (
                         <Image src={previewImage} alt={t('sellForm.upload.previewAlt')} fill className="object-cover" />
                       ) : (
@@ -1526,7 +1526,7 @@ export default function SellForm({ user }: SellFormProps) {
         </div>
       </div>
 
-      <div className="md:hidden fixed inset-x-0 bottom-[var(--mobile-nav-offset)] z-30 border-t border-white/60 bg-white/70 backdrop-blur-2xl">
+      <div className="md:hidden fixed inset-x-0 bottom-(--mobile-nav-offset) z-30 border-t border-white/60 bg-white/70 backdrop-blur-2xl">
         <div className="mx-auto max-w-6xl px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className="flex items-center gap-3">
             <div className="flex-1">

@@ -473,21 +473,21 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
   ].join(' ');
 
   const selectContentClassName = [
-    'max-h-[18rem] w-fit max-w-[min(18rem,calc(100vw-2rem))] rounded-md border border-white/60',
+    'max-h-72 w-fit max-w-[min(18rem,calc(100vw-2rem))] rounded-md border border-white/60',
     'bg-white/75 p-1.5 shadow-[0_28px_70px_rgba(15,23,42,0.28)] ring-1 ring-black/10 backdrop-blur-xl',
-    '[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0 [&_[data-radix-select-viewport]]:p-1.5',
-    '[&_[data-radix-select-viewport]]:flex [&_[data-radix-select-viewport]]:flex-col [&_[data-radix-select-viewport]]:gap-1.5',
-    '[&_[data-radix-select-viewport]]:!max-h-[18rem] [&_[data-radix-select-viewport]]:!overflow-y-auto',
+    '**:data-radix-select-viewport:w-auto! **:data-radix-select-viewport:min-w-0! **:data-radix-select-viewport:p-1.5',
+    '**:data-radix-select-viewport:flex **:data-radix-select-viewport:flex-col **:data-radix-select-viewport:gap-1.5',
+    '**:data-radix-select-viewport:max-h-72! **:data-radix-select-viewport:overflow-y-auto!',
   ].join(' ');
 
   const listSelectContentClassName = selectContentClassName;
 
   const selectItemClassName = [
     'w-full rounded-md border border-white/70 bg-white/65 px-2 py-2 ps-8 text-[16px] leading-snug text-[#1F1C1C] backdrop-blur-md',
-    'whitespace-normal break-words text-left',
+    'whitespace-normal wrap-break-word text-left',
     'shadow-[0_12px_26px_rgba(15,23,42,0.12)] outline-none transition',
     'hover:border-white/90 hover:bg-white/80 hover:shadow-[0_16px_34px_rgba(15,23,42,0.18)]',
-    'data-[highlighted]:border-white/90 data-[highlighted]:bg-white/80 data-[highlighted]:shadow-[0_16px_34px_rgba(15,23,42,0.18)]',
+    'data-highlighted:border-white/90 data-highlighted:bg-white/80 data-highlighted:shadow-[0_16px_34px_rgba(15,23,42,0.18)]',
     'data-[state=checked]:border-white data-[state=checked]:bg-white/90 data-[state=checked]:font-medium',
   ].join(' ');
 
@@ -513,7 +513,7 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
   return (
     <div dir={direction} className="relative">
       <Card className="relative mx-auto max-w-2xl overflow-hidden rounded-3xl border-white/50 bg-white/60 shadow-[0_30px_90px_rgba(15,23,42,0.12)] backdrop-blur-2xl">
-        <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-br from-white/80 via-white/60 to-primary/10" />
+        <div aria-hidden="true" className="absolute inset-0 bg-linear-to-br from-white/80 via-white/60 to-primary/10" />
         <div className="relative">
           <CardHeader className="p-6 pb-4">
             <CardTitle className="text-2xl font-bold tracking-tight">{t('product.editListing')}</CardTitle>

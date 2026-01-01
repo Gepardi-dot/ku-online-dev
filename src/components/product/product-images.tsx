@@ -218,7 +218,7 @@ export default function ProductImages({
   return (
     <div
       className={`space-y-4 ${
-        hasGallery ? 'lg:space-y-0 lg:grid lg:grid-cols-[80px,minmax(0,1fr)] lg:gap-4 lg:items-start' : ''
+        hasGallery ? 'lg:space-y-0 lg:grid lg:grid-cols-[80px_minmax(0,1fr)] lg:gap-4 lg:items-start' : ''
       }`}
     >
       {/* Hero image (desktop order second) */}
@@ -300,7 +300,7 @@ export default function ProductImages({
             <button
               key={`${variant.thumb}-${i}`}
               type="button"
-              className={`relative aspect-square sm:aspect-[4/3] lg:aspect-square rounded-lg overflow-hidden bg-white cursor-pointer border ${
+              className={`relative aspect-square sm:aspect-4/3 lg:aspect-square rounded-lg overflow-hidden bg-white cursor-pointer border ${
                 i === activeIndex ? 'border-primary' : 'border-transparent hover:border-primary/60'
               }`}
               onMouseEnter={() => setActiveIndex(i)}
@@ -632,7 +632,7 @@ function Lightbox({
       open={open}
       onOpenChange={handleOpenChange}
     >
-      <DialogContent className="inset-0 left-0 top-0 translate-x-0 translate-y-0 max-w-none w-screen h-[100dvh] border-0 bg-white/10 p-0 shadow-none backdrop-blur-3xl">
+      <DialogContent className="inset-0 left-0 top-0 translate-x-0 translate-y-0 max-w-none w-screen h-dvh border-0 bg-white/10 p-0 shadow-none backdrop-blur-3xl">
         <DialogTitle className="sr-only">
           {title ? `${title} image ${current + 1} of ${images.length}` : 'Product image viewer'}
         </DialogTitle>
@@ -640,11 +640,11 @@ function Lightbox({
         <div className="relative flex h-full w-full flex-col p-3 md:p-6">
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
             <div className="absolute -top-24 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-primary/20 blur-3xl" />
-            <div className="absolute bottom-[-9rem] right-[-9rem] h-96 w-96 rounded-full bg-orange-200/25 blur-3xl" />
+            <div className="absolute -bottom-36 -right-36 h-96 w-96 rounded-full bg-orange-200/25 blur-3xl" />
           </div>
 
           <div className="relative mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-[28px] border border-white/60 bg-white/70 shadow-[0_30px_90px_rgba(15,23,42,0.25)] ring-1 ring-white/30 backdrop-blur-2xl lg:flex-row">
-            <div className="relative flex-1 bg-gradient-to-br from-white/65 via-white/55 to-white/40">
+            <div className="relative flex-1 bg-linear-to-br from-white/65 via-white/55 to-white/40">
               <div className="absolute inset-0">
                 <div
                   ref={containerRef}

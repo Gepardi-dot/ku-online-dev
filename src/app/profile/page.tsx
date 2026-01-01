@@ -128,7 +128,7 @@ function normalizeTranslationMap(value: unknown): Record<string, string> | null 
 
 function InsightTile({ icon, label, value, helper }: InsightTileProps) {
   return (
-    <div className="rounded-2xl border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 p-4 shadow-[0_8px_32px_rgba(15,23,42,0.08)] ring-1 ring-white/40">
+    <div className="rounded-2xl border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 p-4 shadow-[0_8px_32px_rgba(15,23,42,0.08)] ring-1 ring-white/40">
       <div className="flex items-start gap-3">
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 text-brand">
           {icon}
@@ -451,7 +451,7 @@ export default async function ProfilePage({
       <div className="container mx-auto px-4 py-6" dir={isRtl ? 'rtl' : undefined}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1">
-            <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+            <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
               <CardContent className="p-6">
                 <div className="space-y-4 text-center">
                   <Avatar className="h-24 w-24 mx-auto">
@@ -543,21 +543,21 @@ export default async function ProfilePage({
               <TabsList className="mb-3 grid h-auto w-full grid-cols-3 items-center gap-1 rounded-full border border-white/60 bg-[linear-gradient(160deg,rgba(255,255,255,0.85),rgba(255,255,255,0.35)),radial-gradient(circle_at_top_left,rgba(255,214,170,0.35),transparent_60%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.6),transparent_50%),repeating-linear-gradient(90deg,rgba(255,255,255,0.12)_0,rgba(255,255,255,0.12)_2px,transparent_2px,transparent_6px)] p-1 shadow-[0_12px_30px_rgba(120,72,0,0.14)] backdrop-blur-xl ring-1 ring-white/60">
                 <TabsTrigger
                   value="overview"
-                  className="inline-flex w-full items-center justify-center gap-2 !rounded-full !px-3 !py-2 text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full! px-3! py-2! text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
                 >
                   <LayoutDashboard className="h-4 w-4" />
                   {t('profile.tabs.overview')}
                 </TabsTrigger>
                 <TabsTrigger
                   value="listings"
-                  className="inline-flex w-full items-center justify-center gap-2 !rounded-full !px-3 !py-2 text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full! px-3! py-2! text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
                 >
                   <Package className="h-4 w-4" />
                   {t('profile.tabs.listings')}
                 </TabsTrigger>
                 <TabsTrigger
                   value="sales"
-                  className="inline-flex w-full items-center justify-center gap-2 !rounded-full !px-3 !py-2 text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full! px-3! py-2! text-sm font-semibold text-[#7a5b46] transition-all hover:bg-white/60 hover:text-[#3b2a20] data-[state=active]:bg-white/75 data-[state=active]:text-[#2f221a] data-[state=active]:shadow-[0_10px_22px_rgba(120,72,0,0.18)] data-[state=active]:ring-1 data-[state=active]:ring-white/70 backdrop-blur-md [box-shadow:inset_0_1px_0_rgba(255,255,255,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-2 focus-visible:ring-offset-white/30"
                 >
                   <Receipt className="h-4 w-4" />
                   {t('profile.tabs.sales')}
@@ -565,7 +565,7 @@ export default async function ProfilePage({
               </TabsList>
 
               <TabsContent value="overview" className="space-y-6">
-                <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+                <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
                   <CardHeader>
                     <CardTitle className="text-brand">{t('profile.overview.performanceInsightsTitle')}</CardTitle>
                     <CardDescription>{t('profile.overview.performanceInsightsDescription')}</CardDescription>
@@ -602,7 +602,7 @@ export default async function ProfilePage({
                   </CardContent>
                 </Card>
 
-                <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+                <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
                   <CardHeader>
                     <CardTitle className="text-brand">{t('profile.overview.recentActivityTitle')}</CardTitle>
                     <CardDescription>{t('profile.overview.recentActivityDescription')}</CardDescription>
@@ -682,7 +682,7 @@ export default async function ProfilePage({
               </TabsContent>
 
               <TabsContent value="listings" className="space-y-6">
-                <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+                <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
                   <CardHeader>
                     <CardTitle className="text-brand">
                       {t('profile.listings.title')} ({listings.length})
@@ -705,7 +705,7 @@ export default async function ProfilePage({
               </TabsContent>
 
               <TabsContent value="sales" className="space-y-6">
-                <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+                <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
                   <CardHeader>
                     <CardTitle className="text-brand">
                       {t('profile.sales.title')} ({sales.length})
@@ -784,7 +784,7 @@ export default async function ProfilePage({
               </TabsContent>
 
               <TabsContent value="profile" className="space-y-6">
-                <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+                <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
                   <CardHeader>
                     <CardTitle className="text-brand">{t('profile.form.heading')}</CardTitle>
                     <p className="text-sm text-muted-foreground">
@@ -798,7 +798,7 @@ export default async function ProfilePage({
               </TabsContent>
 
               <TabsContent value="settings" className="space-y-6">
-                <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+                <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
                   <CardHeader>
                     <CardTitle className="text-brand">{t('profile.settingsPanel.heading')}</CardTitle>
                     <p className="text-sm text-muted-foreground">

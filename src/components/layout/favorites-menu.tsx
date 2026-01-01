@@ -243,7 +243,7 @@ export default function FavoritesMenu({
   }, []);
 
   const ebayTriggerClass =
-    'relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_16px_38px_rgba(247,111,29,0.18)]';
+    'relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-linear-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_16px_38px_rgba(247,111,29,0.18)]';
 
   const handleShare = useCallback(async (favorite: FavoriteSummary) => {
     const product = favorite.product;
@@ -291,7 +291,7 @@ export default function FavoritesMenu({
         {compactTrigger ? (
           <button
             type="button"
-            className={`relative inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0 bg-transparent text-current transition active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:text-brand ${triggerClassName ?? ''}`}
+            className={`relative inline-flex items-center justify-center h-(--nav-icon-size) w-(--nav-icon-size) p-0 bg-transparent text-current transition active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:text-brand ${triggerClassName ?? ''}`}
             aria-label={strings.label}
           >
             {triggerIcon ? (
@@ -321,7 +321,7 @@ export default function FavoritesMenu({
         align="end"
         side="bottom"
         sideOffset={12}
-        className="z-[90] flex w-[420px] max-h-[calc(100vh-5rem)] max-w-[calc(100vw-1rem)] flex-col overscroll-contain rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
+        className="z-90 flex w-[420px] max-h-[calc(100vh-5rem)] max-w-[calc(100vw-1rem)] flex-col overscroll-contain rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
       >
         {!canLoad ? (
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
@@ -351,7 +351,7 @@ export default function FavoritesMenu({
                   {strings.empty}
                 </div>
               ) : (
-                <div className="max-h-[360px] overflow-y-auto w-full pr-3 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gradient-to-b [&::-webkit-scrollbar-thumb]:from-brand [&::-webkit-scrollbar-thumb]:to-brand-light [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-brand-dark hover:[&::-webkit-scrollbar-thumb]:to-brand">
+                <div className="max-h-[360px] overflow-y-auto w-full pr-3 [&::-webkit-scrollbar]:w-[5px] [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-linear-to-b [&::-webkit-scrollbar-thumb]:from-brand [&::-webkit-scrollbar-thumb]:to-brand-light [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:from-brand-dark hover:[&::-webkit-scrollbar-thumb]:to-brand">
                   <div className="space-y-3 p-0.5">
                     {favorites.map((favorite) => {
                       const product = favorite.product;
@@ -364,7 +364,7 @@ export default function FavoritesMenu({
                       return (
                         <div
                           key={favorite.id}
-                          className="relative flex w-full items-start gap-3 rounded-3xl border border-[#eadbc5]/70 bg-white/50 p-3 shadow-sm ring-1 ring-black/[0.05] transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-[#eadbc5]"
+                          className="relative flex w-full items-start gap-3 rounded-3xl border border-[#eadbc5]/70 bg-white/50 p-3 shadow-sm ring-1 ring-black/5 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-[#eadbc5]"
                         >
                           <Link
                             href={product ? `/product/${product.id}` : '#'}

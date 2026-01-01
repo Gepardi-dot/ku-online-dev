@@ -134,7 +134,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
     <header
       id="ku-main-header"
       dir="ltr"
-      className="sticky top-0 z-[60] w-full bg-white/80 shadow-sm backdrop-blur-md pointer-events-auto"
+      className="sticky top-0 z-60 w-full bg-white/80 shadow-sm backdrop-blur-md pointer-events-auto"
     >
       <div className="container mx-auto px-4">
         <input
@@ -203,11 +203,11 @@ export default function AppHeader({ user }: AppHeaderProps) {
                         className="h-9 rounded-full border border-gray-200 bg-gray-50 px-4 text-sm font-semibold text-gray-800 transition active:scale-[0.98] data-[state=open]:scale-[1.02] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_12px_28px_rgba(247,111,29,0.16)]"
                       >
                         <Filter className="h-4.5 w-4.5 mr-2" aria-hidden="true" />
-                        <span className="truncate max-w-[7.5rem]">{currentCityLabel}</span>
+                        <span className="truncate max-w-30">{currentCityLabel}</span>
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                      className="w-56 rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-3 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
+                      className="w-56 rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-3 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
                       align="end"
                     >
                       <DropdownMenuLabel>{t('header.filterLabel')}</DropdownMenuLabel>
@@ -345,7 +345,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
                 </Button>
               </DropdownMenuTrigger>
                     <DropdownMenuContent
-                      className="w-56 rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-3 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
+                      className="w-56 rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-3 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
                       align="end"
                     >
                 <DropdownMenuLabel>{t('header.filterLabel')}</DropdownMenuLabel>

@@ -100,7 +100,7 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
 
   return (
     <form action={formAction} className="space-y-6 max-w-xl mx-auto" id="profile-settings-form">
-      <section className="space-y-4 rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 p-4 sm:p-5 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+      <section className="space-y-4 rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 p-4 sm:p-5 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
         <div>
           <h3 className="text-sm font-semibold text-brand">{t('profile.form.avatarTitle')}</h3>
           <p className="text-sm text-muted-foreground">{t('profile.form.avatarHelper')}</p>
@@ -145,7 +145,7 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
       </section>
       <section
         id="profile-details"
-        className="space-y-5 rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 p-4 sm:p-5 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40"
+        className="space-y-5 rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 p-4 sm:p-5 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40"
       >
         <div className="flex flex-col gap-1">
           <h3 className="text-base font-semibold text-brand">{t('profile.form.detailsTitle')}</h3>
@@ -214,7 +214,7 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
       <input type="hidden" name="marketingEmails" value={initialValues.marketingEmails ? 'true' : 'false'} />
 
       <Separator />
-      <section className="space-y-3 rounded-[24px] border border-red-200/60 bg-gradient-to-br from-red-50/50 via-white/60 to-white/40 p-4 shadow-[0_8px_32px_rgba(15,23,42,0.08)] ring-1 ring-red-100/40">
+      <section className="space-y-3 rounded-[24px] border border-red-200/60 bg-linear-to-br from-red-50/50 via-white/60 to-white/40 p-4 shadow-[0_8px_32px_rgba(15,23,42,0.08)] ring-1 ring-red-100/40">
         <div className="flex flex-col gap-1">
           <h3 className="text-sm font-semibold text-destructive">
             {t('profile.settingsPanel.dangerZoneTitle')}
@@ -258,7 +258,7 @@ export default function ProfileSettingsForm({ initialValues }: ProfileSettingsFo
       {/* Cropper Dialog */}
       {cropOpen && cropImageUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-[24px] border border-white/60 bg-gradient-to-br from-white/90 via-white/80 to-white/70 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.22)] ring-1 ring-white/40">
+          <div className="w-full max-w-md rounded-[24px] border border-white/60 bg-linear-to-br from-white/90 via-white/80 to-white/70 p-6 shadow-[0_18px_48px_rgba(15,23,42,0.22)] ring-1 ring-white/40">
             <h4 className="mb-3 text-base font-semibold text-brand">{t('profile.form.cropTitle')}</h4>
             <div
               className="relative mx-auto my-2 h-72 w-72 overflow-hidden rounded-full bg-muted"
