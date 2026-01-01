@@ -127,7 +127,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
 
   return (
     <>
-      <section className="py-1 bg-gradient-to-b from-white to-[#fff4e5]">
+      <section className="py-1 bg-linear-to-b from-white to-[#fff4e5]">
         <div className="container mx-auto px-4 space-y-1">
           {categories.length === 0 ? (
             <span className="text-sm text-muted-foreground">
@@ -137,7 +137,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
             <SwipeHint
               label={messages.homepage.swipeHint}
               direction={categoriesDirection}
-              containerClassName="no-scrollbar flex gap-[0.25rem] overflow-x-auto pb-1 snap-x snap-proximity scroll-px-4 [-webkit-overflow-scrolling:touch] overscroll-x-contain touch-pan-x lg:gap-1.5 lg:overflow-visible lg:justify-center"
+              containerClassName="no-scrollbar flex gap-1 overflow-x-auto pb-1 snap-x snap-proximity scroll-px-4 [-webkit-overflow-scrolling:touch] overscroll-x-contain touch-pan-x lg:gap-1.5 lg:overflow-visible lg:justify-center"
             >
               {categories.map((category, idx) => {
                 const baseName = category.name ?? '';
@@ -193,7 +193,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                     href={categoryHref}
                     key={category.id}
                     aria-label={label}
-                    className="snap-start inline-flex shrink-0 w-[6.1rem] sm:w-[6rem] md:w-[5.8rem] lg:w-[5.5rem] flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] sm:text-sm font-medium text-foreground/90 transition hover:bg-muted/60 active:scale-[0.99] md:snap-normal"
+                    className="snap-start inline-flex shrink-0 w-[6.1rem] sm:w-24 md:w-[5.8rem] lg:w-22 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] sm:text-sm font-medium text-foreground/90 transition hover:bg-muted/60 active:scale-[0.99] md:snap-normal"
                   >
                     <span
                       className="relative inline-flex h-[3.6rem] w-[3.6rem] sm:h-14 sm:w-14 md:h-16 md:w-16 items-center justify-center overflow-hidden bg-white rounded-[18px]"

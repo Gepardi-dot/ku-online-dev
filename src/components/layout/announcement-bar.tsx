@@ -12,19 +12,19 @@ const Marquee = ({ className, reverse, children, ...props }: {
     <div
       {...props}
       className={cn(
-        "group flex overflow-hidden p-2 [--duration:40s] [--gap:1rem] [gap:var(--gap)]",
+        "group flex overflow-hidden p-2 [--duration:40s] [--gap:1rem] gap-(--gap)",
         className
       )}
     >
       <div
-        className={cn("flex min-w-full shrink-0 animate-marquee items-center [gap:var(--gap)]", {
+        className={cn("flex min-w-full shrink-0 animate-marquee items-center gap-(--gap)", {
           "[animation-direction:reverse]": reverse,
         })}
       >
         {children}
       </div>
       <div
-        className={cn("flex min-w-full shrink-0 animate-marquee items-center [gap:var(--gap)]", {
+        className={cn("flex min-w-full shrink-0 animate-marquee items-center gap-(--gap)", {
           "[animation-direction:reverse]": reverse,
         })}
         aria-hidden="true"
@@ -41,7 +41,7 @@ export function AnnouncementBar() {
 
   return (
     <div
-      className="relative z-[70] bg-primary text-primary-foreground pointer-events-none"
+      className="relative z-70 bg-primary text-primary-foreground pointer-events-none"
       data-announcement-bar
     >
       <Marquee className="text-sm font-medium">
