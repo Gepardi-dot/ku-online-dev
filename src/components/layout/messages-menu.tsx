@@ -468,7 +468,7 @@ export default function MessagesMenu({
     );
   }, [unreadCount]);
   const chipClass =
-    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-gradient-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_16px_38px_rgba(247,111,29,0.18)]";
+    "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-linear-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_16px_38px_rgba(247,111,29,0.18)]";
 
   const minDragOffset = useMemo(() => {
     if (!isMobile) return 0;
@@ -697,12 +697,12 @@ export default function MessagesMenu({
       <div
         key={conversation.id}
         className={cn(
-          "flex w-full items-center gap-3 rounded-3xl border p-3 text-sm shadow-sm transition-all hover:-translate-y-[1px] hover:shadow-md active:translate-y-0",
+          "flex w-full items-center gap-3 rounded-3xl border p-3 text-sm shadow-sm transition-all hover:-translate-y-px hover:shadow-md active:translate-y-0",
           isActive
             ? "border-brand/40 bg-[#FFF8F0]/90 shadow-md ring-1 ring-brand/20"
             : isUnread
               ? "border-brand/30 bg-[#FFF3E6]/90 shadow-md ring-1 ring-brand/15 hover:bg-[#FFEDD8]/95"
-              : "border-[#eadbc5]/60 bg-[#FFFBF5]/80 ring-1 ring-black/[0.03] hover:border-brand/30 hover:bg-[#FFF8F0]/90",
+              : "border-[#eadbc5]/60 bg-[#FFFBF5]/80 ring-1 ring-black/3 hover:border-brand/30 hover:bg-[#FFF8F0]/90",
         )}
       >
         <button
@@ -832,7 +832,7 @@ export default function MessagesMenu({
   };
 
   const renderConversationListSection = () => (
-    <div className="flex h-full flex-col rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40">
+    <div className="flex h-full flex-col rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40">
       <div className="flex items-center justify-between px-3 py-2 mb-3">
         <span className="text-xs font-bold uppercase tracking-widest text-brand">
           {t("header.chatContacts")}
@@ -967,7 +967,7 @@ export default function MessagesMenu({
           <button
             type="button"
             className={cn(
-              "relative inline-flex h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] items-center justify-center bg-transparent p-0 text-current transition active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:text-brand",
+              "relative inline-flex h-(--nav-icon-size) w-(--nav-icon-size) items-center justify-center bg-transparent p-0 text-current transition active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:text-brand",
               triggerClassName,
             )}
             aria-label={strings.label}
@@ -1009,12 +1009,12 @@ export default function MessagesMenu({
         align="center"
         sideOffset={12}
         dir={isRtl ? "rtl" : "ltr"}
-        className="relative z-[90] w-[960px] max-w-[min(1100px,calc(100vw-1.5rem))] border-none bg-transparent p-0 shadow-none ring-0"
+        className="relative z-90 w-[960px] max-w-[min(1100px,calc(100vw-1.5rem))] border-none bg-transparent p-0 shadow-none ring-0"
       >
         <div
           ref={sheetRef}
           className={cn(
-            "relative rounded-[32px] border border-white/50 bg-gradient-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40",
+            "relative rounded-[32px] border border-white/50 bg-linear-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40",
             isRtl ? "text-right" : "text-left",
           )}
           style={{

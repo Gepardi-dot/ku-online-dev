@@ -165,12 +165,12 @@ export default function AuthButton({ user }: AuthButtonProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="z-[90] w-56 rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
+          className="z-90 w-56 rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
           align="end"
           sideOffset={10}
           forceMount
         >
-          <div className="rounded-2xl bg-gradient-to-r from-brand/10 via-brand-light/10 to-brand/5 border border-brand/20 px-4 py-3 mb-3">
+          <div className="rounded-2xl bg-linear-to-r from-brand/10 via-brand-light/10 to-brand/5 border border-brand/20 px-4 py-3 mb-3">
             <p className="text-sm font-semibold text-[#2D2D2D]">
               {user.user_metadata?.full_name || t('header.userMenu.defaultName')}
             </p>
@@ -179,26 +179,26 @@ export default function AuthButton({ user }: AuthButtonProps) {
             </p>
           </div>
           <DropdownMenuItem asChild className="mb-2">
-            <Link href="/profile?tab=overview" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/[0.03] px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
+            <Link href="/profile?tab=overview" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/3 px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
               <LayoutDashboard className="mr-2 h-4 w-4" />
               {t('header.userMenu.myProfile')}
             </Link>
           </DropdownMenuItem>
           {userIsModerator && (
             <DropdownMenuItem asChild className="mb-2">
-              <Link href="/admin/moderation" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/[0.03] px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
+              <Link href="/admin/moderation" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/3 px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
                 <ShieldCheck className="mr-2 h-4 w-4" />
                 {t('header.userMenu.moderation')}
               </Link>
             </DropdownMenuItem>
           )}
           <DropdownMenuItem asChild className="mb-3">
-            <Link href="/profile?tab=settings" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/[0.03] px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
+            <Link href="/profile?tab=settings" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/3 px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
               <Settings className="mr-2 h-4 w-4" />
               {t('header.userMenu.settings')}
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleLogout} className="rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/[0.03] hover:bg-white/60 hover:border-[#eadbc5]/50 px-3 py-2">
+          <DropdownMenuItem onClick={handleLogout} className="rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/3 hover:bg-white/60 hover:border-[#eadbc5]/50 px-3 py-2">
             <LogOut className="mr-2 h-4 w-4" />
             <span>{t('header.userMenu.logout')}</span>
           </DropdownMenuItem>
@@ -223,7 +223,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
             dir="auto"
             className={cn(
               "bidi-auto inline-block",
-              isRtl && "max-w-[6.5rem] truncate text-[12px] leading-tight",
+              isRtl && "max-w-26 truncate text-[12px] leading-tight",
             )}
           >
             {t('header.signIn')}

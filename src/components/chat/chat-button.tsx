@@ -512,7 +512,7 @@ export default function ChatButton({
           </span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[480px] rounded-[32px] border border-white/60 bg-gradient-to-br from-white/30 via-white/20 to-white/5 !bg-transparent p-6 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40">
+      <DialogContent className="sm:max-w-[480px] rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-6 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <Avatar className="h-10 w-10 border-2 border-white/60 shadow-sm">
@@ -541,7 +541,7 @@ export default function ChatButton({
         </DialogHeader>
 
         <div className="space-y-4">
-          <ScrollArea className="h-[300px] w-full rounded-2xl border border-[#eadbc5]/70 bg-white/50 shadow-sm ring-1 ring-black/[0.03]">
+          <ScrollArea className="h-[300px] w-full rounded-2xl border border-[#eadbc5]/70 bg-white/50 shadow-sm ring-1 ring-black/3">
             <div className="p-4">{renderMessages()}</div>
           </ScrollArea>
 

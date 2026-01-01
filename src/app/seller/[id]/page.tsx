@@ -74,14 +74,14 @@ export default async function SellerPage({ params }: SellerPageProps) {
     <AppLayout user={user}>
       <div className="container mx-auto px-4 py-8">
         {/* Profile Header Card with Glassmorphism */}
-        <Card className="mb-8 rounded-[28px] border border-white/60 bg-gradient-to-br from-white/80 via-white/70 to-white/50 shadow-[0_12px_40px_rgba(15,23,42,0.15)] ring-1 ring-white/40 overflow-hidden">
+        <Card className="mb-8 rounded-[28px] border border-white/60 bg-linear-to-br from-white/80 via-white/70 to-white/50 shadow-[0_12px_40px_rgba(15,23,42,0.15)] ring-1 ring-white/40 overflow-hidden">
           {/* Subtle gradient banner */}
-          <div className="h-20 bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100" />
+          <div className="h-20 bg-linear-to-r from-orange-100 via-amber-50 to-orange-100" />
           <CardContent className="flex flex-col gap-5 p-6 md:flex-row md:items-start -mt-12">
             {/* Avatar with ring effect */}
             <Avatar className="h-24 w-24 border-4 border-white shadow-lg ring-4 ring-brand/20">
               <AvatarImage src={profile.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-gradient-to-br from-brand to-brand-dark text-white text-2xl font-bold">
+              <AvatarFallback className="bg-linear-to-br from-brand to-brand-dark text-white text-2xl font-bold">
                 {(profile.full_name ?? 'U').charAt(0)}
               </AvatarFallback>
             </Avatar>
@@ -150,7 +150,7 @@ export default async function SellerPage({ params }: SellerPageProps) {
             <span className="text-sm font-medium text-muted-foreground bg-white/60 px-3 py-1 rounded-full">{listingsCountLabel}</span>
           </div>
           {listings.length === 0 ? (
-            <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.08)] ring-1 ring-white/40">
+            <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.08)] ring-1 ring-white/40">
               <CardContent className="p-8 text-center text-muted-foreground">
                 {t('sellerPage.noListings')}
               </CardContent>

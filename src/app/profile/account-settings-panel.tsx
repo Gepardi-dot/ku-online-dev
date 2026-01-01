@@ -81,7 +81,7 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
   return (
     <div className="space-y-6">
       <form action={formAction} className="space-y-6">
-        <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+        <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
           <CardHeader>
             <CardTitle className="text-brand">{t('profile.settingsPanel.notificationsTitle')}</CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -127,7 +127,7 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
           </CardContent>
         </Card>
 
-        <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+        <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
           <CardHeader>
             <CardTitle className="text-brand">{t('profile.settingsPanel.languageTitle')}</CardTitle>
             <p className="text-sm text-muted-foreground">
@@ -162,7 +162,7 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
         </div>
       </form>
 
-      <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+      <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
         <CardHeader>
           <CardTitle className="text-brand">{t('profile.settingsPanel.accountEmailTitle')}</CardTitle>
           <p className="text-sm text-muted-foreground">
@@ -197,7 +197,7 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
         </CardContent>
       </Card>
 
-      <Card className="rounded-[24px] border border-white/60 bg-gradient-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+      <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
         <CardHeader>
           <CardTitle className="text-brand">{t('profile.settingsPanel.passwordTitle')}</CardTitle>
           <p className="text-sm text-muted-foreground">
@@ -233,7 +233,7 @@ export default function AccountSettingsPanel({ initialValues, currentEmail }: Pr
         </CardContent>
       </Card>
 
-      <Card className="p-3 rounded-[24px] border border-red-200/60 bg-gradient-to-br from-red-50/50 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.08)] ring-1 ring-red-100/40">
+      <Card className="p-3 rounded-[24px] border border-red-200/60 bg-linear-to-br from-red-50/50 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.08)] ring-1 ring-red-100/40">
         <CardHeader className="p-2 pb-1">
           <CardTitle className="text-destructive text-sm">{t('profile.settingsPanel.dangerZoneTitle')}</CardTitle>
           <p className="text-xs text-muted-foreground">{t('profile.settingsPanel.dangerZoneDescription')}</p>
@@ -288,7 +288,7 @@ function isDeleteConfirmationValid(value: string | null) {
 
 function ToggleRow({ label, description, checked, onCheckedChange, name }: ToggleRowProps) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-[#eadbc5]/50 bg-white/50 p-4 shadow-sm ring-1 ring-black/[0.03] transition hover:bg-white/70">
+    <div className="flex items-center justify-between rounded-2xl border border-[#eadbc5]/50 bg-white/50 p-4 shadow-sm ring-1 ring-black/3 transition hover:bg-white/70">
       <div className="pr-4">
         <p className="text-sm font-medium text-[#2D2D2D]">{label}</p>
         <p className="text-xs text-muted-foreground">{description}</p>
