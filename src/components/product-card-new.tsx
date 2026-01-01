@@ -105,7 +105,7 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
         {/* Responsive image container:
             - Mobile: height scales with viewport width using clamp for regular/pro/plus sizes
             - Desktop: fixed pleasing card ratio via aspect-ratio */}
-        <div className="relative w-full h-[clamp(160px,45vw,230px)] md:h-auto md:aspect-[4/3] overflow-hidden">
+        <div className="relative w-full h-[clamp(160px,45vw,230px)] md:h-auto md:aspect-4/3 overflow-hidden">
           <Image
             src={product.imageUrls?.[0] || 'https://picsum.photos/400/300'}
             alt={localizedTitle}

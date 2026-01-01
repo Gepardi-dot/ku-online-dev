@@ -39,7 +39,7 @@ export default function MobileNav() {
   const [userId, setUserId] = useState<string | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
   const labelClassName =
-    "mobile-nav-label mt-1 h-[1.1rem] max-w-[4.75rem] truncate text-[11px] leading-tight";
+    "mobile-nav-label mt-1 h-[1.1rem] max-w-19 truncate text-[11px] leading-tight";
 
   useEffect(() => {
     const supabase = createClient();
@@ -95,12 +95,12 @@ export default function MobileNav() {
   return (
     <div
       dir="ltr"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm pb-[var(--mobile-safe-area-bottom)]"
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm pb-(--mobile-safe-area-bottom)"
       data-mobile-nav
       ref={navRef}
     >
       <nav
-        className="flex items-end justify-between min-h-[var(--mobile-nav-height)] px-3 pb-2 pt-1"
+        className="flex items-end justify-between min-h-(--mobile-nav-height) px-3 pb-2 pt-1"
         style={{ ["--nav-icon-size" as any]: "calc(24px + 2mm)" }}
       >
         {NAV_ITEMS.map((item) => {
@@ -117,7 +117,7 @@ export default function MobileNav() {
                   className="relative -translate-y-3 z-10 flex h-16 w-[calc(8rem-4mm)] flex-none flex-col items-center justify-center gap-1 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
                   aria-label={t(item.labelKey)}
                 >
-                  <Icon className="h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]" aria-hidden="true" />
+                  <Icon className="h-(--nav-icon-size) w-(--nav-icon-size)" aria-hidden="true" />
                   <span dir="auto" className={cn("bidi-auto", labelClassName)}>
                     {t(item.labelKey)}
                   </span>
@@ -147,7 +147,7 @@ export default function MobileNav() {
                     send: messages.header.sendMessage,
                   }}
                   compactTrigger
-                  triggerClassName="text-muted-foreground hover:text-foreground h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0"
+                  triggerClassName="text-muted-foreground hover:text-foreground h-(--nav-icon-size) w-(--nav-icon-size) p-0"
                   triggerIcon={<MessageSquare className="h-full w-full" strokeWidth={2} />}
                 />
                 <span dir="auto" className={cn("bidi-auto", labelClassName)}>
@@ -176,7 +176,7 @@ export default function MobileNav() {
                     loginRequired: messages.header.loginRequired,
                   }}
                   compactTrigger
-                  triggerClassName="text-muted-foreground hover:text-foreground h-[var(--nav-icon-size)] w-[var(--nav-icon-size)] p-0"
+                  triggerClassName="text-muted-foreground hover:text-foreground h-(--nav-icon-size) w-(--nav-icon-size) p-0"
                   triggerIcon={<ShoppingBag className="h-full w-full" strokeWidth={2} />}
                 />
                 <span dir="auto" className={cn("bidi-auto", labelClassName)}>
@@ -208,7 +208,7 @@ export default function MobileNav() {
                     })
                   }
                 >
-                <span className="inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]">
+                <span className="inline-flex items-center justify-center h-(--nav-icon-size) w-(--nav-icon-size)">
                   <Icon className="h-full w-full" aria-hidden="true" />
                 </span>
                 <span dir="auto" className={cn("bidi-auto", labelClassName)}>
@@ -220,7 +220,7 @@ export default function MobileNav() {
 
             return (
               <Link key={item.key} href={item.href} className={baseClass} aria-label={t(item.labelKey)}>
-                <span className="inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]">
+                <span className="inline-flex items-center justify-center h-(--nav-icon-size) w-(--nav-icon-size)">
                   <Icon className="h-full w-full" aria-hidden="true" />
                 </span>
                 <span dir="auto" className={cn("bidi-auto", labelClassName)}>
@@ -240,7 +240,7 @@ export default function MobileNav() {
               )}
               aria-label={t(item.labelKey)}
             >
-              <span className="inline-flex items-center justify-center h-[var(--nav-icon-size)] w-[var(--nav-icon-size)]">
+              <span className="inline-flex items-center justify-center h-(--nav-icon-size) w-(--nav-icon-size)">
                 <Icon className="h-full w-full" aria-hidden="true" />
               </span>
               <span dir="auto" className={cn("bidi-auto", labelClassName)}>

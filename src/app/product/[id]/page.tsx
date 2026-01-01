@@ -324,7 +324,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     {typeof product.originalPrice === 'number' && product.originalPrice > product.price ? (
                       <div
                         dir="auto"
-                        className="text-[0.95rem] font-semibold text-muted-foreground line-through decoration-[1px] bidi-auto"
+                        className="text-[0.95rem] font-semibold text-muted-foreground line-through decoration-1 bidi-auto"
                       >
                         <CurrencyText amount={product.originalPrice} currencyCode={product.currency} locale={locale} />
                       </div>
