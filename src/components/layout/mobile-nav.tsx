@@ -6,7 +6,7 @@ import { Home, MessageSquare, PackagePlus, ShoppingBag, User } from "lucide-reac
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
 import type { ComponentType } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { countFavorites } from "@/lib/services/favorites-client";
 import { countUnreadMessages } from "@/lib/services/messages-client";
@@ -37,6 +37,7 @@ export default function MobileNav() {
   const [favoritesCount, setFavoritesCount] = useState<number>(0);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const navRef = useRef<HTMLDivElement | null>(null);
   const labelClassName =
     "mobile-nav-label mt-1 h-[1.1rem] max-w-[4.75rem] truncate text-[11px] leading-tight";
 
@@ -62,14 +63,44 @@ export default function MobileNav() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const nav = navRef.current;
+    if (!nav) return;
+
+    const updateOffset = () => {
+      const height = nav.getBoundingClientRect().height;
+      if (!Number.isFinite(height) || height <= 0) return;
+      document.documentElement.style.setProperty("--mobile-nav-offset", `${height}px`);
+    };
+
+    updateOffset();
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateOffset);
+      return () => {
+        window.removeEventListener("resize", updateOffset);
+      };
+    }
+
+    const observer = new ResizeObserver(updateOffset);
+    observer.observe(nav);
+    window.addEventListener("resize", updateOffset);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateOffset);
+    };
+  }, []);
+
   return (
     <div
       dir="ltr"
       className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-sm pb-[var(--mobile-safe-area-bottom)]"
       data-mobile-nav
+      ref={navRef}
     >
       <nav
-        className="flex items-end justify-between h-[var(--mobile-nav-height)] px-3 pb-2 pt-1"
+        className="flex items-end justify-between min-h-[var(--mobile-nav-height)] px-3 pb-2 pt-1"
         style={{ ["--nav-icon-size" as any]: "calc(24px + 2mm)" }}
       >
         {NAV_ITEMS.map((item) => {
