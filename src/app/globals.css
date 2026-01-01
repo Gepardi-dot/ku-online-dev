@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
 @layer base {
   :root {
@@ -45,34 +43,38 @@
   }
 }
 
-/* Arabic locale font swap to Noto Kufi Arabic */
-html[lang="ar"] body,
-html[lang="ar"] .font-body,
-html[lang="ar"] .font-headline,
-html[lang="ar"] .font-sans {
-  font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
-}
+@layer utilities {
+  /* Arabic locale font swap to Noto Kufi Arabic */
+  html[lang='ar'] body,
+  html[lang='ar'] .font-body,
+  html[lang='ar'] .font-headline,
+  html[lang='ar'] .font-sans {
+    font-family:
+      var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif;
+  }
 
-/* Kurdish locale font swap to Noto Sans (Arabic script with Kurdish coverage) */
-html[lang="ku"] body,
-html[lang="ku"] .font-body,
-html[lang="ku"] .font-headline,
-html[lang="ku"] .font-sans {
-  font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
-}
+  /* Kurdish locale font swap to Noto Sans (Arabic script with Kurdish coverage) */
+  html[lang='ku'] body,
+  html[lang='ku'] .font-body,
+  html[lang='ku'] .font-headline,
+  html[lang='ku'] .font-sans {
+    font-family:
+      var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif;
+  }
 
-html[lang="ar"],
-html[lang="ku"] {
-  --mobile-nav-height: 5.5rem;
-}
+  html[lang='ar'],
+  html[lang='ku'] {
+    --mobile-nav-height: 5.5rem;
+  }
 
-html[lang="ar"] [data-mobile-nav] .mobile-nav-label,
-html[lang="ku"] [data-mobile-nav] .mobile-nav-label {
-  font-size: 0.7rem;
-  line-height: 1.2;
-}
+  html[lang='ar'] [data-mobile-nav] .mobile-nav-label,
+  html[lang='ku'] [data-mobile-nav] .mobile-nav-label {
+    font-size: 0.7rem;
+    line-height: 1.2;
+  }
 
-/* Utilities */
+  /* Utilities */
+}
 @layer utilities {
   /* Hide scrollbars for horizontal scrollers where we provide our own affordances */
   .no-scrollbar::-webkit-scrollbar { display: none; }
