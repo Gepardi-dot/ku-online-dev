@@ -9,12 +9,13 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuLabel,
+  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Camera, Search, Filter, PackagePlus } from 'lucide-react';
+import { Camera, Search, Filter, PackagePlus, Check } from 'lucide-react';
 import { Icons } from '@/components/icons';
 import BrandLogo from '@/components/brand-logo';
 import LanguageSwitcher from '@/components/language-switcher';
@@ -207,18 +208,25 @@ export default function AppHeader({ user }: AppHeaderProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                      className="w-56 rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-3 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
                       align="end"
+                      sideOffset={10}
+                      className="z-90 w-48 rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
                     >
-                      <DropdownMenuLabel>{t('header.filterLabel')}</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuRadioGroup value={city} onValueChange={handleCitySelection}>
-                        {CITY_KEYS.map((item) => (
-                          <DropdownMenuRadioItem key={item} value={item}>
-                            {messages.header.city[item]}
-                          </DropdownMenuRadioItem>
-                        ))}
-                      </DropdownMenuRadioGroup>
+                      <div className="px-3 py-2 mb-3">
+                        <span className="text-xs font-bold uppercase tracking-widest text-brand">
+                          {t('header.filterLabel')}
+                        </span>
+                      </div>
+                      {CITY_KEYS.map((item) => (
+                        <DropdownMenuItem
+                          key={item}
+                          onSelect={() => handleCitySelection(item)}
+                          className="flex items-center justify-between gap-4 rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/3 px-3 py-2 mb-2 last:mb-0 hover:bg-white/60 hover:border-[#eadbc5]/50 cursor-pointer"
+                        >
+                          <span>{messages.header.city[item]}</span>
+                          {city === item && <Check className="h-4 w-4 text-brand" />}
+                        </DropdownMenuItem>
+                      ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
                   <Button
@@ -344,19 +352,26 @@ export default function AppHeader({ user }: AppHeaderProps) {
                   <span className="sr-only">{t('header.filterLabel')}</span>
                 </Button>
               </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      className="w-56 rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-3 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
-                      align="end"
-                    >
-                <DropdownMenuLabel>{t('header.filterLabel')}</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuRadioGroup value={city} onValueChange={handleCitySelection}>
-                  {CITY_KEYS.map((item) => (
-                    <DropdownMenuRadioItem key={item} value={item}>
-                      {messages.header.city[item]}
-                    </DropdownMenuRadioItem>
-                  ))}
-                </DropdownMenuRadioGroup>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={10}
+                className="z-90 w-48 rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
+              >
+                <div className="px-3 py-2 mb-3">
+                  <span className="text-xs font-bold uppercase tracking-widest text-brand">
+                    {t('header.filterLabel')}
+                  </span>
+                </div>
+                {CITY_KEYS.map((item) => (
+                  <DropdownMenuItem
+                    key={item}
+                    onSelect={() => handleCitySelection(item)}
+                    className="flex items-center justify-between gap-4 rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/3 px-3 py-2 mb-2 last:mb-0 hover:bg-white/60 hover:border-[#eadbc5]/50 cursor-pointer"
+                  >
+                    <span>{messages.header.city[item]}</span>
+                    {city === item && <Check className="h-4 w-4 text-brand" />}
+                  </DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </form>
