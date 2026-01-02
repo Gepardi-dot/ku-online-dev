@@ -83,10 +83,10 @@ const SelectContent = React.forwardRef<
     ref,
   ) => (
   <SelectPrimitive.Portal>
-    <SelectPrimitive.Content
+  <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-90 max-h-96 min-w-32 overflow-hidden rounded-3xl border border-[#eadbc5]/70 bg-linear-to-br from-[#fffdf7]/95 via-[#fff6ea]/90 to-[#f4ecdf]/90 text-popover-foreground shadow-[0_22px_60px_rgba(120,72,0,0.22)] backdrop-blur-2xl ring-1 ring-white/60 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        "relative z-90 max-h-[15rem] min-w-(--radix-select-trigger-width) overflow-hidden rounded-2xl border border-white/45 bg-white/35 text-popover-foreground shadow-[0_30px_95px_rgba(15,23,42,0.2)] ring-1 ring-white/20 backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className
@@ -135,7 +135,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-2xl px-3 py-2 ps-9 pe-3 text-sm outline-none transition hover:bg-white/70 focus:bg-white/80 focus:text-foreground data-disabled:pointer-events-none data-disabled:opacity-50",
+      "relative isolate mb-1 last:mb-0 flex w-full cursor-default select-none items-center rounded-lg border border-white/35 bg-slate-50/25 px-3 py-2 ps-9 pe-3 text-sm text-foreground outline-none backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110 shadow-[0_14px_30px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.12)] transition motion-safe:duration-150 motion-safe:ease-out hover:bg-white/22 hover:border-white/45 focus:bg-white/22 focus:text-foreground data-highlighted:scale-[0.99] data-highlighted:-translate-y-[1px] data-highlighted:bg-primary/10 data-highlighted:border-primary/25 data-highlighted:shadow-[0_14px_26px_rgba(249,115,22,0.12)] data-[state=checked]:bg-primary/10 data-[state=checked]:border-primary/30 data-[state=checked]:shadow-[0_14px_26px_rgba(249,115,22,0.14)] data-disabled:pointer-events-none data-disabled:opacity-50",
       className
     )}
     {...props}

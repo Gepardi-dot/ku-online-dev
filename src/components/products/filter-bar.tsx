@@ -181,26 +181,36 @@ export function ProductsFilterBar({
     "rounded-xl border border-slate-200/90 bg-white/80 shadow-[0_6px_18px_rgba(15,23,42,0.10)] ring-1 ring-black/5 backdrop-blur-xl " +
     "transition-all duration-200 ease-out will-change-transform " +
     "hover:border-slate-300/90 hover:bg-white/90 hover:shadow-[0_8px_22px_rgba(15,23,42,0.12)] " +
-    "data-[state=open]:-translate-y-0.5 data-[state=open]:border-primary/40 data-[state=open]:bg-white/95 " +
+    "data-[state=open]:-translate-y-0.5 md:data-[state=open]:translate-y-0 data-[state=open]:border-primary/40 data-[state=open]:bg-white/95 " +
     "data-[state=open]:shadow-[0_16px_40px_rgba(249,115,22,0.22)] data-[state=open]:ring-2 data-[state=open]:ring-primary/30 " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white/80";
 
-  const selectTriggerClassName =
-    "h-10 w-fit max-w-full px-3.5 text-[15px] " + framedControlClassName;
-
   const chipTriggerClassName =
-    "inline-flex h-9 w-fit shrink-0 items-center gap-2 px-3.5 text-sm " + framedControlClassName;
+    "inline-flex h-9 w-fit shrink-0 items-center gap-2 px-3.5 text-sm font-medium " + framedControlClassName;
+
+  const selectTriggerClassName = cn(
+    chipTriggerClassName,
+    "!bg-none !bg-white/80 !border-slate-200/90"
+  );
 
   const selectContentClassName =
-    "max-h-[18rem] w-fit min-w-[var(--radix-select-trigger-width)] max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[#d6d6d6]/70 bg-white/90 p-1 " +
-    "shadow-[0_18px_48px_rgba(15,23,42,0.18)] ring-1 ring-white/40 backdrop-blur-xl " +
-    "[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-[var(--radix-select-trigger-width)] [&_[data-radix-select-viewport]]:p-1 " +
-    "[&_[data-radix-select-viewport]]:flex [&_[data-radix-select-viewport]]:flex-col [&_[data-radix-select-viewport]]:gap-1";
+    "max-h-[15rem] w-fit max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/45 bg-white/35 " +
+    "shadow-[0_30px_95px_rgba(15,23,42,0.2)] ring-1 ring-white/20 backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110 " +
+    "!bg-none !bg-white/35 !border-white/45 " +
+    "[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0";
 
   const selectItemClassName =
-    "w-full truncate rounded-xl border border-slate-200/70 bg-white px-3 py-2 ps-10 text-[15px] text-[#1F1C1C] shadow-sm outline-none transition " +
-    "hover:border-slate-300/70 hover:bg-slate-50/80 data-[highlighted]:border-slate-300/70 data-[highlighted]:bg-slate-50/80 " +
-    "data-[state=checked]:border-primary/25 data-[state=checked]:bg-primary/10 data-[state=checked]:font-medium";
+    "relative isolate mb-1 last:mb-0 truncate overflow-hidden rounded-lg border border-white/35 bg-slate-50/25 py-2 ps-10 pe-3 text-sm text-foreground " +
+    "backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110 " +
+    "shadow-[0_14px_30px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.12)] " +
+    "before:pointer-events-none before:absolute before:inset-0 before:z-0 before:opacity-55 " +
+    "before:bg-none " +
+    "after:pointer-events-none after:absolute after:inset-0 after:z-0 after:opacity-60 after:bg-linear-to-b after:from-white/22 after:via-transparent after:to-transparent " +
+    "motion-safe:transition-[transform,background-color,border-color,box-shadow] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none " +
+    "hover:bg-white/22 hover:border-white/45 focus:bg-white/22 focus:text-foreground " +
+    "active:scale-[0.99] data-highlighted:scale-[0.99] data-highlighted:-translate-y-[1px] " +
+    "data-highlighted:bg-primary/10 data-highlighted:border-primary/25 data-highlighted:shadow-[0_14px_26px_rgba(249,115,22,0.12)] " +
+    "data-[state=checked]:bg-primary/10 data-[state=checked]:border-primary/30 data-[state=checked]:shadow-[0_14px_26px_rgba(249,115,22,0.14)]";
 
   const popoverContentClassName =
     "w-[min(92vw,22rem)] rounded-2xl border border-white/45 bg-white/35 p-3 " +

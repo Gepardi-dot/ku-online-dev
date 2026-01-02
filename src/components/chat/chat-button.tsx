@@ -512,7 +512,7 @@ export default function ChatButton({
           </span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[480px] rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-6 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40">
+      <DialogContent className="sm:max-w-[480px] rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-6 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40 font-sans">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <Avatar className="h-10 w-10 border-2 border-white/60 shadow-sm">
@@ -573,3 +573,4 @@ export default function ChatButton({
     </Dialog>
   );
 }
+

@@ -43,10 +43,11 @@ export function AnnouncementBar() {
     <div
       className="relative z-70 bg-primary text-primary-foreground pointer-events-none"
       data-announcement-bar
+      dir="ltr"
     >
-      <Marquee className="text-sm font-medium">
+      <Marquee className="text-sm font-medium font-sans">
         {Array.from({ length: 4 }).map((_, index) => (
-          <span className="mx-4 whitespace-nowrap" key={index}>
+          <span className="mx-4 whitespace-nowrap" key={index} dir="auto">
             {tagline}
           </span>
         ))}
