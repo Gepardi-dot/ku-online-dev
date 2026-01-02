@@ -903,8 +903,6 @@ export default function MessagesMenu({
                 {isRtl ? (
                   <>
                     <span>{t("header.chatOnline")}</span>
-                    <span className="text-[#C4A98A]">{"\u00B7"}</span>
-                    <span>{t("header.chatStatus")}</span>
                   </>
                 ) : (
                   <>

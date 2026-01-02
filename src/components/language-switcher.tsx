@@ -14,7 +14,7 @@ import type { Locale } from '@/lib/locale/dictionary';
 import { useLocale } from '@/providers/locale-provider';
 import { Check, Globe } from 'lucide-react';
 
-const SUPPORTED_LANGUAGES: Locale[] = ['en', 'ar', 'ku'];
+const SUPPORTED_LANGUAGES: Locale[] = ['en', 'ku', 'ar'];
 const LANGUAGE_BADGES: Record<Locale, string> = {
   en: 'ENG',
   ar: 'ARA',
