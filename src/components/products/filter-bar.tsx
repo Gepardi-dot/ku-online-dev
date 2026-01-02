@@ -181,7 +181,7 @@ export function ProductsFilterBar({
     "rounded-xl border border-slate-200/90 bg-white/80 shadow-[0_6px_18px_rgba(15,23,42,0.10)] ring-1 ring-black/5 backdrop-blur-xl " +
     "transition-all duration-200 ease-out will-change-transform " +
     "hover:border-slate-300/90 hover:bg-white/90 hover:shadow-[0_8px_22px_rgba(15,23,42,0.12)] " +
-    "data-[state=open]:-translate-y-0.5 md:data-[state=open]:translate-y-0 data-[state=open]:border-primary/40 data-[state=open]:bg-white/95 " +
+    "data-[state=open]:-translate-y-0.5 data-[state=open]:border-primary/40 data-[state=open]:bg-white/95 " +
     "data-[state=open]:shadow-[0_16px_40px_rgba(249,115,22,0.22)] data-[state=open]:ring-2 data-[state=open]:ring-primary/30 " +
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white/80";
 
@@ -192,14 +192,14 @@ export function ProductsFilterBar({
     "inline-flex h-9 w-fit shrink-0 items-center gap-2 px-3.5 text-sm " + framedControlClassName;
 
   const selectContentClassName =
-    "max-h-72 w-fit min-w-(--radix-select-trigger-width) max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[#d6d6d6]/70 bg-white/90 p-1 " +
+    "max-h-[18rem] w-fit min-w-[var(--radix-select-trigger-width)] max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-[#d6d6d6]/70 bg-white/90 p-1 " +
     "shadow-[0_18px_48px_rgba(15,23,42,0.18)] ring-1 ring-white/40 backdrop-blur-xl " +
-    "**:data-radix-select-viewport:w-auto! **:data-radix-select-viewport:min-w-(--radix-select-trigger-width)! **:data-radix-select-viewport:p-1 " +
-    "**:data-radix-select-viewport:flex **:data-radix-select-viewport:flex-col **:data-radix-select-viewport:gap-1";
+    "[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-[var(--radix-select-trigger-width)] [&_[data-radix-select-viewport]]:p-1 " +
+    "[&_[data-radix-select-viewport]]:flex [&_[data-radix-select-viewport]]:flex-col [&_[data-radix-select-viewport]]:gap-1";
 
   const selectItemClassName =
     "w-full truncate rounded-xl border border-slate-200/70 bg-white px-3 py-2 ps-10 text-[15px] text-[#1F1C1C] shadow-sm outline-none transition " +
-    "hover:border-slate-300/70 hover:bg-slate-50/80 data-highlighted:border-slate-300/70 data-highlighted:bg-slate-50/80 " +
+    "hover:border-slate-300/70 hover:bg-slate-50/80 data-[highlighted]:border-slate-300/70 data-[highlighted]:bg-slate-50/80 " +
     "data-[state=checked]:border-primary/25 data-[state=checked]:bg-primary/10 data-[state=checked]:font-medium";
 
   const popoverContentClassName =
@@ -312,7 +312,7 @@ export function ProductsFilterBar({
                   style={{ backgroundColor: opt.hex }}
                   onClick={() => { setColor(opt.token); setColorOpen(false); }}
                 >
-                  <span className="pointer-events-none absolute inset-0 rounded-md bg-linear-to-br from-white/25 to-black/10 mix-blend-overlay opacity-40 group-hover:opacity-50 transition" />
+                  <span className="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-br from-white/25 to-black/10 mix-blend-overlay opacity-40 group-hover:opacity-50 transition" />
                   {color === opt.token && (
                     <Check className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-primary text-primary-foreground p-0.5" />
                   )}
