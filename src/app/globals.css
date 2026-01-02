@@ -37,6 +37,23 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
   }
+  
+  html[lang='ar'],
+  html[lang='ku'] {
+    font-family:
+      var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif;
+  }
+  html[lang='ar'] input,
+  html[lang='ar'] textarea,
+  html[lang='ar'] select,
+  html[lang='ar'] button,
+  html[lang='ku'] input,
+  html[lang='ku'] textarea,
+  html[lang='ku'] select,
+  html[lang='ku'] button {
+    font-family:
+      var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif;
+  }
   *,
   ::before,
   ::after {
@@ -94,3 +111,32 @@ html[lang="ar"] .bidi-auto,
 html[lang="ku"] .bidi-auto {
   font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
 }
+/* Locale font override for Arabic/Kurdish UI. */
+html[lang='ar'] body,
+html[lang='ku'] body {
+  font-family:
+    var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif !important;
+}
+
+html[lang='ar'] .font-sans,
+html[lang='ar'] .font-body,
+html[lang='ar'] .font-headline,
+html[lang='ku'] .font-sans,
+html[lang='ku'] .font-body,
+html[lang='ku'] .font-headline {
+  font-family:
+    var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif !important;
+}
+
+html[lang='ar'] input,
+html[lang='ar'] textarea,
+html[lang='ar'] select,
+html[lang='ar'] button,
+html[lang='ku'] input,
+html[lang='ku'] textarea,
+html[lang='ku'] select,
+html[lang='ku'] button {
+  font-family:
+    var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif !important;
+}
+
