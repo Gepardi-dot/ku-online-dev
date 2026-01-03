@@ -83,11 +83,7 @@ export default function MobileNav() {
         const viewport = window.visualViewport;
         let offset = 0;
         if (viewport) {
-          const heightDelta = window.innerHeight - viewport.height;
-          const keyboardThreshold = 120;
-          if (heightDelta > keyboardThreshold) {
-            offset = Math.max(0, heightDelta - viewport.offsetTop);
-          }
+          offset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
         }
         if (Math.abs(offset - lastViewportBottomRef.current) < 1) return;
         lastViewportBottomRef.current = offset;
@@ -117,6 +113,7 @@ export default function MobileNav() {
     window.addEventListener("resize", handleViewportResize);
     window.addEventListener("orientationchange", handleViewportResize);
     window.visualViewport?.addEventListener("resize", handleViewportResize);
+    window.visualViewport?.addEventListener("scroll", handleViewportResize, { passive: true });
 
     return () => {
       if (viewportRafRef.current !== null) {
@@ -127,6 +124,7 @@ export default function MobileNav() {
       window.removeEventListener("resize", handleViewportResize);
       window.removeEventListener("orientationchange", handleViewportResize);
       window.visualViewport?.removeEventListener("resize", handleViewportResize);
+      window.visualViewport?.removeEventListener("scroll", handleViewportResize);
     };
   }, []);
 
