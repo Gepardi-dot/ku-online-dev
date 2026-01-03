@@ -143,6 +143,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
 
     return (
       <DropdownMenu
+        modal={false}
         open={menuOpen}
         onOpenChange={(next) => {
           setMenuOpen(next);

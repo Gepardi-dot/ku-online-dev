@@ -39,6 +39,7 @@ export default function LanguageSwitcher() {
 
   return (
     <DropdownMenu
+      modal={false}
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
