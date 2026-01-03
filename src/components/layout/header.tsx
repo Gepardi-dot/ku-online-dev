@@ -49,7 +49,6 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const lastScrollYRef = useRef(0);
   const scrollRafRef = useRef<number | null>(null);
   const isMobileRef = useRef(false);
-  const isHeaderHiddenRef = useRef(false);
   const headerHeightRef = useRef(0);
   const announcementHeightRef = useRef(0);
 
@@ -83,7 +82,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
     const headerHeight = headerHeightRef.current;
     const announcementHeight = announcementHeightRef.current;
     root.style.setProperty('--app-header-height', `${headerHeight}px`);
-    const offset = announcementHeight + (isHeaderHiddenRef.current ? 0 : headerHeight);
+    const offset = announcementHeight + headerHeight;
     root.style.setProperty('--app-header-offset', `${offset}px`);
   }, []);
 
@@ -134,7 +133,6 @@ export default function AppHeader({ user }: AppHeaderProps) {
       isMobileRef.current = mql.matches;
       if (!mql.matches) {
         setIsHeaderHidden(false);
-        isHeaderHiddenRef.current = false;
       }
       applyHeaderOffset();
     };
@@ -156,9 +154,8 @@ export default function AppHeader({ user }: AppHeaderProps) {
   }, [applyHeaderOffset]);
 
   useEffect(() => {
-    isHeaderHiddenRef.current = isHeaderHidden;
     applyHeaderOffset();
-  }, [isHeaderHidden, applyHeaderOffset]);
+  }, [applyHeaderOffset]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -207,7 +204,6 @@ export default function AppHeader({ user }: AppHeaderProps) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     setIsHeaderHidden(false);
-    isHeaderHiddenRef.current = false;
     lastScrollYRef.current = window.scrollY || 0;
     applyHeaderOffset();
   }, [pathname, applyHeaderOffset]);
@@ -282,7 +278,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
       dir="ltr"
       ref={headerRef}
       className={cn(
-        'fixed left-0 right-0 z-60 w-full bg-white/80 shadow-sm backdrop-blur-md pointer-events-auto transform-gpu transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none will-change-transform md:duration-200',
+        'fixed left-0 right-0 z-60 w-full bg-white/80 shadow-sm backdrop-blur-md pointer-events-auto transform-gpu transition-none will-change-transform',
         isHeaderHidden ? '-translate-y-full md:translate-y-0 pointer-events-none md:pointer-events-auto' : 'translate-y-0',
       )}
       style={{ top: 'var(--announcement-bar-height)' }}
