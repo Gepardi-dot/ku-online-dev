@@ -94,21 +94,25 @@ export default function MobileNav() {
     updateOffset();
     updateViewportBottom();
 
+    const handleViewportResize = () => updateViewportBottom();
+
     if (typeof ResizeObserver === "undefined") {
       window.addEventListener("resize", updateOffset);
-      window.addEventListener("resize", updateViewportBottom);
+      window.addEventListener("resize", handleViewportResize);
+      window.addEventListener("orientationchange", handleViewportResize);
       return () => {
         window.removeEventListener("resize", updateOffset);
-        window.removeEventListener("resize", updateViewportBottom);
+        window.removeEventListener("resize", handleViewportResize);
+        window.removeEventListener("orientationchange", handleViewportResize);
       };
     }
 
     const observer = new ResizeObserver(updateOffset);
     observer.observe(nav);
     window.addEventListener("resize", updateOffset);
-    window.addEventListener("resize", updateViewportBottom);
-    window.visualViewport?.addEventListener("resize", updateViewportBottom);
-    window.visualViewport?.addEventListener("scroll", updateViewportBottom, { passive: true });
+    window.addEventListener("resize", handleViewportResize);
+    window.addEventListener("orientationchange", handleViewportResize);
+    window.visualViewport?.addEventListener("resize", handleViewportResize);
 
     return () => {
       if (viewportRafRef.current !== null) {
@@ -116,9 +120,9 @@ export default function MobileNav() {
       }
       observer.disconnect();
       window.removeEventListener("resize", updateOffset);
-      window.removeEventListener("resize", updateViewportBottom);
-      window.visualViewport?.removeEventListener("resize", updateViewportBottom);
-      window.visualViewport?.removeEventListener("scroll", updateViewportBottom);
+      window.removeEventListener("resize", handleViewportResize);
+      window.removeEventListener("orientationchange", handleViewportResize);
+      window.visualViewport?.removeEventListener("resize", handleViewportResize);
     };
   }, []);
 
