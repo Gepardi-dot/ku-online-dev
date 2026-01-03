@@ -118,6 +118,11 @@ html[lang="ar"] .bidi-auto,
 html[lang="ku"] .bidi-auto {
   font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
 }
+
+/* Force Noto Kufi Arabic when Arabic script appears in otherwise English UI. */
+.font-arabic {
+  font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
+}
 /* Locale font override for Arabic/Kurdish UI. */
 html[lang='ar'] body,
 html[lang='ku'] body {

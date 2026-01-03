@@ -48,6 +48,10 @@ import { rtlLocales } from "@/lib/locale/dictionary";
 
 const clampValue = (input: number, min: number, max: number) => Math.min(max, Math.max(min, input));
 const MOBILE_BOTTOM_GAP_PX = 92; // Increased spacing to ensure sheet clears mobile nav
+const ARABIC_SCRIPT_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+const hasArabicScript = (value?: string | null) =>
+  typeof value === "string" && value.length > 0 && ARABIC_SCRIPT_REGEX.test(value);
 
 interface DragState {
   active: boolean;
@@ -692,6 +696,8 @@ export default function MessagesMenu({
     const avatarUrl = target?.avatarUrl ?? null;
 
     const preview = conversation.lastMessage ?? "";
+    const targetNameIsArabic = hasArabicScript(targetName);
+    const previewIsArabic = hasArabicScript(preview);
 
     return (
       <div
@@ -722,6 +728,7 @@ export default function MessagesMenu({
                 className={cn(
                   "text-sm font-semibold font-sans text-[#2D2D2D] bidi-auto",
                   isUnread ? "font-bold" : "font-semibold",
+                  targetNameIsArabic && "font-arabic",
                 )}
               >
                 {targetName}
@@ -732,6 +739,7 @@ export default function MessagesMenu({
                   className={cn(
                     "mt-0.5 line-clamp-1 text-[13px] leading-snug font-sans bidi-auto",
                     isUnread ? "text-[#2D2D2D]" : "text-[#777777]",
+                    previewIsArabic && "font-arabic",
                   )}
                 >
                   {preview}
@@ -800,6 +808,7 @@ export default function MessagesMenu({
         {messages.map((message) => {
           const isViewer = message.senderId === userId;
           const timestamp = formatRelativeTime(new Date(message.createdAt));
+          const messageIsArabic = hasArabicScript(message.content);
 
           return (
             <div
@@ -811,13 +820,17 @@ export default function MessagesMenu({
             >
               <div
                 className={cn(
-                  "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-[15px] font-sans leading-relaxed shadow-sm",
+                  "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-[15px] leading-relaxed shadow-sm",
+                  messageIsArabic ? "font-arabic" : "font-sans",
                   isViewer
                     ? "bg-brand text-white"
                     : "bg-[#EBDAC8] text-[#2D2D2D]",
                 )}
               >
-                <p dir="auto" className="whitespace-pre-line bidi-auto">
+                <p
+                  dir="auto"
+                  className={cn("whitespace-pre-line bidi-auto", messageIsArabic && "font-arabic")}
+                >
                   {message.content}
                 </p>
               </div>
