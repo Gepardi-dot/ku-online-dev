@@ -37,6 +37,12 @@
     background-color: hsl(var(--background));
     color: hsl(var(--foreground));
   }
+
+  html,
+  body {
+    width: 100%;
+    overflow-x: hidden;
+  }
   
   html[lang='ar'],
   html[lang='ku'] {
