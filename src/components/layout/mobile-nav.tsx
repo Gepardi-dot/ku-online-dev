@@ -100,7 +100,7 @@ export default function MobileNav() {
       ref={navRef}
     >
       <nav
-        className="flex items-end justify-between min-h-(--mobile-nav-height) px-3 pb-2 pt-1"
+        className="flex items-end justify-between h-(--mobile-nav-height) box-border px-3 pb-2 pt-1"
         style={{ ["--nav-icon-size" as any]: "calc(24px + 2mm)" }}
       >
         {NAV_ITEMS.map((item) => {
