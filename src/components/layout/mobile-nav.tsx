@@ -74,30 +74,55 @@ export default function MobileNav() {
       document.documentElement.style.setProperty("--mobile-nav-offset", `${height}px`);
     };
 
+    const updateViewportBottom = () => {
+      const viewport = window.visualViewport;
+      if (!viewport) {
+        document.documentElement.style.setProperty("--mobile-viewport-bottom", "0px");
+        return;
+      }
+      const offset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+      document.documentElement.style.setProperty("--mobile-viewport-bottom", `${offset}px`);
+    };
+
     updateOffset();
+    updateViewportBottom();
+
     if (typeof ResizeObserver === "undefined") {
       window.addEventListener("resize", updateOffset);
+      window.addEventListener("resize", updateViewportBottom);
+      window.addEventListener("scroll", updateViewportBottom, { passive: true });
       return () => {
         window.removeEventListener("resize", updateOffset);
+        window.removeEventListener("resize", updateViewportBottom);
+        window.removeEventListener("scroll", updateViewportBottom);
       };
     }
 
     const observer = new ResizeObserver(updateOffset);
     observer.observe(nav);
     window.addEventListener("resize", updateOffset);
+    window.addEventListener("resize", updateViewportBottom);
+    window.addEventListener("scroll", updateViewportBottom, { passive: true });
+    window.visualViewport?.addEventListener("resize", updateViewportBottom);
+    window.visualViewport?.addEventListener("scroll", updateViewportBottom, { passive: true });
 
     return () => {
       observer.disconnect();
       window.removeEventListener("resize", updateOffset);
+      window.removeEventListener("resize", updateViewportBottom);
+      window.removeEventListener("scroll", updateViewportBottom);
+      window.visualViewport?.removeEventListener("resize", updateViewportBottom);
+      window.visualViewport?.removeEventListener("scroll", updateViewportBottom);
     };
   }, []);
 
   return (
     <div
       dir="ltr"
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 w-full max-w-[100vw] border-t bg-background/95 backdrop-blur-sm pb-(--mobile-safe-area-bottom)"
+      className="md:hidden fixed left-0 right-0 z-50 w-full max-w-[100vw] border-t bg-background/95 backdrop-blur-sm pb-(--mobile-safe-area-bottom)"
       data-mobile-nav
       ref={navRef}
+      style={{ bottom: "var(--mobile-viewport-bottom)" }}
     >
       <nav
         className="flex items-end justify-between h-(--mobile-nav-height) w-full box-border px-3 pb-2 pt-1"
