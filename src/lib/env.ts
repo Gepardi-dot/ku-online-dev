@@ -9,6 +9,7 @@ const baseSchema = z.object({
     .default('product-images'),
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+  NEXT_PUBLIC_PARTNERSHIPS_EMAIL: z.string().email().optional(),
 });
 
 const serverSchema = baseSchema.extend({
@@ -20,6 +21,9 @@ const serverSchema = baseSchema.extend({
   ALGOLIA_ADMIN_API_KEY: z.string().min(1).optional(),
   ALGOLIA_SEARCH_API_KEY: z.string().min(1).optional(),
   ALGOLIA_INDEX_NAME: z.string().min(1).optional(),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  PARTNERSHIPS_NOTIFY_EMAIL: z.string().email().optional(),
+  PARTNERSHIPS_FROM_EMAIL: z.string().email().optional(),
 });
 
 type ServerEnv = z.infer<typeof serverSchema>;

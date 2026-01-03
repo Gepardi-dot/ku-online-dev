@@ -26,6 +26,9 @@
     --input: 20 50% 88%;
     --ring: 25 95% 53%;
     --radius: 0.75rem; /* rounded-xl */
+    --announcement-bar-height: 2.5rem;
+    --app-header-height: 0px;
+    --app-header-offset: calc(var(--announcement-bar-height) + var(--app-header-height));
     --mobile-nav-height: 5.75rem;
     --mobile-safe-area-bottom: env(safe-area-inset-bottom);
     --mobile-nav-offset: calc(var(--mobile-nav-height) + var(--mobile-safe-area-bottom));
@@ -150,5 +153,10 @@ html[lang='ku'] select,
 html[lang='ku'] button {
   font-family:
     var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif !important;
+}
+
+html[dir='rtl'] body[data-scroll-locked] {
+  margin-right: 0 !important;
+  margin-left: var(--removed-body-scroll-bar-size, 0px) !important;
 }
 

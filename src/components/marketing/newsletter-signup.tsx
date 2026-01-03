@@ -5,8 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useLocale } from '@/providers/locale-provider';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
-export function NewsletterSignup() {
+type NewsletterSignupProps = {
+  className?: string;
+};
+
+export function NewsletterSignup({ className }: NewsletterSignupProps) {
   const { t } = useLocale();
   const [email, setEmail] = useState('');
 
@@ -29,7 +34,7 @@ export function NewsletterSignup() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-md mx-auto flex">
+    <form onSubmit={handleSubmit} className={cn("mx-auto flex w-full max-w-md", className)}>
       <Input
         type="email"
         value={email}

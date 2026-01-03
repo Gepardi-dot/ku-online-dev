@@ -38,8 +38,13 @@ function applyDocumentLocale(nextLocale: Locale) {
   document.documentElement.dir = rtlLocales.includes(nextLocale) ? "rtl" : "ltr";
 }
 
-export function LocaleProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>(defaultLocale);
+type LocaleProviderProps = {
+  children: React.ReactNode;
+  initialLocale?: Locale;
+};
+
+export function LocaleProvider({ children, initialLocale = defaultLocale }: LocaleProviderProps) {
+  const [locale, setLocaleState] = useState<Locale>(initialLocale);
   const router = useRouter();
   const hasHydrated = useRef(false);
 

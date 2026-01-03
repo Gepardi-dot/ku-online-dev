@@ -24,6 +24,7 @@ import {
 } from '@/lib/products/filter-params';
 import ProductGridSkeleton from '@/components/products/ProductGridSkeleton';
 import { NewsletterSignup } from '@/components/marketing/newsletter-signup';
+import { PartnershipInquiry } from '@/components/marketing/partnership-inquiry';
 import Link from 'next/link';
 import Image from 'next/image';
 import SwipeHint from '@/components/ui/swipe-hint';
@@ -317,14 +318,33 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
         </section>
 
         <section className="py-12 bg-primary text-white">
-          <div className="container mx-auto px-4 text-center">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4">
-              {messages.homepage.subscribeTitle}
-            </h2>
-            <p className="mb-6 max-w-2xl mx-auto opacity-90">
-              {messages.homepage.subscribeDescription}
-            </p>
-            <NewsletterSignup />
+          <div className="container mx-auto px-4">
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="rounded-3xl bg-white/10 p-6 text-center shadow-sm md:p-8 md:text-start">
+                <h2 className="text-2xl md:text-3xl font-bold mb-4">
+                  {messages.homepage.subscribeTitle}
+                </h2>
+                <p className="mb-6 opacity-90">
+                  {messages.homepage.subscribeDescription}
+                </p>
+                <NewsletterSignup className="md:mx-0" />
+              </div>
+              <div className="rounded-3xl bg-white/10 p-6 text-center shadow-sm md:p-8 md:text-start">
+                <h2 className="text-2xl md:text-3xl font-bold mb-3">
+                  {messages.partnership.title}
+                </h2>
+                <p className="opacity-90">
+                  {messages.partnership.subtitle}
+                </p>
+                <p className="mt-3 text-sm opacity-85">
+                  {messages.partnership.audience}
+                </p>
+                <p className="text-sm opacity-85">
+                  {messages.partnership.responseTime}
+                </p>
+                <PartnershipInquiry className="mt-6 md:items-start" />
+              </div>
+            </div>
           </div>
         </section>
       </div>
