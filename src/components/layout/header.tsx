@@ -22,6 +22,7 @@ import LanguageSwitcher from '@/components/language-switcher';
 import AuthButton from '@/components/auth/auth-button';
 import type { User } from '@supabase/supabase-js';
 import { useLocale } from '@/providers/locale-provider';
+import { cn } from '@/lib/utils';
 import NotificationMenu from './notification-menu';
 import MessagesMenu from './messages-menu';
 import FavoritesMenu from './favorites-menu';
@@ -41,7 +42,13 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const [city, setCity] = useState<CityKey>('all');
   const [desktopCityOpen, setDesktopCityOpen] = useState(false);
   const [mobileCityOpen, setMobileCityOpen] = useState(false);
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
+  const lastScrollYRef = useRef(0);
+  const scrollRafRef = useRef<number | null>(null);
+  const isMobileRef = useRef(false);
+  const isHeaderHiddenRef = useRef(false);
 
   useEffect(() => {
     if (!searchParams) {
@@ -65,6 +72,139 @@ export default function AppHeader({ user }: AppHeaderProps) {
     };
     window.addEventListener('ku-menu-open', handler);
     return () => window.removeEventListener('ku-menu-open', handler);
+  }, []);
+
+  const applyHeaderOffset = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
+    const announcement = document.querySelector<HTMLElement>('[data-announcement-bar]');
+    let announcementHeight = announcement?.getBoundingClientRect().height ?? 0;
+    if (!Number.isFinite(announcementHeight) || announcementHeight <= 0) {
+      const computed = getComputedStyle(root);
+      const announcementValue = computed.getPropertyValue('--announcement-bar-height').trim();
+      const parsed = Number.parseFloat(announcementValue);
+      if (Number.isFinite(parsed)) {
+        if (announcementValue.endsWith('rem')) {
+          const fontSize = Number.parseFloat(getComputedStyle(root).fontSize) || 16;
+          announcementHeight = parsed * fontSize;
+        } else {
+          announcementHeight = parsed;
+        }
+      }
+    }
+    const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
+    root.style.setProperty('--app-header-height', `${headerHeight}px`);
+    const offset = announcementHeight + (isHeaderHiddenRef.current ? 0 : headerHeight);
+    root.style.setProperty('--app-header-offset', `${offset}px`);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const header = headerRef.current;
+    if (!header) return;
+    const announcement = document.querySelector<HTMLElement>('[data-announcement-bar]');
+
+    const updateHeight = () => {
+      const height = header.getBoundingClientRect().height;
+      if (!Number.isFinite(height) || height <= 0) return;
+      applyHeaderOffset();
+    };
+
+    updateHeight();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateHeight);
+      return () => window.removeEventListener('resize', updateHeight);
+    }
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(header);
+    if (announcement) {
+      observer.observe(announcement);
+    }
+    window.addEventListener('resize', updateHeight);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateHeight);
+    };
+  }, [applyHeaderOffset]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(max-width: 767px)');
+    const updateMobile = () => {
+      isMobileRef.current = mql.matches;
+      if (!mql.matches) {
+        setIsHeaderHidden(false);
+        isHeaderHiddenRef.current = false;
+      }
+      applyHeaderOffset();
+    };
+
+    updateMobile();
+    if (mql.addEventListener) {
+      mql.addEventListener('change', updateMobile);
+    } else {
+      mql.addListener(updateMobile);
+    }
+
+    return () => {
+      if (mql.removeEventListener) {
+        mql.removeEventListener('change', updateMobile);
+      } else {
+        mql.removeListener(updateMobile);
+      }
+    };
+  }, [applyHeaderOffset]);
+
+  useEffect(() => {
+    isHeaderHiddenRef.current = isHeaderHidden;
+    applyHeaderOffset();
+  }, [isHeaderHidden, applyHeaderOffset]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const threshold = 6;
+    const minScroll = 64;
+    lastScrollYRef.current = window.scrollY || 0;
+
+    const updateHiddenState = () => {
+      const current = window.scrollY || 0;
+      const last = lastScrollYRef.current;
+      const delta = current - last;
+      if (Math.abs(delta) < threshold) {
+        return;
+      }
+
+      if (current <= 0) {
+        setIsHeaderHidden(false);
+      } else if (delta > 0 && current > minScroll) {
+        setIsHeaderHidden(true);
+      } else if (delta < 0) {
+        setIsHeaderHidden(false);
+      }
+
+      lastScrollYRef.current = current;
+    };
+
+    const handleScroll = () => {
+      if (!isMobileRef.current) return;
+      if (scrollRafRef.current !== null) return;
+      scrollRafRef.current = window.requestAnimationFrame(() => {
+        scrollRafRef.current = null;
+        updateHiddenState();
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    return () => {
+      if (scrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollRafRef.current);
+      }
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const updateQueryString = useCallback(
@@ -135,7 +275,12 @@ export default function AppHeader({ user }: AppHeaderProps) {
     <header
       id="ku-main-header"
       dir="ltr"
-      className="sticky top-0 z-60 w-full bg-white/80 shadow-sm backdrop-blur-md pointer-events-auto"
+      ref={headerRef}
+      className={cn(
+        'fixed left-0 right-0 z-60 w-full bg-white/80 shadow-sm backdrop-blur-md pointer-events-auto transform-gpu transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none will-change-transform md:duration-200',
+        isHeaderHidden ? '-translate-y-full md:translate-y-0 pointer-events-none md:pointer-events-auto' : 'translate-y-0',
+      )}
+      style={{ top: 'var(--announcement-bar-height)' }}
     >
       <div className="container mx-auto px-4">
         <input
