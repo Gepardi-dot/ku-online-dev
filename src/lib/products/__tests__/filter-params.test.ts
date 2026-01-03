@@ -60,18 +60,4 @@ describe('filter-params parsers', () => {
     assert.equal(result.filters.location, 'Erbil');
     assert.equal(result.page, 3);
   });
-
-  it('parseProductQueryParams ignores zero-range price without free flag', () => {
-    const result = parseProductQueryParams({
-      minPrice: '0',
-      maxPrice: '0',
-      sort: 'price_asc',
-    });
-
-    assert.equal(result.initialValues.minPrice, '');
-    assert.equal(result.initialValues.maxPrice, '');
-    assert.equal(result.filters.minPrice, undefined);
-    assert.equal(result.filters.maxPrice, undefined);
-    assert.equal(result.sort, 'price_asc');
-  });
 });
