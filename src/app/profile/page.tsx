@@ -450,7 +450,7 @@ export default async function ProfilePage({
     <AppLayout user={user}>
       <div className="container mx-auto px-4 py-6" dir={isRtl ? 'rtl' : undefined}>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 min-w-0">
             <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
               <CardContent className="p-6">
                 <div className="space-y-4 text-center">
@@ -538,8 +538,8 @@ export default async function ProfilePage({
             </Card>
           </div>
 
-          <div className="lg:col-span-2">
-            <Tabs key={activeTab} defaultValue={activeTab} className="space-y-6 -mt-3 sm:-mt-5">
+          <div className="lg:col-span-2 min-w-0">
+            <Tabs key={activeTab} defaultValue={activeTab} className="space-y-6 -mt-3 sm:-mt-5 min-w-0">
               <TabsList className="mb-3 grid h-auto w-full grid-cols-3 items-center gap-1 rounded-full border border-white/60 bg-[linear-gradient(160deg,rgba(255,255,255,0.85),rgba(255,255,255,0.35)),radial-gradient(circle_at_top_left,rgba(255,214,170,0.35),transparent_60%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.6),transparent_50%),repeating-linear-gradient(90deg,rgba(255,255,255,0.12)_0,rgba(255,255,255,0.12)_2px,transparent_2px,transparent_6px)] p-1 shadow-[0_12px_30px_rgba(120,72,0,0.14)] backdrop-blur-xl ring-1 ring-white/60">
                 <TabsTrigger
                   value="overview"
@@ -564,7 +564,7 @@ export default async function ProfilePage({
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="overview" className="space-y-6">
+              <TabsContent value="overview" className="space-y-6 min-w-0 overflow-x-hidden">
                 <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
                   <CardHeader>
                     <CardTitle className="text-brand">{t('profile.overview.performanceInsightsTitle')}</CardTitle>
@@ -622,7 +622,7 @@ export default async function ProfilePage({
                           {t('profile.overview.latestListingsEmpty')}
                         </p>
                       ) : (
-                        <div className="no-scrollbar flex w-full max-w-full gap-3 overflow-x-auto px-1 pb-2 snap-x snap-proximity md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3">
+                        <div className="no-scrollbar flex w-full max-w-full min-w-0 gap-3 overflow-x-auto px-1 pb-2 snap-x snap-proximity md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3">
                           {featuredListings.map((listing) => (
                             <div key={listing.id} className="w-[220px] shrink-0 snap-start md:w-auto">
                               <ProductCard product={listing} />
