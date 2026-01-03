@@ -38,6 +38,8 @@ export default function MobileNav() {
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [userId, setUserId] = useState<string | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
+  const viewportRafRef = useRef<number | null>(null);
+  const lastViewportBottomRef = useRef<number>(-1);
   const labelClassName =
     "mobile-nav-label mt-1 h-[1.1rem] max-w-19 truncate text-[11px] leading-tight";
 
@@ -75,13 +77,18 @@ export default function MobileNav() {
     };
 
     const updateViewportBottom = () => {
-      const viewport = window.visualViewport;
-      if (!viewport) {
-        document.documentElement.style.setProperty("--mobile-viewport-bottom", "0px");
-        return;
-      }
-      const offset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
-      document.documentElement.style.setProperty("--mobile-viewport-bottom", `${offset}px`);
+      if (viewportRafRef.current !== null) return;
+      viewportRafRef.current = window.requestAnimationFrame(() => {
+        viewportRafRef.current = null;
+        const viewport = window.visualViewport;
+        let offset = 0;
+        if (viewport) {
+          offset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+        }
+        if (Math.abs(offset - lastViewportBottomRef.current) < 1) return;
+        lastViewportBottomRef.current = offset;
+        document.documentElement.style.setProperty("--mobile-viewport-bottom", `${offset}px`);
+      });
     };
 
     updateOffset();
@@ -90,11 +97,9 @@ export default function MobileNav() {
     if (typeof ResizeObserver === "undefined") {
       window.addEventListener("resize", updateOffset);
       window.addEventListener("resize", updateViewportBottom);
-      window.addEventListener("scroll", updateViewportBottom, { passive: true });
       return () => {
         window.removeEventListener("resize", updateOffset);
         window.removeEventListener("resize", updateViewportBottom);
-        window.removeEventListener("scroll", updateViewportBottom);
       };
     }
 
@@ -102,15 +107,16 @@ export default function MobileNav() {
     observer.observe(nav);
     window.addEventListener("resize", updateOffset);
     window.addEventListener("resize", updateViewportBottom);
-    window.addEventListener("scroll", updateViewportBottom, { passive: true });
     window.visualViewport?.addEventListener("resize", updateViewportBottom);
     window.visualViewport?.addEventListener("scroll", updateViewportBottom, { passive: true });
 
     return () => {
+      if (viewportRafRef.current !== null) {
+        window.cancelAnimationFrame(viewportRafRef.current);
+      }
       observer.disconnect();
       window.removeEventListener("resize", updateOffset);
       window.removeEventListener("resize", updateViewportBottom);
-      window.removeEventListener("scroll", updateViewportBottom);
       window.visualViewport?.removeEventListener("resize", updateViewportBottom);
       window.visualViewport?.removeEventListener("scroll", updateViewportBottom);
     };
@@ -122,7 +128,11 @@ export default function MobileNav() {
       className="md:hidden fixed left-0 right-0 z-50 w-full max-w-[100vw] border-t bg-background/95 backdrop-blur-sm pb-(--mobile-safe-area-bottom)"
       data-mobile-nav
       ref={navRef}
-      style={{ bottom: "var(--mobile-viewport-bottom)" }}
+      style={{
+        bottom: 0,
+        transform: "translateY(calc(-1 * var(--mobile-viewport-bottom)))",
+        willChange: "transform",
+      }}
     >
       <nav
         className="flex items-end justify-between h-(--mobile-nav-height) w-full box-border px-3 pb-2 pt-1"
