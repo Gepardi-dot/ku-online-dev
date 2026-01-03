@@ -9,11 +9,18 @@ import {
   createProductsSearchParams,
 } from "@/lib/products/filter-params";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { cn } from "@/lib/utils";
 import { COLOR_OPTIONS, type ColorToken } from "@/data/colors";
-import { Check, ChevronDown } from 'lucide-react';
+import { Check } from 'lucide-react';
 import { useLocale } from "@/providers/locale-provider";
 import { rtlLocales } from "@/lib/locale/dictionary";
 
@@ -84,9 +91,6 @@ export function ProductsFilterBar({
     init.minPrice ?? 0,
     init.maxPrice ?? init.maxCap,
   ]);
-  const [conditionOpen, setConditionOpen] = useState(false);
-  const [cityOpen, setCityOpen] = useState(false);
-  const [sortOpen, setSortOpen] = useState(false);
   const [priceOpen, setPriceOpen] = useState(false);
   const [color, setColor] = useState<string>(initialValues?.color ?? "");
   const [colorOpen, setColorOpen] = useState(false);
@@ -126,9 +130,6 @@ export function ProductsFilterBar({
 
   const apply = () => {
     // Close any open popovers so UI doesn't linger after navigation
-    setConditionOpen(false);
-    setCityOpen(false);
-    setSortOpen(false);
     setPriceOpen(false);
     setColorOpen(false);
     const base: ProductsFilterValues = {
@@ -148,9 +149,6 @@ export function ProductsFilterBar({
   };
 
   const reset = () => {
-    setConditionOpen(false);
-    setCityOpen(false);
-    setSortOpen(false);
     setPriceOpen(false);
     setColorOpen(false);
     setCondition("");
@@ -176,16 +174,6 @@ export function ProductsFilterBar({
   const conditionUiValue = condition === "" ? CLEAR_VALUE : condition;
   const locationUiValue = location === "" ? CLEAR_VALUE : location;
 
-  const currentConditionLabel =
-    conditionUiValue === CLEAR_VALUE ? t("filters.conditionAll") : getConditionLabel(condition);
-  const currentCityLabel = locationUiValue === CLEAR_VALUE ? t("filters.cityAll") : getCityLabel(location);
-  const currentSortLabel = (() => {
-    if (sort === "price_asc") return t("filters.sortPriceAsc");
-    if (sort === "price_desc") return t("filters.sortPriceDesc");
-    if (sort === "views_desc") return t("filters.sortMostViewed");
-    return t("filters.sortNewest");
-  })();
-
   const filterBarClassName =
     "w-full rounded-2xl border border-white/50 bg-white/60 px-3 py-2 shadow-[0_18px_48px_rgba(15,23,42,0.1)] backdrop-blur-xl md:mx-auto md:w-fit";
 
@@ -199,6 +187,17 @@ export function ProductsFilterBar({
 
   const chipTriggerClassName =
     "inline-flex h-9 w-fit shrink-0 items-center gap-2 px-3.5 text-sm font-medium " + framedControlClassName;
+
+  const selectTriggerClassName = cn(
+    chipTriggerClassName,
+    "!bg-none !bg-white/80 !border-slate-200/90"
+  );
+
+  const selectContentClassName =
+    "max-h-[15rem] w-fit max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/45 bg-white/35 " +
+    "shadow-[0_30px_95px_rgba(15,23,42,0.2)] ring-1 ring-white/20 backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110 " +
+    "!bg-none !bg-white/35 !border-white/45 " +
+    "[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0";
 
   const selectItemClassName =
     "relative isolate mb-1 last:mb-0 truncate overflow-hidden rounded-lg border border-white/35 bg-slate-50/25 py-2 ps-10 pe-3 text-sm text-foreground " +
@@ -224,134 +223,49 @@ export function ProductsFilterBar({
     >
       <div className="flex flex-wrap items-center gap-1.5">
         {/* Condition */}
-        <Popover
-          open={conditionOpen}
-          onOpenChange={(next) => {
-            setConditionOpen(next);
-            if (next) {
-              setCityOpen(false);
-              setSortOpen(false);
-              setPriceOpen(false);
-              setColorOpen(false);
-            }
-          }}
+        <Select
+          dir={direction}
+          value={conditionUiValue}
+          onValueChange={(v) => setCondition(v === CLEAR_VALUE ? "" : v)}
         >
-          <PopoverTrigger asChild>
-            <Button variant="outline" className={chipTriggerClassName}>
-              <span className="truncate max-w-[10.5rem]">{currentConditionLabel}</span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className={cn(popoverContentClassName, "p-2 w-[min(92vw,20rem)]")}
-            align={contentAlign}
-            dir={direction}
-          >
-            <div className="max-h-[15rem] overflow-auto overscroll-contain p-1">
-              <button
-                type="button"
-                className={cn(selectItemClassName, "w-full text-left")}
-                onClick={() => {
-                  setCondition("");
-                  setConditionOpen(false);
-                }}
-              >
-                <span className="absolute start-3 flex h-4 w-4 items-center justify-center">
-                  {conditionUiValue === CLEAR_VALUE ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
-                </span>
-                {t("filters.conditionAll")}
-              </button>
-              {CONDITION_OPTIONS.filter((opt) => opt.value !== "").map((opt) => (
-                <button
-                  key={opt.value || "all"}
-                  type="button"
-                  className={cn(selectItemClassName, "w-full text-left")}
-                  onClick={() => {
-                    setCondition(opt.value);
-                    setConditionOpen(false);
-                  }}
-                >
-                  <span className="absolute start-3 flex h-4 w-4 items-center justify-center">
-                    {condition === opt.value ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
-                  </span>
-                  {getConditionLabel(opt.value)}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+          <SelectTrigger className={selectTriggerClassName}>
+            <SelectValue placeholder={t("filters.condition")} />
+          </SelectTrigger>
+          <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
+            <SelectItem value={CLEAR_VALUE} className={selectItemClassName}>
+              {t("filters.conditionAll")}
+            </SelectItem>
+            {CONDITION_OPTIONS.filter((opt) => opt.value !== "").map((opt) => (
+              <SelectItem key={opt.value || "all"} value={opt.value || CLEAR_VALUE} className={selectItemClassName}>
+                {getConditionLabel(opt.value)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* City */}
-        <Popover
-          open={cityOpen}
-          onOpenChange={(next) => {
-            setCityOpen(next);
-            if (next) {
-              setConditionOpen(false);
-              setSortOpen(false);
-              setPriceOpen(false);
-              setColorOpen(false);
-            }
-          }}
+        <Select
+          dir={direction}
+          value={locationUiValue}
+          onValueChange={(v) => setLocation(v === CLEAR_VALUE ? "" : v)}
         >
-          <PopoverTrigger asChild>
-            <Button variant="outline" className={chipTriggerClassName}>
-              <span className="truncate max-w-[10.5rem]">{currentCityLabel}</span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className={cn(popoverContentClassName, "p-2 w-[min(92vw,20rem)]")}
-            align={contentAlign}
-            dir={direction}
-          >
-            <div className="max-h-[15rem] overflow-auto overscroll-contain p-1">
-              <button
-                type="button"
-                className={cn(selectItemClassName, "w-full text-left")}
-                onClick={() => {
-                  setLocation("");
-                  setCityOpen(false);
-                }}
-              >
-                <span className="absolute start-3 flex h-4 w-4 items-center justify-center">
-                  {locationUiValue === CLEAR_VALUE ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
-                </span>
-                {t("filters.cityAll")}
-              </button>
-              {locations.map((loc) => (
-                <button
-                  key={loc}
-                  type="button"
-                  className={cn(selectItemClassName, "w-full text-left")}
-                  onClick={() => {
-                    setLocation(loc);
-                    setCityOpen(false);
-                  }}
-                >
-                  <span className="absolute start-3 flex h-4 w-4 items-center justify-center">
-                    {location === loc ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
-                  </span>
-                  {getCityLabel(loc)}
-                </button>
-              ))}
-            </div>
-          </PopoverContent>
-        </Popover>
+          <SelectTrigger className={selectTriggerClassName}>
+            <SelectValue placeholder={t("filters.city")} />
+          </SelectTrigger>
+          <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
+            <SelectItem value={CLEAR_VALUE} className={selectItemClassName}>
+              {t("filters.cityAll")}
+            </SelectItem>
+            {locations.map((loc) => (
+              <SelectItem key={loc} value={loc} className={selectItemClassName}>
+                {getCityLabel(loc)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* Color */}
-        <Popover
-          open={colorOpen}
-          onOpenChange={(next) => {
-            setColorOpen(next);
-            if (next) {
-              setConditionOpen(false);
-              setCityOpen(false);
-              setSortOpen(false);
-              setPriceOpen(false);
-            }
-          }}
-        >
+        <Popover open={colorOpen} onOpenChange={setColorOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -420,18 +334,7 @@ export function ProductsFilterBar({
         </Popover>
 
         {/* Price slider in a compact popover */}
-        <Popover
-          open={priceOpen}
-          onOpenChange={(next) => {
-            setPriceOpen(next);
-            if (next) {
-              setConditionOpen(false);
-              setCityOpen(false);
-              setSortOpen(false);
-              setColorOpen(false);
-            }
-          }}
-        >
+        <Popover open={priceOpen} onOpenChange={setPriceOpen}>
           <PopoverTrigger asChild>
             <Button
               variant="outline"
@@ -475,85 +378,17 @@ export function ProductsFilterBar({
         </Popover>
 
         {/* Sort */}
-        <Popover
-          open={sortOpen}
-          onOpenChange={(next) => {
-            setSortOpen(next);
-            if (next) {
-              setConditionOpen(false);
-              setCityOpen(false);
-              setPriceOpen(false);
-              setColorOpen(false);
-            }
-          }}
-        >
-          <PopoverTrigger asChild>
-            <Button variant="outline" className={chipTriggerClassName}>
-              <span className="truncate max-w-[10.5rem]">{currentSortLabel}</span>
-              <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent
-            className={cn(popoverContentClassName, "p-2 w-[min(92vw,20rem)]")}
-            align={contentAlign}
-            dir={direction}
-          >
-            <div className="max-h-[15rem] overflow-auto overscroll-contain p-1">
-              <button
-                type="button"
-                className={cn(selectItemClassName, "w-full text-left")}
-                onClick={() => {
-                  setSort("newest");
-                  setSortOpen(false);
-                }}
-              >
-                <span className="absolute start-3 flex h-4 w-4 items-center justify-center">
-                  {sort === "newest" ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
-                </span>
-                {t("filters.sortNewest")}
-              </button>
-              <button
-                type="button"
-                className={cn(selectItemClassName, "w-full text-left")}
-                onClick={() => {
-                  setSort("price_asc");
-                  setSortOpen(false);
-                }}
-              >
-                <span className="absolute start-3 flex h-4 w-4 items-center justify-center">
-                  {sort === "price_asc" ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
-                </span>
-                {t("filters.sortPriceAsc")}
-              </button>
-              <button
-                type="button"
-                className={cn(selectItemClassName, "w-full text-left")}
-                onClick={() => {
-                  setSort("price_desc");
-                  setSortOpen(false);
-                }}
-              >
-                <span className="absolute start-3 flex h-4 w-4 items-center justify-center">
-                  {sort === "price_desc" ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
-                </span>
-                {t("filters.sortPriceDesc")}
-              </button>
-              <button
-                type="button"
-                className={cn(selectItemClassName, "w-full text-left")}
-                onClick={() => {
-                  setSort("views_desc");
-                  setSortOpen(false);
-                }}
-              >
-                <span className="absolute start-3 flex h-4 w-4 items-center justify-center">
-                  {sort === "views_desc" ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
-                </span>
-                {t("filters.sortMostViewed")}
-              </button>
-            </div>
-          </PopoverContent>
-        </Popover>
+        <Select dir={direction} value={sort} onValueChange={(v) => setSort(v)}>
+          <SelectTrigger className={selectTriggerClassName}>
+            <SelectValue placeholder={t("filters.sortNewest")} />
+          </SelectTrigger>
+          <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
+            <SelectItem value="newest" className={selectItemClassName}>{t("filters.sortNewest")}</SelectItem>
+            <SelectItem value="price_asc" className={selectItemClassName}>{t("filters.sortPriceAsc")}</SelectItem>
+            <SelectItem value="price_desc" className={selectItemClassName}>{t("filters.sortPriceDesc")}</SelectItem>
+            <SelectItem value="views_desc" className={selectItemClassName}>{t("filters.sortMostViewed")}</SelectItem>
+          </SelectContent>
+        </Select>
 
         <div className="flex items-center gap-1.5">
           <Button size="sm" className="h-9 text-sm px-4 rounded-full" onClick={apply}>
