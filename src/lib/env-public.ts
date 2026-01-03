@@ -9,6 +9,7 @@ const publicSchema = z.object({
     .default('product-images'),
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
+  NEXT_PUBLIC_PARTNERSHIPS_EMAIL: z.string().email().optional(),
 });
 
 type PublicEnv = z.infer<typeof publicSchema>;
@@ -27,6 +28,7 @@ export function getPublicEnv(): PublicEnv {
       process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'product-images',
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    NEXT_PUBLIC_PARTNERSHIPS_EMAIL: process.env.NEXT_PUBLIC_PARTNERSHIPS_EMAIL,
   });
 
   if (!result.success) {
