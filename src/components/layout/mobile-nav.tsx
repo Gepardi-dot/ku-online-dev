@@ -113,6 +113,7 @@ export default function MobileNav() {
     window.addEventListener("resize", handleViewportResize);
     window.addEventListener("orientationchange", handleViewportResize);
     window.visualViewport?.addEventListener("resize", handleViewportResize);
+    window.visualViewport?.addEventListener("scroll", handleViewportResize, { passive: true });
 
     return () => {
       if (viewportRafRef.current !== null) {
@@ -123,6 +124,7 @@ export default function MobileNav() {
       window.removeEventListener("resize", handleViewportResize);
       window.removeEventListener("orientationchange", handleViewportResize);
       window.visualViewport?.removeEventListener("resize", handleViewportResize);
+      window.visualViewport?.removeEventListener("scroll", handleViewportResize);
     };
   }, []);
 
@@ -134,7 +136,7 @@ export default function MobileNav() {
       ref={navRef}
       style={{
         bottom: 0,
-        transform: "translateY(calc(-1 * var(--mobile-viewport-bottom)))",
+        transform: "translate3d(0, calc(-1 * var(--mobile-viewport-bottom)), 0)",
         willChange: "transform",
       }}
     >
