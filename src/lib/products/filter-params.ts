@@ -150,9 +150,12 @@ export function parseProductQueryParams(
   const pageValue = data.page ? Number(data.page) : NaN;
   const page = Number.isInteger(pageValue) && pageValue > 0 ? pageValue : 1;
 
-  const minPrice = parsePriceParam(data.minPrice);
-  const maxPrice = parsePriceParam(data.maxPrice);
+  const minPriceRaw = parsePriceParam(data.minPrice);
+  const maxPriceRaw = parsePriceParam(data.maxPrice);
   const freeOnly = typeof data.free === 'string' && ['1','true','yes','free'].includes(data.free.toLowerCase());
+  const isZeroRange = minPriceRaw === 0 && maxPriceRaw === 0;
+  const minPrice = isZeroRange && !freeOnly ? undefined : minPriceRaw;
+  const maxPrice = isZeroRange && !freeOnly ? undefined : maxPriceRaw;
 
   const validCategory =
     typeof category === 'string' && z.string().uuid().safeParse(category).success ? category : '';

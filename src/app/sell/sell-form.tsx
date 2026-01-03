@@ -894,23 +894,6 @@ export default function SellForm({ user }: SellFormProps) {
     { label: t('sellForm.fields.location'), completed: formData.location.trim().length > 0 },
   ];
 
-  const completedChecklistCount = checklistItems.filter((item) => item.completed).length;
-  const completionPercent = Math.round((completedChecklistCount / checklistItems.length) * 100);
-  const numberLocale = locale === 'ku' ? 'ku-u-nu-arab' : locale === 'ar' ? 'ar-u-nu-arab' : 'en-US';
-  const completionLabel = t('sellForm.progress.completion')
-    .replace('{count}', new Intl.NumberFormat(numberLocale).format(completedChecklistCount))
-    .replace('{total}', new Intl.NumberFormat(numberLocale).format(checklistItems.length));
-  const completionPercentLabel = new Intl.NumberFormat(numberLocale, {
-    style: 'percent',
-    maximumFractionDigits: 0,
-  }).format(completionPercent / 100);
-  const completionColor = (() => {
-    if (completedChecklistCount >= checklistItems.length) {
-      return '#16a34a';
-    }
-    const redSteps = ['#dc2626', '#ef4444', '#f97316', '#f59e0b', '#fbbf24'];
-    return redSteps[Math.max(0, Math.min(completedChecklistCount - 1, redSteps.length - 1))] ?? '#dc2626';
-  })();
   const currencyInputLabel = (() => {
     if (formData.currency === 'IQD' && (locale === 'ar' || locale === 'ku')) {
       return 'د.ع';
@@ -976,26 +959,7 @@ export default function SellForm({ user }: SellFormProps) {
                   </div>
                 </div>
 
-                <div className="mt-0 md:mt-1">
-                  <div className="mt-1">
-                    <div className="relative h-2.5 md:h-3 w-full overflow-hidden rounded-full bg-white/70 ring-1 ring-white/60">
-                      <div
-                        className="h-full rounded-full transition-[width] duration-300"
-                        style={{ width: `${completionPercent}%`, backgroundColor: completionColor }}
-                      />
-                      <span
-                        className="absolute top-1/2 -translate-y-1/2 text-[11px] font-semibold hidden md:block"
-                        style={{
-                          left: `${Math.max(completionPercent, 6)}%`,
-                          transform: 'translate(8px, -50%)',
-                          color: completionColor,
-                        }}
-                      >
-                        {completionLabel}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                <div className="mt-0 md:mt-1" />
               </CardHeader>
 
               <CardContent className="p-6 pt-0 md:p-8 md:pt-0">
@@ -1528,35 +1492,21 @@ export default function SellForm({ user }: SellFormProps) {
 
       <div className="md:hidden fixed inset-x-0 bottom-(--mobile-nav-offset) z-30 border-t border-white/60 bg-white/70 backdrop-blur-2xl">
         <div className="mx-auto max-w-6xl px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{completionLabel}</span>
-                <span>{completionPercentLabel}</span>
-              </div>
-              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/70 ring-1 ring-white/60">
-                <div
-                  className="h-full rounded-full transition-[width] duration-300"
-                  style={{ width: `${completionPercent}%`, backgroundColor: completionColor }}
-                />
-              </div>
-            </div>
-            <Button
-              type="submit"
-              form="create-listing-form"
-              className={[
-                'h-11 rounded-2xl px-6 font-semibold text-white',
-                'bg-[linear-gradient(120deg,#f59e0b,#f97316,#fb7185)]',
-                'shadow-[0_14px_30px_rgba(249,115,22,0.35)]',
-                'transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,115,22,0.45)]',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-400',
-                'disabled:opacity-60 disabled:shadow-none disabled:hover:translate-y-0',
-              ].join(' ')}
-              disabled={loading || storageBusy}
-            >
-              {loading ? t('sellForm.submit.creating') : t('sellForm.submit.create')}
-            </Button>
-          </div>
+          <Button
+            type="submit"
+            form="create-listing-form"
+            className={[
+              'h-11 w-full rounded-2xl px-6 font-semibold text-white',
+              'bg-[linear-gradient(120deg,#f59e0b,#f97316,#fb7185)]',
+              'shadow-[0_14px_30px_rgba(249,115,22,0.35)]',
+              'transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,115,22,0.45)]',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-400',
+              'disabled:opacity-60 disabled:shadow-none disabled:hover:translate-y-0',
+            ].join(' ')}
+            disabled={loading || storageBusy}
+          >
+            {loading ? t('sellForm.submit.creating') : t('sellForm.submit.create')}
+          </Button>
         </div>
       </div>
     </div>
