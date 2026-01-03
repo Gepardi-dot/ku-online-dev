@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
+import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 
 import { createClient } from '@/utils/supabase/server';
 import { withSentryRoute } from '@/utils/sentry-route';
@@ -16,11 +17,15 @@ import {
 export const runtime = 'nodejs';
 
 const env = getEnv();
+const supabaseAdmin = createSupabaseAdmin(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 const originAllowList = buildOriginAllowList([
   env.NEXT_PUBLIC_SITE_URL ?? null,
   process.env.SITE_URL ?? null,
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
   'https://ku-online.vercel.app',
+  'https://ku-online-dev.vercel.app',
   'http://localhost:5000',
 ]);
 
@@ -76,6 +81,16 @@ async function sendEmailNotification(payload: {
   return true;
 }
 
+async function resolveUserId(userId: string | null | undefined): Promise<string | null> {
+  if (!userId) return null;
+  const { data, error } = await supabaseAdmin.from('users').select('id').eq('id', userId).maybeSingle();
+  if (error) {
+    console.error('Failed to verify partnership inquiry user', error);
+    return null;
+  }
+  return data?.id ?? null;
+}
+
 const handler = async (request: Request) => {
   const originHeader = request.headers.get('origin');
   if (originHeader && !isOriginAllowed(originHeader, originAllowList) && !isSameOriginRequest(request)) {
@@ -123,9 +138,10 @@ const handler = async (request: Request) => {
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
+  const resolvedUserId = await resolveUserId(user?.id ?? null);
 
   const insertPayload = {
-    user_id: user?.id ?? null,
+    user_id: resolvedUserId,
     name,
     company: company || null,
     email,
@@ -140,10 +156,12 @@ const handler = async (request: Request) => {
     status: 'new',
   } as const;
 
-  const { error } = await supabase.from('partnership_inquiries').insert(insertPayload);
+  let saved = false;
+  const { error } = await supabaseAdmin.from('partnership_inquiries').insert(insertPayload);
   if (error) {
     console.error('Failed to create partnership inquiry', error);
-    return NextResponse.json({ error: 'Failed to submit inquiry' }, { status: 500 });
+  } else {
+    saved = true;
   }
 
   const subject = `Partnership inquiry: ${name}`;
@@ -168,7 +186,11 @@ const handler = async (request: Request) => {
     ? `mailto:${encodeURIComponent(mailtoTarget)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(bodyLines.join('\n'))}`
     : null;
 
-  return NextResponse.json({ ok: true, emailSent, mailto });
+  if (!saved && !emailSent && !mailto) {
+    return NextResponse.json({ error: 'Failed to submit inquiry' }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true, emailSent, mailto, saved });
 };
 
 export const POST = withSentryRoute(handler, 'partnerships');
