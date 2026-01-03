@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-The production app lives under `src/`. UI entrypoints are in `src/app/` (App Router) with route-specific components beside their data loaders. Shared UI lives in `src/components/`, utilities in `src/utils/`, and Supabase/domain logic in `src/lib/`. Generated build output (`.next/`) and dependencies (`node_modules/`) should stay untracked. Configuration files such as `next.config.ts`, `tailwind.config.ts`, and `.env.local` control runtime and styling behaviour.
+The production app lives under `src/`. UI entrypoints are in `src/app/` (App Router) with route-specific components beside their data loaders. Shared UI lives in `src/components/`, utilities in `src/utils/`, and Supabase/domain logic in `src/lib/`. Generated build output (`.next/`) and dependencies (`node_modules/`) should stay untracked. Configuration files such as `next.config.ts`, `tailwind.config.mjs`, and `.env.local` control runtime and styling behaviour.
 
 ## Build, Test, and Development Commands
 - `npm run dev` – start the Next.js dev server on port 5000 for local work.

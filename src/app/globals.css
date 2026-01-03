@@ -1,4 +1,4 @@
-@config "../../tailwind.config.ts";
+@config "../../tailwind.config.mjs";
 @import 'tailwindcss';
 
 @layer base {
@@ -26,7 +26,7 @@
     --input: 20 50% 88%;
     --ring: 25 95% 53%;
     --radius: 0.75rem; /* rounded-xl */
-    --mobile-nav-height: 5rem;
+    --mobile-nav-height: 5.75rem;
     --mobile-safe-area-bottom: env(safe-area-inset-bottom);
     --mobile-nav-offset: calc(var(--mobile-nav-height) + var(--mobile-safe-area-bottom));
   }
@@ -82,7 +82,7 @@
 
   html[lang='ar'],
   html[lang='ku'] {
-    --mobile-nav-height: 5.5rem;
+    --mobile-nav-height: 6.25rem;
   }
 
   html[lang='ar'] [data-mobile-nav] .mobile-nav-label,
