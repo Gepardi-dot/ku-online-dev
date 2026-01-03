@@ -622,11 +622,9 @@ export default async function ProfilePage({
                           {t('profile.overview.latestListingsEmpty')}
                         </p>
                       ) : (
-                        <div className="no-scrollbar flex w-full max-w-full min-w-0 gap-3 overflow-x-auto px-1 pb-2 snap-x snap-proximity md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3">
+                        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                           {featuredListings.map((listing) => (
-                            <div key={listing.id} className="w-[220px] shrink-0 snap-start md:w-auto">
-                              <ProductCard product={listing} />
-                            </div>
+                            <ProductCard key={listing.id} product={listing} />
                           ))}
                         </div>
                       )}
@@ -681,7 +679,7 @@ export default async function ProfilePage({
                 </Card>
               </TabsContent>
 
-              <TabsContent value="listings" className="space-y-6">
+              <TabsContent value="listings" className="space-y-6 min-w-0">
                 <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
                   <CardHeader>
                     <CardTitle className="text-brand">
@@ -704,7 +702,7 @@ export default async function ProfilePage({
                 </Card>
               </TabsContent>
 
-              <TabsContent value="sales" className="space-y-6">
+              <TabsContent value="sales" className="space-y-6 min-w-0">
                 <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
                   <CardHeader>
                     <CardTitle className="text-brand">
