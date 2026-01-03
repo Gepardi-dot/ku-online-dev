@@ -39,7 +39,7 @@ export default function MobileNav() {
   const [userId, setUserId] = useState<string | null>(null);
   const navRef = useRef<HTMLDivElement | null>(null);
   const viewportRafRef = useRef<number | null>(null);
-  const lastViewportBottomRef = useRef<number>(-1);
+  const lastKeyboardOffsetRef = useRef<number>(-1);
   const labelClassName =
     "mobile-nav-label mt-1 h-[1.1rem] max-w-19 truncate text-[11px] leading-tight";
 
@@ -76,33 +76,42 @@ export default function MobileNav() {
       document.documentElement.style.setProperty("--mobile-nav-offset", `${height}px`);
     };
 
-    const updateViewportBottom = () => {
+    const updateKeyboardOffset = () => {
       if (viewportRafRef.current !== null) return;
       viewportRafRef.current = window.requestAnimationFrame(() => {
         viewportRafRef.current = null;
         const viewport = window.visualViewport;
         let offset = 0;
         if (viewport) {
-          offset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop);
+          const heightDelta = window.innerHeight - viewport.height;
+          const keyboardThreshold = 150;
+          if (heightDelta > keyboardThreshold) {
+            offset = Math.max(0, heightDelta - viewport.offsetTop);
+          }
         }
-        if (Math.abs(offset - lastViewportBottomRef.current) < 1) return;
-        lastViewportBottomRef.current = offset;
-        document.documentElement.style.setProperty("--mobile-viewport-bottom", `${offset}px`);
+        if (Math.abs(offset - lastKeyboardOffsetRef.current) < 1) return;
+        lastKeyboardOffsetRef.current = offset;
+        document.documentElement.style.setProperty("--mobile-keyboard-offset", `${offset}px`);
       });
     };
 
     updateOffset();
-    updateViewportBottom();
+    updateKeyboardOffset();
 
-    const handleViewportResize = () => updateViewportBottom();
+    const handleViewportResize = () => updateKeyboardOffset();
+    const handleFocusChange = () => updateKeyboardOffset();
 
     if (typeof ResizeObserver === "undefined") {
       window.addEventListener("resize", updateOffset);
       window.addEventListener("resize", handleViewportResize);
+      window.addEventListener("focusin", handleFocusChange);
+      window.addEventListener("focusout", handleFocusChange);
       window.addEventListener("orientationchange", handleViewportResize);
       return () => {
         window.removeEventListener("resize", updateOffset);
         window.removeEventListener("resize", handleViewportResize);
+        window.removeEventListener("focusin", handleFocusChange);
+        window.removeEventListener("focusout", handleFocusChange);
         window.removeEventListener("orientationchange", handleViewportResize);
       };
     }
@@ -111,9 +120,10 @@ export default function MobileNav() {
     observer.observe(nav);
     window.addEventListener("resize", updateOffset);
     window.addEventListener("resize", handleViewportResize);
+    window.addEventListener("focusin", handleFocusChange);
+    window.addEventListener("focusout", handleFocusChange);
     window.addEventListener("orientationchange", handleViewportResize);
     window.visualViewport?.addEventListener("resize", handleViewportResize);
-    window.visualViewport?.addEventListener("scroll", handleViewportResize, { passive: true });
 
     return () => {
       if (viewportRafRef.current !== null) {
@@ -122,9 +132,10 @@ export default function MobileNav() {
       observer.disconnect();
       window.removeEventListener("resize", updateOffset);
       window.removeEventListener("resize", handleViewportResize);
+      window.removeEventListener("focusin", handleFocusChange);
+      window.removeEventListener("focusout", handleFocusChange);
       window.removeEventListener("orientationchange", handleViewportResize);
       window.visualViewport?.removeEventListener("resize", handleViewportResize);
-      window.visualViewport?.removeEventListener("scroll", handleViewportResize);
     };
   }, []);
 
@@ -136,7 +147,7 @@ export default function MobileNav() {
       ref={navRef}
       style={{
         bottom: 0,
-        transform: "translate3d(0, calc(-1 * var(--mobile-viewport-bottom)), 0)",
+        transform: "translate3d(0, calc(-1 * var(--mobile-keyboard-offset)), 0)",
         willChange: "transform",
       }}
     >

@@ -33,6 +33,7 @@
     --mobile-safe-area-bottom: env(safe-area-inset-bottom);
     --mobile-nav-offset: calc(var(--mobile-nav-height) + var(--mobile-safe-area-bottom));
     --mobile-viewport-bottom: 0px;
+    --mobile-keyboard-offset: 0px;
   }
 }
 

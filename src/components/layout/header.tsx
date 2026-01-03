@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, FormEvent, ChangeEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +36,7 @@ type CityKey = (typeof CITY_KEYS)[number];
 
 export default function AppHeader({ user }: AppHeaderProps) {
   const { t, messages } = useLocale();
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [searchTerm, setSearchTerm] = useState('');
@@ -49,6 +50,8 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const scrollRafRef = useRef<number | null>(null);
   const isMobileRef = useRef(false);
   const isHeaderHiddenRef = useRef(false);
+  const headerHeightRef = useRef(0);
+  const announcementHeightRef = useRef(0);
 
   useEffect(() => {
     if (!searchParams) {
@@ -77,22 +80,8 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const applyHeaderOffset = useCallback(() => {
     if (typeof window === 'undefined') return;
     const root = document.documentElement;
-    const announcement = document.querySelector<HTMLElement>('[data-announcement-bar]');
-    let announcementHeight = announcement?.getBoundingClientRect().height ?? 0;
-    if (!Number.isFinite(announcementHeight) || announcementHeight <= 0) {
-      const computed = getComputedStyle(root);
-      const announcementValue = computed.getPropertyValue('--announcement-bar-height').trim();
-      const parsed = Number.parseFloat(announcementValue);
-      if (Number.isFinite(parsed)) {
-        if (announcementValue.endsWith('rem')) {
-          const fontSize = Number.parseFloat(getComputedStyle(root).fontSize) || 16;
-          announcementHeight = parsed * fontSize;
-        } else {
-          announcementHeight = parsed;
-        }
-      }
-    }
-    const headerHeight = headerRef.current?.getBoundingClientRect().height ?? 0;
+    const headerHeight = headerHeightRef.current;
+    const announcementHeight = announcementHeightRef.current;
     root.style.setProperty('--app-header-height', `${headerHeight}px`);
     const offset = announcementHeight + (isHeaderHiddenRef.current ? 0 : headerHeight);
     root.style.setProperty('--app-header-offset', `${offset}px`);
@@ -106,7 +95,15 @@ export default function AppHeader({ user }: AppHeaderProps) {
 
     const updateHeight = () => {
       const height = header.getBoundingClientRect().height;
-      if (!Number.isFinite(height) || height <= 0) return;
+      if (Number.isFinite(height) && height > 0) {
+        headerHeightRef.current = height;
+      }
+      if (announcement) {
+        const announcementHeight = announcement.getBoundingClientRect().height;
+        if (Number.isFinite(announcementHeight) && announcementHeight >= 0) {
+          announcementHeightRef.current = announcementHeight;
+        }
+      }
       applyHeaderOffset();
     };
 
@@ -206,6 +203,14 @@ export default function AppHeader({ user }: AppHeaderProps) {
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setIsHeaderHidden(false);
+    isHeaderHiddenRef.current = false;
+    lastScrollYRef.current = window.scrollY || 0;
+    applyHeaderOffset();
+  }, [pathname, applyHeaderOffset]);
 
   const updateQueryString = useCallback(
     (updates: Record<string, string | null>) => {
