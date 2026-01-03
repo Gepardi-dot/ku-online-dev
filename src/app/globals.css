@@ -29,6 +29,7 @@
     --mobile-nav-height: 5.75rem;
     --mobile-safe-area-bottom: env(safe-area-inset-bottom);
     --mobile-nav-offset: calc(var(--mobile-nav-height) + var(--mobile-safe-area-bottom));
+    --mobile-viewport-bottom: 0px;
   }
 }
 
