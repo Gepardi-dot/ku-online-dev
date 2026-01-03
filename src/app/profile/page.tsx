@@ -622,7 +622,7 @@ export default async function ProfilePage({
                           {t('profile.overview.latestListingsEmpty')}
                         </p>
                       ) : (
-                        <div className="no-scrollbar -mx-2 flex gap-3 overflow-x-auto px-2 pb-2 snap-x snap-proximity md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3">
+                        <div className="no-scrollbar flex w-full max-w-full gap-3 overflow-x-auto px-1 pb-2 snap-x snap-proximity md:grid md:grid-cols-2 md:overflow-visible md:px-0 xl:grid-cols-3">
                           {featuredListings.map((listing) => (
                             <div key={listing.id} className="w-[220px] shrink-0 snap-start md:w-auto">
                               <ProductCard product={listing} />
