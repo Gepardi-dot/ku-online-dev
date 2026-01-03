@@ -24,6 +24,7 @@ import {
 } from '@/lib/products/filter-params';
 import ProductGridSkeleton from '@/components/products/ProductGridSkeleton';
 import { NewsletterSignup } from '@/components/marketing/newsletter-signup';
+import { PartnershipInquiry } from '@/components/marketing/partnership-inquiry';
 import Link from 'next/link';
 import Image from 'next/image';
 import SwipeHint from '@/components/ui/swipe-hint';
@@ -324,7 +325,13 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
             <p className="mb-6 max-w-2xl mx-auto opacity-90">
               {messages.homepage.subscribeDescription}
             </p>
-            <NewsletterSignup />
+            <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 sm:flex-row sm:justify-center">
+              <NewsletterSignup />
+              <div className="flex items-center gap-2">
+                <span className="text-sm opacity-90">{messages.homepage.partnerTeaser}</span>
+                <PartnershipInquiry />
+              </div>
+            </div>
           </div>
         </section>
       </div>

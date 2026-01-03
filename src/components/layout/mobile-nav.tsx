@@ -31,6 +31,8 @@ const NAV_ITEMS: NavItem[] = [
   { key: "profile", href: "/profile?tab=overview", labelKey: "nav.profile", icon: User },
 ];
 
+const FLOAT_BUTTON_LIFT_PX = 12;
+
 export default function MobileNav() {
   const pathname = usePathname();
   const { t, messages } = useLocale();
@@ -71,7 +73,7 @@ export default function MobileNav() {
     const updateOffset = () => {
       const height = nav.getBoundingClientRect().height;
       if (!Number.isFinite(height) || height <= 0) return;
-      document.documentElement.style.setProperty("--mobile-nav-offset", `${height}px`);
+      document.documentElement.style.setProperty("--mobile-nav-offset", `${height + FLOAT_BUTTON_LIFT_PX}px`);
     };
 
     updateOffset();
@@ -100,8 +102,8 @@ export default function MobileNav() {
       ref={navRef}
     >
       <nav
-        className="flex items-end justify-between min-h-(--mobile-nav-height) px-3 pb-2 pt-1"
-        style={{ ["--nav-icon-size" as any]: "calc(24px + 2mm)" }}
+        className="grid grid-cols-5 items-end justify-items-center h-(--mobile-nav-height) box-border px-3 pb-2 pt-1"
+        style={{ ["--nav-icon-size" as any]: "clamp(22px, 5vw, 26px)" }}
       >
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
@@ -111,14 +113,14 @@ export default function MobileNav() {
 
           if (item.highlight) {
             return (
-              <div key={item.key} className="flex flex-1 items-center justify-center">
+              <div key={item.key} className="flex items-end justify-center">
                 <Link
                   href={item.href}
-                  className="relative -translate-y-3 z-10 flex h-16 w-[calc(8rem-4mm)] flex-none flex-col items-center justify-center gap-1 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
+                  className="relative -translate-y-3 z-10 flex h-14 w-[min(7.5rem,42vw)] flex-none flex-col items-center justify-center gap-1 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-lg transition-transform hover:scale-105"
                   aria-label={t(item.labelKey)}
                 >
                   <Icon className="h-(--nav-icon-size) w-(--nav-icon-size)" aria-hidden="true" />
-                  <span dir="auto" className={cn("bidi-auto", labelClassName)}>
+                  <span dir="auto" className={cn("bidi-auto text-center", labelClassName)}>
                     {t(item.labelKey)}
                   </span>
                 </Link>
@@ -132,7 +134,7 @@ export default function MobileNav() {
               <div
                 key={item.key}
                 className={cn(
-                  "flex flex-1 flex-col items-center justify-end gap-1 text-sm font-medium",
+                  "flex flex-col items-center justify-end gap-1 text-sm font-medium",
                   pathname.startsWith("/profile") ? "text-primary" : "text-muted-foreground hover:text-foreground",
                 )}
                 aria-label={t(item.labelKey)}
@@ -150,7 +152,7 @@ export default function MobileNav() {
                   triggerClassName="text-muted-foreground hover:text-foreground h-(--nav-icon-size) w-(--nav-icon-size) p-0"
                   triggerIcon={<MessageSquare className="h-full w-full" strokeWidth={2} />}
                 />
-                <span dir="auto" className={cn("bidi-auto", labelClassName)}>
+                <span dir="auto" className={cn("bidi-auto text-center", labelClassName)}>
                   {t(item.labelKey)}
                 </span>
               </div>
@@ -163,7 +165,7 @@ export default function MobileNav() {
               <div
                 key={item.key}
                 className={cn(
-                  "flex flex-1 flex-col items-center justify-end gap-1 text-sm font-medium",
+                  "flex flex-col items-center justify-end gap-1 text-sm font-medium",
                   "text-muted-foreground hover:text-foreground",
                 )}
                 aria-label={t(item.labelKey)}
@@ -179,7 +181,7 @@ export default function MobileNav() {
                   triggerClassName="text-muted-foreground hover:text-foreground h-(--nav-icon-size) w-(--nav-icon-size) p-0"
                   triggerIcon={<ShoppingBag className="h-full w-full" strokeWidth={2} />}
                 />
-                <span dir="auto" className={cn("bidi-auto", labelClassName)}>
+                <span dir="auto" className={cn("bidi-auto text-center", labelClassName)}>
                   {t(item.labelKey)}
                 </span>
               </div>
@@ -190,7 +192,7 @@ export default function MobileNav() {
           // otherwise show a login-required hint.
           if (item.key === "profile") {
             const baseClass = cn(
-              "flex flex-1 flex-col items-center justify-end gap-1 text-sm font-medium transition-colors",
+              "flex flex-col items-center justify-end gap-1 text-sm font-medium transition-colors",
               pathname.startsWith("/profile") ? "text-primary" : "text-muted-foreground hover:text-foreground",
             );
 
@@ -211,44 +213,44 @@ export default function MobileNav() {
                 <span className="inline-flex items-center justify-center h-(--nav-icon-size) w-(--nav-icon-size)">
                   <Icon className="h-full w-full" aria-hidden="true" />
                 </span>
-                <span dir="auto" className={cn("bidi-auto", labelClassName)}>
+                <span dir="auto" className={cn("bidi-auto text-center", labelClassName)}>
                   {t(item.labelKey)}
                 </span>
               </button>
             );
           }
 
-            return (
-              <Link key={item.key} href={item.href} className={baseClass} aria-label={t(item.labelKey)}>
-                <span className="inline-flex items-center justify-center h-(--nav-icon-size) w-(--nav-icon-size)">
-                  <Icon className="h-full w-full" aria-hidden="true" />
-                </span>
-                <span dir="auto" className={cn("bidi-auto", labelClassName)}>
-                  {t(item.labelKey)}
-                </span>
-              </Link>
-            );
-          }
-
           return (
-            <Link
-              key={item.key}
-              href={item.href}
-              className={cn(
-                "flex flex-1 flex-col items-center justify-end gap-1 text-sm font-medium transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
-              )}
-              aria-label={t(item.labelKey)}
-            >
+            <Link key={item.key} href={item.href} className={baseClass} aria-label={t(item.labelKey)}>
               <span className="inline-flex items-center justify-center h-(--nav-icon-size) w-(--nav-icon-size)">
                 <Icon className="h-full w-full" aria-hidden="true" />
               </span>
-              <span dir="auto" className={cn("bidi-auto", labelClassName)}>
+              <span dir="auto" className={cn("bidi-auto text-center", labelClassName)}>
                 {t(item.labelKey)}
               </span>
             </Link>
           );
-        })}
+        }
+
+        return (
+          <Link
+            key={item.key}
+            href={item.href}
+            className={cn(
+              "flex flex-col items-center justify-end gap-1 text-sm font-medium transition-colors",
+              isActive ? "text-primary" : "text-muted-foreground hover:text-foreground",
+            )}
+            aria-label={t(item.labelKey)}
+          >
+            <span className="inline-flex items-center justify-center h-(--nav-icon-size) w-(--nav-icon-size)">
+              <Icon className="h-full w-full" aria-hidden="true" />
+            </span>
+            <span dir="auto" className={cn("bidi-auto text-center", labelClassName)}>
+              {t(item.labelKey)}
+            </span>
+          </Link>
+        );
+      })}
       </nav>
     </div>
   );
