@@ -293,7 +293,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
     "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-linear-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_16px_38px_rgba(247,111,29,0.18)]";
 
     return (
-      <Popover open={open} onOpenChange={handleOpenChange} modal={true}>
+      <Popover open={open} onOpenChange={handleOpenChange} modal={false}>
         <PopoverTrigger asChild>
           <button type="button" className={ebayTriggerClass} aria-label={strings.label}>
             <Bell className="h-6 w-6" strokeWidth={1.6} />

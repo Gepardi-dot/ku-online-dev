@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CONDITION_OPTIONS,
@@ -9,18 +9,12 @@ import {
   createProductsSearchParams,
 } from "@/lib/products/filter-params";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollHintList } from "@/components/ui/scroll-hint-list";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { cn } from "@/lib/utils";
 import { COLOR_OPTIONS, type ColorToken } from "@/data/colors";
-import { Check } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 import { useLocale } from "@/providers/locale-provider";
 import { rtlLocales } from "@/lib/locale/dictionary";
 
@@ -83,10 +77,26 @@ export function ProductsFilterBar({
   const direction = rtlLocales.includes(locale) ? "rtl" : "ltr";
   const contentAlign = direction === "rtl" ? "end" : "start";
   const init = useInitialState(initialValues);
+  const handlePopoverAutoFocus = useCallback((event: Event) => {
+    if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) {
+      event.preventDefault();
+    }
+  }, []);
+  const handleTriggerPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLElement>) => {
+      if (event.pointerType === "touch") {
+        event.preventDefault();
+      }
+    },
+    []
+  );
 
   const [condition, setCondition] = useState<string>(init.condition || "");
   const [location, setLocation] = useState<string>(init.location || "");
   const [sort, setSort] = useState<string>(init.sort || "newest");
+  const [conditionOpen, setConditionOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   const [price, setPrice] = useState<[number, number]>([
     init.minPrice ?? 0,
     init.maxPrice ?? init.maxCap,
@@ -94,6 +104,12 @@ export function ProductsFilterBar({
   const [priceOpen, setPriceOpen] = useState(false);
   const [color, setColor] = useState<string>(initialValues?.color ?? "");
   const [colorOpen, setColorOpen] = useState(false);
+  const anyMenuOpen = conditionOpen || locationOpen || colorOpen || priceOpen || sortOpen;
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(new CustomEvent("ku-popover-state", { detail: { open: anyMenuOpen } }));
+  }, [anyMenuOpen]);
 
   const isPriceDefault = price[0] <= 0 && price[1] >= init.maxCap;
 
@@ -130,6 +146,9 @@ export function ProductsFilterBar({
 
   const apply = () => {
     // Close any open popovers so UI doesn't linger after navigation
+    setConditionOpen(false);
+    setLocationOpen(false);
+    setSortOpen(false);
     setPriceOpen(false);
     setColorOpen(false);
     const base: ProductsFilterValues = {
@@ -149,6 +168,9 @@ export function ProductsFilterBar({
   };
 
   const reset = () => {
+    setConditionOpen(false);
+    setLocationOpen(false);
+    setSortOpen(false);
     setPriceOpen(false);
     setColorOpen(false);
     setCondition("");
@@ -170,9 +192,20 @@ export function ProductsFilterBar({
     router.push(`${targetPath}${q ? `?${q}` : ""}`);
   };
 
-  // Map empty selections to a non-empty sentinel value for Radix Select
+  // Map empty selections to a non-empty sentinel value for filter menus
   const conditionUiValue = condition === "" ? CLEAR_VALUE : condition;
   const locationUiValue = location === "" ? CLEAR_VALUE : location;
+
+  const currentConditionLabel =
+    conditionUiValue === CLEAR_VALUE ? t("filters.conditionAll") : getConditionLabel(condition);
+  const currentCityLabel =
+    locationUiValue === CLEAR_VALUE ? t("filters.cityAll") : getCityLabel(location);
+  const currentSortLabel = (() => {
+    if (sort === "price_asc") return t("filters.sortPriceAsc");
+    if (sort === "price_desc") return t("filters.sortPriceDesc");
+    if (sort === "views_desc") return t("filters.sortMostViewed");
+    return t("filters.sortNewest");
+  })();
 
   const filterBarClassName =
     "w-full rounded-2xl border border-white/50 bg-white/60 px-3 py-2 shadow-[0_18px_48px_rgba(15,23,42,0.1)] backdrop-blur-xl md:mx-auto md:w-fit";
@@ -189,25 +222,26 @@ export function ProductsFilterBar({
     "inline-flex h-9 w-fit shrink-0 items-center gap-2 px-3.5 text-sm font-medium " + framedControlClassName;
 
   const selectTriggerClassName = cn(
+    "flex items-center justify-between",
     chipTriggerClassName,
     "!bg-none !bg-white/80 !border-slate-200/90"
   );
 
   const selectContentClassName =
-    "max-h-[15rem] w-fit max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/45 bg-white/35 " +
+    "max-h-[15rem] w-fit max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/45 bg-white/35 p-1 " +
     "shadow-[0_30px_95px_rgba(15,23,42,0.2)] ring-1 ring-white/20 backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110 " +
     "!bg-none !bg-white/35 !border-white/45 " +
     "[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0";
 
   const selectItemClassName =
-    "relative isolate mb-1 last:mb-0 truncate overflow-hidden rounded-lg border border-white/35 bg-slate-50/25 py-2 ps-10 pe-3 text-sm text-foreground " +
+    "relative isolate mb-1 last:mb-0 block w-full truncate overflow-hidden rounded-lg border border-white/35 bg-slate-50/25 py-2 ps-3 pe-10 text-sm text-foreground origin-center " +
     "backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110 " +
     "shadow-[0_14px_30px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.12)] " +
     "before:pointer-events-none before:absolute before:inset-0 before:z-0 before:opacity-55 " +
     "before:bg-none " +
     "after:pointer-events-none after:absolute after:inset-0 after:z-0 after:opacity-60 after:bg-linear-to-b after:from-white/22 after:via-transparent after:to-transparent " +
     "motion-safe:transition-[transform,background-color,border-color,box-shadow] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none " +
-    "hover:bg-white/22 hover:border-white/45 focus:bg-white/22 focus:text-foreground " +
+    "hover:bg-white/30 hover:border-primary/30 hover:shadow-[0_0_0_1px_rgba(249,115,22,0.25)] hover:scale-[1.01] focus:bg-white/22 focus:text-foreground " +
     "active:scale-[0.99] data-highlighted:scale-[0.99] data-highlighted:-translate-y-[1px] " +
     "data-highlighted:bg-primary/10 data-highlighted:border-primary/25 data-highlighted:shadow-[0_14px_26px_rgba(249,115,22,0.12)] " +
     "data-[state=checked]:bg-primary/10 data-[state=checked]:border-primary/30 data-[state=checked]:shadow-[0_14px_26px_rgba(249,115,22,0.14)]";
@@ -223,53 +257,157 @@ export function ProductsFilterBar({
     >
       <div className="flex flex-wrap items-center gap-1.5">
         {/* Condition */}
-        <Select
-          dir={direction}
-          value={conditionUiValue}
-          onValueChange={(v) => setCondition(v === CLEAR_VALUE ? "" : v)}
+        <Popover
+          open={conditionOpen}
+          onOpenChange={(next) => {
+            setConditionOpen(next);
+            if (next) {
+              setLocationOpen(false);
+              setSortOpen(false);
+              setPriceOpen(false);
+              setColorOpen(false);
+            }
+          }}
         >
-          <SelectTrigger className={selectTriggerClassName}>
-            <SelectValue placeholder={t("filters.condition")} />
-          </SelectTrigger>
-          <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
-            <SelectItem value={CLEAR_VALUE} className={selectItemClassName}>
-              {t("filters.conditionAll")}
-            </SelectItem>
-            {CONDITION_OPTIONS.filter((opt) => opt.value !== "").map((opt) => (
-              <SelectItem key={opt.value || "all"} value={opt.value || CLEAR_VALUE} className={selectItemClassName}>
-                {getConditionLabel(opt.value)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={selectTriggerClassName}
+              aria-label={t("filters.condition")}
+              onPointerDown={handleTriggerPointerDown}
+            >
+              <span className="truncate max-w-[10.5rem]">{currentConditionLabel}</span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align={contentAlign}
+            dir={direction}
+            className={selectContentClassName}
+            onOpenAutoFocus={handlePopoverAutoFocus}
+            onCloseAutoFocus={handlePopoverAutoFocus}
+          >
+            <ScrollHintList scrollClassName="max-h-[15rem] overflow-auto overscroll-contain p-1">
+              <button
+                type="button"
+                className={selectItemClassName}
+                data-state={conditionUiValue === CLEAR_VALUE ? "checked" : "unchecked"}
+                onClick={() => {
+                  setCondition("");
+                  setConditionOpen(false);
+                }}
+              >
+                <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                  {conditionUiValue === CLEAR_VALUE ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                </span>
+                {t("filters.conditionAll")}
+              </button>
+              {CONDITION_OPTIONS.filter((opt) => opt.value !== "").map((opt) => (
+                <button
+                  key={opt.value || "all"}
+                  type="button"
+                  className={selectItemClassName}
+                  data-state={condition === opt.value ? "checked" : "unchecked"}
+                  onClick={() => {
+                    setCondition(opt.value);
+                    setConditionOpen(false);
+                  }}
+                >
+                  <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                    {condition === opt.value ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                  </span>
+                  {getConditionLabel(opt.value)}
+                </button>
+              ))}
+            </ScrollHintList>
+          </PopoverContent>
+        </Popover>
 
         {/* City */}
-        <Select
-          dir={direction}
-          value={locationUiValue}
-          onValueChange={(v) => setLocation(v === CLEAR_VALUE ? "" : v)}
+        <Popover
+          open={locationOpen}
+          onOpenChange={(next) => {
+            setLocationOpen(next);
+            if (next) {
+              setConditionOpen(false);
+              setSortOpen(false);
+              setPriceOpen(false);
+              setColorOpen(false);
+            }
+          }}
         >
-          <SelectTrigger className={selectTriggerClassName}>
-            <SelectValue placeholder={t("filters.city")} />
-          </SelectTrigger>
-          <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
-            <SelectItem value={CLEAR_VALUE} className={selectItemClassName}>
-              {t("filters.cityAll")}
-            </SelectItem>
-            {locations.map((loc) => (
-              <SelectItem key={loc} value={loc} className={selectItemClassName}>
-                {getCityLabel(loc)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={selectTriggerClassName}
+              aria-label={t("filters.city")}
+              onPointerDown={handleTriggerPointerDown}
+            >
+              <span className="truncate max-w-[10.5rem]">{currentCityLabel}</span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align={contentAlign}
+            dir={direction}
+            className={selectContentClassName}
+            onOpenAutoFocus={handlePopoverAutoFocus}
+            onCloseAutoFocus={handlePopoverAutoFocus}
+          >
+            <ScrollHintList scrollClassName="max-h-[15rem] overflow-auto overscroll-contain p-1">
+              <button
+                type="button"
+                className={selectItemClassName}
+                data-state={locationUiValue === CLEAR_VALUE ? "checked" : "unchecked"}
+                onClick={() => {
+                  setLocation("");
+                  setLocationOpen(false);
+                }}
+              >
+                <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                  {locationUiValue === CLEAR_VALUE ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                </span>
+                {t("filters.cityAll")}
+              </button>
+              {locations.map((loc) => (
+                <button
+                  key={loc}
+                  type="button"
+                  className={selectItemClassName}
+                  data-state={location === loc ? "checked" : "unchecked"}
+                  onClick={() => {
+                    setLocation(loc);
+                    setLocationOpen(false);
+                  }}
+                >
+                  <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                    {location === loc ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                  </span>
+                  {getCityLabel(loc)}
+                </button>
+              ))}
+            </ScrollHintList>
+          </PopoverContent>
+        </Popover>
 
         {/* Color */}
-        <Popover open={colorOpen} onOpenChange={setColorOpen}>
+        <Popover
+          open={colorOpen}
+          onOpenChange={(next) => {
+            setColorOpen(next);
+            if (next) {
+              setConditionOpen(false);
+              setLocationOpen(false);
+              setSortOpen(false);
+              setPriceOpen(false);
+            }
+          }}
+        >
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               className={chipTriggerClassName}
+              onPointerDown={handleTriggerPointerDown}
             >
               {color && (
                 <span
@@ -281,7 +419,13 @@ export function ProductsFilterBar({
               {t("filters.color")}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className={popoverContentClassName} align={contentAlign} dir={direction}>
+          <PopoverContent
+            className={popoverContentClassName}
+            align={contentAlign}
+            dir={direction}
+            onOpenAutoFocus={handlePopoverAutoFocus}
+            onCloseAutoFocus={handlePopoverAutoFocus}
+          >
             <div className="grid grid-cols-8 sm:grid-cols-10 gap-2 p-1">
               {/* All colors */}
               <button
@@ -334,16 +478,34 @@ export function ProductsFilterBar({
         </Popover>
 
         {/* Price slider in a compact popover */}
-        <Popover open={priceOpen} onOpenChange={setPriceOpen}>
+        <Popover
+          open={priceOpen}
+          onOpenChange={(next) => {
+            setPriceOpen(next);
+            if (next) {
+              setConditionOpen(false);
+              setLocationOpen(false);
+              setSortOpen(false);
+              setColorOpen(false);
+            }
+          }}
+        >
           <PopoverTrigger asChild>
             <Button
               variant="outline"
               className={chipTriggerClassName}
+              onPointerDown={handleTriggerPointerDown}
             >
               {priceChipLabel}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className={cn(popoverContentClassName, "w-[min(90vw,20rem)]")} align={contentAlign} dir={direction}>
+          <PopoverContent
+            className={cn(popoverContentClassName, "w-[min(90vw,20rem)]")}
+            align={contentAlign}
+            dir={direction}
+            onOpenAutoFocus={handlePopoverAutoFocus}
+            onCloseAutoFocus={handlePopoverAutoFocus}
+          >
             <div className="space-y-3">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">{t("filters.priceRange")}</span>
@@ -378,17 +540,96 @@ export function ProductsFilterBar({
         </Popover>
 
         {/* Sort */}
-        <Select dir={direction} value={sort} onValueChange={(v) => setSort(v)}>
-          <SelectTrigger className={selectTriggerClassName}>
-            <SelectValue placeholder={t("filters.sortNewest")} />
-          </SelectTrigger>
-          <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
-            <SelectItem value="newest" className={selectItemClassName}>{t("filters.sortNewest")}</SelectItem>
-            <SelectItem value="price_asc" className={selectItemClassName}>{t("filters.sortPriceAsc")}</SelectItem>
-            <SelectItem value="price_desc" className={selectItemClassName}>{t("filters.sortPriceDesc")}</SelectItem>
-            <SelectItem value="views_desc" className={selectItemClassName}>{t("filters.sortMostViewed")}</SelectItem>
-          </SelectContent>
-        </Select>
+        <Popover
+          open={sortOpen}
+          onOpenChange={(next) => {
+            setSortOpen(next);
+            if (next) {
+              setConditionOpen(false);
+              setLocationOpen(false);
+              setPriceOpen(false);
+              setColorOpen(false);
+            }
+          }}
+        >
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={selectTriggerClassName}
+              aria-label={t("filters.sortNewest")}
+              onPointerDown={handleTriggerPointerDown}
+            >
+              <span className="truncate max-w-[10.5rem]">{currentSortLabel}</span>
+              <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align={contentAlign}
+            dir={direction}
+            className={selectContentClassName}
+            onOpenAutoFocus={handlePopoverAutoFocus}
+            onCloseAutoFocus={handlePopoverAutoFocus}
+          >
+            <ScrollHintList scrollClassName="max-h-[15rem] overflow-auto overscroll-contain p-1">
+              <button
+                type="button"
+                className={selectItemClassName}
+                data-state={sort === "newest" ? "checked" : "unchecked"}
+                onClick={() => {
+                  setSort("newest");
+                  setSortOpen(false);
+                }}
+              >
+                <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                  {sort === "newest" ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                </span>
+                {t("filters.sortNewest")}
+              </button>
+              <button
+                type="button"
+                className={selectItemClassName}
+                data-state={sort === "price_asc" ? "checked" : "unchecked"}
+                onClick={() => {
+                  setSort("price_asc");
+                  setSortOpen(false);
+                }}
+              >
+                <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                  {sort === "price_asc" ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                </span>
+                {t("filters.sortPriceAsc")}
+              </button>
+              <button
+                type="button"
+                className={selectItemClassName}
+                data-state={sort === "price_desc" ? "checked" : "unchecked"}
+                onClick={() => {
+                  setSort("price_desc");
+                  setSortOpen(false);
+                }}
+              >
+                <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                  {sort === "price_desc" ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                </span>
+                {t("filters.sortPriceDesc")}
+              </button>
+              <button
+                type="button"
+                className={selectItemClassName}
+                data-state={sort === "views_desc" ? "checked" : "unchecked"}
+                onClick={() => {
+                  setSort("views_desc");
+                  setSortOpen(false);
+                }}
+              >
+                <span className="absolute start-3 flex h-4 w-4 items-center justify-center">
+                  {sort === "views_desc" ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                </span>
+                {t("filters.sortMostViewed")}
+              </button>
+            </ScrollHintList>
+          </PopoverContent>
+        </Popover>
 
         <div className="flex items-center gap-1.5">
           <Button size="sm" className="h-9 text-sm px-4 rounded-full" onClick={apply}>

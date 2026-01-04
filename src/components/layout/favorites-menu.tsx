@@ -286,7 +286,7 @@ export default function FavoritesMenu({
   }, []);
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange} modal={true}>
+    <Popover open={open} onOpenChange={handleOpenChange} modal={false}>
       <PopoverTrigger asChild>
         {compactTrigger ? (
           <button

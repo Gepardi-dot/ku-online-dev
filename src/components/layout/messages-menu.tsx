@@ -972,7 +972,7 @@ export default function MessagesMenu({
   // --- Render root dropdown ---
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover open={open} onOpenChange={handleOpenChange} modal={false}>
       <PopoverTrigger asChild>
         {compactTrigger ? (
           <button

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent, type CSSProperties } from 'react';
 import type { User } from '@supabase/supabase-js';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -12,9 +12,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollHintList } from '@/components/ui/scroll-hint-list';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CheckCircle2, Circle, FileText, Info, Loader2, MapPin, Sparkles, Tag, Upload, X } from 'lucide-react';
+import { Check, CheckCircle2, ChevronDown, Circle, FileText, Info, Loader2, MapPin, Sparkles, Tag, Upload, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { CONDITION_OPTIONS } from '@/lib/products/filter-params';
 import { createProductSchema } from '@/lib/validation/schemas';
@@ -118,10 +119,30 @@ export default function SellForm({ user }: SellFormProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [isFree, setIsFree] = useState(false);
+  const [conditionMenuOpen, setConditionMenuOpen] = useState(false);
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const [locationMenuOpen, setLocationMenuOpen] = useState(false);
+  const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const { t, messages, locale } = useLocale();
   const direction = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
   const contentAlign = direction === 'rtl' ? 'end' : 'start';
   const requiredFieldMessage = t('common.validation.required');
+  const handlePopoverAutoFocus = useCallback((event: Event) => {
+    if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) {
+      event.preventDefault();
+    }
+  }, []);
+  const handleTriggerPointerDown = useCallback((event: React.PointerEvent<HTMLElement>) => {
+    if (event.pointerType === 'touch') {
+      event.preventDefault();
+    }
+  }, []);
+  const anyMenuOpen = conditionMenuOpen || categoryMenuOpen || locationMenuOpen || colorMenuOpen;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('ku-popover-state', { detail: { open: anyMenuOpen } }));
+  }, [anyMenuOpen]);
   const currencyToggleOptions: Array<{ value: CurrencyCode; label: string }> = [
     { value: 'IQD', label: t('sellForm.currency.iqd') },
     { value: 'USD', label: t('sellForm.currency.usd') },
@@ -154,6 +175,51 @@ export default function SellForm({ user }: SellFormProps) {
     if (locale === 'ku') return config.labelKu ?? config.label;
     return config.label;
   };
+
+  const getSelectedCityLabel = (locationValue: string) => {
+    if (!locationValue) return t('filters.cityAll');
+    const match = cityOptions.find((city) => city.label === locationValue);
+    return match ? getCityLabel(match.value) : locationValue;
+  };
+
+  const getSelectedColorLabel = (colorValue: string) => {
+    if (!colorValue) return t('filters.allColors');
+    const isToken = (SELL_COLOR_TOKENS as readonly string[]).includes(colorValue);
+    return isToken ? getColorLabel(colorValue as (typeof SELL_COLOR_TOKENS)[number]) : colorValue;
+  };
+
+  const filterBarSelectTriggerClassName = [
+    'flex items-center justify-between',
+    'inline-flex h-9 w-fit shrink-0 items-center gap-2 px-3.5 text-sm font-medium',
+    'rounded-xl border border-slate-200/90 bg-white/80 shadow-[0_6px_18px_rgba(15,23,42,0.10)] ring-1 ring-black/5 backdrop-blur-xl',
+    'transition-all duration-200 ease-out will-change-transform',
+    'hover:border-slate-300/90 hover:bg-white/90 hover:shadow-[0_8px_22px_rgba(15,23,42,0.12)]',
+    'data-[state=open]:-translate-y-0.5 md:data-[state=open]:translate-y-0 data-[state=open]:border-primary/40 data-[state=open]:bg-white/95',
+    'data-[state=open]:shadow-[0_16px_40px_rgba(249,115,22,0.22)] data-[state=open]:ring-2 data-[state=open]:ring-primary/30',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white/80',
+    '!bg-none !bg-white/80 !border-slate-200/90',
+  ].join(' ');
+
+  const filterBarSelectContentClassName = [
+    'max-h-[15rem] w-fit max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/45 bg-white/35 p-1',
+    'shadow-[0_30px_95px_rgba(15,23,42,0.2)] ring-1 ring-white/20 backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110',
+    '!bg-none !bg-white/35 !border-white/45',
+    '[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0',
+  ].join(' ');
+
+  const filterBarSelectItemClassName = [
+    'relative isolate mb-1 last:mb-0 block w-full truncate overflow-hidden rounded-lg border border-white/35 bg-slate-50/25 py-2 ps-3 pe-10 text-sm text-foreground origin-center',
+    'backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110',
+    'shadow-[0_14px_30px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.12)]',
+    'before:pointer-events-none before:absolute before:inset-0 before:z-0 before:opacity-55',
+    'before:bg-none',
+    'after:pointer-events-none after:absolute after:inset-0 after:z-0 after:opacity-60 after:bg-linear-to-b after:from-white/22 after:via-transparent after:to-transparent',
+    'motion-safe:transition-[transform,background-color,border-color,box-shadow] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none',
+    'hover:bg-white/30 hover:border-primary/30 hover:shadow-[0_0_0_1px_rgba(249,115,22,0.25)] hover:scale-[1.01]',
+    'data-highlighted:scale-[0.99] data-highlighted:-translate-y-[1px]',
+    'data-highlighted:bg-primary/10 data-highlighted:border-primary/25 data-highlighted:shadow-[0_14px_26px_rgba(249,115,22,0.12)]',
+    'data-[state=checked]:bg-primary/10 data-[state=checked]:border-primary/30 data-[state=checked]:shadow-[0_14px_26px_rgba(249,115,22,0.14)]',
+  ].join(' ');
 
   const selectTriggerClassName = [
     'h-12 w-fit max-w-full rounded-2xl border border-[#eadbc5]/80 bg-linear-to-b from-[#fffdf7] to-[#fff2e2] px-4 text-sm text-[#1F1C1C]',
@@ -976,26 +1042,7 @@ export default function SellForm({ user }: SellFormProps) {
                   </div>
                 </div>
 
-                <div className="mt-0 md:mt-1">
-                  <div className="mt-1">
-                    <div className="relative h-2.5 md:h-3 w-full overflow-hidden rounded-full bg-white/70 ring-1 ring-white/60">
-                      <div
-                        className="h-full rounded-full transition-[width] duration-300"
-                        style={{ width: `${completionPercent}%`, backgroundColor: completionColor }}
-                      />
-                      <span
-                        className="absolute top-1/2 -translate-y-1/2 text-[11px] font-semibold hidden md:block"
-                        style={{
-                          left: `${Math.max(completionPercent, 6)}%`,
-                          transform: 'translate(8px, -50%)',
-                          color: completionColor,
-                        }}
-                      >
-                        {completionLabel}
-                      </span>
-                    </div>
-                  </div>
-                </div>
+
               </CardHeader>
 
               <CardContent className="p-6 pt-0 md:p-8 md:pt-0">
@@ -1269,25 +1316,51 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                           </Label>
                           <div className="mt-3">
-                            <Select
-                              dir={direction}
-                              value={formData.condition}
-                              onValueChange={(value) => {
-                                setHasUnsaved(true);
-                                setFormData((prev) => ({ ...prev, condition: value }));
-                              }}
-                            >
-                              <SelectTrigger className={categorySelectTriggerClassName}>
-                                <SelectValue placeholder={t('sellForm.fields.conditionPlaceholder')} />
-                              </SelectTrigger>
-                              <SelectContent align={contentAlign} dir={direction} className={categorySelectContentClassName}>
-                                {conditionOptions.map((option) => (
-                                  <SelectItem key={option.value} value={option.value} className={categorySelectItemClassName}>
-                                    {getConditionLabel(option.value)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <Popover open={conditionMenuOpen} onOpenChange={setConditionMenuOpen}>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className={filterBarSelectTriggerClassName}
+                                  aria-label={t('sellForm.fields.condition')}
+                                  onPointerDown={handleTriggerPointerDown}
+                                >
+                                  <span className="truncate max-w-[18rem]">
+                                    {formData.condition ? getConditionLabel(formData.condition) : t('sellForm.fields.conditionPlaceholder')}
+                                  </span>
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align={contentAlign}
+                                dir={direction}
+                                className={filterBarSelectContentClassName}
+                                onOpenAutoFocus={handlePopoverAutoFocus}
+                                onCloseAutoFocus={handlePopoverAutoFocus}
+                              >
+                                <ScrollHintList scrollClassName="max-h-[15rem] overflow-auto overscroll-contain p-1">
+                                  {conditionOptions.map((option) => (
+                                    <button
+                                      key={option.value}
+                                      type="button"
+                                      className={filterBarSelectItemClassName}
+                                      data-state={formData.condition === option.value ? 'checked' : 'unchecked'}
+                                      onClick={() => {
+                                        setHasUnsaved(true);
+                                        setFormData((prev) => ({ ...prev, condition: option.value }));
+                                        setConditionMenuOpen(false);
+                                      }}
+                                    >
+                                      <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                                        {formData.condition === option.value ? (
+                                          <Check className="h-4 w-4 text-[#E67E22]" />
+                                        ) : null}
+                                      </span>
+                                      {getConditionLabel(option.value)}
+                                    </button>
+                                  ))}
+                                </ScrollHintList>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </div>
                       </div>
@@ -1311,41 +1384,68 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                           </Label>
                           <div className="mt-3">
-                            <Select
-                              dir={direction}
-                              value={formData.categoryId}
-                              onValueChange={(value) => {
-                                setHasUnsaved(true);
-                                setFormData((prev) => ({ ...prev, categoryId: value }));
+                            <Popover
+                              open={categoryMenuOpen}
+                              onOpenChange={(next) => {
+                                setCategoryMenuOpen(next);
+                                if (next) {
+                                  setConditionMenuOpen(false);
+                                  setLocationMenuOpen(false);
+                                  setColorMenuOpen(false);
+                                }
                               }}
-                              disabled={categories.length === 0}
                             >
-                              <SelectTrigger className={categorySelectTriggerClassName}>
-                                <SelectValue
-                                  placeholder={
-                                    categories.length
-                                      ? t('sellForm.fields.categoryPlaceholder')
-                                      : t('sellForm.fields.categoryLoading')
-                                  }
-                                />
-                              </SelectTrigger>
-                              <SelectContent
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  disabled={categories.length === 0}
+                                  className={`${filterBarSelectTriggerClassName} disabled:opacity-60 disabled:cursor-not-allowed`}
+                                  aria-label={t('sellForm.fields.category')}
+                                  onPointerDown={handleTriggerPointerDown}
+                                >
+                                  <span className="truncate max-w-[18rem]">
+                                    {(() => {
+                                      const selected = categories.find((c) => c.id === formData.categoryId);
+                                      if (selected) return getCategoryLabel(selected.name);
+                                      return categories.length
+                                        ? t('sellForm.fields.categoryPlaceholder')
+                                        : t('sellForm.fields.categoryLoading');
+                                    })()}
+                                  </span>
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
                                 align={contentAlign}
                                 dir={direction}
-                                className={categorySelectContentClassName}
-                                style={{ ['--select-scroll-color' as string]: '#f97316' }}
+                                className={filterBarSelectContentClassName}
+                                onOpenAutoFocus={handlePopoverAutoFocus}
+                                onCloseAutoFocus={handlePopoverAutoFocus}
                               >
-                                {categories.map((category) => (
-                                  <SelectItem
-                                    key={category.id}
-                                    value={category.id}
-                                    className={categorySelectItemClassName}
-                                  >
-                                    {getCategoryLabel(category.name)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                <ScrollHintList scrollClassName="max-h-[15rem] overflow-auto overscroll-contain p-1">
+                                  {categories.map((category) => (
+                                    <button
+                                      key={category.id}
+                                      type="button"
+                                      className={filterBarSelectItemClassName}
+                                      data-state={formData.categoryId === category.id ? 'checked' : 'unchecked'}
+                                      onClick={() => {
+                                        setHasUnsaved(true);
+                                        setFormData((prev) => ({ ...prev, categoryId: category.id }));
+                                        setCategoryMenuOpen(false);
+                                      }}
+                                    >
+                                      <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                                        {formData.categoryId === category.id ? (
+                                          <Check className="h-4 w-4 text-[#E67E22]" />
+                                        ) : null}
+                                      </span>
+                                      {getCategoryLabel(category.name)}
+                                    </button>
+                                  ))}
+                                </ScrollHintList>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </div>
 
@@ -1362,28 +1462,74 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                           </Label>
                           <div className="mt-3">
-                            <Select
-                              dir={direction}
-                              value={formData.location || 'all'}
-                              onValueChange={(value) => {
-                                setHasUnsaved(true);
-                                setFormData((prev) => ({ ...prev, location: value === 'all' ? '' : value }));
+                            <Popover
+                              open={locationMenuOpen}
+                              onOpenChange={(next) => {
+                                setLocationMenuOpen(next);
+                                if (next) {
+                                  setConditionMenuOpen(false);
+                                  setCategoryMenuOpen(false);
+                                  setColorMenuOpen(false);
+                                }
                               }}
                             >
-                              <SelectTrigger className={categorySelectTriggerClassName}>
-                                <SelectValue placeholder={t('sellForm.fields.locationPlaceholder')} />
-                              </SelectTrigger>
-                              <SelectContent align={contentAlign} dir={direction} className={categorySelectContentClassName}>
-                                <SelectItem value="all" className={categorySelectItemClassName}>
-                                  {t('filters.cityAll')}
-                                </SelectItem>
-                                {cityOptions.map((city) => (
-                                  <SelectItem key={city.value} value={city.label} className={categorySelectItemClassName}>
-                                    {getCityLabel(city.value)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className={filterBarSelectTriggerClassName}
+                                  aria-label={t('sellForm.fields.location')}
+                                  onPointerDown={handleTriggerPointerDown}
+                                >
+                                  <span className="truncate max-w-[18rem]">{getSelectedCityLabel(formData.location)}</span>
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align={contentAlign}
+                                dir={direction}
+                                className={filterBarSelectContentClassName}
+                                onOpenAutoFocus={handlePopoverAutoFocus}
+                                onCloseAutoFocus={handlePopoverAutoFocus}
+                              >
+                                <ScrollHintList scrollClassName="max-h-[15rem] overflow-auto overscroll-contain p-1">
+                                  <button
+                                    type="button"
+                                    className={filterBarSelectItemClassName}
+                                    data-state={!formData.location ? 'checked' : 'unchecked'}
+                                    onClick={() => {
+                                      setHasUnsaved(true);
+                                      setFormData((prev) => ({ ...prev, location: '' }));
+                                      setLocationMenuOpen(false);
+                                    }}
+                                  >
+                                    <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                                      {!formData.location ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                                    </span>
+                                    {t('filters.cityAll')}
+                                  </button>
+                                  {cityOptions.map((city) => (
+                                    <button
+                                      key={city.value}
+                                      type="button"
+                                      className={filterBarSelectItemClassName}
+                                      data-state={formData.location === city.label ? 'checked' : 'unchecked'}
+                                      onClick={() => {
+                                        setHasUnsaved(true);
+                                        setFormData((prev) => ({ ...prev, location: city.label }));
+                                        setLocationMenuOpen(false);
+                                      }}
+                                    >
+                                      <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                                        {formData.location === city.label ? (
+                                          <Check className="h-4 w-4 text-[#E67E22]" />
+                                        ) : null}
+                                      </span>
+                                      {getCityLabel(city.value)}
+                                    </button>
+                                  ))}
+                                </ScrollHintList>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </div>
 
@@ -1400,45 +1546,72 @@ export default function SellForm({ user }: SellFormProps) {
                             <span>{t('sellForm.fields.color')}</span>
                           </Label>
                           <div className="mt-3">
-                            <Select
-                              dir={direction}
-                              value={formData.color || 'none'}
-                              onValueChange={(value) => {
-                                setHasUnsaved(true);
-                                setFormData((prev) => ({ ...prev, color: value === 'none' ? '' : value }));
+                            <Popover
+                              open={colorMenuOpen}
+                              onOpenChange={(next) => {
+                                setColorMenuOpen(next);
+                                if (next) {
+                                  setConditionMenuOpen(false);
+                                  setCategoryMenuOpen(false);
+                                  setLocationMenuOpen(false);
+                                }
                               }}
                             >
-                              <SelectTrigger className={categorySelectTriggerClassName}>
-                                <SelectValue placeholder={t('sellForm.fields.colorPlaceholder')} />
-                              </SelectTrigger>
-                              <SelectContent
+                              <PopoverTrigger asChild>
+                                <button
+                                  type="button"
+                                  className={filterBarSelectTriggerClassName}
+                                  aria-label={t('sellForm.fields.color')}
+                                  onPointerDown={handleTriggerPointerDown}
+                                >
+                                  <span className="truncate max-w-[18rem]">{getSelectedColorLabel(formData.color)}</span>
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
                                 align={contentAlign}
                                 dir={direction}
-                                className={categorySelectContentClassName}
-                                style={{ ['--select-scroll-color' as string]: '#f97316' }}
+                                className={filterBarSelectContentClassName}
+                                onOpenAutoFocus={handlePopoverAutoFocus}
+                                onCloseAutoFocus={handlePopoverAutoFocus}
                               >
-                                <SelectItem
-                                  value="none"
-                                  className={allColorsOptionClassName}
-                                  style={{
-                                    ['--chip-bg' as string]: '#e2e8f0',
-                                    ['--chip-fg' as string]: '#0f172a',
-                                  }}
-                                >
-                                  {t('filters.allColors')}
-                                </SelectItem>
-                                {SELL_COLOR_TOKENS.map((token) => (
-                                  <SelectItem
-                                    key={token}
-                                    value={token}
-                                    className={colorSelectItemBaseClassName}
-                                    style={getColorSelectItemStyle(token)}
+                                <ScrollHintList scrollClassName="overflow-visible p-1">
+                                  <button
+                                    type="button"
+                                    className={filterBarSelectItemClassName}
+                                    data-state={!formData.color ? 'checked' : 'unchecked'}
+                                    onClick={() => {
+                                      setHasUnsaved(true);
+                                      setFormData((prev) => ({ ...prev, color: '' }));
+                                      setColorMenuOpen(false);
+                                    }}
                                   >
-                                    {getColorLabel(token)}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                                    <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                                      {!formData.color ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                                    </span>
+                                    {t('filters.allColors')}
+                                  </button>
+                                  {SELL_COLOR_TOKENS.map((token) => (
+                                    <button
+                                      key={token}
+                                      type="button"
+                                      className={filterBarSelectItemClassName}
+                                      data-state={formData.color === token ? 'checked' : 'unchecked'}
+                                      onClick={() => {
+                                        setHasUnsaved(true);
+                                        setFormData((prev) => ({ ...prev, color: token }));
+                                        setColorMenuOpen(false);
+                                      }}
+                                    >
+                                      <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                                        {formData.color === token ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                                      </span>
+                                      {getColorLabel(token)}
+                                    </button>
+                                  ))}
+                                </ScrollHintList>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </div>
                       </div>
@@ -1464,7 +1637,7 @@ export default function SellForm({ user }: SellFormProps) {
       </div>
     </Card>
 
-          <aside className="hidden lg:block lg:sticky lg:top-24">
+          <aside className="hidden lg:block lg:sticky lg:top-24 lg:self-start">
             <div className="space-y-4">
               <Card className={glassAsideCardClassName}>
                 <CardHeader className="p-6 pb-0">

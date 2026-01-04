@@ -49,8 +49,19 @@ export default function AppHeader({ user }: AppHeaderProps) {
   const lastScrollYRef = useRef(0);
   const scrollRafRef = useRef<number | null>(null);
   const isMobileRef = useRef(false);
+  const menuOpenRef = useRef(false);
   const headerHeightRef = useRef(0);
   const announcementHeightRef = useRef(0);
+
+  const applyHeaderOffset = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const root = document.documentElement;
+    const headerHeight = headerHeightRef.current;
+    const announcementHeight = announcementHeightRef.current;
+    root.style.setProperty('--app-header-height', `${headerHeight}px`);
+    const offset = announcementHeight + headerHeight;
+    root.style.setProperty('--app-header-offset', `${offset}px`);
+  }, []);
 
   useEffect(() => {
     if (!searchParams) {
@@ -76,15 +87,22 @@ export default function AppHeader({ user }: AppHeaderProps) {
     return () => window.removeEventListener('ku-menu-open', handler);
   }, []);
 
-  const applyHeaderOffset = useCallback(() => {
+  useEffect(() => {
     if (typeof window === 'undefined') return;
-    const root = document.documentElement;
-    const headerHeight = headerHeightRef.current;
-    const announcementHeight = announcementHeightRef.current;
-    root.style.setProperty('--app-header-height', `${headerHeight}px`);
-    const offset = announcementHeight + headerHeight;
-    root.style.setProperty('--app-header-offset', `${offset}px`);
-  }, []);
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ open?: boolean }>).detail;
+      if (typeof detail?.open !== 'boolean') return;
+      menuOpenRef.current = detail.open;
+      if (detail.open) {
+        setIsHeaderHidden(false);
+        lastScrollYRef.current = window.scrollY || 0;
+      } else {
+        applyHeaderOffset();
+      }
+    };
+    window.addEventListener('ku-popover-state', handler);
+    return () => window.removeEventListener('ku-popover-state', handler);
+  }, [applyHeaderOffset]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -103,7 +121,9 @@ export default function AppHeader({ user }: AppHeaderProps) {
           announcementHeightRef.current = announcementHeight;
         }
       }
-      applyHeaderOffset();
+      if (!menuOpenRef.current) {
+        applyHeaderOffset();
+      }
     };
 
     updateHeight();
@@ -134,7 +154,9 @@ export default function AppHeader({ user }: AppHeaderProps) {
       if (!mql.matches) {
         setIsHeaderHidden(false);
       }
-      applyHeaderOffset();
+      if (!menuOpenRef.current) {
+        applyHeaderOffset();
+      }
     };
 
     updateMobile();
@@ -183,7 +205,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
     };
 
     const handleScroll = () => {
-      if (!isMobileRef.current) return;
+      if (!isMobileRef.current || menuOpenRef.current) return;
       if (scrollRafRef.current !== null) return;
       scrollRafRef.current = window.requestAnimationFrame(() => {
         scrollRafRef.current = null;
