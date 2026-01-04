@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ interface AuthButtonProps {
 
 export default function AuthButton({ user }: AuthButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { t, locale } = useLocale();
   const isRtl = locale === 'ar' || locale === 'ku';
   const isKurdish = locale === 'ku';
@@ -32,8 +33,23 @@ export default function AuthButton({ user }: AuthButtonProps) {
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [otpError, setOtpError] = useState<string | null>(null);
+  const phoneInputRef = useRef<HTMLInputElement | null>(null);
+  const otpInputRef = useRef<HTMLInputElement | null>(null);
   const supabase = createClient();
   const { NEXT_PUBLIC_SITE_URL } = getPublicEnv();
+  const handleDialogAutoFocus = useCallback((event: Event) => {
+    event.preventDefault();
+  }, []);
+  const focusDialogInput = useCallback(() => {
+    if (!dialogOpen) return;
+    const target = showOtpInput ? otpInputRef.current : phoneInputRef.current;
+    if (!target) return;
+    try {
+      target.focus({ preventScroll: true });
+    } catch {
+      target.focus();
+    }
+  }, [dialogOpen, showOtpInput]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -46,6 +62,19 @@ export default function AuthButton({ user }: AuthButtonProps) {
     window.addEventListener('ku-menu-open', handler);
     return () => window.removeEventListener('ku-menu-open', handler);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('ku-popover-state', { detail: { open: menuOpen || dialogOpen } }));
+  }, [menuOpen, dialogOpen]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !dialogOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      focusDialogInput();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [dialogOpen, showOtpInput, focusDialogInput]);
 
   const handleGoogleLogin = async () => {
     setIsLoading(true);
@@ -209,7 +238,16 @@ export default function AuthButton({ user }: AuthButtonProps) {
   }
 
   return (
-    <Dialog>
+    <Dialog
+      modal={false}
+      open={dialogOpen}
+      onOpenChange={(next) => {
+        setDialogOpen(next);
+        if (next && typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ku-menu-open', { detail: { source: 'auth-dialog' } }));
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button
           variant="outline"
@@ -218,6 +256,11 @@ export default function AuthButton({ user }: AuthButtonProps) {
             "transition active:scale-[0.98] data-[state=open]:scale-[1.02] data-[state=open]:shadow-[0_12px_28px_rgba(247,111,29,0.16)]",
             isRtl && "px-2 text-[12px]",
           )}
+          onPointerDown={(event) => {
+            if (event.pointerType === "touch") {
+              event.preventDefault();
+            }
+          }}
         >
           <User className="mr-2 h-4 w-4" />
           <span
@@ -231,7 +274,11 @@ export default function AuthButton({ user }: AuthButtonProps) {
           </span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent
+        className="sm:max-w-[425px]"
+        onOpenAutoFocus={handleDialogAutoFocus}
+        onCloseAutoFocus={handleDialogAutoFocus}
+      >
         <DialogHeader>
           <DialogTitle
             className={cn(
@@ -284,6 +331,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
                 placeholder={t('auth.phonePlaceholder')}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                ref={phoneInputRef}
               />
               {phoneError && (
                 <p className="text-xs text-destructive">
@@ -305,6 +353,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
                 maxLength={6}
+                ref={otpInputRef}
               />
               {otpError && (
                 <p className="text-xs text-destructive">

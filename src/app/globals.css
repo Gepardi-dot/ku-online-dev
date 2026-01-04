@@ -48,6 +48,10 @@
     width: 100%;
     overflow-x: hidden;
   }
+
+  html {
+    scrollbar-gutter: stable;
+  }
   
   html[lang='ar'],
   html[lang='ku'] {
@@ -156,8 +160,15 @@ html[lang='ku'] button {
     var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif !important;
 }
 
-html[dir='rtl'] body[data-scroll-locked] {
-  margin-right: 0 !important;
-  margin-left: var(--removed-body-scroll-bar-size, 0px) !important;
+@supports (scrollbar-gutter: stable) {
+  body[data-scroll-locked] {
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  html[dir='rtl'] body[data-scroll-locked] {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
 }
 
