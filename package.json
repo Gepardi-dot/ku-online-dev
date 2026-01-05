@@ -83,7 +83,7 @@
     "@eslint/eslintrc": "^3.3.3",
     "@playwright/test": "^1.49.0",
     "@tailwindcss/postcss": "^4.1.18",
-    "@types/node": "^20",
+    "@types/node": "^25",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.4.21",
