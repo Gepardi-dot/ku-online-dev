@@ -49,7 +49,7 @@ export default function ProductImages({
     .filter((src) => typeof src === 'string' && src.trim().length > 0)
     .map((src) => src.trim());
 
-  const fallback = 'https://placehold.co/1200x900?text=KU-ONLINE';
+  const fallback = 'https://placehold.co/1200x900?text=KU%20BAZAR';
   const safeImages = cleaned.length > 0 ? cleaned : [fallback];
 
 
@@ -802,3 +802,4 @@ function Lightbox({
     </Dialog>
   );
 }
+

@@ -10,7 +10,7 @@ export const translations = {
     },
     header: {
       searchPlaceholder: "Search for products, brands, and categories...",
-      searchMobilePlaceholder: "Search on KU-ONLINE...",
+      searchMobilePlaceholder: "Search on KU BAZAR...",
       searchByImage: "Search by image",
       filterLabel: "Filter by city",
       languageLabel: "Language",
@@ -71,7 +71,7 @@ export const translations = {
       },
     },
     auth: {
-      signInTitle: "Sign in to KU-ONLINE",
+      signInTitle: "Sign in to KU BAZAR",
       signInTitlePrefix: "Sign in to",
       continueWithGoogle: "Continue with Google",
       orLabel: "Or",
@@ -94,7 +94,7 @@ export const translations = {
       profile: "Profile",
     },
     footer: {
-      aboutTitle: "About KU-ONLINE",
+      aboutTitle: "About KU BAZAR",
       aboutLinks: {
         aboutUs: "About Us",
         careers: "Careers",
@@ -120,7 +120,7 @@ export const translations = {
       downloadAppTitle: "Download App",
       googlePlay: "Google Play",
       appStore: "App Store",
-      copyright: "© {year} KU-ONLINE. All rights reserved.",
+      copyright: "© {year} KU BAZAR. All rights reserved.",
     },
     homepage: {
       categoriesLabel: "Categories:",
@@ -130,11 +130,14 @@ export const translations = {
       swipeHint: "Swipe",
       noProducts: "No products found. Try adjusting your filters.",
       faqTitle: "Frequently Asked Questions",
+      faqSubtitle:
+        "Buying and selling is arranged directly between users. Read our quick tips and safety guidance before you meet.",
+      faqCta: "Read FAQs",
       faq: [
         {
-          question: "Is KU-ONLINE reliable and safe to use?",
+          question: "Is KU BAZAR reliable and safe to use?",
           answer:
-            "Yes, KU-ONLINE is a trustworthy marketplace. We protect every transaction with buyer safeguards so you can shop confidently.",
+            "Yes, KU BAZAR is a trustworthy marketplace. We protect every transaction with buyer safeguards so you can shop confidently.",
         },
         {
           question: "How long does shipping take?",
@@ -147,7 +150,7 @@ export const translations = {
             "Reach our team any time through the Help Center. We offer live chat and fast email support around the clock.",
         },
       ],
-      subscribeTitle: "Stay Updated with KU-ONLINE",
+      subscribeTitle: "Stay Updated with KU BAZAR",
       subscribeDescription:
         "Subscribe to our newsletter for exclusive deals, new product alerts, and shopping tips.",
       subscribePlaceholder: "Your email address",
@@ -156,12 +159,12 @@ export const translations = {
       subscribeError: "Please enter a valid email address.",
     },
     partnership: {
-      title: "Partner with KU-ONLINE",
+      title: "Partner with KU BAZAR",
       subtitle: "Collabs, sponsorships, store onboarding, and business inquiries.",
       audience: "For brands, stores, creators, and agencies.",
       responseTime: "We reply in 1-2 business days.",
-      ctaButton: "Partner with KU-ONLINE",
-      formTitle: "Partner with KU-ONLINE",
+      ctaButton: "Partner with KU BAZAR",
+      formTitle: "Partner with KU BAZAR",
       formDescription: "Tell us about your brand or collaboration idea.",
       fields: {
         name: "Full name",
@@ -632,7 +635,7 @@ export const translations = {
       selectReason: "Choose a reason",
       selectReasonHint: "Please select why you are reporting this listing.",
       submitSuccessTitle: "Report submitted",
-      submitSuccess: "Thanks for helping keep KU Online safe. Our team will review this listing.",
+      submitSuccess: "Thanks for helping keep KU BAZAR safe. Our team will review this listing.",
       submitErrorTitle: "Report not submitted",
       submitError: "We could not submit your report. Please try again shortly.",
       reasonScam: "Scam or fraud",
@@ -652,8 +655,8 @@ export const translations = {
       tagline: "بع أغراضك أو اشترِ أغراض الآخرين",
     },
     header: {
-      searchPlaceholder: "ابحث هنا KU-ONLINE",
-      searchMobilePlaceholder: "ابحث هنا KU-ONLINE",
+      searchPlaceholder: "ابحث هنا KU BAZAR",
+      searchMobilePlaceholder: "ابحث هنا KU BAZAR",
       searchByImage: "البحث بالصورة",
       filterLabel: "التصفية حسب المدينة",
       languageLabel: "اللغة",
@@ -714,7 +717,7 @@ export const translations = {
       },
     },
     auth: {
-      signInTitle: "تسجيل الدخول إلى KU-ONLINE",
+      signInTitle: "تسجيل الدخول إلى KU BAZAR",
       signInTitlePrefix: "تسجيل الدخول إلى",
       continueWithGoogle: "المتابعة باستخدام Google",
       orLabel: "أو",
@@ -737,7 +740,7 @@ export const translations = {
       profile: "بروفايل",
     },
     footer: {
-      aboutTitle: "عن KU-ONLINE",
+      aboutTitle: "عن KU BAZAR",
       aboutLinks: {
         aboutUs: "من نحن",
         careers: "وظائف",
@@ -763,7 +766,7 @@ export const translations = {
       downloadAppTitle: "تحميل التطبيق",
       googlePlay: "جوجل بلاي",
       appStore: "آب ستور",
-      copyright: "© {year} KU-ONLINE. جميع الحقوق محفوظة.",
+      copyright: "© {year} KU BAZAR. جميع الحقوق محفوظة.",
     },
     homepage: {
       categoriesLabel: "الفئات:",
@@ -773,11 +776,14 @@ export const translations = {
       swipeHint: "اسحب",
       noProducts: "لم يتم العثور على منتجات. جرّب تعديل عوامل التصفية.",
       faqTitle: "الأسئلة الشائعة",
+      faqSubtitle:
+        "تتم عمليات البيع والشراء مباشرة بين المستخدمين. اقرأ نصائحنا السريعة وإرشادات السلامة قبل اللقاء.",
+      faqCta: "اقرأ الأسئلة الشائعة",
       faq: [
         {
-          question: "هل KU-ONLINE موقع موثوق وآمن للاستخدام؟",
+          question: "هل KU BAZAR موقع موثوق وآمن للاستخدام؟",
           answer:
-            "نعم، KU-ONLINE سوق موثوق. نعمل على حماية كل عملية شراء من خلال طبقات من الأمان حتى تتسوق بثقة.",
+            "نعم، KU BAZAR سوق موثوق. نعمل على حماية كل عملية شراء من خلال طبقات من الأمان حتى تتسوق بثقة.",
         },
         {
           question: "كم تستغرق مدة الشحن؟",
@@ -790,7 +796,7 @@ export const translations = {
             "يمكنك التواصل معنا في أي وقت عبر مركز المساعدة. نوفر دعمًا فوريًا عبر الدردشة الحية والبريد الإلكتروني.",
         },
       ],
-      subscribeTitle: "ابقَ على اطلاع مع KU-ONLINE",
+      subscribeTitle: "ابقَ على اطلاع مع KU BAZAR",
       subscribeDescription:
         "اشترك في النشرة البريدية لتحصل على العروض الحصرية، وتنبيهات المنتجات الجديدة، ونصائح التسوق.",
       subscribePlaceholder: "عنوان بريدك الإلكتروني",
@@ -799,12 +805,12 @@ export const translations = {
       subscribeError: "يرجى إدخال عنوان بريد إلكتروني صالح.",
     },
     partnership: {
-      title: "شراكة مع KU-ONLINE",
+      title: "شراكة مع KU BAZAR",
       subtitle: "تعاونات، رعايات، انضمام المتاجر، واستفسارات الأعمال.",
       audience: "للعلامات التجارية والمتاجر وصناع المحتوى والوكالات.",
       responseTime: "نرد خلال 1-2 يوم عمل.",
-      ctaButton: "شراكة مع KU-ONLINE",
-      formTitle: "شراكة مع KU-ONLINE",
+      ctaButton: "شراكة مع KU BAZAR",
+      formTitle: "شراكة مع KU BAZAR",
       formDescription: "أخبرنا عن علامتك أو فكرة التعاون.",
       fields: {
         name: "الاسم الكامل",
@@ -1275,7 +1281,7 @@ export const translations = {
       selectReasonHint: "الرجاء اختيار سبب الإبلاغ.",
       submitSuccessTitle: "تم إرسال البلاغ",
       submitSuccess:
-        "شكرًا لمساعدتك في جعل KU-ONLINE مكانًا آمنًا. سنراجع هذا الإعلان.",
+        "شكرًا لمساعدتك في جعل KU BAZAR مكانًا آمنًا. سنراجع هذا الإعلان.",
       submitErrorTitle: "تعذر إرسال البلاغ",
       submitError: "تعذر إرسال البلاغ. يرجى المحاولة مرة أخرى.",
       reasonScam: "احتيال أو نصب",
@@ -1295,8 +1301,8 @@ export const translations = {
       tagline: "شتومەکت بفرۆشە یان بکڕە لەخەڵکی تر",
     },
     header: {
-      searchPlaceholder: "لێرە بگەڕێ KU-ONLINE",
-      searchMobilePlaceholder: "لێرە بگەڕێ KU-ONLINE",
+      searchPlaceholder: "لێرە بگەڕێ KU BAZAR",
+      searchMobilePlaceholder: "لێرە بگەڕێ KU BAZAR",
       searchByImage: "گەڕان بە وێنە",
       filterLabel: "پاڵاوتن بە پێی شار",
       languageLabel: "زمان",
@@ -1357,9 +1363,9 @@ export const translations = {
       },
     },
     auth: {
-      signInTitle: "KU-ONLINE تومارکردن بو ناو",
+      signInTitle: "KU BAZAR تومارکردن بو ناو",
       signInTitlePrefix: "تومارکردن بو ناو",
-      signInTitleBrand: "کو-ئونلاین",
+      signInTitleBrand: "KU BAZAR",
       continueWithGoogle: "بەردەوامبۆن بە گووگڵ",
       orLabel: "یان",
       phoneLabel: "ژمارەی مۆبایل",
@@ -1381,7 +1387,7 @@ export const translations = {
       profile: "پرۆفایل",
     },
     footer: {
-      aboutTitle: "دەربارەی KU-ONLINE",
+      aboutTitle: "دەربارەی KU BAZAR",
       aboutLinks: {
         aboutUs: "دەربارەمان",
         careers: "کارەکان",
@@ -1407,7 +1413,7 @@ export const translations = {
       downloadAppTitle: "داگرتنی ئەپ",
       googlePlay: "گۆگڵ پلەی",
       appStore: "ئەپ ستۆر",
-      copyright: "© {year} KU-ONLINE. هەموو مافەکان پارێزراون.",
+      copyright: "© {year} KU BAZAR. هەموو مافەکان پارێزراون.",
     },
     homepage: {
       categoriesLabel: "هاوپۆلەکان:",
@@ -1417,11 +1423,14 @@ export const translations = {
       swipeHint: "زیاتر",
       noProducts: "هیچ کاڵایەک نەدۆزرایەوە. تکایە پاڵاوتنەکانت بگۆڕە.",
       faqTitle: "پرسیارە دووبارەکان",
+      faqSubtitle:
+        "فرۆشتن و کڕین بە ڕاستەوخۆ لە نێوان بەکارهێنەراندا ئەنجام دەدرێت. پێش یەکگرتن، پێندراوە خێراکان و ڕێنمایی سەلامەتی بخوێنەوە.",
+      faqCta: "پرسیارە دووبارەکان بخوێنەوە",
       faq: [
         {
-          question: "KU-ONLINE باوەڕپێکراو و پارێزراوە؟",
+          question: "KU BAZAR باوەڕپێکراو و پارێزراوە؟",
           answer:
-            "بەڵێ، KU-ONLINE بازاڕێکی باوەڕپێکراوە. هەموو مامەڵەکان لەژێر پاراستن و چاودێریین بۆ ئەوەی بە دڵنیایی کڕینی بکەیت.",
+            "بەڵێ، KU BAZAR بازاڕێکی باوەڕپێکراوە. هەموو مامەڵەکان لەژێر پاراستن و چاودێریین بۆ ئەوەی بە دڵنیایی کڕینی بکەیت.",
         },
         {
           question: "ناردن چەند رۆژ دەخایەنێت؟",
@@ -1434,7 +1443,7 @@ export const translations = {
             "هەرکات دەتوانیت لە ڕێگەی ناوەندە یارمەتیەکەوە پەیوەندیمان پێوە بکەیت. چات و ئیمەیڵی خێرا بەردەستە بۆ پشتگیری.",
         },
       ],
-      subscribeTitle: "هاوبەش بە نوێکارییەکانی KU-ONLINE",
+      subscribeTitle: "هاوبەش بە نوێکارییەکانی KU BAZAR",
       subscribeDescription:
         "بۆ وەرگرتنی دانەوە، داواکاری نوێ و ڕاوێژی کڕین، بە ئاگاداری پۆستی ئەلیکترۆنی هاوبەش ببە.",
       subscribePlaceholder: "ناونیشانی پۆستی ئەلیکترۆنی",
@@ -1443,12 +1452,12 @@ export const translations = {
       subscribeError: "تکایە ناونیشانی پۆستی ئەلیکترۆنی دروست بنووسە.",
     },
     partnership: {
-      title: "هاوبەشبوون لەگەڵ KU-ONLINE",
+      title: "هاوبەشبوون لەگەڵ KU BAZAR",
       subtitle: "هاوکاری، سپۆنسەری، هێنانی فرۆشگا، و پرسیارە بازرگانییەکان.",
       audience: "بۆ براندەکان، فرۆشگاکان، دروستکەرانی ناوەڕۆک، و ئاژانسەکان.",
       responseTime: "لە ماوەی 1-2 رۆژی کاریدا وەڵام دەدەین.",
-      ctaButton: "هاوبەشبوون لەگەڵ KU-ONLINE",
-      formTitle: "هاوبەشبوون لەگەڵ KU-ONLINE",
+      ctaButton: "هاوبەشبوون لەگەڵ KU BAZAR",
+      formTitle: "هاوبەشبوون لەگەڵ KU BAZAR",
       formDescription: "دەربارەی براندەکەت یان بیرۆکەی هاوکاریەکەت پێمان بڵێ.",
       fields: {
         name: "ناوی تەواو",
@@ -1919,7 +1928,7 @@ export const translations = {
       selectReasonHint: "تکایە هۆکاری ڕاپۆرتەکەت دیاری بکە.",
       submitSuccessTitle: "ڕاپۆرت نێردرا",
       submitSuccess:
-        "سوپاس بۆ یارمەتیدانت لە پاراستنی KU-ONLINE. تیمەکەمان ئەم ئیلانە دەبینێت.",
+        "سوپاس بۆ یارمەتیدانت لە پاراستنی KU BAZAR. تیمەکەمان ئەم ئیلانە دەبینێت.",
       submitErrorTitle: "ڕاپۆرت نەنێردرا",
       submitError: "نەتوانرا ڕاپۆرت بنێردرێت. تکایە دووبارە هەوڵ بدە.",
       reasonScam: "فڕۆشاری دەروون یان فێڵ",
@@ -1959,3 +1968,4 @@ export function translateFromDictionary(locale: Locale, key: string): string {
 
   return typeof current === "string" ? current : key;
 }
+

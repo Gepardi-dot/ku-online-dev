@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { Locale } from '@/lib/locale/dictionary';
+import { rtlLocales } from '@/lib/locale/dictionary';
 import { useLocale } from '@/providers/locale-provider';
 import { Check, Globe } from 'lucide-react';
 
@@ -23,6 +24,7 @@ const LANGUAGE_BADGES: Record<Locale, string> = {
 
 export default function LanguageSwitcher() {
   const { locale, setLocale, messages, t } = useLocale();
+  const isRtl = rtlLocales.includes(locale);
   const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -60,7 +62,7 @@ export default function LanguageSwitcher() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="end"
+        align={isRtl ? "start" : "end"}
         sideOffset={10}
         className="z-90 w-48 rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
       >

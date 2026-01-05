@@ -15,7 +15,7 @@ export default async function FeesPaymentsPage() {
         <div className="container mx-auto px-4 max-w-4xl">
           <h1 className="text-3xl font-bold mb-6">Fees & Payments</h1>
           <p className="text-gray-700 mb-6">
-            KU-ONLINE is a peer‑to‑peer marketplace and does not currently offer
+            KU BAZAR is a peer‑to‑peer marketplace and does not currently offer
             escrow or hold funds between parties. Any delivery costs are agreed
             between buyer and seller.
           </p>
@@ -47,4 +47,5 @@ export default async function FeesPaymentsPage() {
     </AppLayout>
   );
 }
+
 

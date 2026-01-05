@@ -171,7 +171,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     }
   };
 
-  const rawImages = product.imageUrls.length > 0 ? product.imageUrls : ['https://placehold.co/800x600?text=KU-ONLINE'];
+  const rawImages = product.imageUrls.length > 0 ? product.imageUrls : ['https://placehold.co/800x600?text=KU%20BAZAR'];
   const seller = product.seller;
   const sellerId = seller?.id ?? product.sellerId;
   const viewerId = user?.id ?? null;

@@ -106,6 +106,7 @@ const productQuerySchema = z.object({
   search: z.string().optional(),
   category: z.string().optional(),
   condition: z.string().optional(),
+  color: z.string().optional(),
   location: z.string().optional(),
   minPrice: z.string().optional(),
   maxPrice: z.string().optional(),

@@ -415,8 +415,9 @@ function buildProductsQuery(supabase: any, filters: ProductFilters = {}, options
     query = query.eq('category_id', filters.category);
   }
 
-  if (filters.condition) {
-    query = query.eq('condition', filters.condition);
+  const condition = filters.condition?.trim();
+  if (condition) {
+    query = query.ilike('condition', condition);
   }
 
   if (filters.location) {
