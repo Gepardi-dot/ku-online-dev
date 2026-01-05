@@ -1,9 +1,9 @@
-# KU-ONLINE Marketplace - System Overview
+# KU BAZAR Marketplace - System Overview
 
 > AI-oriented guide to the current frontend codebase so autonomous agents can reason about scope, architecture, and next actions.
 
 ## 1. Project Snapshot
-- **Product**: KU-ONLINE - a classifieds marketplace for buying/selling within Kurdistan.
+- **Product**: KU BAZAR - a classifieds marketplace for buying/selling within Kurdistan.
 - **Frontend**: Next.js 15 App Router, TypeScript, TailwindCSS, shadcn/ui.
 - **Backend**: Supabase (auth, Postgres, storage). No dedicated server in this repo.
 - **Target**: Responsive web app with listings, product detail, seller interactions, and listing creation.
@@ -162,6 +162,7 @@ fd page.tsx src/app
 ```
 
 ## 11. Contact & Meta
-- No official maintainer metadata present; assume PRs reviewed by KU-ONLINE frontend team.
+- No official maintainer metadata present; assume PRs reviewed by KU BAZAR frontend team.
 - This document should be kept in sync with significant architectural or workflow changes.
+
 

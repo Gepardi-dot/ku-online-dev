@@ -1,4 +1,4 @@
-﻿import type { Metadata } from 'next';
+import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
@@ -25,7 +25,7 @@ const notoKufiArabic = Noto_Kufi_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: 'KU-ONLINE - Your Global Online Shopping Destination',
+  title: 'KU BAZAR - Your Global Online Shopping Destination',
   description: 'A multi-vendor local marketplace for the Kurdistan region.',
 };
 
@@ -71,3 +71,4 @@ export default async function RootLayout({
     </html>
   );
 }
+
