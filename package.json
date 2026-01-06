@@ -55,7 +55,7 @@
     "drizzle-orm": "^0.45.1",
     "embla-carousel-react": "^8.6.0",
     "lucide-react": "^0.475.0",
-    "next": "^15.5.7",
+    "next": "15.5.9",
     "next-intl": "^4.6.1",
     "postgres": "^3.4.7",
     "react": "^18.3.1",
@@ -69,9 +69,9 @@
     "zod": "^3.25.76"
   },
   "optionalDependencies": {
-    "@rollup/rollup-linux-x64-gnu": "4.52.5",
     "@img/sharp-libvips-linux-x64": "1.0.4",
-    "@img/sharp-linux-x64": "0.33.5"
+    "@img/sharp-linux-x64": "0.33.5",
+    "@rollup/rollup-linux-x64-gnu": "4.52.5"
   },
   "overrides": {
     "esbuild": "0.25.10"
@@ -90,7 +90,7 @@
     "baseline-browser-mapping": "2.9.11",
     "drizzle-kit": "^0.31.8",
     "eslint": "^9.39.2",
-    "eslint-config-next": "^15.5.7",
+    "eslint-config-next": "15.5.9",
     "kill-port": "^2.0.1",
     "msw": "^2.11.6",
     "postcss": "^8",
