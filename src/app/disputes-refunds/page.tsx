@@ -15,7 +15,7 @@ export default async function DisputesRefundsPage() {
         <div className="container mx-auto px-4 max-w-4xl">
           <h1 className="text-3xl font-bold mb-6">Disputes & Refund Requests</h1>
           <p className="text-gray-700 mb-6">
-            KU-ONLINE is a listings marketplace. We do not own items, ship on your
+            KU BAZAR is a listings marketplace. We do not own items, ship on your
             behalf, or control payments between buyers and sellers. Most issues are
             resolved directly between the two parties. If you cannot reach a
             resolution, you can escalate for a platform review as described below.
@@ -37,7 +37,7 @@ export default async function DisputesRefundsPage() {
 
           <h2 className="text-xl font-semibold mt-8 mb-3">How to request a refund (buyers)</h2>
           <ol className="list-decimal pl-6 space-y-2 text-gray-700">
-            <li>Message the seller in KU-ONLINE within 48 hours of receipt/handover.</li>
+            <li>Message the seller in KU BAZAR within 48 hours of receipt/handover.</li>
             <li>Provide photos/videos and a short description of the issue.</li>
             <li>
               If unresolved, select <em>Report an issue</em> on the listing or message
@@ -54,14 +54,14 @@ export default async function DisputesRefundsPage() {
 
           <h2 className="text-xl font-semibold mt-8 mb-3">Platform review</h2>
           <p className="text-gray-700 mb-3">
-            When escalated, KU-ONLINE may review the listing, message history, and
+            When escalated, KU BAZAR may review the listing, message history, and
             evidence submitted. We may remove listings or take account actions for
             policy violations. We do not move money or force refunds between parties.
           </p>
 
           <h2 className="text-xl font-semibold mt-8 mb-3">Evidence tips</h2>
           <ul className="list-disc pl-6 space-y-2 text-gray-700">
-            <li>Keep all communication on KU-ONLINE messages.</li>
+            <li>Keep all communication on KU BAZAR messages.</li>
             <li>Save receipts and any tracking information.</li>
             <li>Photograph the package on arrival and record unboxing for condition disputes.</li>
           </ul>
@@ -73,7 +73,7 @@ export default async function DisputesRefundsPage() {
           </p>
 
           <p className="text-gray-500 mt-8">
-            Typical timelines: seller reply within 48 hours; KU-ONLINE review within
+            Typical timelines: seller reply within 48 hours; KU BAZAR review within
             3 business days after receiving complete evidence.
           </p>
         </div>
@@ -81,4 +81,5 @@ export default async function DisputesRefundsPage() {
     </AppLayout>
   );
 }
+
 

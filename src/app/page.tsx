@@ -307,11 +307,11 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
           <div className="container mx-auto px-4 text-center space-y-4">
             <h2 className="text-2xl md:text-3xl font-bold">{messages.homepage.faqTitle}</h2>
             <p className="text-muted-foreground max-w-2xl mx-auto">
-              Buying and selling is arranged directly between users. Read our quick tips and safety guidance before you meet.
+              {messages.homepage.faqSubtitle}
             </p>
             <div>
               <Link href="/faq" className="inline-flex items-center rounded-full bg-primary px-5 py-2 text-primary-foreground font-semibold hover:bg-primary/90">
-                Read FAQs
+                {messages.homepage.faqCta}
               </Link>
             </div>
           </div>

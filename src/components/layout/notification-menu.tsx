@@ -301,7 +301,7 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
           </button>
         </PopoverTrigger>
         <PopoverContent
-          align="end"
+          align={isRtl ? "start" : "end"}
           side="bottom"
           sideOffset={12}
           className="z-90 flex w-[420px] max-h-[calc(100vh-5rem)] max-w-[calc(100vw-1rem)] flex-col overscroll-contain rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"

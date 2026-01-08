@@ -22,6 +22,7 @@ import LanguageSwitcher from '@/components/language-switcher';
 import AuthButton from '@/components/auth/auth-button';
 import type { User } from '@supabase/supabase-js';
 import { useLocale } from '@/providers/locale-provider';
+import { rtlLocales } from '@/lib/locale/dictionary';
 import { cn } from '@/lib/utils';
 import NotificationMenu from './notification-menu';
 import MessagesMenu from './messages-menu';
@@ -35,7 +36,8 @@ const CITY_KEYS = ['all', 'erbil', 'sulaymaniyah', 'duhok', 'zaxo'] as const;
 type CityKey = (typeof CITY_KEYS)[number];
 
 export default function AppHeader({ user }: AppHeaderProps) {
-  const { t, messages } = useLocale();
+  const { t, messages, locale } = useLocale();
+  const isRtl = rtlLocales.includes(locale);
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -319,7 +321,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
             <Link
               href="/"
               className="group relative flex h-16 w-16 items-center justify-center md:hidden"
-              aria-label="KU-ONLINE home"
+              aria-label="KU BAZAR home"
             >
               <BrandLogo
                 className="h-16 w-16 overflow-visible transform scale-[2.95] translate-y-[20px] transition-transform duration-200 group-hover:scale-[3.0] group-hover:translate-y-[18px] pointer-events-none"
@@ -332,7 +334,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
           <div className="hidden md:flex flex-1 max-w-4xl mx-4 items-center gap-4">
             <Link
               href="/"
-              aria-label="KU-ONLINE home"
+              aria-label="KU BAZAR home"
               className="group flex h-14 w-14 items-center justify-center"
             >
               <BrandLogo
@@ -376,7 +378,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent
-                      align="end"
+                      align={isRtl ? "start" : "end"}
                       sideOffset={10}
                       className="z-90 w-48 rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
                     >
@@ -521,7 +523,7 @@ export default function AppHeader({ user }: AppHeaderProps) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                align="end"
+                align={isRtl ? "start" : "end"}
                 sideOffset={10}
                 className="z-90 w-48 rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
               >
@@ -548,3 +550,4 @@ export default function AppHeader({ user }: AppHeaderProps) {
     </header>
   );
 }
+
