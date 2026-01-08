@@ -5,6 +5,7 @@ import path from 'node:path';
 import killPort from 'kill-port';
 
 const DEFAULT_PORT = Number(process.env.PORT ?? 5000);
+const DEFAULT_HOST = process.env.HOST ?? '0.0.0.0';
 
 function isPortFreeOn(port, host) {
   return new Promise((resolve) => {
@@ -69,13 +70,14 @@ async function ensurePort(port) {
     ? path.join(process.cwd(), 'node_modules', '.bin', 'next.cmd')
     : path.join(process.cwd(), 'node_modules', '.bin', 'next');
 
-  const nextPublicSiteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? `http://127.0.0.1:${port}`;
-  console.log(`➡️  Starting Next.js on http://127.0.0.1:${port}`);
+  const displayHost = DEFAULT_HOST === '0.0.0.0' ? 'localhost' : DEFAULT_HOST;
+  const nextPublicSiteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? `http://${displayHost}:${port}`;
+  console.log(`➡️  Starting Next.js on http://${displayHost}:${port}`);
 
   // On Windows, some environments throw EINVAL when spawning .cmd directly.
   // Fallback to spawning through a shell, or using npx if necessary.
-  // Bind explicitly to IPv4 to avoid ::1 conflicts on Windows
-  const args = ['dev', '-H', '127.0.0.1', '-p', String(port)];
+  // Bind explicitly to IPv4 to avoid ::1 conflicts on Windows.
+  const args = ['dev', '-H', DEFAULT_HOST, '-p', String(port)];
   const spawnEnv = {
     ...process.env,
     PORT: String(port),
