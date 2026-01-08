@@ -542,21 +542,11 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
       void loadMessages(activeConversationId, { before: oldestCursor, append: true });
     };
 
+    const orderedMessages = [...messagesState].reverse();
+
     return (
       <div className="space-y-3">
-        {hasMore && oldestCursor ? (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={handleLoadMore}
-              className="text-[11px] text-primary underline-offset-2 hover:underline"
-              disabled={loadingMessages}
-            >
-              {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
-            </button>
-          </div>
-        ) : null}
-        {messagesState.map((message) => {
+        {orderedMessages.map((message) => {
           const isViewer = message.senderId === userId;
           const translationState = messageTranslations[message.id];
           const showTranslated = !isViewer && translationState?.translated && translationState.showing;
@@ -640,6 +630,18 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
             </div>
           );
         })}
+        {hasMore && oldestCursor ? (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={handleLoadMore}
+              className="text-[11px] text-primary underline-offset-2 hover:underline"
+              disabled={loadingMessages}
+            >
+              {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   }, [

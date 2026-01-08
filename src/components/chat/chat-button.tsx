@@ -434,9 +434,11 @@ export default function ChatButton({
       );
     }
 
+    const orderedMessages = [...messages].reverse();
+
     return (
       <div className="space-y-3">
-        {messages.map((message) => {
+        {orderedMessages.map((message) => {
           const isViewer = message.senderId === viewerId;
           const translationState = messageTranslations[message.id];
           const showTranslated =
@@ -573,4 +575,3 @@ export default function ChatButton({
     </Dialog>
   );
 }
-
