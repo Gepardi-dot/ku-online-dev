@@ -791,21 +791,11 @@ export default function MessagesMenu({
       );
     }
 
+    const orderedMessages = [...messages].reverse();
+
     return (
       <div className="space-y-3">
-        {hasMore && oldestCursor && (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              className="text-[11px] text-brand underline-offset-2 hover:underline"
-              onClick={handleLoadMore}
-              disabled={loadingMessages}
-            >
-              {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
-            </button>
-          </div>
-        )}
-        {messages.map((message) => {
+        {orderedMessages.map((message) => {
           const isViewer = message.senderId === userId;
           const timestamp = formatRelativeTime(new Date(message.createdAt));
           const messageIsArabic = hasArabicScript(message.content);
@@ -840,6 +830,18 @@ export default function MessagesMenu({
             </div>
           );
         })}
+        {hasMore && oldestCursor && (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              className="text-[11px] text-brand underline-offset-2 hover:underline"
+              onClick={handleLoadMore}
+              disabled={loadingMessages}
+            >
+              {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
+            </button>
+          </div>
+        )}
       </div>
     );
   };
