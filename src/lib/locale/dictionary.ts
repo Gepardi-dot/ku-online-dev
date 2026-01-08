@@ -1419,7 +1419,7 @@ export const translations = {
       categoriesLabel: "هاوپۆلەکان:",
       noCategories: "هێشتا هاوپۆل دیاری نەکراوە.",
       latest: "نوێترین شتان",
-      viewAll: "بینینی هەموو",
+      viewAll: "هەمووی ببینە",
       swipeHint: "زیاتر",
       noProducts: "هیچ کاڵایەک نەدۆزرایەوە. تکایە پاڵاوتنەکانت بگۆڕە.",
       faqTitle: "پرسیارە دووبارەکان",
@@ -1655,12 +1655,12 @@ export const translations = {
         recentActivityDescription:
           "ئەو شتانەی بڵاوکردۆتەوە و ئەوەی کڕیاران دەڵێن.",
         latestListingsTitle: "نوێترین ئیلانەکان",
-        latestListingsCta: "بینینی هەموو",
+        latestListingsCta: "هەمووی ببینە",
         latestListingsEmpty: "یەک ئیلان بڵاو بکەرەوە بۆ ئەوەی لێرە پیشان بدرێت.",
         recentReviewsTitle: "دواین پـێداچوونەوەکان",
         recentReviewsEmpty:
           "هێشتا هیچ پـێداچوونەوەیەک نییە. کاتێک بێن، لێرە پیشان دەدرێن.",
-        recentReviewsCta: "بینینی هەموو پـێداچوونەوەکان",
+        recentReviewsCta: "هەمووی ببینە پـێداچوونەوەکان",
         messagesEmpty: "گفتوگۆکانت لێرە دەردەکەون.",
         contactTitle: "پەیوەندی",
         phoneNotProvided: "ژمارەی تەلەفۆن نییە",
