@@ -12,10 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollHintList } from '@/components/ui/scroll-hint-list';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Check, CheckCircle2, ChevronDown, Circle, FileText, Info, Loader2, MapPin, Sparkles, Tag, Upload, X } from 'lucide-react';
+import { CheckCircle2, ChevronDown, Circle, FileText, Info, Loader2, MapPin, Sparkles, Tag, Upload, X, ChevronUp } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { CONDITION_OPTIONS } from '@/lib/products/filter-params';
 import { createProductSchema } from '@/lib/validation/schemas';
@@ -119,30 +117,45 @@ export default function SellForm({ user }: SellFormProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [isFree, setIsFree] = useState(false);
-  const [conditionMenuOpen, setConditionMenuOpen] = useState(false);
-  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
-  const [locationMenuOpen, setLocationMenuOpen] = useState(false);
-  const [colorMenuOpen, setColorMenuOpen] = useState(false);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
+  const colorScrollRef = useRef<HTMLDivElement>(null);
   const { t, messages, locale } = useLocale();
   const direction = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
-  const contentAlign = direction === 'rtl' ? 'end' : 'start';
   const requiredFieldMessage = t('common.validation.required');
-  const handlePopoverAutoFocus = useCallback((event: Event) => {
-    if (typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches) {
-      event.preventDefault();
+  const updateColorScrollState = useCallback(() => {
+    const el = colorScrollRef.current;
+    if (!el) {
+      setCanScrollUp(false);
+      setCanScrollDown(false);
+      return;
     }
+    const { scrollTop, scrollHeight, clientHeight } = el;
+    const threshold = 1;
+    setCanScrollUp(scrollTop > threshold);
+    setCanScrollDown(scrollTop + clientHeight < scrollHeight - threshold);
   }, []);
-  const handleTriggerPointerDown = useCallback((event: React.PointerEvent<HTMLElement>) => {
-    if (event.pointerType === 'touch') {
-      event.preventDefault();
-    }
-  }, []);
-  const anyMenuOpen = conditionMenuOpen || categoryMenuOpen || locationMenuOpen || colorMenuOpen;
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    window.dispatchEvent(new CustomEvent('ku-popover-state', { detail: { open: anyMenuOpen } }));
-  }, [anyMenuOpen]);
+    const el = colorScrollRef.current;
+    if (!el) return;
+    updateColorScrollState();
+
+    const handleScroll = () => updateColorScrollState();
+    el.addEventListener('scroll', handleScroll, { passive: true });
+
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => updateColorScrollState());
+      observer.observe(el);
+    }
+
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      observer?.disconnect();
+    };
+  }, [updateColorScrollState]);
+
   const currencyToggleOptions: Array<{ value: CurrencyCode; label: string }> = [
     { value: 'IQD', label: t('sellForm.currency.iqd') },
     { value: 'USD', label: t('sellForm.currency.usd') },
@@ -188,38 +201,45 @@ export default function SellForm({ user }: SellFormProps) {
     return isToken ? getColorLabel(colorValue as (typeof SELL_COLOR_TOKENS)[number]) : colorValue;
   };
 
-  const filterBarSelectTriggerClassName = [
-    'flex items-center justify-between',
-    'inline-flex h-9 w-fit shrink-0 items-center gap-2 px-3.5 text-sm font-medium',
-    'rounded-xl border border-slate-200/90 bg-white/80 shadow-[0_6px_18px_rgba(15,23,42,0.10)] ring-1 ring-black/5 backdrop-blur-xl',
-    'transition-all duration-200 ease-out will-change-transform',
-    'hover:border-slate-300/90 hover:bg-white/90 hover:shadow-[0_8px_22px_rgba(15,23,42,0.12)]',
-    'data-[state=open]:-translate-y-0.5 md:data-[state=open]:translate-y-0 data-[state=open]:border-primary/40 data-[state=open]:bg-white/95',
-    'data-[state=open]:shadow-[0_16px_40px_rgba(249,115,22,0.22)] data-[state=open]:ring-2 data-[state=open]:ring-primary/30',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white/80',
-    '!bg-none !bg-white/80 !border-slate-200/90',
+  const menuShellClassName = [
+    'mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white',
+    'shadow-[0_6px_16px_rgba(15,23,42,0.08)]',
   ].join(' ');
 
-  const filterBarSelectContentClassName = [
-    'max-h-[15rem] w-fit max-w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/45 bg-white/35 p-1',
-    'shadow-[0_30px_95px_rgba(15,23,42,0.2)] ring-1 ring-white/20 backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110',
-    '!bg-none !bg-white/35 !border-white/45',
-    '[&_[data-radix-select-viewport]]:!w-auto [&_[data-radix-select-viewport]]:!min-w-0',
+  const menuHeaderClassName = [
+    'flex items-center justify-between gap-3 border-b border-slate-200/80 bg-slate-50/80 px-4 py-2 text-[11px] font-semibold text-slate-500',
+    'md:px-5',
   ].join(' ');
 
-  const filterBarSelectItemClassName = [
-    'relative isolate mb-1 last:mb-0 block w-full truncate overflow-hidden rounded-lg border border-white/35 bg-slate-50/25 py-2 ps-3 pe-10 text-sm text-foreground origin-center',
-    'backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110',
-    'shadow-[0_14px_30px_rgba(15,23,42,0.16),inset_0_1px_0_rgba(255,255,255,0.28),inset_0_-1px_0_rgba(255,255,255,0.12)]',
-    'before:pointer-events-none before:absolute before:inset-0 before:z-0 before:opacity-55',
-    'before:bg-none',
-    'after:pointer-events-none after:absolute after:inset-0 after:z-0 after:opacity-60 after:bg-linear-to-b after:from-white/22 after:via-transparent after:to-transparent',
-    'motion-safe:transition-[transform,background-color,border-color,box-shadow] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none',
-    'hover:bg-white/30 hover:border-primary/30 hover:shadow-[0_0_0_1px_rgba(249,115,22,0.25)] hover:scale-[1.01]',
-    'data-highlighted:scale-[0.99] data-highlighted:-translate-y-[1px]',
-    'data-highlighted:bg-primary/10 data-highlighted:border-primary/25 data-highlighted:shadow-[0_14px_26px_rgba(249,115,22,0.12)]',
-    'data-[state=checked]:bg-primary/10 data-[state=checked]:border-primary/30 data-[state=checked]:shadow-[0_14px_26px_rgba(249,115,22,0.14)]',
+  const menuHeaderValueClassName = 'truncate text-xs font-semibold text-slate-800 normal-case tracking-normal';
+
+  const menuListClassName = 'max-h-60 overflow-y-auto md:max-h-72';
+  const menuListInnerClassName = 'flex flex-col';
+
+  const menuRowClassName = [
+    'group flex w-full items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-slate-800',
+    'border-b border-slate-100 last:border-b-0',
+    'text-start transition hover:bg-slate-50',
+    'data-[state=checked]:bg-slate-50 data-[state=checked]:text-slate-900',
+    'md:px-5',
   ].join(' ');
+
+  const menuRowIndicatorClassName = [
+    'flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white',
+    'shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)]',
+    'group-data-[state=checked]:border-orange-500 group-data-[state=checked]:bg-orange-500',
+  ].join(' ');
+
+  const menuRowIndicatorDotClassName = [
+    'h-1.5 w-1.5 rounded-full bg-white opacity-0 transition-opacity',
+    'group-data-[state=checked]:opacity-100',
+  ].join(' ');
+
+  const menuRowSwatchClassName =
+    'h-3 w-3 rounded-full ring-1 ring-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.12)]';
+
+  const menuEmptyStateClassName =
+    'border-b border-slate-100 bg-slate-50 px-4 py-4 text-center text-xs text-slate-500 md:px-5';
 
   const selectTriggerClassName = [
     'h-12 w-fit max-w-full rounded-2xl border border-[#eadbc5]/80 bg-linear-to-b from-[#fffdf7] to-[#fff2e2] px-4 text-sm text-[#1F1C1C]',
@@ -239,7 +259,16 @@ export default function SellForm({ user }: SellFormProps) {
   ].join(' ');
 
   const compactSelectContentClassName = `${selectContentClassName} max-h-60 w-[18rem] max-w-[min(18rem,calc(100vw-2rem))] **:data-radix-select-viewport:w-full!`;
-  const colorSelectContentClassName = `${compactSelectContentClassName} w-48 px-0 py-0 **:data-radix-select-viewport:min-w-0! **:data-radix-select-viewport:w-48! **:data-radix-select-viewport:p-0!`;
+
+  const menuScrollAreaClassName = 'relative max-h-60 overflow-y-auto overflow-x-hidden no-scrollbar scroll-smooth md:max-h-72';
+  const menuCueTopClassName = 'absolute top-0 left-0 right-0 z-10 pointer-events-none';
+  const menuCueBottomClassName = 'absolute bottom-0 left-0 right-0 z-10 pointer-events-none';
+  const menuCueBarTopClassName = 'h-8 w-full rounded-t-2xl bg-gradient-to-b from-white via-white/80 to-transparent';
+  const menuCueBarBottomClassName = 'h-8 w-full rounded-b-2xl bg-gradient-to-t from-white via-white/80 to-transparent';
+  const menuCueIconTopClassName = 'absolute inset-x-0 top-1 flex items-center justify-center';
+  const menuCueIconBottomClassName = 'absolute inset-x-0 bottom-1 flex items-center justify-center';
+  const menuCueChevronClassName = 'h-4 w-4 text-slate-400 drop-shadow-sm';
+
   const listSelectContentClassName = [
     selectContentClassName,
     'max-h-64',
@@ -308,28 +337,10 @@ export default function SellForm({ user }: SellFormProps) {
     'data-[state=checked]:border-white data-[state=checked]:bg-white/90 data-[state=checked]:font-medium',
   ].join(' ');
 
-  const colorSelectItemBaseClassName = [
-    'flex h-12 w-full items-center justify-center rounded-none px-3 text-center text-sm font-semibold uppercase tracking-wide',
-    'ps-0! pe-0!',
-    'border border-transparent **:data-indicator:hidden select-none outline-none',
-    'bg-(--chip-bg) text-(--chip-fg)',
-    'hover:bg-(--chip-bg) hover:text-(--chip-fg)',
-    'focus:bg-(--chip-bg) focus:text-(--chip-fg)',
-    'data-highlighted:bg-(--chip-bg) data-highlighted:text-(--chip-fg)',
-    'motion-safe:transition-[transform,border-color] motion-safe:duration-150 motion-safe:ease-out motion-reduce:transition-none',
-    'active:scale-[0.98] data-highlighted:scale-[0.99] data-highlighted:border-white/60',
-    'data-[state=checked]:border-white data-[state=checked]:shadow-none',
-  ].join(' ');
-
-  const getColorSelectItemStyle = (token: (typeof SELL_COLOR_TOKENS)[number]) =>
-    ({
-      ['--chip-bg' as string]: COLOR_CHIP_STYLE_MAP[token].bg,
-      ['--chip-fg' as string]: COLOR_CHIP_STYLE_MAP[token].fg,
-    }) as React.CSSProperties;
-
-  const allColorsOptionClassName = [
-    colorSelectItemBaseClassName,
-  ].join(' ');
+  const allColorsTileStyle: React.CSSProperties = {
+    backgroundImage:
+      'conic-gradient(from 180deg at 50% 50%, #f97316 0deg, #ef4444 48deg, #ec4899 92deg, #a855f7 140deg, #3b82f6 188deg, #14b8a6 236deg, #22c55e 286deg, #facc15 330deg, #f97316 360deg)',
+  };
 
   const textFieldClassName = [
     'h-12 rounded-2xl border border-border/80 bg-white/95 px-4 text-sm shadow-sm backdrop-blur-xl',
@@ -1286,7 +1297,7 @@ export default function SellForm({ user }: SellFormProps) {
                             <Input
                               id="price"
                               type="number"
-                              className={[detailsInputClassName, 'ps-14 text-base font-semibold'].join(' ')}
+                              className={[detailsInputClassName, 'ps-14 text-xl font-semibold'].join(' ')}
                               value={isFree ? '0' : formData.price}
                               onChange={(e) => {
                                 setHasUnsaved(true);
@@ -1316,51 +1327,27 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                           </Label>
                           <div className="mt-3">
-                            <Popover open={conditionMenuOpen} onOpenChange={setConditionMenuOpen}>
-                              <PopoverTrigger asChild>
-                                <button
-                                  type="button"
-                                  className={filterBarSelectTriggerClassName}
-                                  aria-label={t('sellForm.fields.condition')}
-                                  onPointerDown={handleTriggerPointerDown}
-                                >
-                                  <span className="truncate max-w-[18rem]">
-                                    {formData.condition ? getConditionLabel(formData.condition) : t('sellForm.fields.conditionPlaceholder')}
-                                  </span>
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                align={contentAlign}
-                                dir={direction}
-                                className={filterBarSelectContentClassName}
-                                onOpenAutoFocus={handlePopoverAutoFocus}
-                                onCloseAutoFocus={handlePopoverAutoFocus}
-                              >
-                                <ScrollHintList scrollClassName="max-h-[15rem] overflow-auto overscroll-contain p-1">
-                                  {conditionOptions.map((option) => (
-                                    <button
-                                      key={option.value}
-                                      type="button"
-                                      className={filterBarSelectItemClassName}
-                                      data-state={formData.condition === option.value ? 'checked' : 'unchecked'}
-                                      onClick={() => {
-                                        setHasUnsaved(true);
-                                        setFormData((prev) => ({ ...prev, condition: option.value }));
-                                        setConditionMenuOpen(false);
-                                      }}
-                                    >
-                                      <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
-                                        {formData.condition === option.value ? (
-                                          <Check className="h-4 w-4 text-[#E67E22]" />
-                                        ) : null}
-                                      </span>
-                                      {getConditionLabel(option.value)}
-                                    </button>
-                                  ))}
-                                </ScrollHintList>
-                              </PopoverContent>
-                            </Popover>
+                            <div className={menuShellClassName} dir={direction}>
+                              <div className={menuListClassName}>
+                                {conditionOptions.map((option) => (
+                                  <button
+                                    key={option.value}
+                                    type="button"
+                                    className={menuRowClassName}
+                                    data-state={formData.condition === option.value ? 'checked' : 'unchecked'}
+                                    onClick={() => {
+                                      setHasUnsaved(true);
+                                      setFormData((prev) => ({ ...prev, condition: option.value }));
+                                    }}
+                                  >
+                                    <span className="flex-1">{getConditionLabel(option.value)}</span>
+                                    <span className={menuRowIndicatorClassName}>
+                                      <span className={menuRowIndicatorDotClassName} />
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1384,68 +1371,31 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                           </Label>
                           <div className="mt-3">
-                            <Popover
-                              open={categoryMenuOpen}
-                              onOpenChange={(next) => {
-                                setCategoryMenuOpen(next);
-                                if (next) {
-                                  setConditionMenuOpen(false);
-                                  setLocationMenuOpen(false);
-                                  setColorMenuOpen(false);
-                                }
-                              }}
-                            >
-                              <PopoverTrigger asChild>
-                                <button
-                                  type="button"
-                                  disabled={categories.length === 0}
-                                  className={`${filterBarSelectTriggerClassName} disabled:opacity-60 disabled:cursor-not-allowed`}
-                                  aria-label={t('sellForm.fields.category')}
-                                  onPointerDown={handleTriggerPointerDown}
-                                >
-                                  <span className="truncate max-w-[18rem]">
-                                    {(() => {
-                                      const selected = categories.find((c) => c.id === formData.categoryId);
-                                      if (selected) return getCategoryLabel(selected.name);
-                                      return categories.length
-                                        ? t('sellForm.fields.categoryPlaceholder')
-                                        : t('sellForm.fields.categoryLoading');
-                                    })()}
-                                  </span>
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                align={contentAlign}
-                                dir={direction}
-                                className={filterBarSelectContentClassName}
-                                onOpenAutoFocus={handlePopoverAutoFocus}
-                                onCloseAutoFocus={handlePopoverAutoFocus}
-                              >
-                                <ScrollHintList scrollClassName="max-h-[15rem] overflow-auto overscroll-contain p-1">
-                                  {categories.map((category) => (
+                            <div className={menuShellClassName} dir={direction}>
+                              <div className={menuListClassName}>
+                                {categories.length === 0 ? (
+                                  <div className={menuEmptyStateClassName}>{t('sellForm.fields.categoryLoading')}</div>
+                                ) : (
+                                  categories.map((category) => (
                                     <button
                                       key={category.id}
                                       type="button"
-                                      className={filterBarSelectItemClassName}
+                                      className={menuRowClassName}
                                       data-state={formData.categoryId === category.id ? 'checked' : 'unchecked'}
                                       onClick={() => {
                                         setHasUnsaved(true);
                                         setFormData((prev) => ({ ...prev, categoryId: category.id }));
-                                        setCategoryMenuOpen(false);
                                       }}
                                     >
-                                      <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
-                                        {formData.categoryId === category.id ? (
-                                          <Check className="h-4 w-4 text-[#E67E22]" />
-                                        ) : null}
+                                      <span className="flex-1">{getCategoryLabel(category.name)}</span>
+                                      <span className={menuRowIndicatorClassName}>
+                                        <span className={menuRowIndicatorDotClassName} />
                                       </span>
-                                      {getCategoryLabel(category.name)}
                                     </button>
-                                  ))}
-                                </ScrollHintList>
-                              </PopoverContent>
-                            </Popover>
+                                  ))
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </div>
 
@@ -1462,74 +1412,41 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                           </Label>
                           <div className="mt-3">
-                            <Popover
-                              open={locationMenuOpen}
-                              onOpenChange={(next) => {
-                                setLocationMenuOpen(next);
-                                if (next) {
-                                  setConditionMenuOpen(false);
-                                  setCategoryMenuOpen(false);
-                                  setColorMenuOpen(false);
-                                }
-                              }}
-                            >
-                              <PopoverTrigger asChild>
+                            <div className={menuShellClassName} dir={direction}>
+                              <div className={menuListClassName}>
                                 <button
                                   type="button"
-                                  className={filterBarSelectTriggerClassName}
-                                  aria-label={t('sellForm.fields.location')}
-                                  onPointerDown={handleTriggerPointerDown}
+                                  className={menuRowClassName}
+                                  data-state={!formData.location ? 'checked' : 'unchecked'}
+                                  onClick={() => {
+                                    setHasUnsaved(true);
+                                    setFormData((prev) => ({ ...prev, location: '' }));
+                                  }}
                                 >
-                                  <span className="truncate max-w-[18rem]">{getSelectedCityLabel(formData.location)}</span>
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+                                  <span className="flex-1">{t('filters.cityAll')}</span>
+                                  <span className={menuRowIndicatorClassName}>
+                                    <span className={menuRowIndicatorDotClassName} />
+                                  </span>
                                 </button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                align={contentAlign}
-                                dir={direction}
-                                className={filterBarSelectContentClassName}
-                                onOpenAutoFocus={handlePopoverAutoFocus}
-                                onCloseAutoFocus={handlePopoverAutoFocus}
-                              >
-                                <ScrollHintList scrollClassName="max-h-[15rem] overflow-auto overscroll-contain p-1">
+                                {cityOptions.map((city) => (
                                   <button
+                                    key={city.value}
                                     type="button"
-                                    className={filterBarSelectItemClassName}
-                                    data-state={!formData.location ? 'checked' : 'unchecked'}
+                                    className={menuRowClassName}
+                                    data-state={formData.location === city.label ? 'checked' : 'unchecked'}
                                     onClick={() => {
                                       setHasUnsaved(true);
-                                      setFormData((prev) => ({ ...prev, location: '' }));
-                                      setLocationMenuOpen(false);
+                                      setFormData((prev) => ({ ...prev, location: city.label }));
                                     }}
                                   >
-                                    <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
-                                      {!formData.location ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                                    <span className="flex-1">{getCityLabel(city.value)}</span>
+                                    <span className={menuRowIndicatorClassName}>
+                                      <span className={menuRowIndicatorDotClassName} />
                                     </span>
-                                    {t('filters.cityAll')}
                                   </button>
-                                  {cityOptions.map((city) => (
-                                    <button
-                                      key={city.value}
-                                      type="button"
-                                      className={filterBarSelectItemClassName}
-                                      data-state={formData.location === city.label ? 'checked' : 'unchecked'}
-                                      onClick={() => {
-                                        setHasUnsaved(true);
-                                        setFormData((prev) => ({ ...prev, location: city.label }));
-                                        setLocationMenuOpen(false);
-                                      }}
-                                    >
-                                      <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
-                                        {formData.location === city.label ? (
-                                          <Check className="h-4 w-4 text-[#E67E22]" />
-                                        ) : null}
-                                      </span>
-                                      {getCityLabel(city.value)}
-                                    </button>
-                                  ))}
-                                </ScrollHintList>
-                              </PopoverContent>
-                            </Popover>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                         </div>
 
@@ -1546,72 +1463,73 @@ export default function SellForm({ user }: SellFormProps) {
                             <span>{t('sellForm.fields.color')}</span>
                           </Label>
                           <div className="mt-3">
-                            <Popover
-                              open={colorMenuOpen}
-                              onOpenChange={(next) => {
-                                setColorMenuOpen(next);
-                                if (next) {
-                                  setConditionMenuOpen(false);
-                                  setCategoryMenuOpen(false);
-                                  setLocationMenuOpen(false);
-                                }
-                              }}
-                            >
-                              <PopoverTrigger asChild>
-                                <button
-                                  type="button"
-                                  className={filterBarSelectTriggerClassName}
-                                  aria-label={t('sellForm.fields.color')}
-                                  onPointerDown={handleTriggerPointerDown}
-                                >
-                                  <span className="truncate max-w-[18rem]">{getSelectedColorLabel(formData.color)}</span>
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                align={contentAlign}
-                                dir={direction}
-                                className={filterBarSelectContentClassName}
-                                onOpenAutoFocus={handlePopoverAutoFocus}
-                                onCloseAutoFocus={handlePopoverAutoFocus}
-                              >
-                                <ScrollHintList scrollClassName="overflow-visible p-1">
-                                  <button
-                                    type="button"
-                                    className={filterBarSelectItemClassName}
-                                    data-state={!formData.color ? 'checked' : 'unchecked'}
-                                    onClick={() => {
-                                      setHasUnsaved(true);
-                                      setFormData((prev) => ({ ...prev, color: '' }));
-                                      setColorMenuOpen(false);
-                                    }}
-                                  >
-                                    <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
-                                      {!formData.color ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
-                                    </span>
-                                    {t('filters.allColors')}
-                                  </button>
-                                  {SELL_COLOR_TOKENS.map((token) => (
+                            <div className={menuShellClassName} dir={direction}>
+                              <div className="relative">
+                                {canScrollUp ? (
+                                  <div className={menuCueTopClassName}>
+                                    <div className={menuCueBarTopClassName} />
+                                    <div className={menuCueIconTopClassName}>
+                                      <ChevronUp className={menuCueChevronClassName} />
+                                    </div>
+                                  </div>
+                                ) : null}
+                                <div ref={colorScrollRef} className={menuScrollAreaClassName}>
+                                  <div className={menuListInnerClassName}>
                                     <button
-                                      key={token}
                                       type="button"
-                                      className={filterBarSelectItemClassName}
-                                      data-state={formData.color === token ? 'checked' : 'unchecked'}
+                                      className={menuRowClassName}
+                                      data-state={!formData.color ? 'checked' : 'unchecked'}
                                       onClick={() => {
                                         setHasUnsaved(true);
-                                        setFormData((prev) => ({ ...prev, color: token }));
-                                        setColorMenuOpen(false);
+                                        setFormData((prev) => ({ ...prev, color: '' }));
                                       }}
+                                      aria-pressed={!formData.color}
                                     >
-                                      <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
-                                        {formData.color === token ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
+                                      <span className="flex items-center gap-3">
+                                        <span className={menuRowSwatchClassName} style={allColorsTileStyle} />
+                                        <span>{t('filters.allColors')}</span>
                                       </span>
-                                      {getColorLabel(token)}
+                                      <span className={menuRowIndicatorClassName}>
+                                        <span className={menuRowIndicatorDotClassName} />
+                                      </span>
                                     </button>
-                                  ))}
-                                </ScrollHintList>
-                              </PopoverContent>
-                            </Popover>
+
+                                    {SELL_COLOR_TOKENS.map((token) => (
+                                      <button
+                                        key={token}
+                                        type="button"
+                                        className={menuRowClassName}
+                                        data-state={formData.color === token ? 'checked' : 'unchecked'}
+                                        onClick={() => {
+                                          setHasUnsaved(true);
+                                          setFormData((prev) => ({ ...prev, color: token }));
+                                        }}
+                                        aria-pressed={formData.color === token}
+                                      >
+                                        <span className="flex items-center gap-3">
+                                          <span
+                                            className={menuRowSwatchClassName}
+                                            style={{ backgroundColor: COLOR_CHIP_STYLE_MAP[token].bg }}
+                                          />
+                                          <span>{getColorLabel(token)}</span>
+                                        </span>
+                                        <span className={menuRowIndicatorClassName}>
+                                          <span className={menuRowIndicatorDotClassName} />
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                                {canScrollDown ? (
+                                  <div className={menuCueBottomClassName}>
+                                    <div className={menuCueBarBottomClassName} />
+                                    <div className={menuCueIconBottomClassName}>
+                                      <ChevronDown className={menuCueChevronClassName} />
+                                    </div>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -1637,8 +1555,8 @@ export default function SellForm({ user }: SellFormProps) {
       </div>
     </Card>
 
-          <aside className="hidden lg:block lg:sticky lg:top-24 lg:self-start">
-            <div className="space-y-4">
+          <aside className="hidden lg:block lg:sticky lg:top-6 lg:self-start lg:h-fit lg:transition-all lg:duration-300 lg:ease-in-out lg:will-change-scroll lg:scroll-pt-6">
+            <div className="space-y-4 lg:will-change-transform lg:transform-gpu">
               <Card className={glassAsideCardClassName}>
                 <CardHeader className="p-6 pb-0">
                   <CardTitle className="text-lg">{t('sellForm.preview.title')}</CardTitle>
