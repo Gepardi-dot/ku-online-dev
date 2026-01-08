@@ -1297,7 +1297,7 @@ export default function SellForm({ user }: SellFormProps) {
                             <Input
                               id="price"
                               type="number"
-                              className={[detailsInputClassName, 'ps-14 text-lg font-semibold'].join(' ')}
+                              className={[detailsInputClassName, 'ps-14 text-xl font-semibold'].join(' ')}
                               value={isFree ? '0' : formData.price}
                               onChange={(e) => {
                                 setHasUnsaved(true);
