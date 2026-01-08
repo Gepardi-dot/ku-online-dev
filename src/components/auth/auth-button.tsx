@@ -196,7 +196,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent
           className="z-90 w-56 rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-4 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40"
-          align="end"
+          align={isRtl ? "start" : "end"}
           sideOffset={10}
           forceMount
         >
@@ -298,7 +298,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
             ) : (
               <>
                 <span dir={isRtl ? "rtl" : undefined}>{t('auth.signInTitlePrefix')}</span>
-                <span dir="ltr">KU-ONLINE</span>
+                <span dir="ltr">KU BAZAR</span>
               </>
             )}
           </DialogTitle>
@@ -370,3 +370,4 @@ export default function AuthButton({ user }: AuthButtonProps) {
     </Dialog>
   );
 }
+

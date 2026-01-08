@@ -15,7 +15,7 @@ export default async function OrderTrackingPage() {
         <div className="container mx-auto px-4 max-w-4xl">
           <h1 className="text-3xl font-bold mb-6">Order Status & Tracking</h1>
           <p className="text-gray-700 mb-6">
-            KU-ONLINE doesn’t generate shipping labels or manage carriers. Buyers and
+            KU BAZAR doesn’t generate shipping labels or manage carriers. Buyers and
             sellers share status updates and any tracking numbers in KU‑ONLINE
             messages.
           </p>
@@ -42,4 +42,5 @@ export default async function OrderTrackingPage() {
     </AppLayout>
   );
 }
+
 

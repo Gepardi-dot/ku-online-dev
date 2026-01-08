@@ -15,7 +15,7 @@ export default async function DeliveryHandoverPage() {
         <div className="container mx-auto px-4 max-w-4xl">
           <h1 className="text-3xl font-bold mb-6">Delivery & Handover</h1>
           <p className="text-gray-700 mb-6">
-            KU-ONLINE does not ship items or generate shipping labels. Buyers and
+            KU BAZAR does not ship items or generate shipping labels. Buyers and
             sellers coordinate delivery or local meet‑ups directly in messages.
           </p>
 
@@ -43,7 +43,7 @@ export default async function DeliveryHandoverPage() {
           <h2 className="text-xl font-semibold mt-8 mb-3">Courier tips</h2>
           <ul className="list-disc pl-6 space-y-2 text-gray-700">
             <li>Ask for photos of packed items and keep the tracking number.</li>
-            <li>Confirm the delivery address in KU-ONLINE messages.</li>
+            <li>Confirm the delivery address in KU BAZAR messages.</li>
             <li>Risk of loss/damage follows your agreement with the courier.</li>
           </ul>
 
@@ -64,4 +64,5 @@ export default async function DeliveryHandoverPage() {
     </AppLayout>
   );
 }
+
 
