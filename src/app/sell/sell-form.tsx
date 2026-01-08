@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { CheckCircle2, ChevronDown, Circle, FileText, Info, Loader2, MapPin, Sparkles, Tag, Upload, X, ChevronUp } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { CONDITION_OPTIONS } from '@/lib/products/filter-params';
@@ -117,11 +118,16 @@ export default function SellForm({ user }: SellFormProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [isFree, setIsFree] = useState(false);
+  const [conditionOpen, setConditionOpen] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
+  const [locationOpen, setLocationOpen] = useState(false);
+  const [colorOpen, setColorOpen] = useState(false);
   const [canScrollUp, setCanScrollUp] = useState(false);
   const [canScrollDown, setCanScrollDown] = useState(false);
   const colorScrollRef = useRef<HTMLDivElement>(null);
   const { t, messages, locale } = useLocale();
   const direction = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
+  const contentAlign = direction === 'rtl' ? 'end' : 'start';
   const requiredFieldMessage = t('common.validation.required');
   const updateColorScrollState = useCallback(() => {
     const el = colorScrollRef.current;
@@ -137,6 +143,7 @@ export default function SellForm({ user }: SellFormProps) {
   }, []);
 
   useEffect(() => {
+    if (!colorOpen) return;
     const el = colorScrollRef.current;
     if (!el) return;
     updateColorScrollState();
@@ -154,7 +161,7 @@ export default function SellForm({ user }: SellFormProps) {
       el.removeEventListener('scroll', handleScroll);
       observer?.disconnect();
     };
-  }, [updateColorScrollState]);
+  }, [colorOpen, updateColorScrollState]);
 
   const currencyToggleOptions: Array<{ value: CurrencyCode; label: string }> = [
     { value: 'IQD', label: t('sellForm.currency.iqd') },
@@ -206,6 +213,8 @@ export default function SellForm({ user }: SellFormProps) {
     'shadow-[0_6px_16px_rgba(15,23,42,0.08)]',
   ].join(' ');
 
+  const menuShellDropdownClassName = `${menuShellClassName} mt-0 w-fit border-slate-300 shadow-lg`;
+
   const menuHeaderClassName = [
     'flex items-center justify-between gap-3 border-b border-slate-200/80 bg-slate-50/80 px-4 py-2 text-[11px] font-semibold text-slate-500',
     'md:px-5',
@@ -218,8 +227,8 @@ export default function SellForm({ user }: SellFormProps) {
 
   const menuRowClassName = [
     'group flex w-full items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-slate-800',
-    'border-b border-slate-100 last:border-b-0',
-    'text-start transition hover:bg-slate-50',
+    'border-b border-slate-200 last:border-b-0',
+    'text-start transition hover:bg-slate-100 hover:text-slate-900',
     'data-[state=checked]:bg-slate-50 data-[state=checked]:text-slate-900',
     'md:px-5',
   ].join(' ');
@@ -256,6 +265,11 @@ export default function SellForm({ user }: SellFormProps) {
     'w-fit max-w-[min(22rem,calc(100vw-2rem))] max-h-72',
     '**:data-radix-select-viewport:w-auto! **:data-radix-select-viewport:min-w-0! **:data-radix-select-viewport:p-2',
     '**:data-radix-select-viewport:flex **:data-radix-select-viewport:flex-col **:data-radix-select-viewport:gap-1.5',
+  ].join(' ');
+
+  const dropdownPopoverContentClassName = [
+    'w-fit p-0',
+    'border-none bg-transparent shadow-none',
   ].join(' ');
 
   const compactSelectContentClassName = `${selectContentClassName} max-h-60 w-[18rem] max-w-[min(18rem,calc(100vw-2rem))] **:data-radix-select-viewport:w-full!`;
@@ -433,8 +447,10 @@ export default function SellForm({ user }: SellFormProps) {
   ].join(' ');
 
   const detailsSelectTriggerClassName = [
-    selectTriggerClassName,
-    'w-full bg-white/90 shadow-[0_8px_18px_rgba(124,45,18,0.10)]',
+    'h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5',
+    'flex items-center justify-between gap-3 text-start',
+    'shadow-sm hover:shadow-md hover:border-slate-300',
+    'transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
   ].join(' ');
 
   const currencyToggleClassName = [
@@ -998,6 +1014,19 @@ export default function SellForm({ user }: SellFormProps) {
     return formData.currency;
   })();
   const selectedCategory = categories.find((category) => category.id === formData.categoryId) ?? null;
+  const conditionTriggerLabel =
+    formData.condition.trim().length > 0
+      ? getConditionLabel(formData.condition)
+      : t('sellForm.fields.conditionPlaceholder');
+  const categoryTriggerLabel = selectedCategory
+    ? getCategoryLabel(selectedCategory.name)
+    : t('sellForm.fields.categoryPlaceholder');
+  const locationTriggerLabel =
+    formData.location.trim().length > 0
+      ? getSelectedCityLabel(formData.location)
+      : t('sellForm.fields.locationPlaceholder');
+  const colorTriggerLabel =
+    formData.color.trim().length > 0 ? getSelectedColorLabel(formData.color) : t('sellForm.fields.colorPlaceholder');
   const previewTitle = formData.title.trim().length > 0 ? formData.title.trim() : t('sellForm.preview.placeholderTitle');
   const previewCategory = selectedCategory ? getCategoryLabel(selectedCategory.name) : t('sellForm.fields.category');
   const previewLocation = formData.location.trim().length > 0 ? getCityLabel(formData.location) : t('sellForm.fields.location');
@@ -1318,27 +1347,60 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                           </Label>
                           <div className="mt-3">
-                            <div className={menuShellClassName} dir={direction}>
-                              <div className={menuListClassName}>
-                                {conditionOptions.map((option) => (
-                                  <button
-                                    key={option.value}
-                                    type="button"
-                                    className={menuRowClassName}
-                                    data-state={formData.condition === option.value ? 'checked' : 'unchecked'}
-                                    onClick={() => {
-                                      setHasUnsaved(true);
-                                      setFormData((prev) => ({ ...prev, condition: option.value }));
-                                    }}
+                            <Popover
+                              open={conditionOpen}
+                              onOpenChange={(next) => {
+                                setConditionOpen(next);
+                                if (next) {
+                                  setCategoryOpen(false);
+                                  setLocationOpen(false);
+                                  setColorOpen(false);
+                                }
+                              }}
+                            >
+                              <PopoverTrigger asChild>
+                                <button type="button" className={detailsSelectTriggerClassName}>
+                                  <span
+                                    className={[
+                                      'flex-1 truncate text-sm',
+                                      formData.condition.trim().length > 0 ? 'text-[#1F1C1C]' : 'text-slate-700',
+                                    ].join(' ')}
                                   >
-                                    <span className="flex-1">{getConditionLabel(option.value)}</span>
-                                    <span className={menuRowIndicatorClassName}>
-                                      <span className={menuRowIndicatorDotClassName} />
-                                    </span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
+                                    {conditionTriggerLabel}
+                                  </span>
+                                  <ChevronDown className="h-4 w-4 text-slate-500" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align={contentAlign}
+                                dir={direction}
+                                sideOffset={8}
+                                className={dropdownPopoverContentClassName}
+                              >
+                                <div className={menuShellDropdownClassName}>
+                                  <div className={menuListClassName}>
+                                    {conditionOptions.map((option) => (
+                                      <button
+                                        key={option.value}
+                                        type="button"
+                                        className={menuRowClassName}
+                                        data-state={formData.condition === option.value ? 'checked' : 'unchecked'}
+                                        onClick={() => {
+                                          setHasUnsaved(true);
+                                          setFormData((prev) => ({ ...prev, condition: option.value }));
+                                          setConditionOpen(false);
+                                        }}
+                                      >
+                                        <span className="flex-1">{getConditionLabel(option.value)}</span>
+                                        <span className={menuRowIndicatorClassName}>
+                                          <span className={menuRowIndicatorDotClassName} />
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </div>
                       </div>
@@ -1362,31 +1424,64 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                           </Label>
                           <div className="mt-3">
-                            <div className={menuShellClassName} dir={direction}>
-                              <div className={menuListClassName}>
-                                {categories.length === 0 ? (
-                                  <div className={menuEmptyStateClassName}>{t('sellForm.fields.categoryLoading')}</div>
-                                ) : (
-                                  categories.map((category) => (
-                                    <button
-                                      key={category.id}
-                                      type="button"
-                                      className={menuRowClassName}
-                                      data-state={formData.categoryId === category.id ? 'checked' : 'unchecked'}
-                                      onClick={() => {
-                                        setHasUnsaved(true);
-                                        setFormData((prev) => ({ ...prev, categoryId: category.id }));
-                                      }}
-                                    >
-                                      <span className="flex-1">{getCategoryLabel(category.name)}</span>
-                                      <span className={menuRowIndicatorClassName}>
-                                        <span className={menuRowIndicatorDotClassName} />
-                                      </span>
-                                    </button>
-                                  ))
-                                )}
-                              </div>
-                            </div>
+                            <Popover
+                              open={categoryOpen}
+                              onOpenChange={(next) => {
+                                setCategoryOpen(next);
+                                if (next) {
+                                  setConditionOpen(false);
+                                  setLocationOpen(false);
+                                  setColorOpen(false);
+                                }
+                              }}
+                            >
+                              <PopoverTrigger asChild>
+                                <button type="button" className={detailsSelectTriggerClassName}>
+                                  <span
+                                    className={[
+                                      'flex-1 truncate text-sm',
+                                      formData.categoryId.trim().length > 0 ? 'text-[#1F1C1C]' : 'text-slate-700',
+                                    ].join(' ')}
+                                  >
+                                    {categoryTriggerLabel}
+                                  </span>
+                                  <ChevronDown className="h-4 w-4 text-slate-500" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align={contentAlign}
+                                dir={direction}
+                                sideOffset={8}
+                                className={dropdownPopoverContentClassName}
+                              >
+                                <div className={menuShellDropdownClassName}>
+                                  <div className={menuListClassName}>
+                                    {categories.length === 0 ? (
+                                      <div className={menuEmptyStateClassName}>{t('sellForm.fields.categoryLoading')}</div>
+                                    ) : (
+                                      categories.map((category) => (
+                                        <button
+                                          key={category.id}
+                                          type="button"
+                                          className={menuRowClassName}
+                                          data-state={formData.categoryId === category.id ? 'checked' : 'unchecked'}
+                                          onClick={() => {
+                                            setHasUnsaved(true);
+                                            setFormData((prev) => ({ ...prev, categoryId: category.id }));
+                                            setCategoryOpen(false);
+                                          }}
+                                        >
+                                          <span className="flex-1">{getCategoryLabel(category.name)}</span>
+                                          <span className={menuRowIndicatorClassName}>
+                                            <span className={menuRowIndicatorDotClassName} />
+                                          </span>
+                                        </button>
+                                      ))
+                                    )}
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </div>
 
@@ -1403,41 +1498,75 @@ export default function SellForm({ user }: SellFormProps) {
                             </span>
                           </Label>
                           <div className="mt-3">
-                            <div className={menuShellClassName} dir={direction}>
-                              <div className={menuListClassName}>
-                                <button
-                                  type="button"
-                                  className={menuRowClassName}
-                                  data-state={!formData.location ? 'checked' : 'unchecked'}
-                                  onClick={() => {
-                                    setHasUnsaved(true);
-                                    setFormData((prev) => ({ ...prev, location: '' }));
-                                  }}
-                                >
-                                  <span className="flex-1">{t('filters.cityAll')}</span>
-                                  <span className={menuRowIndicatorClassName}>
-                                    <span className={menuRowIndicatorDotClassName} />
-                                  </span>
-                                </button>
-                                {cityOptions.map((city) => (
-                                  <button
-                                    key={city.value}
-                                    type="button"
-                                    className={menuRowClassName}
-                                    data-state={formData.location === city.label ? 'checked' : 'unchecked'}
-                                    onClick={() => {
-                                      setHasUnsaved(true);
-                                      setFormData((prev) => ({ ...prev, location: city.label }));
-                                    }}
+                            <Popover
+                              open={locationOpen}
+                              onOpenChange={(next) => {
+                                setLocationOpen(next);
+                                if (next) {
+                                  setConditionOpen(false);
+                                  setCategoryOpen(false);
+                                  setColorOpen(false);
+                                }
+                              }}
+                            >
+                              <PopoverTrigger asChild>
+                                <button type="button" className={detailsSelectTriggerClassName}>
+                                  <span
+                                    className={[
+                                      'flex-1 truncate text-sm',
+                                      formData.location.trim().length > 0 ? 'text-[#1F1C1C]' : 'text-slate-700',
+                                    ].join(' ')}
                                   >
-                                    <span className="flex-1">{getCityLabel(city.value)}</span>
-                                    <span className={menuRowIndicatorClassName}>
-                                      <span className={menuRowIndicatorDotClassName} />
-                                    </span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
+                                    {locationTriggerLabel}
+                                  </span>
+                                  <ChevronDown className="h-4 w-4 text-slate-500" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align={contentAlign}
+                                dir={direction}
+                                sideOffset={8}
+                                className={dropdownPopoverContentClassName}
+                              >
+                                <div className={menuShellDropdownClassName}>
+                                  <div className={menuListClassName}>
+                                    <button
+                                      type="button"
+                                      className={menuRowClassName}
+                                      data-state={!formData.location ? 'checked' : 'unchecked'}
+                                      onClick={() => {
+                                        setHasUnsaved(true);
+                                        setFormData((prev) => ({ ...prev, location: '' }));
+                                        setLocationOpen(false);
+                                      }}
+                                    >
+                                      <span className="flex-1">{t('filters.cityAll')}</span>
+                                      <span className={menuRowIndicatorClassName}>
+                                        <span className={menuRowIndicatorDotClassName} />
+                                      </span>
+                                    </button>
+                                    {cityOptions.map((city) => (
+                                      <button
+                                        key={city.value}
+                                        type="button"
+                                        className={menuRowClassName}
+                                        data-state={formData.location === city.label ? 'checked' : 'unchecked'}
+                                        onClick={() => {
+                                          setHasUnsaved(true);
+                                          setFormData((prev) => ({ ...prev, location: city.label }));
+                                          setLocationOpen(false);
+                                        }}
+                                      >
+                                        <span className="flex-1">{getCityLabel(city.value)}</span>
+                                        <span className={menuRowIndicatorClassName}>
+                                          <span className={menuRowIndicatorDotClassName} />
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </div>
 
@@ -1454,73 +1583,107 @@ export default function SellForm({ user }: SellFormProps) {
                             <span>{t('sellForm.fields.color')}</span>
                           </Label>
                           <div className="mt-3">
-                            <div className={menuShellClassName} dir={direction}>
-                              <div className="relative">
-                                {canScrollUp ? (
-                                  <div className={menuCueTopClassName}>
-                                    <div className={menuCueBarTopClassName} />
-                                    <div className={menuCueIconTopClassName}>
-                                      <ChevronUp className={menuCueChevronClassName} />
-                                    </div>
-                                  </div>
-                                ) : null}
-                                <div ref={colorScrollRef} className={menuScrollAreaClassName}>
-                                  <div className={menuListInnerClassName}>
-                                    <button
-                                      type="button"
-                                      className={menuRowClassName}
-                                      data-state={!formData.color ? 'checked' : 'unchecked'}
-                                      onClick={() => {
-                                        setHasUnsaved(true);
-                                        setFormData((prev) => ({ ...prev, color: '' }));
-                                      }}
-                                      aria-pressed={!formData.color}
-                                    >
-                                      <span className="flex items-center gap-3">
-                                        <span className={menuRowSwatchClassName} style={allColorsTileStyle} />
-                                        <span>{t('filters.allColors')}</span>
-                                      </span>
-                                      <span className={menuRowIndicatorClassName}>
-                                        <span className={menuRowIndicatorDotClassName} />
-                                      </span>
-                                    </button>
+                            <Popover
+                              open={colorOpen}
+                              onOpenChange={(next) => {
+                                setColorOpen(next);
+                                if (next) {
+                                  setConditionOpen(false);
+                                  setCategoryOpen(false);
+                                  setLocationOpen(false);
+                                }
+                              }}
+                            >
+                              <PopoverTrigger asChild>
+                                <button type="button" className={detailsSelectTriggerClassName}>
+                                  <span
+                                    className={[
+                                      'flex-1 truncate text-sm',
+                                      formData.color.trim().length > 0 ? 'text-[#1F1C1C]' : 'text-slate-700',
+                                    ].join(' ')}
+                                  >
+                                    {colorTriggerLabel}
+                                  </span>
+                                  <ChevronDown className="h-4 w-4 text-slate-500" />
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                align={contentAlign}
+                                dir={direction}
+                                sideOffset={8}
+                                className={dropdownPopoverContentClassName}
+                              >
+                                <div className={menuShellDropdownClassName}>
+                                  <div className="relative">
+                                    {canScrollUp ? (
+                                      <div className={menuCueTopClassName}>
+                                        <div className={menuCueBarTopClassName} />
+                                        <div className={menuCueIconTopClassName}>
+                                          <ChevronUp className={menuCueChevronClassName} />
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                    <div ref={colorScrollRef} className={menuScrollAreaClassName}>
+                                      <div className={menuListInnerClassName}>
+                                        <button
+                                          type="button"
+                                          className={menuRowClassName}
+                                          data-state={!formData.color ? 'checked' : 'unchecked'}
+                                          onClick={() => {
+                                            setHasUnsaved(true);
+                                            setFormData((prev) => ({ ...prev, color: '' }));
+                                            setColorOpen(false);
+                                          }}
+                                          aria-pressed={!formData.color}
+                                        >
+                                          <span className="flex items-center gap-3">
+                                            <span className={menuRowSwatchClassName} style={allColorsTileStyle} />
+                                            <span>{t('filters.allColors')}</span>
+                                          </span>
+                                          <span className={menuRowIndicatorClassName}>
+                                            <span className={menuRowIndicatorDotClassName} />
+                                          </span>
+                                        </button>
 
-                                    {SELL_COLOR_TOKENS.map((token) => (
-                                      <button
-                                        key={token}
-                                        type="button"
-                                        className={menuRowClassName}
-                                        data-state={formData.color === token ? 'checked' : 'unchecked'}
-                                        onClick={() => {
-                                          setHasUnsaved(true);
-                                          setFormData((prev) => ({ ...prev, color: token }));
-                                        }}
-                                        aria-pressed={formData.color === token}
-                                      >
-                                        <span className="flex items-center gap-3">
-                                          <span
-                                            className={menuRowSwatchClassName}
-                                            style={{ backgroundColor: COLOR_CHIP_STYLE_MAP[token].bg }}
-                                          />
-                                          <span>{getColorLabel(token)}</span>
-                                        </span>
-                                        <span className={menuRowIndicatorClassName}>
-                                          <span className={menuRowIndicatorDotClassName} />
-                                        </span>
-                                      </button>
-                                    ))}
+                                        {SELL_COLOR_TOKENS.map((token) => (
+                                          <button
+                                            key={token}
+                                            type="button"
+                                            className={menuRowClassName}
+                                            data-state={formData.color === token ? 'checked' : 'unchecked'}
+                                            onClick={() => {
+                                              setHasUnsaved(true);
+                                              setFormData((prev) => ({ ...prev, color: token }));
+                                              setColorOpen(false);
+                                            }}
+                                            aria-pressed={formData.color === token}
+                                          >
+                                            <span className="flex items-center gap-3">
+                                              <span
+                                                className={menuRowSwatchClassName}
+                                                style={{ backgroundColor: COLOR_CHIP_STYLE_MAP[token].bg }}
+                                              />
+                                              <span>{getColorLabel(token)}</span>
+                                            </span>
+                                            <span className={menuRowIndicatorClassName}>
+                                              <span className={menuRowIndicatorDotClassName} />
+                                            </span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    {canScrollDown ? (
+                                      <div className={menuCueBottomClassName}>
+                                        <div className={menuCueBarBottomClassName} />
+                                        <div className={menuCueIconBottomClassName}>
+                                          <ChevronDown className={menuCueChevronClassName} />
+                                        </div>
+                                      </div>
+                                    ) : null}
                                   </div>
                                 </div>
-                                {canScrollDown ? (
-                                  <div className={menuCueBottomClassName}>
-                                    <div className={menuCueBarBottomClassName} />
-                                    <div className={menuCueIconBottomClassName}>
-                                      <ChevronDown className={menuCueChevronClassName} />
-                                    </div>
-                                  </div>
-                                ) : null}
-                              </div>
-                            </div>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </div>
                       </div>
