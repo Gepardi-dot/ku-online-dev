@@ -17,10 +17,11 @@ export default function BrandLogo({ className, size = 36, src = "/KU-LOGO.png", 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={process.env.NEXT_PUBLIC_LOGO_URL || src}
-        alt="KU-ONLINE logo"
+        alt="KU BAZAR logo"
         style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
         aria-hidden={false}
       />
     </div>
   );
 }
+
