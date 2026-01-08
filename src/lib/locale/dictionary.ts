@@ -1839,7 +1839,7 @@ export const translations = {
         freeAria: "دیاری بکە وەک بەخۆرایی",
         condition: "دۆخ",
         conditionPlaceholder: "دۆخ هەڵبژێرە",
-        color: "ڕەنگ (ئارەزوومەندانە)",
+        color: "ڕەنگ (پێویست نییە)",
         colorPlaceholder: "ڕەنگێک هەڵبژێرە",
         location: "شار",
         locationPlaceholder: "شارەکەت هەڵبژێرە",
