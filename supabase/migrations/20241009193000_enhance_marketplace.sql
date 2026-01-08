@@ -1,4 +1,4 @@
--- Align Supabase schema, policies, and helper routines with the KU-ONLINE marketplace feature set.
+-- Align Supabase schema, policies, and helper routines with the KU BAZAR marketplace feature set.
 set search_path = public;
 -- Extensions -----------------------------------------------------------------
 create extension if not exists "pg_trgm";

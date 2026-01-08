@@ -1,6 +1,6 @@
-# KU-ONLINE Marketplace Frontend
+# KU BAZAR Marketplace Frontend
 
-This is a Next.js frontend project for the KU-ONLINE marketplace. It features a modern UI with mock data and is designed to work with any backend service.
+This is a Next.js frontend project for the KU BAZAR marketplace. It features a modern UI with mock data and is designed to work with any backend service.
 
 ## Tech Stack
 
@@ -48,7 +48,7 @@ Run the migrations and deploy the edge function so that the frontend can rely on
 ### Supabase Auth configuration
 
 - In the Supabase dashboard (Authentication → URL configuration) set:
-  - **Site URL** → `http://localhost:5000` for local runs and your production domain (for example `https://ku-online.vercel.app`) in hosted environments.
+  - **Site URL** → `http://localhost:5000` for local runs and your production domain (for example `https://KU BAZAR.vercel.app`) in hosted environments.
   - **Redirect URLs** → include `http://localhost:5000/*` for development. Avoid using `0.0.0.0` which browsers reject as an OAuth callback.
   - Add `https://<your-production-domain>/*` to Redirect URLs before shipping.
 - Rotate the Google provider credentials if they were created for a different origin, then re-run the OAuth flow to confirm the user record is created with a populated profile.
@@ -86,7 +86,7 @@ Vercel (Dev/Preview/Prod)
   ALGOLIA_BATCH_SIZE
 ```
 
-- Purge caches after deploys: `ADMIN_REVALIDATE_TOKEN=... NEXT_PUBLIC_SITE_URL=https://ku-online.vercel.app node tools/revalidate.mjs categories`.
+- Purge caches after deploys: `ADMIN_REVALIDATE_TOKEN=... NEXT_PUBLIC_SITE_URL=https://KU BAZAR.vercel.app node tools/revalidate.mjs categories`.
 - Rotate Supabase keys via *Project Settings → API*, update `.env.local`, then `vercel env add <NAME> <environment>`.
 - Maintain the `product-images` bucket with `node tools/storage-ensure.mjs`; audit RLS using `node tools/audit-supabase.mjs`. The bucket should remain public—reads are anonymous and the app can still use signed URLs when needed.
 
@@ -184,3 +184,4 @@ Replace `<file1> <file2>` with the paths you modified and tailor the commit mess
 - Mobile-friendly design
 - Dark/light theme support
 - Mock data for demonstration purposes
+

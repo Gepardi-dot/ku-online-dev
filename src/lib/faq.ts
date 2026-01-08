@@ -19,9 +19,9 @@ export function getMarketplaceFaq(locale: 'en' | 'ar' | 'ku' = 'en'): FaqItem[] 
           "Don’t complete the deal. Don’t pay. Report the listing with details and we’ll review it.",
       },
       {
-        question: 'Does KU‑ONLINE offer delivery or shipping?',
+        question: 'Does KU BAZAR offer delivery or shipping?',
         answer:
-          'No. KU‑ONLINE doesn’t ship. Buyers and sellers arrange pickup or delivery directly at their own responsibility.',
+          'No. KU BAZAR doesn’t ship. Buyers and sellers arrange pickup or delivery directly at their own responsibility.',
       },
       {
         question: 'How can I avoid scams?',
@@ -46,7 +46,7 @@ export function getMarketplaceFaq(locale: 'en' | 'ar' | 'ku' = 'en'): FaqItem[] 
           'لا تُكمل الصفقة ولا تدفع. أبلغ عن الإعلان مع التفاصيل لنراجع ونتخذ الإجراء.',
       },
       {
-        question: 'هل يوفر KU‑ONLINE الشحن؟',
+        question: 'هل يوفر KU BAZAR الشحن؟',
         answer:
           'لا. المنصة لا تشحن. يتفق البائع والمشتري على الاستلام أو التوصيل مباشرة وعلى مسؤوليتهما.',
       },
@@ -73,7 +73,7 @@ export function getMarketplaceFaq(locale: 'en' | 'ar' | 'ku' = 'en'): FaqItem[] 
           'مامەڵەکە تەواو مەکە و پارە مەدە. ڕیکلامەکە ڕاپۆرت بکە و وردەکاری بنووسە بۆ پشکنین.',
       },
       {
-        question: 'KU‑ONLINE گەیاندن یان شیپینگ پێشکەش دەکات؟',
+        question: 'KU BAZAR گەیاندن یان شیپینگ پێشکەش دەکات؟',
         answer:
           'نەخێر. پلاتفۆرمەکە هیچ گەیاندنێک ناکات. کڕیار و فرۆشیار خۆیان ڕێکدەخەن بۆ وەرگرتن یان گەیاندن بە ئەرکی خۆیان.',
       },
@@ -87,4 +87,3 @@ export function getMarketplaceFaq(locale: 'en' | 'ar' | 'ku' = 'en'): FaqItem[] 
 
   return (faqs[locale] ?? faqs.en) as FaqItem[];
 }
-

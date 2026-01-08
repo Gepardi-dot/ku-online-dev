@@ -34,7 +34,10 @@ const MAX_PRICE_DEFAULT = 2_000_000; // IQD default cap used for the range when 
 function useInitialState(initial?: ProductsFilterValues) {
   const base = initial ?? DEFAULT_FILTER_VALUES;
   const parse = (s: string | undefined) => {
-    const n = Number(s);
+    if (typeof s !== "string") return undefined;
+    const trimmed = s.trim();
+    if (!trimmed) return undefined;
+    const n = Number(trimmed);
     return Number.isFinite(n) && n >= 0 ? n : undefined;
   };
   const min = parse(base.minPrice);
@@ -107,6 +110,27 @@ export function ProductsFilterBar({
   const anyMenuOpen = conditionOpen || locationOpen || colorOpen || priceOpen || sortOpen;
 
   useEffect(() => {
+    setCondition(init.condition || "");
+    setLocation(init.location || "");
+    setSort(init.sort || "newest");
+    setPrice([init.minPrice ?? 0, init.maxPrice ?? init.maxCap]);
+    setColor(initialValues?.color ?? "");
+    setConditionOpen(false);
+    setLocationOpen(false);
+    setSortOpen(false);
+    setPriceOpen(false);
+    setColorOpen(false);
+  }, [
+    init.condition,
+    init.location,
+    init.sort,
+    init.minPrice,
+    init.maxPrice,
+    init.maxCap,
+    initialValues?.color,
+  ]);
+
+  useEffect(() => {
     if (typeof window === "undefined") return;
     window.dispatchEvent(new CustomEvent("ku-popover-state", { detail: { open: anyMenuOpen } }));
   }, [anyMenuOpen]);
@@ -143,6 +167,7 @@ export function ProductsFilterBar({
       .replace("{from}", formatIQD(price[0]))
       .replace("{to}", formatIQD(price[1]));
   }, [isPriceDefault, messages.filters, price, init.maxCap]);
+  const priceTriggerLabel = isPriceDefault ? priceChipLabel : priceDetailLabel;
 
   const apply = () => {
     // Close any open popovers so UI doesn't linger after navigation
@@ -490,15 +515,15 @@ export function ProductsFilterBar({
             }
           }}
         >
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={chipTriggerClassName}
-              onPointerDown={handleTriggerPointerDown}
-            >
-              {priceChipLabel}
-            </Button>
-          </PopoverTrigger>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={chipTriggerClassName}
+            onPointerDown={handleTriggerPointerDown}
+          >
+              <span className="truncate max-w-[10.5rem]">{priceTriggerLabel}</span>
+          </Button>
+        </PopoverTrigger>
           <PopoverContent
             className={cn(popoverContentClassName, "w-[min(90vw,20rem)]")}
             align={contentAlign}
