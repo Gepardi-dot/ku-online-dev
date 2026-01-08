@@ -1039,20 +1039,11 @@ export default function SellForm({ user }: SellFormProps) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <CardTitle className="text-3xl md:text-4xl font-bold tracking-tight">{t('sellForm.title')}</CardTitle>
-                      <div className={`${heroBadgeClassName} md:hidden`}>
-                        <Sparkles className="h-4 w-4 text-amber-600" />
-                        <span className="text-xs font-semibold">KU Online</span>
-                      </div>
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">{t('sellForm.hero.subtitle')}</p>
                   </div>
 
-                  <div className={`${heroBadgeClassName} hidden md:inline-flex`}>
-                    <Sparkles className="h-4 w-4 text-amber-600" />
-                    <span className="text-xs font-semibold">KU Online</span>
-                  </div>
                 </div>
-
 
               </CardHeader>
 

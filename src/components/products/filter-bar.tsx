@@ -322,7 +322,7 @@ export function ProductsFilterBar({
                   setConditionOpen(false);
                 }}
               >
-                <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                <span className="absolute end-3 flex h-4 w-4 items-center justify-center">
                   {conditionUiValue === CLEAR_VALUE ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
                 </span>
                 {t("filters.conditionAll")}
@@ -338,7 +338,7 @@ export function ProductsFilterBar({
                     setConditionOpen(false);
                   }}
                 >
-                  <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                  <span className="absolute end-3 flex h-4 w-4 items-center justify-center">
                     {condition === opt.value ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
                   </span>
                   {getConditionLabel(opt.value)}
@@ -389,7 +389,7 @@ export function ProductsFilterBar({
                   setLocationOpen(false);
                 }}
               >
-                <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                <span className="absolute end-3 flex h-4 w-4 items-center justify-center">
                   {locationUiValue === CLEAR_VALUE ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
                 </span>
                 {t("filters.cityAll")}
@@ -405,7 +405,7 @@ export function ProductsFilterBar({
                     setLocationOpen(false);
                   }}
                 >
-                  <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                  <span className="absolute end-3 flex h-4 w-4 items-center justify-center">
                     {location === loc ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
                   </span>
                   {getCityLabel(loc)}
@@ -605,7 +605,7 @@ export function ProductsFilterBar({
                   setSortOpen(false);
                 }}
               >
-                <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                <span className="absolute end-3 flex h-4 w-4 items-center justify-center">
                   {sort === "newest" ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
                 </span>
                 {t("filters.sortNewest")}
@@ -619,7 +619,7 @@ export function ProductsFilterBar({
                   setSortOpen(false);
                 }}
               >
-                <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                <span className="absolute end-3 flex h-4 w-4 items-center justify-center">
                   {sort === "price_asc" ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
                 </span>
                 {t("filters.sortPriceAsc")}
@@ -633,7 +633,7 @@ export function ProductsFilterBar({
                   setSortOpen(false);
                 }}
               >
-                <span className="absolute right-3 flex h-4 w-4 items-center justify-center">
+                <span className="absolute end-3 flex h-4 w-4 items-center justify-center">
                   {sort === "price_desc" ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
                 </span>
                 {t("filters.sortPriceDesc")}
@@ -647,7 +647,7 @@ export function ProductsFilterBar({
                   setSortOpen(false);
                 }}
               >
-                <span className="absolute start-3 flex h-4 w-4 items-center justify-center">
+                <span className="absolute end-3 flex h-4 w-4 items-center justify-center">
                   {sort === "views_desc" ? <Check className="h-4 w-4 text-[#E67E22]" /> : null}
                 </span>
                 {t("filters.sortMostViewed")}
