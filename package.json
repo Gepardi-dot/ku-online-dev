@@ -92,7 +92,7 @@
     "eslint": "^9.39.2",
     "eslint-config-next": "^15.5.7",
     "kill-port": "^2.0.1",
-    "msw": "^2.11.6",
+    "msw": "^2.12.7",
     "postcss": "^8",
     "tailwindcss": "^4.1.18",
     "typescript": "^5"
