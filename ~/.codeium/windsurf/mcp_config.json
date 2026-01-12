@@ -1,0 +1,23 @@
+{
+  "mcpServers": {
+    "vercel": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.vercel.com/mcp"
+      ],
+      "env": {
+        "VERCEL_TOKEN": "4kbwuTA3vJMGRrx147wKx9cb"
+      }
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.supabase.com/mcp?project_ref=kvmbtbhlapjlhfppomsw"
+      ]
+    }
+  }
+}

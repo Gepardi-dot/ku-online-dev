@@ -1,0 +1,1 @@
+-- Placeholder migration retained for Supabase history alignment.

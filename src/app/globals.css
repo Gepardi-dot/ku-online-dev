@@ -1,0 +1,195 @@
+@config "../../tailwind.config.mjs";
+@import 'tailwindcss';
+
+@layer base {
+  :root {
+    --background: 20 50% 98%; /* very light orange #FEF6F0 */
+    --foreground: 20 14% 4%; /* near black */
+    --card: 0 0% 100%; /* white */
+    --card-foreground: 20 14% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 4%;
+    --primary: 25 95% 53%; /* bright orange #F97316 */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 20 50% 94%; /* light orange #FBEAE0 */
+    --secondary-foreground: 24 10% 30%;
+    --muted: 20 50% 94%;
+    --muted-foreground: 24 6% 45%;
+    --accent: 20 50% 90%; /* lighter orange #FADFCB */
+    --accent-foreground: 24 10% 20%;
+    --ku-accent: 28 80% 52%; /* #E67E22 */
+    --ku-accent-dark: 24 100% 41%; /* #d35400 */
+    --ku-accent-light: 37 90% 51%; /* #f39c12 */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 20 50% 88%; /* light orange border #F8D6C0 */
+    --input: 20 50% 88%;
+    --ring: 25 95% 53%;
+    --radius: 0.75rem; /* rounded-xl */
+    --announcement-bar-height: 2.5rem;
+    --app-header-height: 0px;
+    --app-header-offset: calc(var(--announcement-bar-height) + var(--app-header-height));
+    --mobile-nav-height: 5.75rem;
+    --mobile-safe-area-bottom: env(safe-area-inset-bottom);
+    --mobile-nav-offset: calc(var(--mobile-nav-height) + var(--mobile-safe-area-bottom));
+    --mobile-viewport-bottom: 0px;
+    --mobile-keyboard-offset: 0px;
+  }
+}
+
+@layer base {
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+
+  html,
+  body {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  html {
+    scrollbar-gutter: stable;
+  }
+  
+  html[lang='ar'],
+  html[lang='ku'] {
+    font-family:
+      var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif;
+  }
+  html[lang='ar'] input,
+  html[lang='ar'] textarea,
+  html[lang='ar'] select,
+  html[lang='ar'] button,
+  html[lang='ku'] input,
+  html[lang='ku'] textarea,
+  html[lang='ku'] select,
+  html[lang='ku'] button {
+    font-family:
+      var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif;
+  }
+  *,
+  ::before,
+  ::after {
+    border-color: hsl(var(--border));
+  }
+}
+
+@layer utilities {
+  /* Arabic locale font swap to Noto Kufi Arabic */
+  html[lang='ar'] body,
+  html[lang='ar'] .font-body,
+  html[lang='ar'] .font-headline,
+  html[lang='ar'] .font-sans {
+    font-family:
+      var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif;
+  }
+
+  /* Kurdish locale font swap to Noto Sans (Arabic script with Kurdish coverage) */
+  html[lang='ku'] body,
+  html[lang='ku'] .font-body,
+  html[lang='ku'] .font-headline,
+  html[lang='ku'] .font-sans {
+    font-family:
+      var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif;
+  }
+
+  html[lang='ar'],
+  html[lang='ku'] {
+    --mobile-nav-height: 6.25rem;
+  }
+
+  html[lang='ar'] [data-mobile-nav] .mobile-nav-label,
+  html[lang='ku'] [data-mobile-nav] .mobile-nav-label {
+    font-size: 0.7rem;
+    line-height: 1.2;
+  }
+
+  /* Utilities */
+}
+@layer utilities {
+  /* Hide scrollbars for horizontal scrollers where we provide our own affordances */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+  /* Custom scrollbar with off-white bars */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f8f9fa;
+    border-radius: 3px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e9ecef;
+    border-radius: 3px;
+    border: 1px solid #dee2e6;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #dee2e6;
+  }
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #e9ecef #f8f9fa;
+  }
+
+  /* Ensure emoji render with a proper color emoji font even when a custom text font is used */
+  .emoji-font { font-family: 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji','Twemoji Mozilla',emoji,sans-serif; }
+}
+/* Bidi helper: keep overall UI LTR but render text in its natural direction */
+.bidi-auto {
+  unicode-bidi: plaintext;
+  font-family: var(--font-sans), var(--font-arabic), "Segoe UI", "Tahoma", sans-serif;
+}
+
+html[lang="ar"] .bidi-auto,
+html[lang="ku"] .bidi-auto {
+  font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
+}
+
+/* Force Noto Kufi Arabic when Arabic script appears in otherwise English UI. */
+.font-arabic {
+  font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
+}
+/* Locale font override for Arabic/Kurdish UI. */
+html[lang='ar'] body,
+html[lang='ku'] body {
+  font-family:
+    var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif !important;
+}
+
+html[lang='ar'] .font-sans,
+html[lang='ar'] .font-body,
+html[lang='ar'] .font-headline,
+html[lang='ku'] .font-sans,
+html[lang='ku'] .font-body,
+html[lang='ku'] .font-headline {
+  font-family:
+    var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif !important;
+}
+
+html[lang='ar'] input,
+html[lang='ar'] textarea,
+html[lang='ar'] select,
+html[lang='ar'] button,
+html[lang='ku'] input,
+html[lang='ku'] textarea,
+html[lang='ku'] select,
+html[lang='ku'] button {
+  font-family:
+    var(--font-arabic), var(--font-sans), 'Segoe UI', 'Tahoma', sans-serif !important;
+}
+
+@supports (scrollbar-gutter: stable) {
+  body[data-scroll-locked] {
+    padding-right: 0 !important;
+    padding-left: 0 !important;
+  }
+
+  html[dir='rtl'] body[data-scroll-locked] {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+  }
+}
+
