@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type CSSProperties,
   type ReactNode,
 } from "react";
 import {
@@ -504,7 +503,7 @@ export default function MessagesMenu({
     return () => window.removeEventListener("ku-menu-open", handler);
   }, []);
 
-  const mobileContentStyle: CSSProperties | undefined = isMobile
+  const mobileContentStyle = isMobile
     ? {
         position: "fixed",
         top: `calc(var(--app-header-offset) + ${MOBILE_TOP_GAP_PX}px)`,
@@ -526,7 +525,6 @@ export default function MessagesMenu({
       if (next) {
         if (!canLoad) {
           toast({ title: strings.loginRequired, variant: "brand" });
-          return;
         }
         updateLayout();
         setMobileView("list");
