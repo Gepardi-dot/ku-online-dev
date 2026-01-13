@@ -1012,27 +1012,38 @@ export default function MessagesMenu({
       <PopoverAnchor asChild>
         <div
           className="fixed left-1/2 -translate-x-1/2 pointer-events-none"
-          style={{ top: isMobile ? cardOffsetTop : 56 }}
+          style={{ top: isMobile ? 16 : 56 }}
           aria-hidden
         />
       </PopoverAnchor>
 
       <PopoverContent
-        side="bottom"
+        side={isMobile ? "top" : "bottom"}
         align="center"
-        sideOffset={12}
+        sideOffset={isMobile ? 12 : 12}
         dir={isRtl ? "rtl" : "ltr"}
-        className="relative z-90 w-[960px] max-w-[min(1100px,calc(100vw-1.5rem))] border-none bg-transparent p-0 shadow-none ring-0"
+        forceMount
+        className={cn(
+          "group relative z-90 w-[960px] max-w-[min(1100px,calc(100vw-1.5rem))] border-none bg-transparent p-0 shadow-none ring-0",
+          isMobile &&
+            "data-[state=closed]:pointer-events-none",
+        )}
       >
         <div
           ref={sheetRef}
           className={cn(
-            "relative rounded-[32px] border border-white/50 bg-linear-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40",
+            "relative rounded-[32px] border border-white/50 bg-linear-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
+            isMobile ? (
+              "data-[state=closed]:[--ku-sheet-enter:-48px] data-[state=open]:[--ku-sheet-enter:0px]"
+            ) : (
+              "data-[state=closed]:[--ku-sheet-enter:-48px] data-[state=open]:[--ku-sheet-enter:0px]"
+            ),
+            "group-data-[state=closed]:opacity-0 group-data-[state=open]:opacity-100",
             isRtl ? "text-right" : "text-left",
           )}
           style={{
-            transform: `translateY(${dragOffset}px)`,
-            transition: isDragging ? "none" : "transform 180ms ease-out",
+            transform: `translateY(calc(var(--ku-sheet-enter, 0px) + ${dragOffset}px))`,
+            transition: isDragging ? "none" : undefined,
           }}
         >
           {isMobile && (
