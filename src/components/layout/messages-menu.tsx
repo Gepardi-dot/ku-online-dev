@@ -47,7 +47,7 @@ import { useLocale } from "@/providers/locale-provider";
 import { rtlLocales } from "@/lib/locale/dictionary";
 
 const clampValue = (input: number, min: number, max: number) => Math.min(max, Math.max(min, input));
-const MOBILE_BOTTOM_GAP_PX = 92; // Increased spacing to ensure sheet clears mobile nav
+const MOBILE_BOTTOM_GAP_PX = 16; // Breathing room above the mobile nav
 const ARABIC_SCRIPT_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
 const hasArabicScript = (value?: string | null) =>
@@ -166,56 +166,73 @@ export default function MessagesMenu({
 
   // --- Layout / viewport ---
 
+  const getLayoutMetrics = useCallback(() => {
+    const viewport = window.visualViewport;
+    const viewportWidth = viewport?.width ?? window.innerWidth ?? 0;
+    const viewportTop = viewport?.offsetTop ?? 0;
+    const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight ?? 0);
+
+    const announcement = document.querySelector<HTMLElement>("[data-announcement-bar]");
+    const header = document.getElementById("ku-main-header") as HTMLElement | null;
+    const mobileNav = document.querySelector<HTMLElement>("[data-mobile-nav]");
+
+    const visibleBottom = (element: HTMLElement | null) => {
+      if (!element) return 0;
+      const rect = element.getBoundingClientRect();
+      if (!Number.isFinite(rect.bottom)) return 0;
+      return Math.max(0, Math.min(rect.bottom, viewportBottom));
+    };
+
+    const announcementBottom = visibleBottom(announcement);
+    const headerBottom = visibleBottom(header);
+    const chromeBottom = Math.max(announcementBottom, headerBottom);
+    const offsetTop = Math.max(chromeBottom, viewportTop) + 16;
+
+    const navRect = mobileNav?.getBoundingClientRect();
+    const navTop =
+      navRect && Number.isFinite(navRect.top) ? Math.min(navRect.top, viewportBottom) : viewportBottom;
+    const isSmallViewport = viewportWidth < 768;
+    const bottomGap = isSmallViewport ? MOBILE_BOTTOM_GAP_PX : 24;
+    const maxBottom = navTop - bottomGap;
+
+    return { isSmallViewport, offsetTop, maxBottom };
+  }, []);
+
+  const updateLayout = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const { isSmallViewport, offsetTop, maxBottom } = getLayoutMetrics();
+    setIsMobile(isSmallViewport);
+
+    let available = maxBottom - offsetTop;
+    if (!Number.isFinite(available) || available <= 0) {
+      available = 420;
+    }
+
+    const minHeight = isSmallViewport ? Math.min(420, available) : 320;
+    const maxHeight = isSmallViewport ? Math.min(640, available) : 420;
+    const clamped = Math.max(minHeight, Math.min(maxHeight, available));
+
+    setCardOffsetTop(offsetTop);
+    setCardHeight(clamped);
+  }, [getLayoutMetrics]);
+
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const handleResize = () => {
-      const width = window.innerWidth || 0;
-      const isSmallViewport = width < 768;
-      setIsMobile(isSmallViewport);
+    updateLayout();
+    window.addEventListener("resize", updateLayout);
+    window.addEventListener("orientationchange", updateLayout);
+    const viewport = window.visualViewport;
+    viewport?.addEventListener("resize", updateLayout);
+    viewport?.addEventListener("scroll", updateLayout);
 
-      // Compute layout offsets so the glass card sits neatly
-      // between the top chrome (announcement + header) and
-      // the bottom mobile nav bar.
-      const announcement = document.querySelector<HTMLElement>("[data-announcement-bar]");
-      const header = document.getElementById("ku-main-header");
-      const mobileNav = document.querySelector<HTMLElement>("[data-mobile-nav]");
-
-      let offsetTop = 16; // base breathing room
-
-      if (announcement) {
-        offsetTop += announcement.getBoundingClientRect().height;
-      }
-      if (header) {
-        offsetTop += header.getBoundingClientRect().height;
-      }
-
-      const viewportHeight = window.innerHeight || 0;
-      const navHeight = mobileNav ? mobileNav.getBoundingClientRect().height : 0;
-
-      // On mobile we want the sheet to sit just above
-      // the bottom navigation bar with a small gap, while
-      // on larger screens we keep a bit more breathing room.
-      const extraGap = isSmallViewport ? MOBILE_BOTTOM_GAP_PX : 24;
-      let available = viewportHeight - offsetTop - navHeight - extraGap;
-
-      // Clamp the card height so it stays elegant on all screens.
-      if (!Number.isFinite(available) || available <= 0) {
-        available = 420;
-      }
-      const minHeight = isSmallViewport ? 440 : 320;
-      const maxHeight = isSmallViewport ? Math.min(640, viewportHeight - offsetTop - extraGap) : 420;
-      const clamped = Math.max(minHeight, Math.min(maxHeight, available));
-
-      setCardOffsetTop(offsetTop);
-      setCardHeight(clamped);
+    return () => {
+      window.removeEventListener("resize", updateLayout);
+      window.removeEventListener("orientationchange", updateLayout);
+      viewport?.removeEventListener("resize", updateLayout);
+      viewport?.removeEventListener("scroll", updateLayout);
     };
-
-    handleResize();
-    window.addEventListener("resize", handleResize);
-
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [updateLayout]);
 
   // --- Data loading helpers ---
 
@@ -545,10 +562,7 @@ export default function MessagesMenu({
     if (typeof window === "undefined") return;
     if (!sheetRef.current) return;
 
-    const viewportHeight = window.innerHeight || 0;
-    const mobileNav = document.querySelector<HTMLElement>("[data-mobile-nav]");
-    const navHeight = mobileNav ? mobileNav.getBoundingClientRect().height : 0;
-    const maxBottom = viewportHeight - navHeight - MOBILE_BOTTOM_GAP_PX;
+    const { maxBottom } = getLayoutMetrics();
 
     const rect = sheetRef.current.getBoundingClientRect();
     const overshoot = rect.bottom - maxBottom;
@@ -556,7 +570,7 @@ export default function MessagesMenu({
     if (Math.abs(overshoot) < 1) return;
 
     setDragOffset((current) => clampValue(current - overshoot, minDragOffset, 0));
-  }, [open, isMobile, minDragOffset]);
+  }, [open, isMobile, minDragOffset, getLayoutMetrics]);
 
   // --- Event handlers ---
 
@@ -567,10 +581,12 @@ export default function MessagesMenu({
           toast({ title: strings.loginRequired, variant: "brand" });
           return;
         }
+        updateLayout();
         setMobileView("list");
         // On mobile, start with a negative offset to lift the window
         // above the bottom navigation bar by default.
-        const initialOffset = isMobile ? -50 : 0;
+        const lift = Math.round(Math.min(48, Math.max(24, cardHeight * 0.08)));
+        const initialOffset = isMobile ? Math.max(minDragOffset, -lift) : 0;
         setDragOffset(initialOffset);
         dragStateRef.current.active = false;
         setIsDragging(false);
@@ -585,7 +601,7 @@ export default function MessagesMenu({
         setOpen(false);
       }
     },
-    [canLoad, strings.loginRequired, isMobile],
+    [canLoad, strings.loginRequired, isMobile, cardHeight, minDragOffset, updateLayout],
   );
 
   const handleConversationSelect = useCallback(
@@ -1032,7 +1048,8 @@ export default function MessagesMenu({
           )}
           style={{
             transform: `translateY(${dragOffset}px)`,
-            transition: isDragging ? "none" : "transform 180ms ease-out",
+            transition: isDragging ? "none" : "transform 220ms cubic-bezier(0.16, 1, 0.3, 1)",
+            willChange: "transform",
           }}
         >
           {isMobile && (
