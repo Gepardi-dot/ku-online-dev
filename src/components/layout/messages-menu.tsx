@@ -47,7 +47,7 @@ import { useLocale } from "@/providers/locale-provider";
 import { rtlLocales } from "@/lib/locale/dictionary";
 
 const clampValue = (input: number, min: number, max: number) => Math.min(max, Math.max(min, input));
-const MOBILE_BOTTOM_GAP_PX = 16; // Breathing room above the mobile nav
+const MOBILE_BOTTOM_GAP_PX = 24; // Breathing room above the mobile nav
 const POPOVER_SIDE_OFFSET_PX = 12; // Matches PopoverContent sideOffset
 const MOBILE_SHEET_FRAME_PX = 40; // Outer padding (p-4) + inner padding (p-1)
 const ARABIC_SCRIPT_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
