@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
 import {
@@ -503,7 +504,7 @@ export default function MessagesMenu({
     return () => window.removeEventListener("ku-menu-open", handler);
   }, []);
 
-  const mobileContentStyle = isMobile
+  const mobileContentStyle: CSSProperties | undefined = isMobile
     ? {
         position: "fixed",
         top: `calc(var(--app-header-offset) + ${MOBILE_TOP_GAP_PX}px)`,
