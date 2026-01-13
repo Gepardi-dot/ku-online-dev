@@ -6,7 +6,6 @@ import {
   useMemo,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
 import {
@@ -23,7 +22,6 @@ import { ar, ckb, enUS } from "date-fns/locale";
 import Link from "next/link";
 import Image from "next/image";
 
-import { Button } from "@/components/ui/button";
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
@@ -46,20 +44,13 @@ import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
 import { rtlLocales } from "@/lib/locale/dictionary";
 
-const clampValue = (input: number, min: number, max: number) => Math.min(max, Math.max(min, input));
 const MOBILE_BOTTOM_GAP_PX = 24; // Breathing room above the mobile nav
-const POPOVER_SIDE_OFFSET_PX = 12; // Matches PopoverContent sideOffset
-const MOBILE_SHEET_FRAME_PX = 40; // Outer padding (p-4) + inner padding (p-1)
+const MOBILE_TOP_GAP_PX = 16;
+const POPOVER_SIDE_OFFSET_PX = 12;
 const ARABIC_SCRIPT_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
 const hasArabicScript = (value?: string | null) =>
   typeof value === "string" && value.length > 0 && ARABIC_SCRIPT_REGEX.test(value);
-
-interface DragState {
-  active: boolean;
-  startY: number;
-  startOffset: number;
-}
 
 interface MessagesMenuStrings {
   label: string;
@@ -157,67 +148,50 @@ export default function MessagesMenu({
   const [mobileView, setMobileView] = useState<"list" | "thread">("list");
   const [cardHeight, setCardHeight] = useState<number>(420);
   const [cardOffsetTop, setCardOffsetTop] = useState<number>(56);
-  const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
 
   const conversationsRef = useRef<ConversationSummary[]>([]);
-  const dragStateRef = useRef<DragState>({ active: false, startY: 0, startOffset: 0 });
-  const sheetRef = useRef<HTMLDivElement | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const canLoad = Boolean(userId);
 
   // --- Layout / viewport ---
 
-  const getLayoutMetrics = useCallback(() => {
-    const viewport = window.visualViewport;
-    const viewportWidth = viewport?.width ?? window.innerWidth ?? 0;
-    const viewportTop = viewport?.offsetTop ?? 0;
-    const viewportBottom = viewportTop + (viewport?.height ?? window.innerHeight ?? 0);
-
-    const announcement = document.querySelector<HTMLElement>("[data-announcement-bar]");
-    const header = document.getElementById("ku-main-header") as HTMLElement | null;
-    const mobileNav = document.querySelector<HTMLElement>("[data-mobile-nav]");
-
-    const visibleBottom = (element: HTMLElement | null) => {
-      if (!element) return 0;
-      const rect = element.getBoundingClientRect();
-      if (!Number.isFinite(rect.bottom)) return 0;
-      return Math.max(0, Math.min(rect.bottom, viewportBottom));
-    };
-
-    const announcementBottom = visibleBottom(announcement);
-    const headerBottom = visibleBottom(header);
-    const chromeBottom = Math.max(announcementBottom, headerBottom);
-    const offsetTop = Math.max(chromeBottom, viewportTop) + 16;
-
-    const navRect = mobileNav?.getBoundingClientRect();
-    const navTop =
-      navRect && Number.isFinite(navRect.top) ? Math.min(navRect.top, viewportBottom) : viewportBottom;
-    const isSmallViewport = viewportWidth < 768;
-    const bottomGap = isSmallViewport ? MOBILE_BOTTOM_GAP_PX : 24;
-    const maxBottom = navTop - bottomGap;
-    const frameOffset = isSmallViewport ? POPOVER_SIDE_OFFSET_PX + MOBILE_SHEET_FRAME_PX : 0;
-
-    return { isSmallViewport, offsetTop, maxBottom, frameOffset };
-  }, []);
-
   const updateLayout = useCallback(() => {
     if (typeof window === "undefined") return;
-    const { isSmallViewport, offsetTop, maxBottom, frameOffset } = getLayoutMetrics();
+    const width = window.innerWidth || 0;
+    const isSmallViewport = width < 768;
     setIsMobile(isSmallViewport);
 
-    let available = maxBottom - offsetTop - frameOffset;
+    if (isSmallViewport) {
+      setCardOffsetTop(0);
+      setCardHeight(0);
+      return;
+    }
+
+    const announcement = document.querySelector<HTMLElement>("[data-announcement-bar]");
+    const header = document.getElementById("ku-main-header");
+
+    let offsetTop = 16;
+    if (announcement) {
+      offsetTop += announcement.getBoundingClientRect().height;
+    }
+    if (header) {
+      offsetTop += header.getBoundingClientRect().height;
+    }
+
+    const viewportHeight = window.innerHeight || 0;
+    let available = viewportHeight - offsetTop - 24;
     if (!Number.isFinite(available) || available <= 0) {
       available = 420;
     }
 
-    const minHeight = isSmallViewport ? Math.min(420, available) : 320;
-    const maxHeight = isSmallViewport ? Math.min(640, available) : 420;
+    const minHeight = 320;
+    const maxHeight = Math.min(420, available);
     const clamped = Math.max(minHeight, Math.min(maxHeight, available));
 
     setCardOffsetTop(offsetTop);
     setCardHeight(clamped);
-  }, [getLayoutMetrics]);
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -225,15 +199,10 @@ export default function MessagesMenu({
     updateLayout();
     window.addEventListener("resize", updateLayout);
     window.addEventListener("orientationchange", updateLayout);
-    const viewport = window.visualViewport;
-    viewport?.addEventListener("resize", updateLayout);
-    viewport?.addEventListener("scroll", updateLayout);
 
     return () => {
       window.removeEventListener("resize", updateLayout);
       window.removeEventListener("orientationchange", updateLayout);
-      viewport?.removeEventListener("resize", updateLayout);
-      viewport?.removeEventListener("scroll", updateLayout);
     };
   }, [updateLayout]);
 
@@ -494,24 +463,33 @@ export default function MessagesMenu({
   const chipClass =
     "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-linear-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_16px_38px_rgba(247,111,29,0.18)]";
 
-  const minDragOffset = useMemo(() => {
-    if (!isMobile) return 0;
-    const availableLift = Math.max(cardOffsetTop - 12, 0);
-    const minimumLift = 80;
-    return -Math.max(availableLift, minimumLift);
-  }, [isMobile, cardOffsetTop]);
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+    if (!messagesEndRef.current) return;
+    messagesEndRef.current.scrollIntoView({ behavior, block: "end" });
+  }, []);
 
   useEffect(() => {
-    setDragOffset((current) => clampValue(current, minDragOffset, 0));
-  }, [minDragOffset]);
+    if (!open || !isMobile || mobileView !== "thread") return;
+    window.requestAnimationFrame(() => scrollToBottom("auto"));
+  }, [open, isMobile, mobileView, scrollToBottom]);
 
   useEffect(() => {
-    if (!open) {
-      dragStateRef.current.active = false;
-      setDragOffset(0);
-      setIsDragging(false);
-    }
-  }, [open]);
+    if (!open || !isMobile || mobileView !== "thread") return;
+    if (typeof window === "undefined") return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const handleViewportResize = () => {
+      window.requestAnimationFrame(() => scrollToBottom("auto"));
+    };
+
+    viewport.addEventListener("resize", handleViewportResize);
+    viewport.addEventListener("scroll", handleViewportResize);
+    return () => {
+      viewport.removeEventListener("resize", handleViewportResize);
+      viewport.removeEventListener("scroll", handleViewportResize);
+    };
+  }, [open, isMobile, mobileView, scrollToBottom]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -525,55 +503,20 @@ export default function MessagesMenu({
     return () => window.removeEventListener("ku-menu-open", handler);
   }, []);
 
-  useEffect(() => {
-    if (!isMobile) {
-      dragStateRef.current.active = false;
-      setDragOffset(0);
-      setIsDragging(false);
-    }
-  }, [isMobile]);
+  const mobileContentStyle = isMobile
+    ? {
+        position: "fixed",
+        top: `calc(var(--app-header-offset) + ${MOBILE_TOP_GAP_PX}px)`,
+        bottom: `calc(var(--mobile-nav-offset) + var(--mobile-keyboard-offset) + ${MOBILE_BOTTOM_GAP_PX}px)`,
+        left: 0,
+        right: 0,
+        marginLeft: "auto",
+        marginRight: "auto",
+        width: "min(1100px, calc(100vw - 1.5rem))",
+        transform: "none",
+      }
+    : undefined;
 
-  useEffect(() => {
-    if (!open || !isMobile) return;
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (!dragStateRef.current.active) return;
-      const delta = event.clientY - dragStateRef.current.startY;
-      const next = clampValue(dragStateRef.current.startOffset + delta, minDragOffset, 0);
-      setDragOffset(next);
-    };
-
-    const stopDragging = () => {
-      if (!dragStateRef.current.active) return;
-      dragStateRef.current.active = false;
-      setIsDragging(false);
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", stopDragging);
-    window.addEventListener("pointercancel", stopDragging);
-
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", stopDragging);
-      window.removeEventListener("pointercancel", stopDragging);
-    };
-  }, [open, isMobile, minDragOffset]);
-
-  useEffect(() => {
-    if (!open || !isMobile) return;
-    if (typeof window === "undefined") return;
-    if (!sheetRef.current) return;
-
-    const { maxBottom } = getLayoutMetrics();
-
-    const rect = sheetRef.current.getBoundingClientRect();
-    const overshoot = rect.bottom - maxBottom;
-
-    if (Math.abs(overshoot) < 1) return;
-
-    setDragOffset((current) => clampValue(current - overshoot, minDragOffset, 0));
-  }, [open, isMobile, minDragOffset, getLayoutMetrics]);
 
   // --- Event handlers ---
 
@@ -586,25 +529,15 @@ export default function MessagesMenu({
         }
         updateLayout();
         setMobileView("list");
-        // On mobile, start with a negative offset to lift the window
-        // above the bottom navigation bar by default.
-        const lift = Math.round(Math.min(48, Math.max(24, cardHeight * 0.08)));
-        const initialOffset = isMobile ? Math.max(minDragOffset, -lift) : 0;
-        setDragOffset(initialOffset);
-        dragStateRef.current.active = false;
-        setIsDragging(false);
         setOpen(true);
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("ku-menu-open", { detail: { source: "messages-menu" } }));
         }
       } else {
-        dragStateRef.current.active = false;
-        setDragOffset(0);
-        setIsDragging(false);
         setOpen(false);
       }
     },
-    [canLoad, strings.loginRequired, isMobile, cardHeight, minDragOffset, updateLayout],
+    [canLoad, strings.loginRequired, updateLayout],
   );
 
   const handleConversationSelect = useCallback(
@@ -615,9 +548,10 @@ export default function MessagesMenu({
       }
       if (isMobile) {
         setMobileView("thread");
+        window.requestAnimationFrame(() => scrollToBottom("auto"));
       }
     },
-    [open, loadMessages, isMobile],
+    [open, loadMessages, isMobile, scrollToBottom],
   );
 
   const handleSendMessage = useCallback(async () => {
@@ -647,6 +581,9 @@ export default function MessagesMenu({
         return [...previous, message];
       });
       setDraft("");
+      if (isMobile) {
+        window.requestAnimationFrame(() => scrollToBottom("smooth"));
+      }
     } catch (error) {
       console.error("Failed to send message", error);
       const description =
@@ -661,7 +598,7 @@ export default function MessagesMenu({
     } finally {
       setSending(false);
     }
-  }, [activeConversation, userId, draft, sending]);
+  }, [activeConversation, userId, draft, sending, isMobile, scrollToBottom]);
 
   const handleDeleteConversation = useCallback(
     async (conversationId: string) => {
@@ -685,22 +622,6 @@ export default function MessagesMenu({
       }
     },
     [activeConversationId, refreshUnread],
-  );
-
-  const handleDragStart = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (!isMobile) return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-      dragStateRef.current = {
-        active: true,
-        startY: event.clientY,
-        startOffset: dragOffset,
-      };
-      setIsDragging(true);
-    },
-    [isMobile, dragOffset],
   );
 
   // --- Render helpers ---
@@ -861,6 +782,7 @@ export default function MessagesMenu({
             </button>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
     );
   };
@@ -962,6 +884,10 @@ export default function MessagesMenu({
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder={strings.typePlaceholder}
                 className="h-10 rounded-full border border-[#e3e3e3] bg-white px-4 text-sm text-[#2D2D2D] placeholder:text-[#777777] focus-visible:ring-0"
+                onFocus={() => {
+                  if (!isMobile) return;
+                  window.requestAnimationFrame(() => scrollToBottom("smooth"));
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
                     event.preventDefault();
@@ -1031,7 +957,7 @@ export default function MessagesMenu({
       <PopoverAnchor asChild>
         <div
           className="fixed left-1/2 -translate-x-1/2 pointer-events-none"
-          style={{ top: isMobile ? cardOffsetTop : 56 }}
+          style={{ top: isMobile ? 0 : cardOffsetTop }}
           aria-hidden
         />
       </PopoverAnchor>
@@ -1039,32 +965,21 @@ export default function MessagesMenu({
       <PopoverContent
         side="bottom"
         align="center"
-        sideOffset={POPOVER_SIDE_OFFSET_PX}
+        sideOffset={isMobile ? 0 : POPOVER_SIDE_OFFSET_PX}
         dir={isRtl ? "rtl" : "ltr"}
-        className="relative z-90 w-[960px] max-w-[min(1100px,calc(100vw-1.5rem))] border-none bg-transparent p-0 shadow-none ring-0"
+        className={cn(
+          "relative z-90 border-none bg-transparent p-0 shadow-none ring-0",
+          isMobile ? "w-full max-w-none" : "w-[960px] max-w-[min(1100px,calc(100vw-1.5rem))]",
+        )}
+        style={mobileContentStyle}
       >
         <div
-          ref={sheetRef}
           className={cn(
             "relative rounded-[32px] border border-white/50 bg-linear-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40",
+            isMobile && "h-full",
             isRtl ? "text-right" : "text-left",
           )}
-          style={{
-            transform: `translateY(${dragOffset}px)`,
-            transition: isDragging ? "none" : "transform 220ms cubic-bezier(0.16, 1, 0.3, 1)",
-            willChange: "transform",
-          }}
         >
-          {isMobile && (
-            <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
-              <div
-                role="presentation"
-                aria-hidden="true"
-                onPointerDown={handleDragStart}
-                className="pointer-events-auto h-1.5 w-16 cursor-grab rounded-full bg-[#D9C4AF]/80 touch-none select-none transition active:cursor-grabbing"
-              />
-            </div>
-          )}
           {!canLoad ? (
             <div className="relative flex h-[380px] w-full items-center justify-center rounded-[24px] px-6 text-center text-sm text-[#777777]">
               <button
@@ -1089,11 +1004,11 @@ export default function MessagesMenu({
               </button>
               {isMobile ? (
                 mobileView === "list" ? (
-                  <div className="w-full" style={{ height: cardHeight }}>
+                  <div className="w-full h-full">
                     {renderConversationListSection()}
                   </div>
                 ) : (
-                  <div className="w-full" style={{ height: cardHeight }}>
+                  <div className="w-full h-full">
                     {renderConversationThreadSection(true)}
                   </div>
                 )
