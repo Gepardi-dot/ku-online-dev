@@ -48,6 +48,8 @@ import { rtlLocales } from "@/lib/locale/dictionary";
 
 const clampValue = (input: number, min: number, max: number) => Math.min(max, Math.max(min, input));
 const MOBILE_BOTTOM_GAP_PX = 16; // Breathing room above the mobile nav
+const POPOVER_SIDE_OFFSET_PX = 12; // Matches PopoverContent sideOffset
+const MOBILE_SHEET_FRAME_PX = 40; // Outer padding (p-4) + inner padding (p-1)
 const ARABIC_SCRIPT_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
 
 const hasArabicScript = (value?: string | null) =>
@@ -194,16 +196,17 @@ export default function MessagesMenu({
     const isSmallViewport = viewportWidth < 768;
     const bottomGap = isSmallViewport ? MOBILE_BOTTOM_GAP_PX : 24;
     const maxBottom = navTop - bottomGap;
+    const frameOffset = isSmallViewport ? POPOVER_SIDE_OFFSET_PX + MOBILE_SHEET_FRAME_PX : 0;
 
-    return { isSmallViewport, offsetTop, maxBottom };
+    return { isSmallViewport, offsetTop, maxBottom, frameOffset };
   }, []);
 
   const updateLayout = useCallback(() => {
     if (typeof window === "undefined") return;
-    const { isSmallViewport, offsetTop, maxBottom } = getLayoutMetrics();
+    const { isSmallViewport, offsetTop, maxBottom, frameOffset } = getLayoutMetrics();
     setIsMobile(isSmallViewport);
 
-    let available = maxBottom - offsetTop;
+    let available = maxBottom - offsetTop - frameOffset;
     if (!Number.isFinite(available) || available <= 0) {
       available = 420;
     }
@@ -1036,7 +1039,7 @@ export default function MessagesMenu({
       <PopoverContent
         side="bottom"
         align="center"
-        sideOffset={12}
+        sideOffset={POPOVER_SIDE_OFFSET_PX}
         dir={isRtl ? "rtl" : "ltr"}
         className="relative z-90 w-[960px] max-w-[min(1100px,calc(100vw-1.5rem))] border-none bg-transparent p-0 shadow-none ring-0"
       >
