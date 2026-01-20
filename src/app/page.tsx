@@ -221,9 +221,10 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                           }
                           priority={idx < 4}
                           loading={idx < 4 ? 'eager' : 'lazy'}
-                          quality={82}
+                          quality={75}
                           placeholder="blur"
                           blurDataURL={CATEGORY_BLUR_PLACEHOLDER}
+                          unoptimized={false}
                         />
                       ) : (
                         <span className={`${color.iconText} text-base sm:text-lg`}>{category.icon ?? '🏷️'}</span>
