@@ -1,5 +1,6 @@
 
 import { notFound } from 'next/navigation';
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { unstable_noStore as noStore } from 'next/cache';
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
@@ -18,7 +19,7 @@ import ReviewSystem from '@/components/reviews/review-system';
 import SimilarItems from '@/components/product/similar-items';
 import { ReportListingDialog } from '@/components/reports/ReportListingDialog';
 import { differenceInMonths } from 'date-fns';
-import { getProductById, incrementProductViews } from '@/lib/services/products';
+import { getProductById, getProductMetadataById, incrementProductViews } from '@/lib/services/products';
 import ProductImages from '@/components/product/product-images';
 import { getProductFavoriteCount } from '@/lib/services/favorites-analytics';
 import Link from 'next/link';
@@ -53,6 +54,39 @@ const placeholderReviews = [
 ];
 interface ProductPageProps {
   params: Promise<{ id: string }>;
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  if (!id) {
+    return {};
+  }
+
+  const locale = await getServerLocale();
+  const product = await getProductMetadataById(id);
+  if (!product) {
+    return {};
+  }
+
+  const localizedTitle = localizeListingText(product.title, product.titleTranslations, locale).trim();
+  const localizedDescription = localizeListingText(product.description, product.descriptionTranslations, locale).trim();
+  const title = localizedTitle ? `${localizedTitle} | KU BAZAR` : 'KU BAZAR';
+  const description = localizedDescription ? localizedDescription.slice(0, 160) : undefined;
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? '';
+  const canonical = base ? `${base}/product/${product.id}` : `/product/${product.id}`;
+  const images = product.imageUrls.length > 0 ? [product.imageUrls[0]] : [];
+
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title: localizedTitle || title,
+      description: localizedDescription || undefined,
+      url: canonical,
+      images,
+    },
+  };
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
