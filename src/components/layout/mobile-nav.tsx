@@ -37,11 +37,20 @@ export default function MobileNav() {
   const [favoritesCount, setFavoritesCount] = useState<number>(0);
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [userId, setUserId] = useState<string | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState<boolean>(false);
   const navRef = useRef<HTMLDivElement | null>(null);
   const viewportRafRef = useRef<number | null>(null);
   const lastKeyboardOffsetRef = useRef<number>(-1);
+  const lastKeyboardVisibleRef = useRef<boolean>(false);
   const labelClassName =
     "mobile-nav-label mt-1 h-[1.1rem] max-w-19 truncate text-[11px] leading-tight";
+
+  const isEditableElement = (element: Element | null) => {
+    if (!element || !(element instanceof HTMLElement)) return false;
+    if (element.isContentEditable) return true;
+    const tag = element.tagName.toLowerCase();
+    return tag === "input" || tag === "textarea" || tag === "select";
+  };
 
   useEffect(() => {
     const supabase = createClient();
@@ -69,6 +78,7 @@ export default function MobileNav() {
     if (typeof window === "undefined") return;
     const nav = navRef.current;
     if (!nav) return;
+    let mounted = true;
 
     const updateOffset = () => {
       const height = nav.getBoundingClientRect().height;
@@ -82,13 +92,23 @@ export default function MobileNav() {
         viewportRafRef.current = null;
         const viewport = window.visualViewport;
         let offset = 0;
+        const activeEditable = isEditableElement(document.activeElement);
+        let keyboardVisibleNext = activeEditable;
+
         if (viewport) {
           const heightDelta = window.innerHeight - viewport.height;
           const keyboardThreshold = 150;
           if (heightDelta > keyboardThreshold) {
+            keyboardVisibleNext = true;
             offset = Math.max(0, heightDelta - viewport.offsetTop);
           }
         }
+
+        if (keyboardVisibleNext !== lastKeyboardVisibleRef.current) {
+          lastKeyboardVisibleRef.current = keyboardVisibleNext;
+          if (mounted) setKeyboardVisible(keyboardVisibleNext);
+        }
+
         if (Math.abs(offset - lastKeyboardOffsetRef.current) < 1) return;
         lastKeyboardOffsetRef.current = offset;
         document.documentElement.style.setProperty("--mobile-keyboard-offset", `${offset}px`);
@@ -108,6 +128,10 @@ export default function MobileNav() {
       window.addEventListener("focusout", handleFocusChange);
       window.addEventListener("orientationchange", handleViewportResize);
       return () => {
+        mounted = false;
+        if (viewportRafRef.current !== null) {
+          window.cancelAnimationFrame(viewportRafRef.current);
+        }
         window.removeEventListener("resize", updateOffset);
         window.removeEventListener("resize", handleViewportResize);
         window.removeEventListener("focusin", handleFocusChange);
@@ -126,6 +150,7 @@ export default function MobileNav() {
     window.visualViewport?.addEventListener("resize", handleViewportResize);
 
     return () => {
+      mounted = false;
       if (viewportRafRef.current !== null) {
         window.cancelAnimationFrame(viewportRafRef.current);
       }
@@ -142,13 +167,15 @@ export default function MobileNav() {
   return (
     <div
       dir="ltr"
-      className="md:hidden fixed left-0 right-0 z-50 w-full max-w-[100vw] border-t bg-background/95 backdrop-blur-sm pb-(--mobile-safe-area-bottom)"
+      className="md:hidden fixed left-0 right-0 z-50 w-full max-w-[100vw] border-t bg-background/95 backdrop-blur-sm pb-(--mobile-safe-area-bottom) transition-[transform,opacity] duration-200 ease-out"
       data-mobile-nav
       ref={navRef}
       style={{
         bottom: 0,
-        transform: "translate3d(0, calc(-1 * var(--mobile-keyboard-offset)), 0)",
-        willChange: "transform",
+        transform: keyboardVisible ? "translate3d(0, 120%, 0)" : "translate3d(0, 0, 0)",
+        opacity: keyboardVisible ? 0 : 1,
+        pointerEvents: keyboardVisible ? "none" : "auto",
+        willChange: "transform, opacity",
       }}
     >
       <nav
