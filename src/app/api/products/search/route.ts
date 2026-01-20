@@ -29,7 +29,7 @@ export const GET = withSentryRoute(async (request: Request) => {
     : await getProductsWithCount(filtersWithDate, PAGE_SIZE, offset, sort);
 
   const response = NextResponse.json({ items: result.items, count: result.count, page });
-  // Cache for a short time on shared caches; allow SWR for clients
-  response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=300');
+  // Cache on shared caches for faster repeated searches; allow SWR for clients.
+  response.headers.set('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=300');
   return response;
 });
