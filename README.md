@@ -52,6 +52,7 @@ Run the migrations and deploy the edge function so that the frontend can rely on
   - **Redirect URLs** → include `http://localhost:5000/*` for development. Avoid using `0.0.0.0` which browsers reject as an OAuth callback.
   - Add `https://<your-production-domain>/*` to Redirect URLs before shipping.
 - Rotate the Google provider credentials if they were created for a different origin, then re-run the OAuth flow to confirm the user record is created with a populated profile.
+- To enable SMS OTP sign-in, enable the **Phone** provider (Authentication → Providers) and configure an SMS provider that supports your target countries (Project Settings → Auth → SMS).
 
 ### Operations quick reference
 

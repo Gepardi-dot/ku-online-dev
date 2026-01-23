@@ -14,4 +14,4 @@ The server registers the following tools:
 | `supabase.delete`         | Delete rows with filter criteria.        |
 | `supabase.storageUpload`  | Upload base64 data into the bucket.      |
 
-Configure Cursor via `.cursor/mcp.json` to start this server automatically (already committed). Restart Cursor or reload MCP servers after setting environment variables.***
+Configure Cursor via `.cursor/mcp.json` to start this server automatically, then restart Cursor (or reload MCP servers) after setting environment variables.

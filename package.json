@@ -17,6 +17,7 @@
     "supabase:apply": "node scripts/apply-supabase-schema.mjs",
     "supabase:policies": "node scripts/show-policies.mjs",
     "tooling:status": "node scripts/check-tooling-status.mjs",
+    "vonage:status": "node scripts/check-vonage-status.mjs",
     "check:node": "node scripts/check-node.mjs",
     "check:env": "node scripts/check-env.mjs",
     "ci": "npm run check:node && npm run check:env && npm run typecheck && npm run lint:ci && npm test && npm run build",
