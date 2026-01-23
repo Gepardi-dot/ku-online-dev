@@ -22,6 +22,13 @@ const serverSchema = baseSchema.extend({
   ALGOLIA_SEARCH_API_KEY: z.string().min(1).optional(),
   ALGOLIA_INDEX_NAME: z.string().min(1).optional(),
   RESEND_API_KEY: z.string().min(1).optional(),
+  VONAGE_API_KEY: z.string().min(1).optional(),
+  VONAGE_API_SECRET: z.string().min(1).optional(),
+  VONAGE_APPLICATION_ID: z.string().min(1).optional(),
+  VONAGE_PRIVATE_KEY64: z.string().min(1).optional(),
+  VONAGE_SMS_SENDER_ID: z.string().min(1).optional(),
+  VONAGE_SMS_TEMPLATE: z.string().min(1).optional(),
+  SUPABASE_SMS_HOOK_SECRET: z.string().min(1).optional(),
   PARTNERSHIPS_NOTIFY_EMAIL: z.string().email().optional(),
   PARTNERSHIPS_FROM_EMAIL: z.string().email().optional(),
 });
