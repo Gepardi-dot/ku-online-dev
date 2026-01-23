@@ -29,6 +29,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
   const isKurdish = locale === 'ku';
   const [isLoading, setIsLoading] = useState(false);
   const [phone, setPhone] = useState('');
+  const [verificationPhone, setVerificationPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -97,6 +98,43 @@ export default function AuthButton({ user }: AuthButtonProps) {
     setIsLoading(false);
   };
 
+  const formatIraqMobile = useCallback((value: string) => {
+    let digits = value.replace(/\D/g, '');
+    if (digits.startsWith('00')) {
+      digits = digits.slice(2);
+    }
+    if (digits.startsWith('964')) {
+      digits = digits.slice(3);
+    }
+    if (digits.startsWith('0')) {
+      digits = digits.slice(1);
+    }
+
+    digits = digits.slice(0, 10);
+    const part1 = digits.slice(0, 3);
+    const part2 = digits.slice(3, 6);
+    const part3 = digits.slice(6);
+    return [part1, part2, part3].filter(Boolean).join(' ');
+  }, []);
+
+  const normalizeIraqMobileToE164 = useCallback((value: string) => {
+    let digits = value.replace(/\D/g, '');
+    if (digits.startsWith('00')) {
+      digits = digits.slice(2);
+    }
+    if (digits.startsWith('964')) {
+      digits = digits.slice(3);
+    }
+    if (digits.startsWith('0')) {
+      digits = digits.slice(1);
+    }
+
+    digits = digits.slice(0, 10);
+    if (digits.length !== 10) return null;
+    if (!digits.startsWith('7')) return null;
+    return `+964${digits}`;
+  }, []);
+
   const handlePhoneLogin = async () => {
     setIsLoading(true);
     setPhoneError(null);
@@ -108,20 +146,14 @@ export default function AuthButton({ user }: AuthButtonProps) {
         return;
       }
 
-      // Normalise international numbers like 0044... to +44...
-      let normalized = raw;
-      if (normalized.startsWith('00')) {
-        normalized = `+${normalized.slice(2)}`;
-      }
-
-      // Basic E.164-style validation; Supabase/Twilio expect international format.
-      if (!/^\+?[0-9]{7,15}$/.test(normalized)) {
+      const normalized = normalizeIraqMobileToE164(raw);
+      if (!normalized) {
         setPhoneError(t('auth.phoneInvalidError'));
         setIsLoading(false);
         return;
       }
 
-      setPhone(normalized);
+      setVerificationPhone(normalized);
 
       const { error } = await supabase.auth.signInWithOtp({
         phone: normalized,
@@ -145,7 +177,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
     setOtpError(null);
     try {
       const { error } = await supabase.auth.verifyOtp({
-        phone,
+        phone: verificationPhone,
         token: otp,
         type: 'sms',
       });
@@ -169,6 +201,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
 
   if (user) {
     const userIsModerator = isModerator(user);
+    const contactValue = user.email ?? user.phone ?? '';
 
     return (
       <DropdownMenu
@@ -205,7 +238,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
               {user.user_metadata?.full_name || t('header.userMenu.defaultName')}
             </p>
             <p className="text-xs text-brand/80 mt-0.5">
-              {user.email}
+              {contactValue}
             </p>
           </div>
           <DropdownMenuItem asChild className="mb-2">
@@ -325,14 +358,26 @@ export default function AuthButton({ user }: AuthButtonProps) {
           {!showOtpInput ? (
             <div className="space-y-2">
               <Label htmlFor="phone">{t('auth.phoneLabel')}</Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder={t('auth.phonePlaceholder')}
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                ref={phoneInputRef}
-              />
+              <div className="relative">
+                <div
+                  className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground"
+                  aria-hidden="true"
+                >
+                  <span dir="ltr">+964</span>
+                </div>
+                <Input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  placeholder={t('auth.phonePlaceholder')}
+                  value={phone}
+                  onChange={(e) => setPhone(formatIraqMobile(e.target.value))}
+                  className="pl-16 text-left"
+                  dir="ltr"
+                  ref={phoneInputRef}
+                />
+              </div>
               {phoneError && (
                 <p className="text-xs text-destructive">
                   {phoneError}
@@ -370,4 +415,3 @@ export default function AuthButton({ user }: AuthButtonProps) {
     </Dialog>
   );
 }
-

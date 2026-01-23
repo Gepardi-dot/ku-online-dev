@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "vonage-tooling": {
+      "command": "node",
+      "args": ["tools/mcp/run-vonage-tooling.mjs"]
+    }
+  }
+}
+
