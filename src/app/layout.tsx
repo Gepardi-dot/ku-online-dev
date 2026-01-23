@@ -27,6 +27,10 @@ const notoKufiArabic = Noto_Kufi_Arabic({
 export const metadata: Metadata = {
   title: 'KU BAZAR - Your Global Online Shopping Destination',
   description: 'A multi-vendor local marketplace for the Kurdistan region.',
+  icons: {
+    icon: '/KU-LOGO.png',
+    apple: '/KU-LOGO.png',
+  },
 };
 
 export default async function RootLayout({
@@ -71,4 +75,3 @@ export default async function RootLayout({
     </html>
   );
 }
-
