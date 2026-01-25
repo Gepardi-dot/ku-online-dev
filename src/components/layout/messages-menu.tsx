@@ -33,7 +33,9 @@ import {
   deleteConversation,
   fetchConversation,
   fetchMessages,
-  listConversationsForUser,
+  getCachedConversations,
+  listConversationsForUserWithOptions,
+  prefetchConversationsForUser,
   markConversationRead,
   sendMessage,
   subscribeToConversation,
@@ -41,6 +43,7 @@ import {
   type ConversationSummary,
   type MessageRecord,
 } from "@/lib/services/messages-client";
+import { chatTimingNow, logChatTiming } from "@/lib/services/chat-timing";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
@@ -49,6 +52,8 @@ import { rtlLocales } from "@/lib/locale/dictionary";
 const MOBILE_BOTTOM_GAP_PX = 92; // Increased spacing to ensure sheet clears mobile nav
 const EXTRA_KEYBOARD_LIFT_PX = 24;
 const ARABIC_SCRIPT_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+const CONVERSATION_CACHE_TTL_MS = 60_000;
+const PREFETCH_DELAY_MS = 1200;
 
 const hasArabicScript = (value?: string | null) =>
   typeof value === "string" && value.length > 0 && ARABIC_SCRIPT_REGEX.test(value);
@@ -171,6 +176,12 @@ export default function MessagesMenu({
   const messagesViewportRef = useRef<HTMLDivElement | null>(null);
   const autoScrollEnabledRef = useRef(true);
   const scrollRafRef = useRef<number | null>(null);
+  const openStartRef = useRef<number | null>(null);
+  const conversationLoadSeqRef = useRef(0);
+  const messageLoadSeqRef = useRef(0);
+  const threadOpenStartRef = useRef<number | null>(null);
+  const prefetchTimerRef = useRef<number | null>(null);
+  const prefetchedUserRef = useRef<string | null>(null);
 
   const canLoad = Boolean(userId);
 
@@ -251,6 +262,11 @@ export default function MessagesMenu({
     };
   }, [open, isMobile]);
 
+  useEffect(() => {
+    if (!open) return;
+    openStartRef.current = chatTimingNow();
+  }, [open]);
+
   // --- Data loading helpers ---
 
   const refreshUnread = useCallback(async () => {
@@ -267,7 +283,7 @@ export default function MessagesMenu({
     }
   }, [userId]);
 
-  const loadConversations = useCallback(async () => {
+  const loadConversations = useCallback(async (options?: { preferCache?: boolean }) => {
     if (!userId) {
       setConversations([]);
       setActiveConversationId(null);
@@ -275,17 +291,66 @@ export default function MessagesMenu({
       return;
     }
 
-    setLoadingConversations(true);
+    const preferCache = options?.preferCache !== false;
+    let usedCache = false;
+    let cachedCount = 0;
+
+    if (preferCache) {
+      const cached = getCachedConversations(userId, CONVERSATION_CACHE_TTL_MS);
+      if (cached) {
+        usedCache = true;
+        cachedCount = cached.length;
+        setConversations(cached);
+        setActiveConversationId((previous) => {
+          if (!previous) return null;
+          return cached.some((conversation) => conversation.id === previous) ? previous : null;
+        });
+        if (openStartRef.current) {
+          logChatTiming("menu:conversations:cache", chatTimingNow() - openStartRef.current, {
+            count: cachedCount,
+          });
+          openStartRef.current = null;
+        }
+      }
+    }
+
+    const loadId = conversationLoadSeqRef.current + 1;
+    conversationLoadSeqRef.current = loadId;
+    const startedAt = chatTimingNow();
+    setLoadingConversations(!usedCache);
+    let resultCount = 0;
     try {
-      const results = await listConversationsForUser(userId);
+      const results = await listConversationsForUserWithOptions(userId, {
+        preferCache: false,
+        cacheTtlMs: CONVERSATION_CACHE_TTL_MS,
+      });
+      resultCount = results.length;
       setConversations(results);
 
       setActiveConversationId((previous) => {
         if (!previous) return null;
         return results.some((conversation) => conversation.id === previous) ? previous : null;
       });
+      const meta: Record<string, unknown> = { count: resultCount, loadId };
+      if (openStartRef.current) {
+        meta.openMs = Math.round(chatTimingNow() - openStartRef.current);
+        openStartRef.current = null;
+      }
+      logChatTiming("menu:conversations:load", chatTimingNow() - startedAt, meta);
+      if (typeof window !== "undefined") {
+        const renderStart = chatTimingNow();
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            logChatTiming("menu:conversations:render", chatTimingNow() - renderStart, {
+              count: resultCount,
+              loadId,
+            });
+          });
+        });
+      }
     } catch (error) {
       console.error("Failed to load conversations", error);
+      logChatTiming("menu:conversations:error", chatTimingNow() - startedAt, { loadId });
       toast({
         title: "Unable to load conversations",
         description: "Please try again soon.",
@@ -305,6 +370,9 @@ export default function MessagesMenu({
         return;
       }
 
+      const loadId = messageLoadSeqRef.current + 1;
+      messageLoadSeqRef.current = loadId;
+      const startedAt = chatTimingNow();
       setLoadingMessages(true);
       try {
         const history = await fetchMessages(conversationId, { limit: 60, before: options?.before });
@@ -325,8 +393,31 @@ export default function MessagesMenu({
           ),
         );
         void refreshUnread();
+        const meta: Record<string, unknown> = {
+          count: history.length,
+          loadId,
+          append: Boolean(options?.append),
+          hasBefore: Boolean(options?.before),
+        };
+        if (threadOpenStartRef.current) {
+          meta.openMs = Math.round(chatTimingNow() - threadOpenStartRef.current);
+          threadOpenStartRef.current = null;
+        }
+        logChatTiming("menu:messages:load", chatTimingNow() - startedAt, meta);
+        if (typeof window !== "undefined") {
+          const renderStart = chatTimingNow();
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              logChatTiming("menu:messages:render", chatTimingNow() - renderStart, {
+                count: history.length,
+                loadId,
+              });
+            });
+          });
+        }
       } catch (error) {
         console.error("Failed to load messages", error);
+        logChatTiming("menu:messages:error", chatTimingNow() - startedAt, { loadId });
         toast({
           title: "Unable to load messages",
           description: "Please try again.",
@@ -349,6 +440,23 @@ export default function MessagesMenu({
     if (!userId || !open) return;
     void loadConversations();
   }, [userId, open, loadConversations]);
+
+  useEffect(() => {
+    if (!userId || open) return;
+    if (prefetchedUserRef.current === userId) return;
+    prefetchedUserRef.current = userId;
+
+    prefetchTimerRef.current = window.setTimeout(() => {
+      prefetchConversationsForUser(userId, CONVERSATION_CACHE_TTL_MS);
+    }, PREFETCH_DELAY_MS);
+
+    return () => {
+      if (prefetchTimerRef.current) {
+        window.clearTimeout(prefetchTimerRef.current);
+        prefetchTimerRef.current = null;
+      }
+    };
+  }, [userId, open]);
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -463,6 +571,11 @@ export default function MessagesMenu({
   }, [activeConversationId, userId, open]);
 
   // --- Message loading when active thread changes ---
+
+  useEffect(() => {
+    if (!activeConversationId || !open) return;
+    threadOpenStartRef.current = chatTimingNow();
+  }, [activeConversationId, open]);
 
   useEffect(() => {
     if (!activeConversationId || !open) {
