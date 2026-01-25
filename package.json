@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "node tools/scripts/dev-server.mjs",
     "build": "next build",
+    "clean": "node tools/scripts/clean-next.mjs",
+    "dev:clean": "npm run clean && npm run dev",
+    "build:clean": "npm run clean && npm run build",
     "start": "next start -H 0.0.0.0 -p 5000",
     "lint": "eslint .",
     "lint:ci": "eslint . --max-warnings=0",
