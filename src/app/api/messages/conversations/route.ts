@@ -148,6 +148,16 @@ function isRpcMissing(error: { code?: string; message?: string } | null | undefi
   return message.includes('schema cache') && message.includes('list_conversation_summaries');
 }
 
+function buildServerTiming(parts: Array<[string, number | null | undefined]>, source?: string) {
+  const segments = parts
+    .filter(([, value]) => typeof value === 'number' && Number.isFinite(value))
+    .map(([label, value]) => `${label};dur=${Math.max(0, Math.round(value as number))}`);
+  if (source) {
+    segments.push(`source;desc="${source}"`);
+  }
+  return segments.join(', ');
+}
+
 export const GET = withSentryRoute(async (request: Request) => {
   const requestStart = TIMING_ENABLED ? performance.now() : 0;
   const { searchParams } = new URL(request.url);
@@ -264,6 +274,7 @@ export const GET = withSentryRoute(async (request: Request) => {
 
     const conversations = mapLegacyRows(rows as LegacyRow[], unreadCounts);
 
+    const headers = new Headers();
     if (TIMING_ENABLED) {
       console.info('[chat-timing] conversations:route', {
         ms: Math.round(performance.now() - requestStart),
@@ -273,13 +284,22 @@ export const GET = withSentryRoute(async (request: Request) => {
         unreadMs: Math.round(unreadMs),
         source,
       });
+      const timing = buildServerTiming(
+        [
+          ['conversations', legacyMs],
+          ['unread', unreadMs],
+        ],
+        source,
+      );
+      if (timing) headers.set('Server-Timing', timing);
     }
-    return NextResponse.json({ conversations });
+    return NextResponse.json({ conversations }, { headers });
   }
 
   rows = (data ?? []) as RpcRow[];
   const conversations = mapRpcRows(rows as RpcRow[]);
 
+  const headers = new Headers();
   if (TIMING_ENABLED) {
     console.info('[chat-timing] conversations:route', {
       ms: Math.round(performance.now() - requestStart),
@@ -288,6 +308,8 @@ export const GET = withSentryRoute(async (request: Request) => {
       conversationsMs: Math.round(conversationsMs),
       source,
     });
+    const timing = buildServerTiming([['conversations', conversationsMs]], source);
+    if (timing) headers.set('Server-Timing', timing);
   }
-  return NextResponse.json({ conversations });
+  return NextResponse.json({ conversations }, { headers });
 }, 'messages-conversation-list');
