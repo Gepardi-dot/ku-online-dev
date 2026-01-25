@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,7 +19,14 @@ interface ProductCardProps {
   searchQuery?: string | null;
 }
 
-export default function ProductCard({ product, viewerId, searchQuery }: ProductCardProps) {
+const conditionColorMap: Record<string, string> = {
+  new: 'bg-green-500',
+  'used - like new': 'bg-blue-500',
+  'used - good': 'bg-yellow-500',
+  'used - fair': 'bg-orange-500',
+};
+
+const ProductCard = memo(function ProductCardImpl({ product, viewerId, searchQuery }: ProductCardProps) {
   const { t, locale, messages } = useLocale();
   const isRtl = rtlLocales.includes(locale);
   const cityLabels = messages.header.city as Record<string, string>;
@@ -55,13 +63,6 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
       body: payload,
       keepalive: true,
     }).catch(() => {});
-  };
-
-  const conditionColorMap: Record<string, string> = {
-    new: 'bg-green-500',
-    'used - like new': 'bg-blue-500',
-    'used - good': 'bg-yellow-500',
-    'used - fair': 'bg-orange-500',
   };
 
   const getConditionColor = (condition?: string | null) => {
@@ -110,7 +111,7 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
             src={product.imageUrls?.[0] || 'https://picsum.photos/400/300'}
             alt={localizedTitle}
             fill
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 20vw"
+            sizes="(max-width: 639px) 50vw, (max-width: 767px) 33vw, (max-width: 1023px) 25vw, (max-width: 1279px) 20vw, 16vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
           {product.isSold && (
@@ -207,4 +208,8 @@ export default function ProductCard({ product, viewerId, searchQuery }: ProductC
       </Card>
     </Link>
   );
-}
+});
+
+ProductCard.displayName = 'ProductCard';
+
+export default ProductCard;

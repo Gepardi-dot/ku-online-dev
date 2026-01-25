@@ -1,0 +1,3 @@
+-- Placeholder for migration applied remotely on 2026-01-14 15:30:00 UTC.
+-- The actual migration file is missing from this repository.
+-- This file allows Supabase CLI to reconcile migration history safely.
