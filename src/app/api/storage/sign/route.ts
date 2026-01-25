@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
+import { performance } from 'node:perf_hooks';
 
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@/utils/supabase/server';
@@ -17,7 +18,10 @@ type SignRequest = {
   };
 };
 
+const TIMING_ENABLED = process.env.CHAT_TIMINGS === '1';
+
 export const POST = withSentryRoute(async (request: Request) => {
+  const requestStart = TIMING_ENABLED ? performance.now() : 0;
   const headers = new Headers({
     'Cache-Control': 'private, no-store, max-age=0',
     Pragma: 'no-cache',
@@ -31,6 +35,12 @@ export const POST = withSentryRoute(async (request: Request) => {
   } = await supabase.auth.getUser();
 
   if (!user) {
+    if (TIMING_ENABLED) {
+      console.info('[chat-timing] storage:sign', {
+        ms: Math.round(performance.now() - requestStart),
+        status: 401,
+      });
+    }
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers });
   }
 
@@ -48,6 +58,12 @@ export const POST = withSentryRoute(async (request: Request) => {
     headers.set('X-RateLimit-Limit', '60');
     headers.set('X-RateLimit-Remaining', '0');
     headers.set('X-RateLimit-Reset', String(rate.resetAt));
+    if (TIMING_ENABLED) {
+      console.info('[chat-timing] storage:sign', {
+        ms: Math.round(performance.now() - requestStart),
+        status: 429,
+      });
+    }
     return NextResponse.json({ error: 'Too Many Requests' }, { status: 429, headers });
   }
   headers.set('X-RateLimit-Limit', '60');
@@ -60,15 +76,34 @@ export const POST = withSentryRoute(async (request: Request) => {
     .slice(0, 100);
 
   if (paths.length === 0) {
+    if (TIMING_ENABLED) {
+      console.info('[chat-timing] storage:sign', {
+        ms: Math.round(performance.now() - requestStart),
+        status: 200,
+        paths: 0,
+      });
+    }
     return NextResponse.json(
       { map: {}, expiresInSeconds, expiresAt: Date.now() + expiresInSeconds * 1000 },
       { headers },
     );
   }
 
+  const signStart = TIMING_ENABLED ? performance.now() : 0;
   const map = body.transform
     ? await createTransformedSignedUrls(paths, body.transform, expiresInSeconds)
     : await createSignedUrls(paths, expiresInSeconds);
+  const signMs = TIMING_ENABLED ? performance.now() - signStart : 0;
+  if (TIMING_ENABLED) {
+    console.info('[chat-timing] storage:sign', {
+      ms: Math.round(performance.now() - requestStart),
+      status: 200,
+      paths: paths.length,
+      signed: Object.keys(map).length,
+      transform: Boolean(body.transform),
+      signMs: Math.round(signMs),
+    });
+  }
   return NextResponse.json(
     { map, expiresInSeconds, expiresAt: Date.now() + expiresInSeconds * 1000 },
     { headers },

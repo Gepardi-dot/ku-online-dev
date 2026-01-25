@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient as createAdminClient } from '@supabase/supabase-js';
+import { performance } from 'node:perf_hooks';
 
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient as createServerClient } from '@/utils/supabase/server';
@@ -10,8 +11,10 @@ export const runtime = 'nodejs';
 
 const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = getEnv();
 const supabaseAdmin = createAdminClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const TIMING_ENABLED = process.env.CHAT_TIMINGS === '1';
 
 export const GET = withSentryRoute(async (request: Request) => {
+  const requestStart = TIMING_ENABLED ? performance.now() : 0;
   const { searchParams } = new URL(request.url);
   const userId = searchParams.get('userId');
 
@@ -25,6 +28,7 @@ export const GET = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
+  const conversationsStart = TIMING_ENABLED ? performance.now() : 0;
   const { data, error } = await supabaseAdmin
     .from('conversations')
     .select(
@@ -35,6 +39,7 @@ export const GET = withSentryRoute(async (request: Request) => {
     )
     .or(`seller_id.eq.${user.id},buyer_id.eq.${user.id}`)
     .order('updated_at', { ascending: false, nullsFirst: false });
+  const conversationsMs = TIMING_ENABLED ? performance.now() - conversationsStart : 0;
 
   if (error) {
     console.error('Conversations query failed', {
@@ -43,6 +48,13 @@ export const GET = withSentryRoute(async (request: Request) => {
       details: error.details,
       hint: error.hint,
     });
+    if (TIMING_ENABLED) {
+      console.info('[chat-timing] conversations:route', {
+        ms: Math.round(performance.now() - requestStart),
+        status: 500,
+        conversationsMs: Math.round(conversationsMs),
+      });
+    }
     return NextResponse.json(
       {
         error: 'Failed to load conversations',
@@ -59,14 +71,17 @@ export const GET = withSentryRoute(async (request: Request) => {
   // Derive which conversations have unread messages for this user so
   // the UI can visually distinguish unread threads.
   const unreadCounts = new Map<string, number>();
+  let unreadMs = 0;
   if (rows.length > 0) {
     const conversationIds = rows.map((row) => String(row.id));
+    const unreadStart = TIMING_ENABLED ? performance.now() : 0;
     const { data: unreadRows, error: unreadError } = await supabaseAdmin
       .from('messages')
       .select('conversation_id')
       .in('conversation_id', conversationIds)
       .eq('receiver_id', user.id)
       .eq('is_read', false);
+    unreadMs = TIMING_ENABLED ? performance.now() - unreadStart : 0;
 
     if (unreadError) {
       console.error('Unread messages query failed', unreadError);
@@ -118,5 +133,14 @@ export const GET = withSentryRoute(async (request: Request) => {
     };
   });
 
+  if (TIMING_ENABLED) {
+    console.info('[chat-timing] conversations:route', {
+      ms: Math.round(performance.now() - requestStart),
+      status: 200,
+      conversations: rows.length,
+      conversationsMs: Math.round(conversationsMs),
+      unreadMs: Math.round(unreadMs),
+    });
+  }
   return NextResponse.json({ conversations });
 }, 'messages-conversation-list');

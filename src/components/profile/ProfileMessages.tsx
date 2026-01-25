@@ -20,7 +20,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   fetchMessages,
   fetchConversation,
-  listConversationsForUser,
+  getCachedConversations,
+  listConversationsForUserWithOptions,
   markConversationRead,
   sendMessage,
   subscribeToConversation,
@@ -28,11 +29,14 @@ import {
   type ConversationSummary,
   type MessageRecord,
 } from "@/lib/services/messages-client";
+import { chatTimingNow, logChatTiming } from "@/lib/services/chat-timing";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
 import { CurrencyText } from "@/components/currency-text";
 import { rtlLocales } from "@/lib/locale/dictionary";
+
+const CONVERSATION_CACHE_TTL_MS = 60_000;
 
 interface ProfileMessagesProps {
   userId: string;
@@ -109,6 +113,9 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
 
   const conversationsRef = useRef<ConversationSummary[]>([]);
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const conversationLoadSeqRef = useRef(0);
+  const messageLoadSeqRef = useRef(0);
+  const threadOpenStartRef = useRef<number | null>(null);
   const [messageTranslations, setMessageTranslations] = useState<
     Record<
       string,
@@ -127,7 +134,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     send: messages.header.sendMessage,
   };
 
-  const loadConversations = useCallback(async () => {
+  const loadConversations = useCallback(async (options?: { preferCache?: boolean }) => {
     if (!userId) {
       setConversations([]);
       setActiveConversationId(null);
@@ -135,16 +142,56 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
       return;
     }
 
-    setLoadingConversations(true);
+    const preferCache = options?.preferCache !== false;
+    let usedCache = false;
+    let cachedCount = 0;
+
+    if (preferCache) {
+      const cached = getCachedConversations(userId, CONVERSATION_CACHE_TTL_MS);
+      if (cached) {
+        usedCache = true;
+        cachedCount = cached.length;
+        setConversations(cached);
+        setActiveConversationId((previous) => {
+          if (!previous) return null;
+          return cached.some((conversation) => conversation.id === previous) ? previous : null;
+        });
+        logChatTiming("profile:conversations:cache", 0, { count: cachedCount });
+      }
+    }
+
+    const loadId = conversationLoadSeqRef.current + 1;
+    conversationLoadSeqRef.current = loadId;
+    const startedAt = chatTimingNow();
+    setLoadingConversations(!usedCache);
     try {
-      const results = await listConversationsForUser(userId);
+      const results = await listConversationsForUserWithOptions(userId, {
+        preferCache: false,
+        cacheTtlMs: CONVERSATION_CACHE_TTL_MS,
+      });
       setConversations(results);
       setActiveConversationId((previous) => {
         if (!previous) return null;
         return results.some((conversation) => conversation.id === previous) ? previous : null;
       });
+      logChatTiming("profile:conversations:load", chatTimingNow() - startedAt, {
+        count: results.length,
+        loadId,
+      });
+      if (typeof window !== "undefined") {
+        const renderStart = chatTimingNow();
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            logChatTiming("profile:conversations:render", chatTimingNow() - renderStart, {
+              count: results.length,
+              loadId,
+            });
+          });
+        });
+      }
     } catch (error) {
       console.error("Failed to load conversations", error);
+      logChatTiming("profile:conversations:error", chatTimingNow() - startedAt, { loadId });
       toast({
         title: "Unable to load conversations",
         description: "Please try again soon.",
@@ -164,6 +211,9 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         return;
       }
 
+      const loadId = messageLoadSeqRef.current + 1;
+      messageLoadSeqRef.current = loadId;
+      const startedAt = chatTimingNow();
       setLoadingMessages(true);
       try {
         const history = await fetchMessages(conversationId, { limit: 60, before: options?.before });
@@ -179,8 +229,31 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
               : conversation,
           ),
         );
+        const meta: Record<string, unknown> = {
+          count: history.length,
+          loadId,
+          append: Boolean(options?.append),
+          hasBefore: Boolean(options?.before),
+        };
+        if (threadOpenStartRef.current) {
+          meta.openMs = Math.round(chatTimingNow() - threadOpenStartRef.current);
+          threadOpenStartRef.current = null;
+        }
+        logChatTiming("profile:messages:load", chatTimingNow() - startedAt, meta);
+        if (typeof window !== "undefined") {
+          const renderStart = chatTimingNow();
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              logChatTiming("profile:messages:render", chatTimingNow() - renderStart, {
+                count: history.length,
+                loadId,
+              });
+            });
+          });
+        }
       } catch (error) {
         console.error("Failed to load messages", error);
+        logChatTiming("profile:messages:error", chatTimingNow() - startedAt, { loadId });
         toast({
           title: "Unable to load messages",
           description: "Please try again.",
@@ -199,6 +272,11 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     }
     void loadConversations();
   }, [userId, loadConversations]);
+
+  useEffect(() => {
+    if (!activeConversationId) return;
+    threadOpenStartRef.current = chatTimingNow();
+  }, [activeConversationId]);
 
   useEffect(() => {
     conversationsRef.current = conversations;
