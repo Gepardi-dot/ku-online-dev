@@ -29,16 +29,7 @@ export const GET = withSentryRoute(async (request: Request) => {
   }
 
   const conversationsStart = TIMING_ENABLED ? performance.now() : 0;
-  const { data, error } = await supabaseAdmin
-    .from('conversations')
-    .select(
-      `id, product_id, seller_id, buyer_id, last_message, last_message_at, updated_at,
-       product:products(id, title, price, currency, images),
-       seller:public_user_profiles!conversations_seller_id_fkey(id, full_name, avatar_url),
-       buyer:public_user_profiles!conversations_buyer_id_fkey(id, full_name, avatar_url)`,
-    )
-    .or(`seller_id.eq.${user.id},buyer_id.eq.${user.id}`)
-    .order('updated_at', { ascending: false, nullsFirst: false });
+  const { data, error } = await supabaseAdmin.rpc('list_conversation_summaries', { p_user_id: user.id });
   const conversationsMs = TIMING_ENABLED ? performance.now() - conversationsStart : 0;
 
   if (error) {
@@ -68,37 +59,16 @@ export const GET = withSentryRoute(async (request: Request) => {
 
   const rows = data ?? [];
 
-  // Derive which conversations have unread messages for this user so
-  // the UI can visually distinguish unread threads.
-  const unreadCounts = new Map<string, number>();
-  let unreadMs = 0;
-  if (rows.length > 0) {
-    const conversationIds = rows.map((row) => String(row.id));
-    const unreadStart = TIMING_ENABLED ? performance.now() : 0;
-    const { data: unreadRows, error: unreadError } = await supabaseAdmin
-      .from('messages')
-      .select('conversation_id')
-      .in('conversation_id', conversationIds)
-      .eq('receiver_id', user.id)
-      .eq('is_read', false);
-    unreadMs = TIMING_ENABLED ? performance.now() - unreadStart : 0;
-
-    if (unreadError) {
-      console.error('Unread messages query failed', unreadError);
-    } else {
-      (unreadRows ?? []).forEach((row: any) => {
-        const conversationId = String(row.conversation_id);
-        unreadCounts.set(conversationId, (unreadCounts.get(conversationId) ?? 0) + 1);
-      });
-    }
-  }
-
-  const conversations = rows.map((row) => {
-    const productRecord = Array.isArray(row.product) ? row.product[0] : row.product;
-    const rawImages = productRecord ? ((productRecord.images as unknown) ?? []) : [];
-    const previewImagePaths = Array.isArray(rawImages)
-      ? rawImages.filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, 1)
-      : [];
+  const conversations = rows.map((row: any) => {
+    const productImage = typeof row.product_image === 'string' ? row.product_image : null;
+    const imagePaths = productImage && productImage.trim().length > 0 ? [productImage] : [];
+    const priceValue =
+      typeof row.product_price === 'number'
+        ? row.product_price
+        : row.product_price
+        ? Number(row.product_price)
+        : null;
+    const unreadCount = Number(row.unread_count ?? 0);
 
     return {
       id: String(row.id),
@@ -108,30 +78,30 @@ export const GET = withSentryRoute(async (request: Request) => {
       lastMessage: (row.last_message as string | null) ?? null,
       lastMessageAt: (row.last_message_at as string | null) ?? null,
       updatedAt: (row.updated_at as string | null) ?? null,
-      unreadCount: unreadCounts.get(String(row.id)) ?? 0,
-      hasUnread: (unreadCounts.get(String(row.id)) ?? 0) > 0,
-      product: productRecord
+      unreadCount,
+      hasUnread: unreadCount > 0,
+      product: row.product_id
         ? {
-            id: String(productRecord.id),
-            title: (productRecord.title as string) ?? 'Untitled',
-            price: productRecord.price as number | null,
-            currency: (productRecord.currency as string) ?? 'IQD',
-            imagePaths: previewImagePaths,
+            id: String(row.product_id),
+            title: (row.product_title as string | null) ?? 'Untitled',
+            price: priceValue,
+            currency: (row.product_currency as string | null) ?? 'IQD',
+            imagePaths,
             imageUrls: [],
           }
         : null,
-      seller: row.seller
+      seller: row.seller_id
         ? {
-            id: String((row.seller as any).id),
-            fullName: ((row.seller as any).full_name as string | null) ?? null,
-            avatarUrl: ((row.seller as any).avatar_url as string | null) ?? null,
+            id: String(row.seller_id),
+            fullName: (row.seller_full_name as string | null) ?? null,
+            avatarUrl: (row.seller_avatar_url as string | null) ?? null,
           }
         : null,
-      buyer: row.buyer
+      buyer: row.buyer_id
         ? {
-            id: String((row.buyer as any).id),
-            fullName: ((row.buyer as any).full_name as string | null) ?? null,
-            avatarUrl: ((row.buyer as any).avatar_url as string | null) ?? null,
+            id: String(row.buyer_id),
+            fullName: (row.buyer_full_name as string | null) ?? null,
+            avatarUrl: (row.buyer_avatar_url as string | null) ?? null,
           }
         : null,
     };
@@ -143,7 +113,6 @@ export const GET = withSentryRoute(async (request: Request) => {
       status: 200,
       conversations: rows.length,
       conversationsMs: Math.round(conversationsMs),
-      unreadMs: Math.round(unreadMs),
     });
   }
   return NextResponse.json({ conversations });
