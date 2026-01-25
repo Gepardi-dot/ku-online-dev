@@ -34,6 +34,7 @@ import {
   deleteConversation,
   fetchConversation,
   fetchMessages,
+  cacheConversationsForUser,
   getCachedConversations,
   listConversationsForUserWithOptions,
   prefetchConversationsForUser,
@@ -187,6 +188,19 @@ export default function MessagesMenu({
   const conversationViewportRef = useRef<HTMLDivElement | null>(null);
 
   const canLoad = Boolean(userId);
+
+  const updateConversations = useCallback(
+    (updater: (previous: ConversationSummary[]) => ConversationSummary[]) => {
+      setConversations((previous) => {
+        const next = updater(previous);
+        if (userId) {
+          cacheConversationsForUser(userId, next, CONVERSATION_CACHE_TTL_MS);
+        }
+        return next;
+      });
+    },
+    [userId],
+  );
 
   // --- Layout / viewport ---
 
@@ -388,7 +402,7 @@ export default function MessagesMenu({
 
         await markConversationRead(conversationId, userId);
 
-        setConversations((previous) =>
+        updateConversations((previous) =>
           previous.map((conversation) =>
             conversation.id === conversationId
               ? { ...conversation, hasUnread: false, unreadCount: 0 }
@@ -430,7 +444,7 @@ export default function MessagesMenu({
         setLoadingMessages(false);
       }
     },
-    [userId, oldestCursor, refreshUnread],
+    [userId, oldestCursor, refreshUnread, updateConversations],
   );
 
   // --- Initial unread + conversations when opened ---
@@ -474,7 +488,7 @@ export default function MessagesMenu({
       const shouldFlagUnread = !(open && message.conversationId === activeConversationId);
 
       // Keep contact list up to date
-      setConversations((previous) => {
+      updateConversations((previous) => {
         const existing = previous.find((item) => item.id === message.conversationId);
         if (!existing) {
           return previous;
@@ -508,7 +522,7 @@ export default function MessagesMenu({
               ? { ...summary, hasUnread: true, unreadCount: 1 }
               : { ...summary, hasUnread: false, unreadCount: 0 };
 
-            setConversations((previous) => {
+            updateConversations((previous) => {
               if (previous.some((item) => item.id === summaryWithUnread.id)) {
                 return previous;
               }
@@ -524,7 +538,7 @@ export default function MessagesMenu({
     return () => {
       channel.unsubscribe();
     };
-  }, [userId, open, activeConversationId]);
+  }, [userId, open, activeConversationId, updateConversations]);
 
   useEffect(() => {
     if (!activeConversationId || !open || !userId) return;
@@ -540,7 +554,7 @@ export default function MessagesMenu({
       if (message.receiverId === userId) {
         try {
           await markConversationRead(activeConversationId, userId);
-          setConversations((previous) =>
+          updateConversations((previous) =>
             previous.map((conversation) =>
               conversation.id === activeConversationId
                 ? { ...conversation, hasUnread: false, unreadCount: 0 }
@@ -552,7 +566,7 @@ export default function MessagesMenu({
         }
       }
 
-      setConversations((previous) => {
+      updateConversations((previous) => {
         const existing = previous.find((item) => item.id === message.conversationId);
         if (!existing) {
           return previous;
@@ -571,7 +585,7 @@ export default function MessagesMenu({
     return () => {
       channel.unsubscribe();
     };
-  }, [activeConversationId, userId, open]);
+  }, [activeConversationId, userId, open, updateConversations]);
 
   // --- Message loading when active thread changes ---
 
@@ -876,7 +890,7 @@ export default function MessagesMenu({
     async (conversationId: string) => {
       try {
         await deleteConversation(conversationId);
-        setConversations((previous) => previous.filter((item) => item.id !== conversationId));
+        updateConversations((previous) => previous.filter((item) => item.id !== conversationId));
 
         if (activeConversationId === conversationId) {
           setActiveConversationId(null);
@@ -893,7 +907,7 @@ export default function MessagesMenu({
         });
       }
     },
-    [activeConversationId, refreshUnread],
+    [activeConversationId, refreshUnread, updateConversations],
   );
 
   // --- Render helpers ---
