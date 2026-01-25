@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   fetchMessages,
   fetchConversation,
+  cacheConversationsForUser,
   getCachedConversations,
   listConversationsForUserWithOptions,
   markConversationRead,
@@ -139,6 +140,19 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     send: messages.header.sendMessage,
   };
 
+  const updateConversations = useCallback(
+    (updater: (previous: ConversationSummary[]) => ConversationSummary[]) => {
+      setConversations((previous) => {
+        const next = updater(previous);
+        if (userId) {
+          cacheConversationsForUser(userId, next, CONVERSATION_CACHE_TTL_MS);
+        }
+        return next;
+      });
+    },
+    [userId],
+  );
+
   const loadConversations = useCallback(async (options?: { preferCache?: boolean }) => {
     if (!userId) {
       setConversations([]);
@@ -227,7 +241,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         setOldestCursor(options?.append ? oldest ?? oldestCursor : oldest);
         setHasMore(history.length >= 60);
         await markConversationRead(conversationId, userId);
-        setConversations((previous) =>
+        updateConversations((previous) =>
           previous.map((conversation) =>
             conversation.id === conversationId
               ? { ...conversation, hasUnread: false, unreadCount: 0 }
@@ -268,7 +282,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         setLoadingMessages(false);
       }
     },
-    [userId, oldestCursor],
+    [userId, oldestCursor, updateConversations],
   );
 
   const resolveConversationViewport = useCallback(() => {
@@ -336,7 +350,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     const channel = subscribeToIncomingMessages(userId, (message) => {
       const shouldFlagUnread = message.conversationId !== activeConversationId;
 
-      setConversations((previous) => {
+      updateConversations((previous) => {
         const existing = previous.find((item) => item.id === message.conversationId);
         if (!existing) {
           return previous;
@@ -363,7 +377,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
             const summaryWithUnread = shouldFlagUnread
               ? { ...summary, hasUnread: true, unreadCount: 1 }
               : { ...summary, hasUnread: false, unreadCount: 0 };
-            setConversations((previous) => {
+            updateConversations((previous) => {
               if (previous.some((item) => item.id === summaryWithUnread.id)) {
                 return previous;
               }
@@ -379,7 +393,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     return () => {
       channel.unsubscribe();
     };
-  }, [userId, activeConversationId]);
+  }, [userId, activeConversationId, updateConversations]);
 
   useEffect(() => {
     if (!activeConversationId) {
@@ -411,7 +425,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
       if (message.receiverId === userId) {
         try {
           await markConversationRead(activeConversationId, userId);
-          setConversations((previous) =>
+          updateConversations((previous) =>
             previous.map((conversation) =>
               conversation.id === activeConversationId
                 ? { ...conversation, hasUnread: false, unreadCount: 0 }
@@ -423,7 +437,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         }
       }
 
-      setConversations((previous) => {
+      updateConversations((previous) => {
         const existing = previous.find((item) => item.id === message.conversationId);
         if (!existing) {
           return previous;
@@ -441,7 +455,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     return () => {
       channel.unsubscribe();
     };
-  }, [activeConversationId, userId]);
+  }, [activeConversationId, userId, updateConversations]);
 
   const handleToggleTranslation = useCallback(
     async (message: MessageRecord) => {

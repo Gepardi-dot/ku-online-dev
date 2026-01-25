@@ -156,6 +156,27 @@ function setCachedConversations(userId: string, data: ConversationSummary[], ttl
   writeSessionEntry(userId, entry);
 }
 
+export function cacheConversationsForUser(
+  userId: string,
+  data: ConversationSummary[],
+  ttlMs?: number,
+): void {
+  if (!userId) return;
+  setCachedConversations(userId, data, ttlMs);
+}
+
+export function updateCachedConversations(
+  userId: string,
+  updater: (current: ConversationSummary[]) => ConversationSummary[],
+  ttlMs?: number,
+): ConversationSummary[] {
+  if (!userId) return updater([]);
+  const cached = getCachedConversations(userId, ttlMs) ?? [];
+  const next = updater(cached);
+  setCachedConversations(userId, next, ttlMs);
+  return next;
+}
+
 function mapMessageRow(row: any): MessageRecord {
   return {
     id: row.id as string,
