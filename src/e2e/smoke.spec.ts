@@ -17,3 +17,10 @@ test('homepage has no console errors', async ({ page }) => {
   expect(errors.join('\n')).toBe('');
 });
 
+test('messages endpoints require auth', async ({ request }) => {
+  const conversations = await request.get(`${BASE_URL}/api/messages/conversations`);
+  expect([401, 403]).toContain(conversations.status());
+
+  const unread = await request.get(`${BASE_URL}/api/messages/unread-count`);
+  expect([401, 403]).toContain(unread.status());
+});

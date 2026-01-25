@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, Loader2, Send } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { formatDistanceToNow } from "date-fns";
 import { ar, ckb, enUS } from "date-fns/locale";
 
@@ -20,7 +21,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   fetchMessages,
   fetchConversation,
-  listConversationsForUser,
+  cacheConversationsForUser,
+  getCachedConversations,
+  listConversationsForUserWithOptions,
   markConversationRead,
   sendMessage,
   subscribeToConversation,
@@ -28,11 +31,14 @@ import {
   type ConversationSummary,
   type MessageRecord,
 } from "@/lib/services/messages-client";
+import { chatTimingNow, logChatTiming } from "@/lib/services/chat-timing";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
 import { CurrencyText } from "@/components/currency-text";
 import { rtlLocales } from "@/lib/locale/dictionary";
+
+const CONVERSATION_CACHE_TTL_MS = 60_000;
 
 interface ProfileMessagesProps {
   userId: string;
@@ -109,6 +115,13 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
 
   const conversationsRef = useRef<ConversationSummary[]>([]);
   const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+  const conversationLoadSeqRef = useRef(0);
+  const messageLoadSeqRef = useRef(0);
+  const threadOpenStartRef = useRef<number | null>(null);
+  const conversationScrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const conversationViewportRef = useRef<HTMLDivElement | null>(null);
+  const messagesScrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const messagesViewportRef = useRef<HTMLDivElement | null>(null);
   const [messageTranslations, setMessageTranslations] = useState<
     Record<
       string,
@@ -127,7 +140,20 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     send: messages.header.sendMessage,
   };
 
-  const loadConversations = useCallback(async () => {
+  const updateConversations = useCallback(
+    (updater: (previous: ConversationSummary[]) => ConversationSummary[]) => {
+      setConversations((previous) => {
+        const next = updater(previous);
+        if (userId) {
+          cacheConversationsForUser(userId, next, CONVERSATION_CACHE_TTL_MS);
+        }
+        return next;
+      });
+    },
+    [userId],
+  );
+
+  const loadConversations = useCallback(async (options?: { preferCache?: boolean }) => {
     if (!userId) {
       setConversations([]);
       setActiveConversationId(null);
@@ -135,16 +161,56 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
       return;
     }
 
-    setLoadingConversations(true);
+    const preferCache = options?.preferCache !== false;
+    let usedCache = false;
+    let cachedCount = 0;
+
+    if (preferCache) {
+      const cached = getCachedConversations(userId, CONVERSATION_CACHE_TTL_MS);
+      if (cached) {
+        usedCache = true;
+        cachedCount = cached.length;
+        setConversations(cached);
+        setActiveConversationId((previous) => {
+          if (!previous) return null;
+          return cached.some((conversation) => conversation.id === previous) ? previous : null;
+        });
+        logChatTiming("profile:conversations:cache", 0, { count: cachedCount });
+      }
+    }
+
+    const loadId = conversationLoadSeqRef.current + 1;
+    conversationLoadSeqRef.current = loadId;
+    const startedAt = chatTimingNow();
+    setLoadingConversations(!usedCache);
     try {
-      const results = await listConversationsForUser(userId);
+      const results = await listConversationsForUserWithOptions(userId, {
+        preferCache: false,
+        cacheTtlMs: CONVERSATION_CACHE_TTL_MS,
+      });
       setConversations(results);
       setActiveConversationId((previous) => {
         if (!previous) return null;
         return results.some((conversation) => conversation.id === previous) ? previous : null;
       });
+      logChatTiming("profile:conversations:load", chatTimingNow() - startedAt, {
+        count: results.length,
+        loadId,
+      });
+      if (typeof window !== "undefined") {
+        const renderStart = chatTimingNow();
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            logChatTiming("profile:conversations:render", chatTimingNow() - renderStart, {
+              count: results.length,
+              loadId,
+            });
+          });
+        });
+      }
     } catch (error) {
       console.error("Failed to load conversations", error);
+      logChatTiming("profile:conversations:error", chatTimingNow() - startedAt, { loadId });
       toast({
         title: "Unable to load conversations",
         description: "Please try again soon.",
@@ -164,6 +230,9 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         return;
       }
 
+      const loadId = messageLoadSeqRef.current + 1;
+      messageLoadSeqRef.current = loadId;
+      const startedAt = chatTimingNow();
       setLoadingMessages(true);
       try {
         const history = await fetchMessages(conversationId, { limit: 60, before: options?.before });
@@ -172,15 +241,38 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         setOldestCursor(options?.append ? oldest ?? oldestCursor : oldest);
         setHasMore(history.length >= 60);
         await markConversationRead(conversationId, userId);
-        setConversations((previous) =>
+        updateConversations((previous) =>
           previous.map((conversation) =>
             conversation.id === conversationId
               ? { ...conversation, hasUnread: false, unreadCount: 0 }
               : conversation,
           ),
         );
+        const meta: Record<string, unknown> = {
+          count: history.length,
+          loadId,
+          append: Boolean(options?.append),
+          hasBefore: Boolean(options?.before),
+        };
+        if (threadOpenStartRef.current) {
+          meta.openMs = Math.round(chatTimingNow() - threadOpenStartRef.current);
+          threadOpenStartRef.current = null;
+        }
+        logChatTiming("profile:messages:load", chatTimingNow() - startedAt, meta);
+        if (typeof window !== "undefined") {
+          const renderStart = chatTimingNow();
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              logChatTiming("profile:messages:render", chatTimingNow() - renderStart, {
+                count: history.length,
+                loadId,
+              });
+            });
+          });
+        }
       } catch (error) {
         console.error("Failed to load messages", error);
+        logChatTiming("profile:messages:error", chatTimingNow() - startedAt, { loadId });
         toast({
           title: "Unable to load messages",
           description: "Please try again.",
@@ -190,8 +282,49 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         setLoadingMessages(false);
       }
     },
-    [userId, oldestCursor],
+    [userId, oldestCursor, updateConversations],
   );
+
+  const resolveConversationViewport = useCallback(() => {
+    const root = conversationScrollAreaRef.current;
+    if (!root) return null;
+    const viewport = root.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]");
+    conversationViewportRef.current = viewport;
+    return viewport;
+  }, []);
+
+  const resolveMessagesViewport = useCallback(() => {
+    const root = messagesScrollAreaRef.current;
+    if (!root) return null;
+    const viewport = root.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]");
+    messagesViewportRef.current = viewport;
+    return viewport;
+  }, []);
+
+  const showLoadMoreRow = Boolean(hasMore && oldestCursor);
+  const messagesCount = messagesState.length + (showLoadMoreRow ? 1 : 0);
+
+  const conversationVirtualizer = useVirtualizer({
+    count: conversations.length,
+    getScrollElement: resolveConversationViewport,
+    estimateSize: () => 72,
+    overscan: 6,
+  });
+
+  const messagesVirtualizer = useVirtualizer({
+    count: messagesCount,
+    getScrollElement: resolveMessagesViewport,
+    estimateSize: (index) => (showLoadMoreRow && index === messagesState.length ? 36 : 72),
+    overscan: 8,
+  });
+
+  useEffect(() => {
+    conversationVirtualizer.measure();
+  }, [conversations.length, conversationVirtualizer]);
+
+  useEffect(() => {
+    messagesVirtualizer.measure();
+  }, [messagesState.length, showLoadMoreRow, messagesVirtualizer]);
 
   useEffect(() => {
     if (!userId) {
@@ -199,6 +332,11 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     }
     void loadConversations();
   }, [userId, loadConversations]);
+
+  useEffect(() => {
+    if (!activeConversationId) return;
+    threadOpenStartRef.current = chatTimingNow();
+  }, [activeConversationId]);
 
   useEffect(() => {
     conversationsRef.current = conversations;
@@ -212,7 +350,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     const channel = subscribeToIncomingMessages(userId, (message) => {
       const shouldFlagUnread = message.conversationId !== activeConversationId;
 
-      setConversations((previous) => {
+      updateConversations((previous) => {
         const existing = previous.find((item) => item.id === message.conversationId);
         if (!existing) {
           return previous;
@@ -239,7 +377,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
             const summaryWithUnread = shouldFlagUnread
               ? { ...summary, hasUnread: true, unreadCount: 1 }
               : { ...summary, hasUnread: false, unreadCount: 0 };
-            setConversations((previous) => {
+            updateConversations((previous) => {
               if (previous.some((item) => item.id === summaryWithUnread.id)) {
                 return previous;
               }
@@ -255,7 +393,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     return () => {
       channel.unsubscribe();
     };
-  }, [userId, activeConversationId]);
+  }, [userId, activeConversationId, updateConversations]);
 
   useEffect(() => {
     if (!activeConversationId) {
@@ -287,7 +425,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
       if (message.receiverId === userId) {
         try {
           await markConversationRead(activeConversationId, userId);
-          setConversations((previous) =>
+          updateConversations((previous) =>
             previous.map((conversation) =>
               conversation.id === activeConversationId
                 ? { ...conversation, hasUnread: false, unreadCount: 0 }
@@ -299,7 +437,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         }
       }
 
-      setConversations((previous) => {
+      updateConversations((previous) => {
         const existing = previous.find((item) => item.id === message.conversationId);
         if (!existing) {
           return previous;
@@ -317,7 +455,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     return () => {
       channel.unsubscribe();
     };
-  }, [activeConversationId, userId]);
+  }, [activeConversationId, userId, updateConversations]);
 
   const handleToggleTranslation = useCallback(
     async (message: MessageRecord) => {
@@ -465,7 +603,6 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
 
       return (
         <button
-          key={conversation.id}
           type="button"
           onClick={() => handleConversationSelect(conversation.id)}
           dir="ltr"
@@ -543,10 +680,36 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
     };
 
     const orderedMessages = [...messagesState].reverse();
+    const virtualItems = messagesVirtualizer.getVirtualItems();
 
     return (
-      <div className="space-y-3">
-        {orderedMessages.map((message) => {
+      <div style={{ height: messagesVirtualizer.getTotalSize(), position: "relative" }}>
+        {virtualItems.map((virtualItem) => {
+          if (showLoadMoreRow && virtualItem.index === orderedMessages.length) {
+            return (
+              <div
+                key="load-more"
+                ref={messagesVirtualizer.measureElement}
+                data-index={virtualItem.index}
+                className="absolute left-0 top-0 w-full pb-3"
+                style={{ transform: `translateY(${virtualItem.start}px)` }}
+              >
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    onClick={handleLoadMore}
+                    className="text-[11px] text-primary underline-offset-2 hover:underline"
+                    disabled={loadingMessages}
+                  >
+                    {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          const message = orderedMessages[virtualItem.index];
+          if (!message) return null;
           const isViewer = message.senderId === userId;
           const translationState = messageTranslations[message.id];
           const showTranslated = !isViewer && translationState?.translated && translationState.showing;
@@ -557,103 +720,100 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
           return (
             <div
               key={message.id}
-              className={cn("flex flex-col gap-1", isViewer ? "items-end" : "items-start")}
+              ref={messagesVirtualizer.measureElement}
+              data-index={virtualItem.index}
+              className="absolute left-0 top-0 w-full pb-3"
+              style={{ transform: `translateY(${virtualItem.start}px)` }}
             >
               <div
-                className={cn(
-                  "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-[15px] font-sans leading-relaxed shadow-sm",
-                  isViewer ? "bg-primary text-primary-foreground" : "bg-muted",
-                )}
+                className={cn("flex flex-col gap-1", isViewer ? "items-end" : "items-start")}
               >
-                <p dir="auto" className="whitespace-pre-line bidi-auto">{contentToShow}</p>
-                <div className="mt-1 flex items-center justify-end gap-2">
-                  {!isViewer && (
-                    <button
-                      type="button"
-                      onClick={() => handleToggleTranslation(message)}
-                      className="text-[11px] underline-offset-2 hover:underline text-muted-foreground"
-                    >
-                      {isTranslating
-                        ? t("common.loading")
-                        : showTranslated
-                        ? t("common.showOriginal")
-                        : t("common.translate")}
-                    </button>
+                <div
+                  className={cn(
+                    "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-[15px] font-sans leading-relaxed shadow-sm",
+                    isViewer ? "bg-primary text-primary-foreground" : "bg-muted",
                   )}
-                  {isViewer && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (deletingMessageId) return;
-                        const id = message.id;
-                        setDeletingMessageId(id);
-                        try {
-                          const res = await fetch(`/api/messages/${encodeURIComponent(id)}`, {
-                            method: "DELETE",
-                          });
-                          const payload = await res.json().catch(() => ({}));
-                          if (!res.ok || !payload?.ok) {
-                            const description =
-                              typeof payload?.error === "string"
-                                ? payload.error
-                                : t("header.chatMessageNotDeletedBody");
+                >
+                  <p dir="auto" className="whitespace-pre-line bidi-auto">{contentToShow}</p>
+                  <div className="mt-1 flex items-center justify-end gap-2">
+                    {!isViewer && (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleTranslation(message)}
+                        className="text-[11px] underline-offset-2 hover:underline text-muted-foreground"
+                      >
+                        {isTranslating
+                          ? t("common.loading")
+                          : showTranslated
+                          ? t("common.showOriginal")
+                          : t("common.translate")}
+                      </button>
+                    )}
+                    {isViewer && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (deletingMessageId) return;
+                          const id = message.id;
+                          setDeletingMessageId(id);
+                          try {
+                            const res = await fetch(`/api/messages/${encodeURIComponent(id)}`, {
+                              method: "DELETE",
+                            });
+                            const payload = await res.json().catch(() => ({}));
+                            if (!res.ok || !payload?.ok) {
+                              const description =
+                                typeof payload?.error === "string"
+                                  ? payload.error
+                                  : t("header.chatMessageNotDeletedBody");
+                              toast({
+                                title: t("header.chatMessageNotDeletedTitle"),
+                                description,
+                                variant: "destructive",
+                              });
+                            } else {
+                              setMessagesState((previous) => previous.filter((item) => item.id !== id));
+                            }
+                          } catch (error) {
+                            console.error("Failed to delete message", error);
                             toast({
                               title: t("header.chatMessageNotDeletedTitle"),
-                              description,
+                              description: t("header.chatMessageNotDeletedBody"),
                               variant: "destructive",
                             });
-                          } else {
-                            setMessagesState((previous) => previous.filter((item) => item.id !== id));
+                          } finally {
+                            setDeletingMessageId((current) => (current === id ? null : current));
                           }
-                        } catch (error) {
-                          console.error("Failed to delete message", error);
-                          toast({
-                            title: t("header.chatMessageNotDeletedTitle"),
-                            description: t("header.chatMessageNotDeletedBody"),
-                            variant: "destructive",
-                          });
-                        } finally {
-                          setDeletingMessageId((current) => (current === id ? null : current));
-                        }
-                      }}
-                      className="text-[11px] underline-offset-2 hover:underline text-muted-foreground"
-                      disabled={deletingMessageId === message.id}
-                    >
-                      {deletingMessageId === message.id ? t("header.chatLoading") : t("header.chatDeleteMessage")}
-                    </button>
-                  )}
+                        }}
+                        className="text-[11px] underline-offset-2 hover:underline text-muted-foreground"
+                        disabled={deletingMessageId === message.id}
+                      >
+                        {deletingMessageId === message.id ? t("header.chatLoading") : t("header.chatDeleteMessage")}
+                      </button>
+                    )}
+                  </div>
                 </div>
+                <span dir="auto" className="text-[10px] uppercase tracking-wide text-muted-foreground bidi-auto">
+                  {timestamp}
+                </span>
               </div>
-              <span dir="auto" className="text-[10px] uppercase tracking-wide text-muted-foreground bidi-auto">
-                {timestamp}
-              </span>
             </div>
           );
         })}
-        {hasMore && oldestCursor ? (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              onClick={handleLoadMore}
-              className="text-[11px] text-primary underline-offset-2 hover:underline"
-              disabled={loadingMessages}
-            >
-              {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
-            </button>
-          </div>
-        ) : null}
       </div>
     );
   }, [
     activeConversationId,
     handleToggleTranslation,
     loadingMessages,
-    hasMore,
     loadMessages,
+    hasMore,
     oldestCursor,
     deletingMessageId,
     messageTranslations,
     messagesState,
+    messagesVirtualizer,
+    showLoadMoreRow,
     strings.emptyMessages,
     formatRelativeTime,
     t,
@@ -666,7 +826,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold">{t("header.chatContacts")}</span>
         </div>
-        <ScrollArea className="h-[320px] rounded-lg border p-2">
+        <ScrollArea ref={conversationScrollAreaRef} className="h-[320px] rounded-lg border p-2">
           {loadingConversations ? (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -674,8 +834,22 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
           ) : conversations.length === 0 ? (
             <p className="px-2 py-6 text-center text-sm text-muted-foreground">{strings.emptyConversations}</p>
           ) : (
-            <div className="space-y-2">
-              {conversations.map((conversation) => renderConversationSummary(conversation))}
+            <div style={{ height: conversationVirtualizer.getTotalSize(), position: "relative" }}>
+              {conversationVirtualizer.getVirtualItems().map((virtualItem) => {
+                const conversation = conversations[virtualItem.index];
+                if (!conversation) return null;
+                return (
+                  <div
+                    key={conversation.id}
+                    ref={conversationVirtualizer.measureElement}
+                    data-index={virtualItem.index}
+                    className="absolute left-0 top-0 w-full pb-2"
+                    style={{ transform: `translateY(${virtualItem.start}px)` }}
+                  >
+                    {renderConversationSummary(conversation)}
+                  </div>
+                );
+              })}
             </div>
           )}
         </ScrollArea>
@@ -730,7 +904,7 @@ export default function ProfileMessages({ userId }: ProfileMessagesProps) {
             </Link>
           </div>
         )}
-        <ScrollArea className="flex-1 px-4 py-4">
+        <ScrollArea ref={messagesScrollAreaRef} className="flex-1 px-4 py-4">
           {renderMessages()}
         </ScrollArea>
         <div className="border-t px-4 py-3">

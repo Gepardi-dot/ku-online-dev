@@ -18,6 +18,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { formatDistanceToNow } from "date-fns";
 import { ar, ckb, enUS } from "date-fns/locale";
 import Link from "next/link";
@@ -33,7 +34,10 @@ import {
   deleteConversation,
   fetchConversation,
   fetchMessages,
-  listConversationsForUser,
+  cacheConversationsForUser,
+  getCachedConversations,
+  listConversationsForUserWithOptions,
+  prefetchConversationsForUser,
   markConversationRead,
   sendMessage,
   subscribeToConversation,
@@ -41,6 +45,7 @@ import {
   type ConversationSummary,
   type MessageRecord,
 } from "@/lib/services/messages-client";
+import { chatTimingNow, logChatTiming } from "@/lib/services/chat-timing";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
@@ -49,6 +54,8 @@ import { rtlLocales } from "@/lib/locale/dictionary";
 const MOBILE_BOTTOM_GAP_PX = 92; // Increased spacing to ensure sheet clears mobile nav
 const EXTRA_KEYBOARD_LIFT_PX = 24;
 const ARABIC_SCRIPT_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+const CONVERSATION_CACHE_TTL_MS = 60_000;
+const PREFETCH_DELAY_MS = 1200;
 
 const hasArabicScript = (value?: string | null) =>
   typeof value === "string" && value.length > 0 && ARABIC_SCRIPT_REGEX.test(value);
@@ -171,8 +178,29 @@ export default function MessagesMenu({
   const messagesViewportRef = useRef<HTMLDivElement | null>(null);
   const autoScrollEnabledRef = useRef(true);
   const scrollRafRef = useRef<number | null>(null);
+  const openStartRef = useRef<number | null>(null);
+  const conversationLoadSeqRef = useRef(0);
+  const messageLoadSeqRef = useRef(0);
+  const threadOpenStartRef = useRef<number | null>(null);
+  const prefetchTimerRef = useRef<number | null>(null);
+  const prefetchedUserRef = useRef<string | null>(null);
+  const conversationScrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const conversationViewportRef = useRef<HTMLDivElement | null>(null);
 
   const canLoad = Boolean(userId);
+
+  const updateConversations = useCallback(
+    (updater: (previous: ConversationSummary[]) => ConversationSummary[]) => {
+      setConversations((previous) => {
+        const next = updater(previous);
+        if (userId) {
+          cacheConversationsForUser(userId, next, CONVERSATION_CACHE_TTL_MS);
+        }
+        return next;
+      });
+    },
+    [userId],
+  );
 
   // --- Layout / viewport ---
 
@@ -251,6 +279,11 @@ export default function MessagesMenu({
     };
   }, [open, isMobile]);
 
+  useEffect(() => {
+    if (!open) return;
+    openStartRef.current = chatTimingNow();
+  }, [open]);
+
   // --- Data loading helpers ---
 
   const refreshUnread = useCallback(async () => {
@@ -267,7 +300,7 @@ export default function MessagesMenu({
     }
   }, [userId]);
 
-  const loadConversations = useCallback(async () => {
+  const loadConversations = useCallback(async (options?: { preferCache?: boolean }) => {
     if (!userId) {
       setConversations([]);
       setActiveConversationId(null);
@@ -275,17 +308,66 @@ export default function MessagesMenu({
       return;
     }
 
-    setLoadingConversations(true);
+    const preferCache = options?.preferCache !== false;
+    let usedCache = false;
+    let cachedCount = 0;
+
+    if (preferCache) {
+      const cached = getCachedConversations(userId, CONVERSATION_CACHE_TTL_MS);
+      if (cached) {
+        usedCache = true;
+        cachedCount = cached.length;
+        setConversations(cached);
+        setActiveConversationId((previous) => {
+          if (!previous) return null;
+          return cached.some((conversation) => conversation.id === previous) ? previous : null;
+        });
+        if (openStartRef.current) {
+          logChatTiming("menu:conversations:cache", chatTimingNow() - openStartRef.current, {
+            count: cachedCount,
+          });
+          openStartRef.current = null;
+        }
+      }
+    }
+
+    const loadId = conversationLoadSeqRef.current + 1;
+    conversationLoadSeqRef.current = loadId;
+    const startedAt = chatTimingNow();
+    setLoadingConversations(!usedCache);
+    let resultCount = 0;
     try {
-      const results = await listConversationsForUser(userId);
+      const results = await listConversationsForUserWithOptions(userId, {
+        preferCache: false,
+        cacheTtlMs: CONVERSATION_CACHE_TTL_MS,
+      });
+      resultCount = results.length;
       setConversations(results);
 
       setActiveConversationId((previous) => {
         if (!previous) return null;
         return results.some((conversation) => conversation.id === previous) ? previous : null;
       });
+      const meta: Record<string, unknown> = { count: resultCount, loadId };
+      if (openStartRef.current) {
+        meta.openMs = Math.round(chatTimingNow() - openStartRef.current);
+        openStartRef.current = null;
+      }
+      logChatTiming("menu:conversations:load", chatTimingNow() - startedAt, meta);
+      if (typeof window !== "undefined") {
+        const renderStart = chatTimingNow();
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            logChatTiming("menu:conversations:render", chatTimingNow() - renderStart, {
+              count: resultCount,
+              loadId,
+            });
+          });
+        });
+      }
     } catch (error) {
       console.error("Failed to load conversations", error);
+      logChatTiming("menu:conversations:error", chatTimingNow() - startedAt, { loadId });
       toast({
         title: "Unable to load conversations",
         description: "Please try again soon.",
@@ -305,6 +387,9 @@ export default function MessagesMenu({
         return;
       }
 
+      const loadId = messageLoadSeqRef.current + 1;
+      messageLoadSeqRef.current = loadId;
+      const startedAt = chatTimingNow();
       setLoadingMessages(true);
       try {
         const history = await fetchMessages(conversationId, { limit: 60, before: options?.before });
@@ -317,7 +402,7 @@ export default function MessagesMenu({
 
         await markConversationRead(conversationId, userId);
 
-        setConversations((previous) =>
+        updateConversations((previous) =>
           previous.map((conversation) =>
             conversation.id === conversationId
               ? { ...conversation, hasUnread: false, unreadCount: 0 }
@@ -325,8 +410,31 @@ export default function MessagesMenu({
           ),
         );
         void refreshUnread();
+        const meta: Record<string, unknown> = {
+          count: history.length,
+          loadId,
+          append: Boolean(options?.append),
+          hasBefore: Boolean(options?.before),
+        };
+        if (threadOpenStartRef.current) {
+          meta.openMs = Math.round(chatTimingNow() - threadOpenStartRef.current);
+          threadOpenStartRef.current = null;
+        }
+        logChatTiming("menu:messages:load", chatTimingNow() - startedAt, meta);
+        if (typeof window !== "undefined") {
+          const renderStart = chatTimingNow();
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              logChatTiming("menu:messages:render", chatTimingNow() - renderStart, {
+                count: history.length,
+                loadId,
+              });
+            });
+          });
+        }
       } catch (error) {
         console.error("Failed to load messages", error);
+        logChatTiming("menu:messages:error", chatTimingNow() - startedAt, { loadId });
         toast({
           title: "Unable to load messages",
           description: "Please try again.",
@@ -336,7 +444,7 @@ export default function MessagesMenu({
         setLoadingMessages(false);
       }
     },
-    [userId, oldestCursor, refreshUnread],
+    [userId, oldestCursor, refreshUnread, updateConversations],
   );
 
   // --- Initial unread + conversations when opened ---
@@ -351,6 +459,23 @@ export default function MessagesMenu({
   }, [userId, open, loadConversations]);
 
   useEffect(() => {
+    if (!userId || open) return;
+    if (prefetchedUserRef.current === userId) return;
+    prefetchedUserRef.current = userId;
+
+    prefetchTimerRef.current = window.setTimeout(() => {
+      prefetchConversationsForUser(userId, CONVERSATION_CACHE_TTL_MS);
+    }, PREFETCH_DELAY_MS);
+
+    return () => {
+      if (prefetchTimerRef.current) {
+        window.clearTimeout(prefetchTimerRef.current);
+        prefetchTimerRef.current = null;
+      }
+    };
+  }, [userId, open]);
+
+  useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
 
@@ -363,7 +488,7 @@ export default function MessagesMenu({
       const shouldFlagUnread = !(open && message.conversationId === activeConversationId);
 
       // Keep contact list up to date
-      setConversations((previous) => {
+      updateConversations((previous) => {
         const existing = previous.find((item) => item.id === message.conversationId);
         if (!existing) {
           return previous;
@@ -397,7 +522,7 @@ export default function MessagesMenu({
               ? { ...summary, hasUnread: true, unreadCount: 1 }
               : { ...summary, hasUnread: false, unreadCount: 0 };
 
-            setConversations((previous) => {
+            updateConversations((previous) => {
               if (previous.some((item) => item.id === summaryWithUnread.id)) {
                 return previous;
               }
@@ -413,7 +538,7 @@ export default function MessagesMenu({
     return () => {
       channel.unsubscribe();
     };
-  }, [userId, open, activeConversationId]);
+  }, [userId, open, activeConversationId, updateConversations]);
 
   useEffect(() => {
     if (!activeConversationId || !open || !userId) return;
@@ -429,7 +554,7 @@ export default function MessagesMenu({
       if (message.receiverId === userId) {
         try {
           await markConversationRead(activeConversationId, userId);
-          setConversations((previous) =>
+          updateConversations((previous) =>
             previous.map((conversation) =>
               conversation.id === activeConversationId
                 ? { ...conversation, hasUnread: false, unreadCount: 0 }
@@ -441,7 +566,7 @@ export default function MessagesMenu({
         }
       }
 
-      setConversations((previous) => {
+      updateConversations((previous) => {
         const existing = previous.find((item) => item.id === message.conversationId);
         if (!existing) {
           return previous;
@@ -460,9 +585,14 @@ export default function MessagesMenu({
     return () => {
       channel.unsubscribe();
     };
-  }, [activeConversationId, userId, open]);
+  }, [activeConversationId, userId, open, updateConversations]);
 
   // --- Message loading when active thread changes ---
+
+  useEffect(() => {
+    if (!activeConversationId || !open) return;
+    threadOpenStartRef.current = chatTimingNow();
+  }, [activeConversationId, open]);
 
   useEffect(() => {
     if (!activeConversationId || !open) {
@@ -517,6 +647,14 @@ export default function MessagesMenu({
     return viewport;
   }, []);
 
+  const resolveConversationViewport = useCallback(() => {
+    const root = conversationScrollAreaRef.current;
+    if (!root) return null;
+    const viewport = root.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]");
+    conversationViewportRef.current = viewport;
+    return viewport;
+  }, []);
+
   const updateAutoScrollState = useCallback(() => {
     const viewport = resolveMessagesViewport();
     if (!viewport) return;
@@ -546,6 +684,31 @@ export default function MessagesMenu({
     },
     [scrollToBottom],
   );
+
+  const showLoadMoreRow = Boolean(hasMore && oldestCursor);
+  const messagesCount = messages.length + (showLoadMoreRow ? 1 : 0);
+
+  const conversationVirtualizer = useVirtualizer({
+    count: conversations.length,
+    getScrollElement: resolveConversationViewport,
+    estimateSize: () => 76,
+    overscan: 6,
+  });
+
+  const messagesVirtualizer = useVirtualizer({
+    count: messagesCount,
+    getScrollElement: resolveMessagesViewport,
+    estimateSize: (index) => (showLoadMoreRow && index === messages.length ? 36 : 72),
+    overscan: 8,
+  });
+
+  useEffect(() => {
+    conversationVirtualizer.measure();
+  }, [conversations.length, conversationVirtualizer]);
+
+  useEffect(() => {
+    messagesVirtualizer.measure();
+  }, [messages.length, showLoadMoreRow, messagesVirtualizer]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -727,7 +890,7 @@ export default function MessagesMenu({
     async (conversationId: string) => {
       try {
         await deleteConversation(conversationId);
-        setConversations((previous) => previous.filter((item) => item.id !== conversationId));
+        updateConversations((previous) => previous.filter((item) => item.id !== conversationId));
 
         if (activeConversationId === conversationId) {
           setActiveConversationId(null);
@@ -744,7 +907,7 @@ export default function MessagesMenu({
         });
       }
     },
-    [activeConversationId, refreshUnread],
+    [activeConversationId, refreshUnread, updateConversations],
   );
 
   // --- Render helpers ---
@@ -764,7 +927,6 @@ export default function MessagesMenu({
 
     return (
       <div
-        key={conversation.id}
         className={cn(
           "flex w-full items-center gap-3 rounded-3xl border p-3 text-sm shadow-sm transition-all hover:-translate-y-px hover:shadow-md active:translate-y-0",
           isActive
@@ -854,9 +1016,36 @@ export default function MessagesMenu({
       );
     }
 
+    const virtualItems = messagesVirtualizer.getVirtualItems();
+
     return (
-      <div className="space-y-3">
-        {messages.map((message) => {
+      <div style={{ height: messagesVirtualizer.getTotalSize(), position: "relative" }}>
+        {virtualItems.map((virtualItem) => {
+          if (showLoadMoreRow && virtualItem.index === messages.length) {
+            return (
+              <div
+                key="load-more"
+                ref={messagesVirtualizer.measureElement}
+                data-index={virtualItem.index}
+                className="absolute left-0 top-0 w-full pb-3"
+                style={{ transform: `translateY(${virtualItem.start}px)` }}
+              >
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    className="text-[11px] text-brand underline-offset-2 hover:underline"
+                    onClick={handleLoadMore}
+                    disabled={loadingMessages}
+                  >
+                    {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          const message = messages[virtualItem.index];
+          if (!message) return null;
           const isViewer = message.senderId === userId;
           const timestamp = formatRelativeTime(new Date(message.createdAt));
           const messageIsArabic = hasArabicScript(message.content);
@@ -864,45 +1053,40 @@ export default function MessagesMenu({
           return (
             <div
               key={message.id}
-              className={cn(
-                "flex flex-col gap-1",
-                isViewer ? "items-end" : "items-start",
-              )}
+              ref={messagesVirtualizer.measureElement}
+              data-index={virtualItem.index}
+              className="absolute left-0 top-0 w-full pb-3"
+              style={{ transform: `translateY(${virtualItem.start}px)` }}
             >
               <div
                 className={cn(
-                  "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-[15px] leading-relaxed shadow-sm",
-                  messageIsArabic ? "font-arabic" : "font-sans",
-                  isViewer
-                    ? "bg-brand text-white"
-                    : "bg-[#EBDAC8] text-[#2D2D2D]",
+                  "flex flex-col gap-1",
+                  isViewer ? "items-end" : "items-start",
                 )}
               >
-                <p
-                  dir="auto"
-                  className={cn("whitespace-pre-line bidi-auto", messageIsArabic && "font-arabic")}
+                <div
+                  className={cn(
+                    "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-[15px] leading-relaxed shadow-sm",
+                    messageIsArabic ? "font-arabic" : "font-sans",
+                    isViewer
+                      ? "bg-brand text-white"
+                      : "bg-[#EBDAC8] text-[#2D2D2D]",
+                  )}
                 >
-                  {message.content}
-                </p>
+                  <p
+                    dir="auto"
+                    className={cn("whitespace-pre-line bidi-auto", messageIsArabic && "font-arabic")}
+                  >
+                    {message.content}
+                  </p>
+                </div>
+                <span dir="auto" className="text-[10px] uppercase tracking-wide text-[#777777] bidi-auto">
+                  {timestamp}
+                </span>
               </div>
-              <span dir="auto" className="text-[10px] uppercase tracking-wide text-[#777777] bidi-auto">
-                {timestamp}
-              </span>
             </div>
           );
         })}
-        {hasMore && oldestCursor && (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              className="text-[11px] text-brand underline-offset-2 hover:underline"
-              onClick={handleLoadMore}
-              disabled={loadingMessages}
-            >
-              {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
-            </button>
-          </div>
-        )}
       </div>
     );
   };
@@ -914,7 +1098,7 @@ export default function MessagesMenu({
           {t("header.chatContacts")}
         </span>
       </div>
-      <ScrollArea className={cn("flex-1", isRtl ? "pl-1" : "pr-1")}>
+      <ScrollArea ref={conversationScrollAreaRef} className={cn("flex-1", isRtl ? "pl-1" : "pr-1")}>
         {loadingConversations ? (
           <div className="flex h-full items-center justify-center text-[#777777]">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -924,8 +1108,22 @@ export default function MessagesMenu({
             {strings.empty}
           </p>
         ) : (
-          <div className="space-y-3">
-            {conversations.map((conversation) => renderConversationSummary(conversation))}
+          <div style={{ height: conversationVirtualizer.getTotalSize(), position: "relative" }}>
+            {conversationVirtualizer.getVirtualItems().map((virtualItem) => {
+              const conversation = conversations[virtualItem.index];
+              if (!conversation) return null;
+              return (
+                <div
+                  key={conversation.id}
+                  ref={conversationVirtualizer.measureElement}
+                  data-index={virtualItem.index}
+                  className="absolute left-0 top-0 w-full pb-3"
+                  style={{ transform: `translateY(${virtualItem.start}px)` }}
+                >
+                  {renderConversationSummary(conversation)}
+                </div>
+              );
+            })}
           </div>
         )}
       </ScrollArea>

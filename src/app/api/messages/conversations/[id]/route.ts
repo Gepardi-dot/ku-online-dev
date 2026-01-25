@@ -105,6 +105,10 @@ export const GET = withSentryRoute(
     }
 
     const productRecord = Array.isArray(data.product) ? data.product[0] : data.product;
+    const rawImages = productRecord ? ((productRecord.images as unknown) ?? []) : [];
+    const previewImagePaths = Array.isArray(rawImages)
+      ? rawImages.filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, 1)
+      : [];
 
     const conversation = {
       id: String(data.id),
@@ -120,8 +124,8 @@ export const GET = withSentryRoute(
             title: (productRecord.title as string) ?? 'Untitled',
             price: productRecord.price as number | null,
             currency: (productRecord.currency as string) ?? 'IQD',
-            imagePaths: (productRecord.images as string[]) ?? [],
-            imageUrls: (productRecord.images as string[]) ?? [],
+            imagePaths: previewImagePaths,
+            imageUrls: [],
           }
         : null,
       seller: data.seller
