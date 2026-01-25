@@ -220,7 +220,12 @@ async function hydrateConversationImages(conversations: ConversationSummary[]) {
   const timingEnabled = isChatTimingEnabled();
   const startedAt = timingEnabled ? chatTimingNow() : 0;
   const paths = Array.from(
-    new Set(conversations.flatMap((conversation) => conversation.product?.imagePaths ?? [])),
+    new Set(
+      conversations.flatMap((conversation) => {
+        const images = conversation.product?.imagePaths ?? [];
+        return images.slice(0, 1);
+      }),
+    ),
   ).filter(Boolean);
 
   if (!paths.length) {
@@ -238,6 +243,7 @@ async function hydrateConversationImages(conversations: ConversationSummary[]) {
     conversations.forEach((conversation) => {
       if (!conversation.product) return;
       const urls = conversation.product.imagePaths
+        .slice(0, 1)
         .map((path) => map[path])
         .filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
       conversation.product.imageUrls = urls;
