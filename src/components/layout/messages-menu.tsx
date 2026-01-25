@@ -18,6 +18,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { formatDistanceToNow } from "date-fns";
 import { ar, ckb, enUS } from "date-fns/locale";
 import Link from "next/link";
@@ -182,6 +183,8 @@ export default function MessagesMenu({
   const threadOpenStartRef = useRef<number | null>(null);
   const prefetchTimerRef = useRef<number | null>(null);
   const prefetchedUserRef = useRef<string | null>(null);
+  const conversationScrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const conversationViewportRef = useRef<HTMLDivElement | null>(null);
 
   const canLoad = Boolean(userId);
 
@@ -630,6 +633,14 @@ export default function MessagesMenu({
     return viewport;
   }, []);
 
+  const resolveConversationViewport = useCallback(() => {
+    const root = conversationScrollAreaRef.current;
+    if (!root) return null;
+    const viewport = root.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]");
+    conversationViewportRef.current = viewport;
+    return viewport;
+  }, []);
+
   const updateAutoScrollState = useCallback(() => {
     const viewport = resolveMessagesViewport();
     if (!viewport) return;
@@ -659,6 +670,31 @@ export default function MessagesMenu({
     },
     [scrollToBottom],
   );
+
+  const showLoadMoreRow = Boolean(hasMore && oldestCursor);
+  const messagesCount = messages.length + (showLoadMoreRow ? 1 : 0);
+
+  const conversationVirtualizer = useVirtualizer({
+    count: conversations.length,
+    getScrollElement: resolveConversationViewport,
+    estimateSize: () => 76,
+    overscan: 6,
+  });
+
+  const messagesVirtualizer = useVirtualizer({
+    count: messagesCount,
+    getScrollElement: resolveMessagesViewport,
+    estimateSize: (index) => (showLoadMoreRow && index === messages.length ? 36 : 72),
+    overscan: 8,
+  });
+
+  useEffect(() => {
+    conversationVirtualizer.measure();
+  }, [conversations.length, conversationVirtualizer]);
+
+  useEffect(() => {
+    messagesVirtualizer.measure();
+  }, [messages.length, showLoadMoreRow, messagesVirtualizer]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -877,7 +913,6 @@ export default function MessagesMenu({
 
     return (
       <div
-        key={conversation.id}
         className={cn(
           "flex w-full items-center gap-3 rounded-3xl border p-3 text-sm shadow-sm transition-all hover:-translate-y-px hover:shadow-md active:translate-y-0",
           isActive
@@ -967,9 +1002,36 @@ export default function MessagesMenu({
       );
     }
 
+    const virtualItems = messagesVirtualizer.getVirtualItems();
+
     return (
-      <div className="space-y-3">
-        {messages.map((message) => {
+      <div style={{ height: messagesVirtualizer.getTotalSize(), position: "relative" }}>
+        {virtualItems.map((virtualItem) => {
+          if (showLoadMoreRow && virtualItem.index === messages.length) {
+            return (
+              <div
+                key="load-more"
+                ref={messagesVirtualizer.measureElement}
+                data-index={virtualItem.index}
+                className="absolute left-0 top-0 w-full pb-3"
+                style={{ transform: `translateY(${virtualItem.start}px)` }}
+              >
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    className="text-[11px] text-brand underline-offset-2 hover:underline"
+                    onClick={handleLoadMore}
+                    disabled={loadingMessages}
+                  >
+                    {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          const message = messages[virtualItem.index];
+          if (!message) return null;
           const isViewer = message.senderId === userId;
           const timestamp = formatRelativeTime(new Date(message.createdAt));
           const messageIsArabic = hasArabicScript(message.content);
@@ -977,45 +1039,40 @@ export default function MessagesMenu({
           return (
             <div
               key={message.id}
-              className={cn(
-                "flex flex-col gap-1",
-                isViewer ? "items-end" : "items-start",
-              )}
+              ref={messagesVirtualizer.measureElement}
+              data-index={virtualItem.index}
+              className="absolute left-0 top-0 w-full pb-3"
+              style={{ transform: `translateY(${virtualItem.start}px)` }}
             >
               <div
                 className={cn(
-                  "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-[15px] leading-relaxed shadow-sm",
-                  messageIsArabic ? "font-arabic" : "font-sans",
-                  isViewer
-                    ? "bg-brand text-white"
-                    : "bg-[#EBDAC8] text-[#2D2D2D]",
+                  "flex flex-col gap-1",
+                  isViewer ? "items-end" : "items-start",
                 )}
               >
-                <p
-                  dir="auto"
-                  className={cn("whitespace-pre-line bidi-auto", messageIsArabic && "font-arabic")}
+                <div
+                  className={cn(
+                    "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-[15px] leading-relaxed shadow-sm",
+                    messageIsArabic ? "font-arabic" : "font-sans",
+                    isViewer
+                      ? "bg-brand text-white"
+                      : "bg-[#EBDAC8] text-[#2D2D2D]",
+                  )}
                 >
-                  {message.content}
-                </p>
+                  <p
+                    dir="auto"
+                    className={cn("whitespace-pre-line bidi-auto", messageIsArabic && "font-arabic")}
+                  >
+                    {message.content}
+                  </p>
+                </div>
+                <span dir="auto" className="text-[10px] uppercase tracking-wide text-[#777777] bidi-auto">
+                  {timestamp}
+                </span>
               </div>
-              <span dir="auto" className="text-[10px] uppercase tracking-wide text-[#777777] bidi-auto">
-                {timestamp}
-              </span>
             </div>
           );
         })}
-        {hasMore && oldestCursor && (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              className="text-[11px] text-brand underline-offset-2 hover:underline"
-              onClick={handleLoadMore}
-              disabled={loadingMessages}
-            >
-              {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
-            </button>
-          </div>
-        )}
       </div>
     );
   };
@@ -1027,7 +1084,7 @@ export default function MessagesMenu({
           {t("header.chatContacts")}
         </span>
       </div>
-      <ScrollArea className={cn("flex-1", isRtl ? "pl-1" : "pr-1")}>
+      <ScrollArea ref={conversationScrollAreaRef} className={cn("flex-1", isRtl ? "pl-1" : "pr-1")}>
         {loadingConversations ? (
           <div className="flex h-full items-center justify-center text-[#777777]">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -1037,8 +1094,22 @@ export default function MessagesMenu({
             {strings.empty}
           </p>
         ) : (
-          <div className="space-y-3">
-            {conversations.map((conversation) => renderConversationSummary(conversation))}
+          <div style={{ height: conversationVirtualizer.getTotalSize(), position: "relative" }}>
+            {conversationVirtualizer.getVirtualItems().map((virtualItem) => {
+              const conversation = conversations[virtualItem.index];
+              if (!conversation) return null;
+              return (
+                <div
+                  key={conversation.id}
+                  ref={conversationVirtualizer.measureElement}
+                  data-index={virtualItem.index}
+                  className="absolute left-0 top-0 w-full pb-3"
+                  style={{ transform: `translateY(${virtualItem.start}px)` }}
+                >
+                  {renderConversationSummary(conversation)}
+                </div>
+              );
+            })}
           </div>
         )}
       </ScrollArea>
