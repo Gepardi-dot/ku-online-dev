@@ -4,20 +4,26 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { Heart, Loader2, Share2, Trash, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
   countFavorites,
-  listFavorites,
+  getCachedFavorites,
+  listFavoritesWithOptions,
+  prefetchFavoritesForUser,
   removeFavorite,
   subscribeToFavorites,
+  updateCachedFavorites,
   type FavoriteSummary,
 } from '@/lib/services/favorites-client';
 import { favoritesEvents } from '@/components/product/favorite-toggle';
 import { toast } from '@/hooks/use-toast';
 import { useLocale } from '@/providers/locale-provider';
 import { rtlLocales } from '@/lib/locale/dictionary';
+
+const FAVORITES_LIMIT = 30;
+const FAVORITES_CACHE_TTL_MS = 60_000;
+const PREFETCH_DELAY_MS = 1200;
 
 interface FavoritesMenuStrings {
   label: string;
@@ -47,6 +53,9 @@ export default function FavoritesMenu({
   const [count, setCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const recentMutationsRef = useRef(new Set<string>());
+  const favoritesRef = useRef<FavoriteSummary[]>([]);
+  const prefetchTimerRef = useRef<number | null>(null);
+  const prefetchedUserRef = useRef<string | null>(null);
 
   const canLoad = Boolean(userId);
 
@@ -54,6 +63,11 @@ export default function FavoritesMenu({
     if (!userId) {
       setCount(0);
       return;
+    }
+
+    const cached = getCachedFavorites(userId, FAVORITES_LIMIT, FAVORITES_CACHE_TTL_MS);
+    if (cached) {
+      setCount(cached.count);
     }
 
     try {
@@ -64,16 +78,33 @@ export default function FavoritesMenu({
     }
   }, [userId]);
 
-  const loadFavorites = useCallback(async () => {
+  const loadFavorites = useCallback(async (options?: { preferCache?: boolean }) => {
     if (!userId) {
       setFavorites([]);
+      setCount(0);
       return;
     }
-    setLoading(true);
+
+    const preferCache = options?.preferCache !== false;
+    let usedCache = favoritesRef.current.length > 0;
+
+    if (preferCache) {
+      const cached = getCachedFavorites(userId, FAVORITES_LIMIT, FAVORITES_CACHE_TTL_MS);
+      if (cached) {
+        usedCache = true;
+        setFavorites(cached.items);
+        setCount(cached.count);
+      }
+    }
+
+    setLoading(!usedCache);
     try {
-      const [items, total] = await Promise.all([listFavorites(userId, 30), countFavorites(userId)]);
-      setFavorites(items);
-      setCount(total);
+      const result = await listFavoritesWithOptions(userId, FAVORITES_LIMIT, {
+        preferCache: false,
+        cacheTtlMs: FAVORITES_CACHE_TTL_MS,
+      });
+      setFavorites(result.items);
+      setCount(result.count);
     } catch (error) {
       console.error('Failed to load favorites', error);
       toast({
@@ -91,6 +122,35 @@ export default function FavoritesMenu({
   }, [refreshCount]);
 
   useEffect(() => {
+    favoritesRef.current = favorites;
+  }, [favorites]);
+
+  useEffect(() => {
+    if (!userId || !open) {
+      return;
+    }
+    void loadFavorites({ preferCache: true });
+  }, [userId, open, loadFavorites]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!userId || open) return;
+    if (prefetchedUserRef.current === userId) return;
+    prefetchedUserRef.current = userId;
+
+    prefetchTimerRef.current = window.setTimeout(() => {
+      prefetchFavoritesForUser(userId, FAVORITES_LIMIT, FAVORITES_CACHE_TTL_MS);
+    }, PREFETCH_DELAY_MS);
+
+    return () => {
+      if (prefetchTimerRef.current) {
+        window.clearTimeout(prefetchTimerRef.current);
+        prefetchTimerRef.current = null;
+      }
+    };
+  }, [userId, open]);
+
+  useEffect(() => {
     if (!userId) {
       return;
     }
@@ -98,15 +158,36 @@ export default function FavoritesMenu({
     const channel = subscribeToFavorites(userId, ({ type, favoriteId }) => {
       if (favoriteId && recentMutationsRef.current.has(favoriteId)) {
         recentMutationsRef.current.delete(favoriteId);
-      } else {
-        setCount((prev) => {
-          const delta = type === 'INSERT' ? 1 : type === 'DELETE' ? -1 : 0;
-          return Math.max(0, prev + delta);
-        });
+        return;
       }
 
-      if (open) {
-        void loadFavorites();
+      const delta = type === 'INSERT' ? 1 : type === 'DELETE' ? -1 : 0;
+
+      if (delta !== 0) {
+        setCount((prev) => Math.max(0, prev + delta));
+      }
+
+      if (favoriteId && delta !== 0) {
+        updateCachedFavorites(
+          userId,
+          FAVORITES_LIMIT,
+          (current) => {
+            const nextItems =
+              type === 'DELETE' ? current.items.filter((item) => item.id !== favoriteId) : current.items;
+            const nextCount = Math.max(0, current.count + delta);
+            return { items: nextItems, count: Math.max(nextCount, nextItems.length) };
+          },
+          FAVORITES_CACHE_TTL_MS,
+        );
+      }
+
+      if (!open) return;
+      if (type === 'DELETE' && favoriteId) {
+        setFavorites((prev) => prev.filter((item) => item.id !== favoriteId));
+        return;
+      }
+      if (type === 'INSERT') {
+        void loadFavorites({ preferCache: true });
       }
     });
 
@@ -119,11 +200,11 @@ export default function FavoritesMenu({
     if (typeof window === 'undefined') return;
 
     const handler = (event: Event) => {
-      const customEvent = event as CustomEvent<{ delta?: number; mutatedFavoriteId?: string | null }>;
-      const delta = customEvent.detail?.delta;
-      if (typeof delta === 'number') {
-        setCount((prev) => Math.max(0, prev + delta));
-      }
+      const customEvent = event as CustomEvent<{
+        delta?: number;
+        mutatedFavoriteId?: string | null;
+        source?: string;
+      }>;
       const mutationId = customEvent.detail?.mutatedFavoriteId;
       if (mutationId) {
         recentMutationsRef.current.add(mutationId);
@@ -131,8 +212,38 @@ export default function FavoritesMenu({
           recentMutationsRef.current.delete(mutationId);
         }, 2000);
       }
-      if (open) {
-        void loadFavorites();
+
+      if (customEvent.detail?.source === 'favorites-menu') {
+        return;
+      }
+
+      if (!userId) {
+        return;
+      }
+
+      const delta = customEvent.detail?.delta;
+      if (typeof delta === 'number') {
+        setCount((prev) => Math.max(0, prev + delta));
+        updateCachedFavorites(
+          userId,
+          FAVORITES_LIMIT,
+          (current) => {
+            const shouldRemove = delta < 0 && Boolean(mutationId);
+            const nextItems = shouldRemove ? current.items.filter((item) => item.id !== mutationId) : current.items;
+            const nextCount = Math.max(0, current.count + delta);
+            return { items: nextItems, count: Math.max(nextCount, nextItems.length) };
+          },
+          FAVORITES_CACHE_TTL_MS,
+        );
+      }
+
+      if (!open) return;
+      if (typeof delta === 'number' && delta < 0 && mutationId) {
+        setFavorites((prev) => prev.filter((item) => item.id !== mutationId));
+        return;
+      }
+      if (typeof delta === 'number' && delta > 0) {
+        void loadFavorites({ preferCache: true });
       }
     };
 
@@ -140,13 +251,7 @@ export default function FavoritesMenu({
     return () => {
       window.removeEventListener(favoritesEvents.eventName, handler);
     };
-  }, [loadFavorites, open]);
-
-  useEffect(() => {
-    if (!open && favorites.length) {
-      setFavorites([]);
-    }
-  }, [open, favorites.length]);
+  }, [loadFavorites, open, userId]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -174,12 +279,11 @@ export default function FavoritesMenu({
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new CustomEvent('ku-menu-open', { detail: { source: 'favorites-menu' } }));
         }
-        void loadFavorites();
       } else {
         setOpen(false);
       }
     },
-    [canLoad, loadFavorites, strings.loginRequired],
+    [canLoad, strings.loginRequired],
   );
 
   const handleRemove = useCallback(
@@ -191,6 +295,16 @@ export default function FavoritesMenu({
         await removeFavorite(favorite.id, userId);
         setFavorites((prev) => prev.filter((item) => item.id !== favorite.id));
         setCount((prev) => Math.max(0, prev - 1));
+        updateCachedFavorites(
+          userId,
+          FAVORITES_LIMIT,
+          (current) => {
+            const nextItems = current.items.filter((item) => item.id !== favorite.id);
+            const nextCount = Math.max(0, current.count - 1);
+            return { items: nextItems, count: Math.max(nextCount, nextItems.length) };
+          },
+          FAVORITES_CACHE_TTL_MS,
+        );
         if (typeof window !== 'undefined') {
           window.dispatchEvent(
             new CustomEvent(favoritesEvents.eventName, {
@@ -200,6 +314,7 @@ export default function FavoritesMenu({
                 favoriteId: null,
                 delta: -1,
                 mutatedFavoriteId: favorite.id,
+                source: 'favorites-menu',
               },
             }),
           );
