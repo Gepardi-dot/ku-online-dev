@@ -3,12 +3,11 @@
 import { createClient } from '@/utils/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-import { getPublicEnv } from '@/lib/env-public';
 import { signStoragePaths } from '@/lib/services/storage-sign-client';
 
 const supabase = createClient();
-const { NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET } = getPublicEnv();
-const STORAGE_BUCKET = NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'product-images';
+const FAVORITES_CACHE_TTL_MS = 60_000;
+const FAVORITES_CACHE_KEY = 'favorites:list:';
 
 export interface FavoriteSummary {
   id: string;
@@ -26,9 +25,142 @@ export interface FavoriteSummary {
   } | null;
 }
 
+type FavoritesCacheEntry = {
+  items: FavoriteSummary[];
+  count: number;
+  cachedAt: number;
+  expiresAt: number;
+};
+
+const favoritesCache = new Map<string, FavoritesCacheEntry>();
+const favoritesInFlight = new Map<string, Promise<FavoritesCacheEntry>>();
+
+function normalizeLimit(limit?: number) {
+  if (!limit || !Number.isFinite(limit)) return 24;
+  return Math.min(Math.max(Math.floor(limit), 1), 60);
+}
+
+function normalizeTtl(ttlMs?: number): number {
+  if (!ttlMs || !Number.isFinite(ttlMs)) return FAVORITES_CACHE_TTL_MS;
+  return Math.min(Math.max(ttlMs, 5_000), 5 * 60_000);
+}
+
+function cacheKey(userId: string, limit: number): string {
+  return `${userId}:${normalizeLimit(limit)}`;
+}
+
+function storageKey(userId: string, limit: number): string {
+  return `${FAVORITES_CACHE_KEY}${cacheKey(userId, limit)}`;
+}
+
+function readSessionEntry(userId: string, limit: number): FavoritesCacheEntry | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage?.getItem(storageKey(userId, limit));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as FavoritesCacheEntry | null;
+    if (!parsed || !Array.isArray(parsed.items)) return null;
+    if (typeof parsed.count !== 'number') return null;
+    if (typeof parsed.expiresAt !== 'number' || typeof parsed.cachedAt !== 'number') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionEntry(userId: string, limit: number, entry: FavoritesCacheEntry) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage?.setItem(storageKey(userId, limit), JSON.stringify(entry));
+  } catch {
+    // ignore storage failures
+  }
+}
+
+export function getCachedFavorites(
+  userId: string,
+  limit?: number,
+  ttlMs?: number,
+): { items: FavoriteSummary[]; count: number } | null {
+  const now = Date.now();
+  const normalizedLimit = normalizeLimit(limit);
+  const ttl = normalizeTtl(ttlMs);
+  const key = cacheKey(userId, normalizedLimit);
+  const isFresh = (entry: FavoritesCacheEntry | null | undefined): entry is FavoritesCacheEntry =>
+    entry != null && entry.cachedAt + ttl > now;
+
+  const inMemory = favoritesCache.get(key);
+  if (isFresh(inMemory)) {
+    return { items: inMemory.items, count: inMemory.count };
+  }
+
+  const sessionEntry = readSessionEntry(userId, normalizedLimit);
+  if (isFresh(sessionEntry)) {
+    favoritesCache.set(key, sessionEntry);
+    return { items: sessionEntry.items, count: sessionEntry.count };
+  }
+
+  if (inMemory && !isFresh(inMemory)) {
+    favoritesCache.delete(key);
+  }
+  if (sessionEntry && !isFresh(sessionEntry) && typeof window !== 'undefined') {
+    try {
+      window.sessionStorage?.removeItem(storageKey(userId, normalizedLimit));
+    } catch {
+      // ignore
+    }
+  }
+
+  return null;
+}
+
+function setCachedFavorites(
+  userId: string,
+  limit: number,
+  entry: { items: FavoriteSummary[]; count: number },
+  ttlMs?: number,
+) {
+  const normalizedLimit = normalizeLimit(limit);
+  const ttl = normalizeTtl(ttlMs);
+  const now = Date.now();
+  const cacheEntry: FavoritesCacheEntry = {
+    items: entry.items,
+    count: entry.count,
+    cachedAt: now,
+    expiresAt: now + ttl,
+  };
+  const key = cacheKey(userId, normalizedLimit);
+  favoritesCache.set(key, cacheEntry);
+  writeSessionEntry(userId, normalizedLimit, cacheEntry);
+}
+
+export function cacheFavoritesForUser(
+  userId: string,
+  limit: number,
+  entry: { items: FavoriteSummary[]; count: number },
+  ttlMs?: number,
+) {
+  if (!userId) return;
+  setCachedFavorites(userId, limit, entry, ttlMs);
+}
+
+export function updateCachedFavorites(
+  userId: string,
+  limit: number,
+  updater: (current: { items: FavoriteSummary[]; count: number }) => { items: FavoriteSummary[]; count: number },
+  ttlMs?: number,
+): { items: FavoriteSummary[]; count: number } {
+  const cached = getCachedFavorites(userId, limit, ttlMs) ?? { items: [], count: 0 };
+  const next = updater(cached);
+  setCachedFavorites(userId, limit, next, ttlMs);
+  return next;
+}
+
 function mapFavoriteRow(row: any): FavoriteSummary {
   const imagesValue = Array.isArray(row?.product?.images)
-    ? row.product.images.filter((item: unknown): item is string => typeof item === 'string')
+    ? row.product.images
+        .filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0)
+        .slice(0, 1)
     : [];
 
   const priceValue =
@@ -50,7 +182,7 @@ function mapFavoriteRow(row: any): FavoriteSummary {
           price: priceValue,
           currency: (row.product.currency as string) ?? 'IQD',
           imagePaths: imagesValue,
-          imageUrls: imagesValue,
+          imageUrls: [],
           location: (row.product.location as string) ?? null,
         }
       : null,
@@ -59,7 +191,12 @@ function mapFavoriteRow(row: any): FavoriteSummary {
 
 async function hydrateFavoriteImages(favorites: FavoriteSummary[]) {
   const paths = Array.from(
-    new Set(favorites.flatMap((favorite) => favorite.product?.imagePaths ?? [])),
+    new Set(
+      favorites.flatMap((favorite) => {
+        const images = favorite.product?.imagePaths ?? [];
+        return images.slice(0, 1);
+      }),
+    ),
   ).filter(Boolean);
 
   if (!paths.length) {
@@ -74,6 +211,7 @@ async function hydrateFavoriteImages(favorites: FavoriteSummary[]) {
     favorites.forEach((favorite) => {
       if (!favorite.product) return;
       const urls = favorite.product.imagePaths
+        .slice(0, 1)
         .map((path) => map[path])
         .filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
       favorite.product.imageUrls = urls;
@@ -81,6 +219,87 @@ async function hydrateFavoriteImages(favorites: FavoriteSummary[]) {
   } catch (error) {
     console.error('Failed to hydrate favorite images', error);
   }
+}
+
+async function fetchFavoritesFromSupabase(userId: string, limit: number): Promise<FavoritesCacheEntry> {
+  const normalizedLimit = normalizeLimit(limit);
+  const { data, count, error } = await supabase
+    .from('favorites')
+    .select(
+      `id, product_id, user_id, created_at,
+       product:products!favorites_product_id_fkey(
+         id, title, price, currency, images, location
+       )`,
+      { count: 'exact' },
+    )
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(normalizedLimit);
+
+  if (error) {
+    throw error;
+  }
+
+  const items = (data ?? []).map((row) => mapFavoriteRow(row));
+  await hydrateFavoriteImages(items);
+  return {
+    items,
+    count: typeof count === 'number' ? count : items.length,
+    cachedAt: Date.now(),
+    expiresAt: Date.now(),
+  };
+}
+
+async function refreshFavorites(userId: string, limit: number, ttlMs?: number): Promise<FavoritesCacheEntry> {
+  const normalizedLimit = normalizeLimit(limit);
+  const key = cacheKey(userId, normalizedLimit);
+  const existing = favoritesInFlight.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  const promise = (async () => {
+    const entry = await fetchFavoritesFromSupabase(userId, normalizedLimit);
+    setCachedFavorites(userId, normalizedLimit, { items: entry.items, count: entry.count }, ttlMs);
+    return {
+      ...entry,
+      cachedAt: Date.now(),
+      expiresAt: Date.now() + normalizeTtl(ttlMs),
+    };
+  })().finally(() => {
+    favoritesInFlight.delete(key);
+  });
+
+  favoritesInFlight.set(key, promise);
+  return promise;
+}
+
+export async function listFavoritesWithOptions(
+  userId: string,
+  limit = 24,
+  options?: { preferCache?: boolean; backgroundRefresh?: boolean; cacheTtlMs?: number },
+): Promise<{ items: FavoriteSummary[]; count: number }> {
+  const normalizedLimit = normalizeLimit(limit);
+  const preferCache = options?.preferCache !== false;
+  const cached = preferCache ? getCachedFavorites(userId, normalizedLimit, options?.cacheTtlMs) : null;
+
+  if (cached && options?.backgroundRefresh) {
+    void refreshFavorites(userId, normalizedLimit, options?.cacheTtlMs);
+    return cached;
+  }
+
+  const fresh = await refreshFavorites(userId, normalizedLimit, options?.cacheTtlMs);
+  if (fresh.items.length === 0 && cached) {
+    return cached;
+  }
+  return { items: fresh.items, count: fresh.count };
+}
+
+export function prefetchFavoritesForUser(userId: string, limit = 24, ttlMs?: number) {
+  const normalizedLimit = normalizeLimit(limit);
+  const cached = getCachedFavorites(userId, normalizedLimit, ttlMs);
+  if (cached) return;
+  void refreshFavorites(userId, normalizedLimit, ttlMs);
 }
 
 export async function fetchFavoriteStatus(userId: string, productId: string) {
@@ -128,25 +347,8 @@ export async function removeFavorite(favoriteId: string, userId: string) {
 }
 
 export async function listFavorites(userId: string, limit = 24): Promise<FavoriteSummary[]> {
-  const { data, error } = await supabase
-    .from('favorites')
-    .select(
-      `id, product_id, user_id, created_at,
-       product:products!favorites_product_id_fkey(
-         id, title, price, currency, images, location
-       )`
-    )
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    throw error;
-  }
-
-  const favorites = (data ?? []).map((row) => mapFavoriteRow(row));
-  await hydrateFavoriteImages(favorites);
-  return favorites;
+  const result = await listFavoritesWithOptions(userId, limit, { preferCache: false });
+  return result.items;
 }
 
 export async function countFavorites(userId: string): Promise<number> {
