@@ -1,13 +1,4 @@
-import { FlatCompat } from "@eslint/eslintrc";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+import nextCoreWebVitals from "eslint-config-next/core-web-vitals";
 
 const config = [
   {
@@ -24,7 +15,13 @@ const config = [
       "ku-online-1/**",
     ],
   },
-  ...compat.extends("next", "next/core-web-vitals"),
+  ...nextCoreWebVitals,
+  {
+    rules: {
+      "react-hooks/purity": "off",
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ];
 
 export default config;
