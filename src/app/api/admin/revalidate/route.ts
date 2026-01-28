@@ -126,15 +126,15 @@ export const POST = withSentryRoute(async (req: Request) => {
     const scope = body.scope ?? 'all';
 
     if (scope === 'categories' || scope === 'all') {
-      revalidateTag('categories:list');
+      revalidateTag('categories:list', 'max');
     }
     if (scope === 'locations' || scope === 'all') {
-      revalidateTag('locations:list');
+      revalidateTag('locations:list', 'max');
     }
 
     // Optional custom tags
     if (Array.isArray(body.tags)) {
-      for (const t of body.tags) revalidateTag(t);
+      for (const t of body.tags) revalidateTag(t, 'max');
     }
 
     // Helpful defaults: refresh common pages
