@@ -77,7 +77,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     key: 'furniture',
     label: 'Furniture',
     labelAr: 'أثاث',
-    labelKu: 'کاڵای خانووبەرە',
+    labelKu: 'کەلوپەلی ناو ماڵ',
     icon: '/Furniture (1).png',
     matchNames: ['furniture'],
   },
