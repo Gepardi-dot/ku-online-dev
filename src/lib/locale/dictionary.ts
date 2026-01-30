@@ -128,7 +128,7 @@ export const translations = {
       latest: "Latest Listings",
       viewAll: "View All",
       swipeHint: "Swipe",
-      sponsors: "Our Sponsors",
+      sponsors: "Sponsors & Offers",
       noProducts: "No products found. Try adjusting your filters.",
       faqTitle: "Frequently Asked Questions",
       faqSubtitle:
@@ -775,7 +775,7 @@ export const translations = {
       latest: "أحدث الإعلانات",
       viewAll: "عرض الكل",
       swipeHint: "اسحب",
-      sponsors: "رعاتنا",
+      sponsors: "الرعاة والعروض",
       noProducts: "لم يتم العثور على منتجات. جرّب تعديل عوامل التصفية.",
       faqTitle: "الأسئلة الشائعة",
       faqSubtitle:
@@ -1423,7 +1423,7 @@ export const translations = {
       latest: "نوێترین شتان",
       viewAll: "هەمووی ببینە",
       swipeHint: "زیاتر",
-      sponsors: "سپۆنسەرەکانمان",
+      sponsors: "سپۆنسەر و ئۆفەر",
       noProducts: "هیچ کاڵایەک نەدۆزرایەوە. تکایە پاڵاوتنەکانت بگۆڕە.",
       faqTitle: "پرسیارە دووبارەکان",
       faqSubtitle:

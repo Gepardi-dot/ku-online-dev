@@ -21,10 +21,10 @@ on conflict (id) do nothing;
 insert into public.categories (id, name, name_ar, name_ku, description, icon, sort_order, is_active)
 values (
     '00000000-0000-0000-0000-00000000000d',
-    'Our Sponsors',
-    'رعاتنا',
-    'سپۆنسەرەکانمان',
-    'Brand partnerships and sponsors',
+    'Sponsors & Offers',
+    'الرعاة والعروض',
+    'سپۆنسەر و ئۆفەر',
+    'Sponsorships, offers, and business partnerships.',
     '/Sponsor.png.png',
     999,
     true
@@ -41,4 +41,3 @@ values (
     timezone('utc', now())
 )
 on conflict (id) do nothing;
-
