@@ -7,6 +7,8 @@ export type CategoryUiConfig = {
   matchNames: string[];
 };
 
+export const SPONSORS_CATEGORY_ID = '00000000-0000-0000-0000-00000000000d';
+
 export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
   {
     key: 'smartphones-ipads',
@@ -15,6 +17,14 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     labelKu: 'مۆبایل و ئایپاد',
     icon: '/Smartphones and ipads.png',
     matchNames: ['smartphones and ipads', 'smartphones', 'smartphone'],
+  },
+  {
+    key: 'sponsors',
+    label: 'Our Sponsors',
+    labelAr: 'رعاتنا',
+    labelKu: 'سپۆنسەرەکانمان',
+    icon: '/Sponsor.png.png',
+    matchNames: ['our sponsors', 'sponsors', 'sponsor'],
   },
   {
     key: 'fashion',
