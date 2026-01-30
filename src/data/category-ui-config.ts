@@ -22,7 +22,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     key: 'sponsors',
     label: 'Sponsors & Offers',
     labelAr: 'الرعاة والعروض',
-    labelKu: 'سپۆنسەر و ئۆفەر',
+    labelKu: 'سپۆنسەر و پێشنیار',
     icon: '/Sponsor.png.png',
     matchNames: ['sponsors & offers', 'sponsors and offers', 'sponsors', 'offers', 'offer'],
   },
