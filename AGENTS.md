@@ -18,6 +18,15 @@ Automated tests are not yet scaffolded; when adding them, colocate Playwright or
 ## Supabase / Database Workflow (Required)
 Treat Supabase schema/policy changes like code changes: develop and validate locally first, then promote via migrations.
 
+## Staging/Production Parity (Required)
+- Staging should mirror production **schema, RLS/policies, functions, extensions, and storage bucket settings**.
+- Staging **data should differ** (seed/demo data only). Never copy production user data into staging.
+- All backend/DB changes must be represented in `supabase/migrations/` and applied in order:
+  1) Push to **staging** and verify.
+  2) Then push to **production** only when explicitly intended.
+- Keep demo data in `supabase/seed.staging.sql` (or similar) and **never run it on production**.
+- Secrets are **per Supabase project**: staging must use staging keys (do not reuse production keys unless explicitly approved).
+
 ### Rules of engagement
 - **Never** apply schema/policy changes directly on the production Supabase project “just to test”.
 - Prefer **local Supabase (CLI)** for development and validation; treat `supabase/migrations/` as the source of truth.
