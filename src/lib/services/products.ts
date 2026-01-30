@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createSignedUrls, createTransformedSignedUrls } from '@/lib/storage';
 import { assertAllowedProductImagePaths, buildPublicStorageUrl, deriveThumbPath, isAllowedProductImageInput } from '@/lib/storage-public';
 import { DEFAULT_MARKET_CITIES, MARKET_CITY_OPTIONS, getMarketCityLabel, normalizeMarketCityValue } from '@/data/market-cities';
+import { SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
 import { getEnv } from "@/lib/env";
 
 export interface SellerProfile {
@@ -1153,6 +1154,7 @@ export async function getCategories(): Promise<MarketplaceCategory[]> {
     .from('categories')
     .select('id, name, name_ar, name_ku, description, icon, is_active, sort_order, created_at')
     .eq('is_active', true)
+    .neq('id', SPONSORS_CATEGORY_ID)
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true });
 

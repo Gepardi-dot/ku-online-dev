@@ -90,7 +90,7 @@ export default async function SellerPage({ params }: SellerPageProps) {
                 <h1 dir="auto" className="flex items-center gap-2 text-2xl font-bold text-[#2D2D2D] bidi-auto">
                   <span>{profile.full_name ?? t('product.sellerFallback')}</span>
                   {profile.is_verified ? (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 shadow-sm">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700 shadow-sm">
                       <BadgeCheck className="h-4 w-4" />
                       <span className="hidden sm:inline">{t('profile.overview.trustedBadge')}</span>
                     </span>

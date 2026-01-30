@@ -23,7 +23,7 @@ import { compressToWebp } from '@/lib/images/client-compress';
 import { CurrencyText, highlightDollar } from '@/components/currency-text';
 import { useLocale } from '@/providers/locale-provider';
 import { rtlLocales } from '@/lib/locale/dictionary';
-import { CATEGORY_LABEL_MAP } from '@/data/category-ui-config';
+import { CATEGORY_LABEL_MAP, SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
 
 const conditionOptions = CONDITION_OPTIONS.filter((option) => option.value);
 const cityOptions = MARKET_CITY_OPTIONS.filter((option) => option.value !== 'all');
@@ -479,6 +479,7 @@ export default function SellForm({ user }: SellFormProps) {
         .from('categories')
         .select('id, name')
         .eq('is_active', true)
+        .neq('id', SPONSORS_CATEGORY_ID)
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
 

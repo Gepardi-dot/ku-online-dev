@@ -59,6 +59,7 @@ const serverSchema = baseSchema.extend({
   VONAGE_API_SECRET: z.string().min(1).optional(),
   VONAGE_APPLICATION_ID: z.string().min(1).optional(),
   VONAGE_PRIVATE_KEY64: z.string().min(1).optional(),
+  VONAGE_VIRTUAL_NUMBER: z.string().min(1).optional(),
 });
 
 const result = serverSchema.safeParse(process.env);
