@@ -27,6 +27,9 @@ export default function AuthButton({ user }: AuthButtonProps) {
   const { t, locale } = useLocale();
   const isRtl = locale === 'ar' || locale === 'ku';
   const isKurdish = locale === 'ku';
+  const debugAuth = process.env.NEXT_PUBLIC_DEBUG_AUTH === '1';
+  const defaultCountryCode = '+964';
+  const defaultCountryDialCode = defaultCountryCode.slice(1);
   const [isLoading, setIsLoading] = useState(false);
   const [phone, setPhone] = useState('');
   const [verificationPhone, setVerificationPhone] = useState('');
@@ -77,6 +80,13 @@ export default function AuthButton({ user }: AuthButtonProps) {
     return () => window.cancelAnimationFrame(frame);
   }, [dialogOpen, showOtpInput, focusDialogInput]);
 
+  useEffect(() => {
+    if (!dialogOpen || showOtpInput) return;
+    if (!phone) {
+      setPhone(`${defaultCountryCode} `);
+    }
+  }, [dialogOpen, showOtpInput, phone, defaultCountryCode]);
+
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
@@ -98,55 +108,43 @@ export default function AuthButton({ user }: AuthButtonProps) {
     setIsLoading(false);
   };
 
-  const formatIraqMobile = useCallback((value: string) => {
-    let digits = value.replace(/\D/g, '');
-    if (digits.startsWith('00')) {
-      digits = digits.slice(2);
-    }
-    if (digits.startsWith('964')) {
-      digits = digits.slice(3);
-    }
-    if (digits.startsWith('0')) {
-      digits = digits.slice(1);
+  const normalizePhoneToE164 = useCallback((value: string) => {
+    const raw = value.trim();
+    if (!raw) return null;
+
+    let normalized = raw.replace(/[\s().-]/g, '');
+    if (normalized.startsWith('00')) {
+      normalized = `+${normalized.slice(2)}`;
     }
 
-    digits = digits.slice(0, 10);
-    const part1 = digits.slice(0, 3);
-    const part2 = digits.slice(3, 6);
-    const part3 = digits.slice(6);
-    return [part1, part2, part3].filter(Boolean).join(' ');
-  }, []);
-
-  const normalizeIraqMobileToE164 = useCallback((value: string) => {
-    let digits = value.replace(/\D/g, '');
-    if (digits.startsWith('00')) {
-      digits = digits.slice(2);
-    }
-    if (digits.startsWith('964')) {
-      digits = digits.slice(3);
-    }
-    if (digits.startsWith('0')) {
-      digits = digits.slice(1);
+    if (normalized.startsWith('+')) {
+      const digits = normalized.slice(1).replace(/\D/g, '');
+      if (!digits || digits[0] === '0') return null;
+      if (digits.length < 7 || digits.length > 15) return null;
+      return `+${digits}`;
     }
 
-    digits = digits.slice(0, 10);
-    if (digits.length !== 10) return null;
-    if (!digits.startsWith('7')) return null;
-    return `+964${digits}`;
-  }, []);
+    let digits = normalized.replace(/\D/g, '');
+    if (!digits) return null;
+    if (digits.startsWith('0')) digits = digits.slice(1);
+    if (digits.startsWith(defaultCountryDialCode)) digits = digits.slice(defaultCountryDialCode.length);
+    if (digits.length < 7 || digits.length > 12) return null;
+
+    return `+${defaultCountryDialCode}${digits}`;
+  }, [defaultCountryDialCode]);
 
   const handlePhoneLogin = async () => {
     setIsLoading(true);
     setPhoneError(null);
     try {
       const raw = phone.trim();
-      if (!raw) {
+      if (!raw || raw === defaultCountryCode) {
         setPhoneError(t('auth.phoneRequiredError'));
         setIsLoading(false);
         return;
       }
 
-      const normalized = normalizeIraqMobileToE164(raw);
+      const normalized = normalizePhoneToE164(raw);
       if (!normalized) {
         setPhoneError(t('auth.phoneInvalidError'));
         setIsLoading(false);
@@ -162,11 +160,33 @@ export default function AuthButton({ user }: AuthButtonProps) {
       if (!error) {
         setShowOtpInput(true);
       } else {
-        setPhoneError(t('auth.sendVerificationFailed'));
+        if (debugAuth) {
+          console.error('Supabase signInWithOtp failed', {
+            status: (error as any)?.status,
+            code: (error as any)?.code ?? (error as any)?.error_code,
+            name: (error as any)?.name,
+            message: (error as any)?.message,
+          });
+        } else {
+          console.error('Supabase signInWithOtp failed');
+        }
+        setPhoneError(
+          debugAuth
+            ? `${t('auth.sendVerificationFailed')} (${(error as any)?.status ?? 'n/a'}: ${(error as any)?.message ?? 'n/a'})`
+            : t('auth.sendVerificationFailed')
+        );
       }
     } catch (error) {
-      console.error('Error sending OTP:', error);
-      setPhoneError(t('auth.sendVerificationFailed'));
+      if (debugAuth) {
+        console.error('Error sending OTP:', error);
+      } else {
+        console.error('Error sending OTP');
+      }
+      setPhoneError(
+        debugAuth && error instanceof Error
+          ? `${t('auth.sendVerificationFailed')} (exception: ${error.message})`
+          : t('auth.sendVerificationFailed')
+      );
     } finally {
       setIsLoading(false);
     }
@@ -184,11 +204,33 @@ export default function AuthButton({ user }: AuthButtonProps) {
       if (!error) {
         window.location.reload();
       } else {
-        setOtpError(t('auth.verifyCodeFailed'));
+        if (debugAuth) {
+          console.error('Supabase verifyOtp failed', {
+            status: (error as any)?.status,
+            code: (error as any)?.code ?? (error as any)?.error_code,
+            name: (error as any)?.name,
+            message: (error as any)?.message,
+          });
+        } else {
+          console.error('Supabase verifyOtp failed');
+        }
+        setOtpError(
+          debugAuth
+            ? `${t('auth.verifyCodeFailed')} (${(error as any)?.status ?? 'n/a'}: ${(error as any)?.message ?? 'n/a'})`
+            : t('auth.verifyCodeFailed')
+        );
       }
     } catch (error) {
-      console.error('Error verifying OTP:', error);
-      setOtpError(t('auth.verifyCodeFailed'));
+      if (debugAuth) {
+        console.error('Error verifying OTP:', error);
+      } else {
+        console.error('Error verifying OTP');
+      }
+      setOtpError(
+        debugAuth && error instanceof Error
+          ? `${t('auth.verifyCodeFailed')} (exception: ${error.message})`
+          : t('auth.verifyCodeFailed')
+      );
     } finally {
       setIsLoading(false);
     }
@@ -358,26 +400,24 @@ export default function AuthButton({ user }: AuthButtonProps) {
           {!showOtpInput ? (
             <div className="space-y-2">
               <Label htmlFor="phone">{t('auth.phoneLabel')}</Label>
-              <div className="relative">
-                <div
-                  className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-muted-foreground"
-                  aria-hidden="true"
-                >
-                  <span dir="ltr">+964</span>
-                </div>
-                <Input
-                  id="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel-national"
-                  placeholder={t('auth.phonePlaceholder')}
-                  value={phone}
-                  onChange={(e) => setPhone(formatIraqMobile(e.target.value))}
-                  className="pl-16 text-left"
-                  dir="ltr"
-                  ref={phoneInputRef}
-                />
-              </div>
+              <Input
+                id="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                placeholder={t('auth.phonePlaceholder')}
+                value={phone}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  if (phoneError) setPhoneError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isLoading) void handlePhoneLogin();
+                }}
+                className="text-left"
+                dir="ltr"
+                ref={phoneInputRef}
+              />
               {phoneError && (
                 <p className="text-xs text-destructive">
                   {phoneError}
@@ -397,6 +437,9 @@ export default function AuthButton({ user }: AuthButtonProps) {
                 placeholder={t('auth.verificationCodePlaceholder')}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isLoading && otp.length === 6) void handleOtpVerification();
+                }}
                 maxLength={6}
                 ref={otpInputRef}
               />

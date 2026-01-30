@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 
 const loadedFromFiles = new Set();
 
-function loadEnvFile(relativePath) {
-  const absPath = path.join(process.cwd(), relativePath);
+function loadEnvFileAt(baseDir, filename) {
+  const absPath = path.join(baseDir, filename);
   if (!fs.existsSync(absPath)) return;
 
   const raw = fs.readFileSync(absPath, 'utf8');
@@ -35,23 +37,57 @@ function loadEnvFile(relativePath) {
 }
 
 if (process.env.NODE_ENV !== 'production') {
-  loadEnvFile('.env');
-  loadEnvFile('.env.local');
+  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+  const repoRoot = path.resolve(scriptDir, '..', '..');
+
+  // Prefer repo-level env files, then fall back to current working directory.
+  loadEnvFileAt(repoRoot, '.env');
+  loadEnvFileAt(repoRoot, '.env.local');
+  loadEnvFileAt(process.cwd(), '.env');
+  loadEnvFileAt(process.cwd(), '.env.local');
 }
 
 const extraArgs = process.argv.slice(2);
-const childArgs = ['-y', '@vonage/vonage-mcp-server-api-bindings', ...extraArgs];
+const require = createRequire(import.meta.url);
+let localEntrypoint;
+try {
+  const pkgJsonPath = require.resolve('@vonage/vonage-mcp-server-api-bindings/package.json');
+  const pkg = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf8'));
+  const binField = pkg?.bin;
+  const binRel =
+    typeof binField === 'string'
+      ? binField
+      : binField && typeof binField === 'object'
+        ? Object.values(binField)[0]
+        : undefined;
+  if (binRel) {
+    localEntrypoint = path.resolve(path.dirname(pkgJsonPath), binRel);
+  }
+} catch {
+  localEntrypoint = undefined;
+}
 
 let child;
-if (process.platform === 'win32') {
+if (localEntrypoint) {
+  child = spawn(process.execPath, [localEntrypoint, ...extraArgs], {
+    stdio: 'inherit',
+    env: process.env,
+  });
+} else if (process.platform === 'win32') {
   // EINVAL can occur when spawning .cmd directly; use cmd.exe instead.
-  const cmdLine = `npx ${childArgs.map((arg) => `"${arg}"`).join(' ')}`;
+  const quoteArg = (arg) => {
+    if (!/[\s"]/u.test(arg)) return arg;
+    return `"${arg.replace(/"/g, '\\"')}"`;
+  };
+  const cmdLine = `npx ${['-y', '@vonage/vonage-mcp-server-api-bindings', ...extraArgs]
+    .map(quoteArg)
+    .join(' ')}`;
   child = spawn('cmd.exe', ['/d', '/s', '/c', cmdLine], {
     stdio: 'inherit',
     env: process.env,
   });
 } else {
-  child = spawn('npx', childArgs, {
+  child = spawn('npx', ['-y', '@vonage/vonage-mcp-server-api-bindings', ...extraArgs], {
     stdio: 'inherit',
     env: process.env,
   });

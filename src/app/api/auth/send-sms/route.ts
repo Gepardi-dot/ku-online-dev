@@ -13,6 +13,7 @@ const {
   SUPABASE_SERVICE_ROLE_KEY,
   VONAGE_API_KEY,
   VONAGE_API_SECRET,
+  VONAGE_VIRTUAL_NUMBER,
   VONAGE_SMS_SENDER_ID,
   VONAGE_SMS_TEMPLATE,
   SUPABASE_SMS_HOOK_SECRET,
@@ -43,6 +44,27 @@ function normalizeSenderId(value: string) {
   const cleaned = value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 11);
   if (cleaned.length < 3) return null;
   return cleaned;
+}
+
+function normalizeNumericSender(value: string) {
+  let digits = value.trim();
+  if (!digits) return null;
+  if (digits.startsWith('+')) digits = digits.slice(1);
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  digits = digits.replace(/\D/g, '');
+  if (!digits) return null;
+  if (digits.length < 7 || digits.length > 15) return null;
+  return digits;
+}
+
+function normalizeVonageSender(value: string) {
+  const numeric = normalizeNumericSender(value);
+  if (numeric) return { sender: numeric, type: 'numeric' as const };
+
+  const alpha = normalizeSenderId(value);
+  if (alpha) return { sender: alpha, type: 'alphanumeric' as const };
+
+  return null;
 }
 
 function buildMessage(otp: string) {
@@ -144,22 +166,24 @@ function verifyStandardWebhookSignature({
 }
 
 async function sendVonageSms({ to, text, from }: { to: string; text: string; from: string }) {
-  if (!VONAGE_API_KEY || !VONAGE_API_SECRET) {
+  const apiKey = VONAGE_API_KEY?.trim();
+  const apiSecret = VONAGE_API_SECRET?.trim();
+
+  if (!apiKey || !apiSecret) {
     throw new Error('VONAGE_API_KEY and VONAGE_API_SECRET must be set.');
   }
 
   const body = new URLSearchParams({
+    api_key: apiKey,
+    api_secret: apiSecret,
     from,
     to,
     text,
   });
 
-  const auth = Buffer.from(`${VONAGE_API_KEY}:${VONAGE_API_SECRET}`).toString('base64');
-
   const response = await fetch('https://rest.nexmo.com/sms/json', {
     method: 'POST',
     headers: {
-      authorization: `Basic ${auth}`,
       'content-type': 'application/x-www-form-urlencoded',
       accept: 'application/json',
     },
@@ -168,7 +192,8 @@ async function sendVonageSms({ to, text, from }: { to: string; text: string; fro
 
   const payload = await response.json();
   if (!response.ok) {
-    throw new Error(payload?.error_text || 'Vonage SMS request failed.');
+    const detail = payload?.error_text || payload?.error || payload?.message;
+    throw new Error(detail ? `Vonage SMS request failed: ${detail}` : 'Vonage SMS request failed.');
   }
 
   const message = Array.isArray(payload?.messages) ? payload.messages[0] : null;
@@ -177,7 +202,8 @@ async function sendVonageSms({ to, text, from }: { to: string; text: string; fro
   }
 
   if (message.status !== '0') {
-    throw new Error(message['error-text'] || message.error_text || 'Vonage SMS rejected.');
+    const detail = message['error-text'] || message.error_text || message.error || message.message;
+    throw new Error(detail ? `Vonage SMS rejected: ${detail}` : 'Vonage SMS rejected.');
   }
 
   return {
@@ -222,21 +248,21 @@ export const POST = withSentryRoute(async (request: Request) => {
   const otp = payload.sms.otp.trim();
   const phone = payload.user.phone.trim();
   const to = normalizeE164ForVonage(phone);
-  const senderRaw = VONAGE_SMS_SENDER_ID?.trim() || 'KUBAZAR';
-  const sender = normalizeSenderId(senderRaw);
+  const senderRaw = VONAGE_SMS_SENDER_ID?.trim() || VONAGE_VIRTUAL_NUMBER?.trim() || 'KUBAZAR';
+  const senderNormalized = normalizeVonageSender(senderRaw);
 
-  if (!sender) {
-    return hookError('Invalid sender ID. It must be 3-11 alphanumeric characters.', 400);
+  if (!senderNormalized) {
+    return hookError('Invalid sender ID. Use 3-11 alphanumeric or a valid phone number in E.164.', 400);
   }
 
   const messageText = buildMessage(otp);
 
   try {
-    const result = await sendVonageSms({ to, text: messageText, from: sender });
+    const result = await sendVonageSms({ to, text: messageText, from: senderNormalized.sender });
 
     const { error: logError } = await supabaseAdmin.from('vonage_sms_logs').insert({
       message_id: result.messageId ?? crypto.randomUUID(),
-      from_number: sender,
+      from_number: senderNormalized.sender,
       to_number: phone,
       message_text: messageText,
       message_type: 'text',
@@ -250,6 +276,14 @@ export const POST = withSentryRoute(async (request: Request) => {
     }
   } catch (error) {
     console.error('Vonage SMS hook error:', error);
+    if (error instanceof Error && /bad credentials/i.test(error.message)) {
+      const apiKeyTail = VONAGE_API_KEY?.trim().slice(-4) || '(missing)';
+      const apiSecretLen = VONAGE_API_SECRET?.trim().length || 0;
+      console.error('Vonage credentials look invalid. Verify VONAGE_API_KEY/VONAGE_API_SECRET in Vercel env.', {
+        apiKeyTail,
+        apiSecretLen,
+      });
+    }
     return hookError(error instanceof Error ? error.message : 'SMS send failed.', 502);
   }
 

@@ -428,7 +428,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                           </Link>
                           {seller?.isVerified ? (
                             <>
-                              <BadgeCheck className="h-4 w-4 text-emerald-600" aria-hidden="true" />
+                              <BadgeCheck className="h-4 w-4 text-blue-600" aria-hidden="true" />
                               <span className="sr-only">{t('profile.overview.trustedBadge')}</span>
                             </>
                           ) : null}
