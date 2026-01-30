@@ -226,7 +226,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                           sizes="(max-width: 640px) 80px, 96px"
                           className={
                             isSponsors
-                              ? 'object-contain scale-[1.9]'
+                              ? 'object-contain scale-[1.7] p-2'
                               : isKidsToys
                               ? 'object-cover scale-[2.3] -translate-y-0.5'
                             : isFurniture
