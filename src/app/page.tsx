@@ -207,6 +207,10 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                   /\.(png|webp|jpg|jpeg|gif|svg)$/i.test(iconPath);
                 const normalizedSrc = isLocalImage ? (iconPath.startsWith('/') ? iconPath : `/${iconPath}`) : '';
 
+                const iconWrapperClass = isSponsors
+                  ? 'relative inline-flex h-[3.9rem] w-[3.9rem] sm:h-[3.9rem] sm:w-[3.9rem] md:h-[4.1rem] md:w-[4.1rem] items-center justify-center overflow-hidden bg-white rounded-[18px]'
+                  : 'relative inline-flex h-[3.6rem] w-[3.6rem] sm:h-14 sm:w-14 md:h-16 md:w-16 items-center justify-center overflow-hidden bg-white rounded-[18px]';
+
                 return (
                   <Link
                     href={categoryHref}
@@ -215,7 +219,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                     className="snap-start inline-flex shrink-0 w-[6.1rem] sm:w-24 md:w-[5.8rem] lg:w-22 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] sm:text-sm font-medium text-foreground/90 transition hover:bg-muted/60 active:scale-[0.99] md:snap-normal"
                   >
                     <span
-                      className="relative inline-flex h-[3.6rem] w-[3.6rem] sm:h-14 sm:w-14 md:h-16 md:w-16 items-center justify-center overflow-hidden bg-white rounded-[18px]"
+                      className={iconWrapperClass}
                       aria-hidden="true"
                     >
                       {isLocalImage ? (
@@ -226,7 +230,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                           sizes="(max-width: 640px) 80px, 96px"
                           className={
                             isSponsors
-                              ? 'object-contain scale-[1.7] p-2'
+                              ? 'object-contain scale-[1.85] p-1.5'
                               : isKidsToys
                               ? 'object-cover scale-[2.3] -translate-y-0.5'
                             : isFurniture
