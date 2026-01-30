@@ -20,11 +20,18 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
   },
   {
     key: 'sponsors',
-    label: 'Sponsors & Offers',
-    labelAr: 'الرعاة والعروض',
-    labelKu: 'سپۆنسەر و پێشنیار',
+    label: 'Stores and Sponsors',
+    labelAr: 'المحلات والرعاة',
+    labelKu: 'فرۆشگاکان و سپۆنسەرەکان',
     icon: '/Sponsor.png.png',
-    matchNames: ['sponsors & offers', 'sponsors and offers', 'sponsors', 'offers', 'offer'],
+    matchNames: [
+      'stores and sponsors',
+      'stores & sponsors',
+      'stores',
+      'sponsors',
+      'store',
+      'sponsor',
+    ],
   },
   {
     key: 'fashion',
