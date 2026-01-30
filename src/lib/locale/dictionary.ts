@@ -1423,7 +1423,7 @@ export const translations = {
       latest: "نوێترین شتان",
       viewAll: "هەمووی ببینە",
       swipeHint: "زیاتر",
-      sponsors: "سپۆنسەر و ئۆفەر",
+      sponsors: "سپۆنسەر و پێشنیار",
       noProducts: "هیچ کاڵایەک نەدۆزرایەوە. تکایە پاڵاوتنەکانت بگۆڕە.",
       faqTitle: "پرسیارە دووبارەکان",
       faqSubtitle:
