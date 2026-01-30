@@ -21,10 +21,10 @@ on conflict (id) do nothing;
 insert into public.categories (id, name, name_ar, name_ku, description, icon, sort_order, is_active)
 values (
     '00000000-0000-0000-0000-00000000000d',
-    'Sponsors & Offers',
-    'الرعاة والعروض',
-    'سپۆنسەر و ئۆفەر',
-    'Sponsorships, offers, and business partnerships.',
+    'Stores and Sponsors',
+    'المحلات والرعاة',
+    'فرۆشگاکان و سپۆنسەرەکان',
+    'Store listings and sponsor partnerships.',
     '/Sponsor.png.png',
     999,
     true

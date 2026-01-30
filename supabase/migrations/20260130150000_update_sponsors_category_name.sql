@@ -3,10 +3,10 @@
 
 update public.categories
 set
-  name = 'Sponsors & Offers',
-  name_ar = 'الرعاة والعروض',
-  name_ku = 'سپۆنسەر و ئۆفەر',
-  description = 'Sponsorships, offers, and business partnerships.',
+  name = 'Stores and Sponsors',
+  name_ar = 'المحلات والرعاة',
+  name_ku = 'فرۆشگاکان و سپۆنسەرەکان',
+  description = 'Store listings and sponsor partnerships.',
   icon = '/Sponsor.png.png',
   is_active = true,
   sort_order = 999
