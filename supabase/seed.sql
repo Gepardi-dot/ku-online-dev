@@ -1,4 +1,7 @@
--- Seed data for marketplace categories and demo user
+-- Seed data for local/staging development.
+-- Keep this file safe to run repeatedly and avoid inserting demo listings here.
+-- For demo products, use supabase/seed.staging.sql (DO NOT run that on production).
+
 insert into public.categories (id, name, description, sort_order)
 values
     ('00000000-0000-0000-0000-000000000001', 'Smartphones and iPads', 'Phones, tablets, and accessories', 1),
@@ -15,6 +18,19 @@ values
     ('00000000-0000-0000-0000-00000000000c', 'Others', 'Miscellaneous categories', 12)
 on conflict (id) do nothing;
 
+insert into public.categories (id, name, name_ar, name_ku, description, icon, sort_order, is_active)
+values (
+    '00000000-0000-0000-0000-00000000000d',
+    'Our Sponsors',
+    'رعاتنا',
+    'سپۆنسەرەکانمان',
+    'Brand partnerships and sponsors',
+    '/Sponsor.png.png',
+    999,
+    true
+)
+on conflict (id) do nothing;
+
 insert into public.users (id, email, full_name, is_verified, response_rate, last_seen_at)
 values (
     '00000000-0000-0000-0000-0000000000aa',
@@ -25,49 +41,4 @@ values (
     timezone('utc', now())
 )
 on conflict (id) do nothing;
-
--- Optional: set emoji icons when the column exists
-do $$
-begin
-  if exists (
-    select 1 from information_schema.columns 
-    where table_schema = 'public' and table_name = 'categories' and column_name = 'icon'
-  ) then
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-  end if;
-end $$;
-
-insert into public.products (
-    id,
-    title,
-    description,
-    price,
-    condition,
-    category_id,
-    seller_id,
-    images,
-    is_promoted
-)
-values (
-    '00000000-0000-0000-0000-0000000000bb',
-    'Sample Listing',
-    'An example listing to verify the marketplace UI.',
-    150000.00,
-    'Used - Good',
-    '00000000-0000-0000-0000-000000000003',
-    '00000000-0000-0000-0000-0000000000aa',
-    '["https://placehold.co/600x400"]'::jsonb,
-    true
-)
-on conflict (id) do nothing;
-
 

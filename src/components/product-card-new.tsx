@@ -197,7 +197,7 @@ const ProductCard = memo(function ProductCardImpl({ product, viewerId, searchQue
               </span>
               {product.seller?.isVerified ? (
                 <>
-                  <BadgeCheck className="h-3 w-3 text-emerald-600" aria-hidden="true" />
+                  <BadgeCheck className="h-3 w-3 text-blue-600" aria-hidden="true" />
                   <span className="sr-only">{t('profile.overview.trustedBadge')}</span>
                 </>
               ) : null}

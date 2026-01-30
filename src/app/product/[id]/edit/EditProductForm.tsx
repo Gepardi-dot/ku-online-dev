@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
 import { mapCategoriesForUi, type RawCategoryRow } from '@/data/category-labels';
-import { CATEGORY_LABEL_MAP } from '@/data/category-ui-config';
+import { CATEGORY_LABEL_MAP, SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -129,6 +129,7 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         .from('categories')
         .select('id, name')
         .eq('is_active', true)
+        .neq('id', SPONSORS_CATEGORY_ID)
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
       if (!error) {

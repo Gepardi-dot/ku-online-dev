@@ -33,9 +33,11 @@ import {
   CATEGORY_ICON_MAP,
   CATEGORY_LABEL_MAP,
   CATEGORY_BLUR_PLACEHOLDER,
+  SPONSORS_CATEGORY_ID,
 } from '@/data/category-ui-config';
 import { getServerLocale } from '@/lib/locale/server';
 import { LocaleMessages, rtlLocales, translations } from '@/lib/locale/dictionary';
+import type { MarketplaceCategory } from '@/lib/services/products';
 
 interface SearchPageParams {
   category?: string;
@@ -120,7 +122,22 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
       const nameLc = (category.name || '').toLowerCase();
       return config.matchNames.some((matchName) => matchName === nameLc);
     });
-    return match ?? null;
+    if (match) return match;
+    if (config.key === 'sponsors' && categoriesRaw.length > 0) {
+      const fallback: MarketplaceCategory = {
+        id: SPONSORS_CATEGORY_ID,
+        name: config.label,
+        nameAr: config.labelAr ?? null,
+        nameKu: config.labelKu ?? null,
+        description: null,
+        icon: config.icon,
+        isActive: true,
+        sortOrder: null,
+        createdAt: null,
+      };
+      return fallback;
+    }
+    return null;
   }).filter((category): category is (typeof categoriesRaw)[number] => Boolean(category));
 
   const viewParams = createProductsSearchParams(initialValues);
@@ -144,10 +161,11 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                 const baseName = category.name ?? '';
                 const baseNameLc = baseName.toLowerCase();
                 const configForCategory = CATEGORY_LABEL_MAP[baseNameLc];
+                const isSponsors = configForCategory?.key === 'sponsors' || category.id === SPONSORS_CATEGORY_ID;
                 const localizedLabel =
                   locale === 'ar'
                     ? category.nameAr || configForCategory?.labelAr || configForCategory?.label || baseName
-                    : locale === 'ku'
+                  : locale === 'ku'
                       ? category.nameKu || configForCategory?.labelKu || configForCategory?.label || baseName
                       : configForCategory?.label || baseName;
                 const label = localizedLabel;
@@ -157,7 +175,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                   ? createProductsSearchParams({ ...initialValues, category: '', freeOnly: true })
                   : createProductsSearchParams({ ...initialValues, category: category.id, freeOnly: false });
                 const qs = params.toString();
-                const categoryHref = qs ? `/products?${qs}` : '/products';
+                const categoryHref = isSponsors ? '/sponsors' : qs ? `/products?${qs}` : '/products';
 
                 const swatches = [
                   { iconBg: 'from-pink-500/10 to-rose-500/10', iconText: 'text-rose-600' },
@@ -207,7 +225,9 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                           fill
                           sizes="(max-width: 640px) 80px, 96px"
                           className={
-                            isKidsToys
+                            isSponsors
+                              ? 'object-contain scale-[1.9]'
+                              : isKidsToys
                               ? 'object-cover scale-[2.3] -translate-y-0.5'
                             : isFurniture
                               ? 'object-cover scale-[2.1] -translate-y-0.5'

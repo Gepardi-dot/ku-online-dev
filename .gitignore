@@ -20,6 +20,7 @@ push_*.log
 *.err
 ku-online/
 recovered-from-broken/
+.tmp/
 
 .vercel
 .env*.local

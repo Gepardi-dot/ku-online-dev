@@ -465,7 +465,7 @@ export default async function ProfilePage({
                     <h1 className="text-2xl font-bold max-w-[260px] truncate">{profileData.fullName}</h1>
                     {profileData.isVerified ? (
                       <>
-                        <BadgeCheck className="h-5 w-5 text-emerald-600" />
+                        <BadgeCheck className="h-5 w-5 text-blue-600" />
                         <span className="sr-only">{t('profile.overview.trustedBadge')}</span>
                       </>
                     ) : null}
