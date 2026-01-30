@@ -28,7 +28,7 @@ export default async function SponsorsPage() {
 
           <div className="mt-10 flex flex-col items-center gap-8">
             <div className="relative h-24 w-24 overflow-hidden rounded-3xl bg-white shadow-sm">
-              <Image src="/Sponsor.png.png" alt="" fill className="object-contain scale-[1.9]" priority />
+              <Image src="/Sponsor.png.png" alt="" fill className="object-contain scale-[1.7] p-2" priority />
             </div>
             <PartnershipInquiry />
           </div>
