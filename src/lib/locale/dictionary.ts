@@ -2,8 +2,8 @@ export const translations = {
   en: {
     languageNames: {
       en: "English",
-      ar: "Arabic",
-      ku: "Kurdish",
+      ar: "عربي",
+      ku: "کوردی",
     },
     announcement: {
       tagline: "Sell your stuff or buy from others",
@@ -648,9 +648,9 @@ export const translations = {
   },
   ar: {
     languageNames: {
-      en: "الإنجليزية",
-      ar: "العربية",
-      ku: "الكردية",
+      en: "English",
+      ar: "عربي",
+      ku: "کوردی",
     },
     announcement: {
       tagline: "بع أغراضك أو اشترِ أغراض الآخرين",
@@ -1295,8 +1295,8 @@ export const translations = {
   },
   ku: {
     languageNames: {
-      en: "ئینگلیزی",
-      ar: "عەرەبی",
+      en: "English",
+      ar: "عربي",
       ku: "کوردی",
     },
     announcement: {
