@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { Locale } from '@/lib/locale/dictionary';
 import { rtlLocales } from '@/lib/locale/dictionary';
+import { cn } from '@/lib/utils';
 import { useLocale } from '@/providers/locale-provider';
 import { Check, Globe } from 'lucide-react';
 
@@ -75,7 +76,9 @@ export default function LanguageSwitcher() {
             onSelect={() => setLocale(code)}
             className="flex items-center justify-between gap-4 rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/3 px-3 py-2 mb-2 last:mb-0 hover:bg-white/60 hover:border-[#eadbc5]/50 cursor-pointer"
           >
-            <span>{messages.languageNames[code]}</span>
+            <span className={cn(code !== 'en' && 'font-arabic text-[1.05em]')} dir="auto">
+              {messages.languageNames[code]}
+            </span>
             {locale === code && <Check className="h-4 w-4 text-brand" />}
           </DropdownMenuItem>
         ))}
