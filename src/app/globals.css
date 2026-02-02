@@ -140,7 +140,8 @@
 /* Bidi helper: keep overall UI LTR but render text in its natural direction */
 .bidi-auto {
   unicode-bidi: plaintext;
-  font-family: var(--font-sans), var(--font-arabic), "Segoe UI", "Tahoma", sans-serif;
+  font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
+  font-size: 1.03em;
 }
 
 html[lang="ar"] .bidi-auto,
@@ -151,6 +152,7 @@ html[lang="ku"] .bidi-auto {
 /* Force Noto Kufi Arabic when Arabic script appears in otherwise English UI. */
 .font-arabic {
   font-family: var(--font-arabic), var(--font-sans), "Segoe UI", "Tahoma", sans-serif;
+  font-size: 1.03em;
 }
 /* Locale font override for Arabic/Kurdish UI. */
 html[lang='ar'] body,
@@ -192,4 +194,3 @@ html[lang='ku'] button {
     margin-left: 0 !important;
   }
 }
-

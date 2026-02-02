@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Heart, Loader2, Share2, Trash, X } from 'lucide-react';
+import { Loader2, Share2, ShoppingCart, Trash, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Image from 'next/image';
@@ -416,7 +416,7 @@ export default function FavoritesMenu({
             {triggerIcon ? (
               <span className="inline-flex items-center justify-center h-full w-full">{triggerIcon}</span>
             ) : (
-              <Heart className="h-full w-full" strokeWidth={1.6} />
+              <ShoppingCart className="h-full w-full" strokeWidth={1.6} />
             )}
             {indicator}
           </button>
@@ -429,7 +429,7 @@ export default function FavoritesMenu({
             {triggerIcon ? (
               <span className="inline-flex items-center justify-center">{triggerIcon}</span>
             ) : (
-              <Heart className="h-6 w-6" strokeWidth={1.5} />
+              <ShoppingCart className="h-6 w-6" strokeWidth={1.5} />
             )}
             {indicator}
           </button>
