@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, MessageSquare, PackagePlus, ShoppingBag, User } from "lucide-react";
+import { Home, MessageSquare, PackagePlus, ShoppingCart, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
 import type { ComponentType } from "react";
@@ -25,7 +25,7 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { key: "home", href: "/", labelKey: "nav.home", icon: Home },
   // Products should route to the products list directly
-  { key: "favorites", href: "/products", labelKey: "nav.products", icon: ShoppingBag },
+  { key: "favorites", href: "/products", labelKey: "nav.products", icon: ShoppingCart },
   { key: "sell", href: "/sell", labelKey: "nav.sell", icon: PackagePlus, highlight: true },
   { key: "messages", href: "/profile?tab=messages", labelKey: "nav.messages", icon: MessageSquare },
   { key: "profile", href: "/profile?tab=overview", labelKey: "nav.profile", icon: User },
@@ -256,7 +256,7 @@ export default function MobileNav() {
                   }}
                   compactTrigger
                   triggerClassName="text-muted-foreground hover:text-foreground h-(--nav-icon-size) w-(--nav-icon-size) p-0"
-                  triggerIcon={<ShoppingBag className="h-full w-full" strokeWidth={2} />}
+                  triggerIcon={<ShoppingCart className="h-full w-full" strokeWidth={2} />}
                 />
                 <span dir="auto" className={cn("bidi-auto", labelClassName)}>
                   {t(item.labelKey)}

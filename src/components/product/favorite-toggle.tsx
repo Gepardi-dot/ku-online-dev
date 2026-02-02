@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Heart, Loader2 } from 'lucide-react';
+import { Loader2, ShoppingCart } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { addFavorite, fetchFavoriteStatus, removeFavorite } from '@/lib/services/favorites-client';
@@ -195,7 +195,7 @@ export default function FavoriteToggle({
       {loading ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
-        <Heart className={cn('transition', isFavorited ? 'fill-current' : 'fill-transparent')} size={iconSize} />
+        <ShoppingCart className={cn('transition', isFavorited ? 'fill-current' : 'fill-transparent')} size={iconSize} />
       )}
       {variant === 'pill' && <span>{isFavorited ? 'Saved' : 'Save'}</span>}
     </Button>
