@@ -211,6 +211,14 @@ export const translations = {
       vouchersMvpNote: "No coupons needed: show this offer in-store to get the discount.",
       backToStore: "Back to store",
     },
+    sponsorManage: {
+      manageButton: "Manage offers",
+      title: "Offers",
+      subtitle: "Add offers that appear on your store page.",
+      viewStore: "View store page",
+      noStoreTitle: "Offers",
+      noStoreBody: "You don’t have a sponsor store yet. If you’re trying to create offers for your store, contact support.",
+    },
     partnership: {
       title: "Partner with KU BAZAR",
       subtitle: "Collabs, sponsorships, store onboarding, and business inquiries.",
@@ -909,6 +917,14 @@ export const translations = {
       noTerms: "لا توجد شروط إضافية. اسأل المتجر إذا لديك استفسار.",
       vouchersMvpNote: "لا تحتاج قسيمة: اعرض هذا العرض في المتجر للحصول على الخصم.",
       backToStore: "العودة إلى المتجر",
+    },
+    sponsorManage: {
+      manageButton: "إدارة العروض",
+      title: "العروض",
+      subtitle: "أضف عروضًا تظهر على صفحة متجرك.",
+      viewStore: "عرض صفحة المتجر",
+      noStoreTitle: "العروض",
+      noStoreBody: "ليس لديك متجر راعٍ بعد. إذا كنت تحاول إضافة عروض لمتجرك، تواصل مع الدعم.",
     },
     partnership: {
       title: "شراكة مع KU BAZAR",
@@ -1609,6 +1625,14 @@ export const translations = {
       noTerms: "هیچ مەرجێکی زیاد نییە. ئەگەر پرسیارت هەیە لە فرۆشگا بپرسە.",
       vouchersMvpNote: "پێویست بە کوپۆن نییە: ئەم پێشنیارە لە فرۆشگا پیشان بدە بۆ داشکاندن.",
       backToStore: "گەڕانەوە بۆ فرۆشگا",
+    },
+    sponsorManage: {
+      manageButton: "بەڕێوەبردنی پێشنیارەکان",
+      title: "پێشنیارەکان",
+      subtitle: "پێشنیارەکان زیاد بکە کە لە پەڕەی فرۆشگاکەتدا دەردەکەون.",
+      viewStore: "بینینی پەڕەی فرۆشگا",
+      noStoreTitle: "پێشنیارەکان",
+      noStoreBody: "هێشتا هیچ فرۆشگای سپۆنسەرێکت نییە. ئەگەر دەتەوێت پێشنیار بۆ فرۆشگاکەت دروست بکەیت، پەیوەندی بە پشتگیری بکە.",
     },
     partnership: {
       title: "هاوبەشبوون لەگەڵ KU BAZAR",
