@@ -5,7 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MapPin, Eye, BadgeCheck } from 'lucide-react';
+import { VerifiedBadge } from '@/components/ui/verified-badge';
+import { MapPin, Eye } from 'lucide-react';
 import type { ProductWithRelations } from '@/lib/services/products';
 import FavoriteToggle from '@/components/product/favorite-toggle';
 import { useLocale } from '@/providers/locale-provider';
@@ -135,13 +136,6 @@ const ProductCard = memo(function ProductCardImpl({ product, viewerId, searchQue
             {conditionLabel}
           </Badge>
         </div>
-        {product.isPromoted && (
-          <div className="absolute bottom-2 left-2">
-            <Badge variant="secondary" className="bg-yellow-400 text-black">
-              Featured
-            </Badge>
-          </div>
-        )}
         </div>
 
         <CardContent
@@ -196,10 +190,7 @@ const ProductCard = memo(function ProductCardImpl({ product, viewerId, searchQue
                 {sellerDisplayName}
               </span>
               {product.seller?.isVerified ? (
-                <>
-                  <BadgeCheck className="h-3 w-3 text-blue-600" aria-hidden="true" />
-                  <span className="sr-only">{t('profile.overview.trustedBadge')}</span>
-                </>
+                <VerifiedBadge label={t('profile.overview.trustedBadge')} size="xs" />
               ) : null}
             </span>
           </div>

@@ -6,6 +6,15 @@ export function getNumberLocale(locale: Locale): string {
   return 'en-US';
 }
 
+export function applyArabicComma(value: string, locale: Locale): string {
+  if (locale === 'ar' || locale === 'ku') {
+    // Intl for Arabic locales often uses U+066C (٬) as the thousands separator.
+    // The product requirement is to show the Arabic comma U+060C (،) instead.
+    return value.replace(/[,\u066C]/g, '،');
+  }
+  return value;
+}
+
 function getLocalizedCurrencyLabel(currencyCode: string, locale: Locale): string | null {
   if (currencyCode === 'USD') return '$';
   if (locale === 'ar') {
@@ -29,6 +38,15 @@ export function formatCurrency(
   const code = currencyCode ?? 'IQD';
   const numberLocale = getNumberLocale(locale);
   try {
+    const label = getLocalizedCurrencyLabel(code, locale);
+    if (label === 'د.ع' && (locale === 'ar' || locale === 'ku')) {
+      const numeric = new Intl.NumberFormat(numberLocale, {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(amount);
+      return `${applyArabicComma(numeric, locale)} ${label}`;
+    }
+
     const formatted = new Intl.NumberFormat(numberLocale, {
       style: 'currency',
       currency: code,
@@ -38,8 +56,8 @@ export function formatCurrency(
     })
       .format(amount)
       .trim();
-    const label = getLocalizedCurrencyLabel(code, locale);
-    return label ? formatted.replace(new RegExp(code, 'g'), label) : formatted;
+    const withLabel = label ? formatted.replace(new RegExp(code, 'g'), label) : formatted;
+    return applyArabicComma(withLabel, locale);
   } catch {
     return `${amount} ${code}`;
   }
