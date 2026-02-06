@@ -159,6 +159,58 @@ export const translations = {
       subscribeSuccess: "Thanks for subscribing! You will hear from us soon.",
       subscribeError: "Please enter a valid email address.",
     },
+    sponsorsHub: {
+      spotlightTitle: "Sponsored stores",
+      sponsoredBadge: "Sponsored",
+      endsIn: "Ends {time}",
+      empty: {
+        title: "No stores yet",
+        description: "We’re onboarding partners. Check back soon.",
+      },
+    },
+    sponsorStore: {
+      sections: {
+        products: "Products",
+        services: "Offers",
+      },
+      actions: {
+        call: "Call",
+        whatsapp: "WhatsApp",
+        directions: "Directions",
+        website: "Website",
+      },
+      savings: {
+        upTo: "UP TO {percent} OFF",
+        dealsLabel: "Deals",
+      },
+      basket: {
+        title: "Basket",
+        send: "Send to WhatsApp",
+        clear: "Clear basket",
+      },
+      noOffers: {
+        title: "No active offers right now",
+        description: "Check back soon or contact the store for today’s deals.",
+      },
+      noProducts: {
+        title: "No products yet",
+        description: "This store hasn’t posted products on KU BAZAR yet.",
+      },
+    },
+    sponsorOffer: {
+      validFrom: "Valid from",
+      validUntil: "Valid until",
+      howToUse: {
+        title: "How to use",
+        step1: "Visit the store.",
+        step2: "Show this offer to the cashier.",
+        step3: "The store applies your discount.",
+      },
+      termsTitle: "Terms",
+      noTerms: "No extra terms. Ask the store if you have questions.",
+      vouchersMvpNote: "No coupons needed: show this offer in-store to get the discount.",
+      backToStore: "Back to store",
+    },
     partnership: {
       title: "Partner with KU BAZAR",
       subtitle: "Collabs, sponsorships, store onboarding, and business inquiries.",
@@ -805,6 +857,58 @@ export const translations = {
       subscribeButton: "اشترك",
       subscribeSuccess: "شكرًا لاشتراكك! سنبقيك على اطلاع بكل جديد.",
       subscribeError: "يرجى إدخال عنوان بريد إلكتروني صالح.",
+    },
+    sponsorsHub: {
+      spotlightTitle: "المتاجر الممولة",
+      sponsoredBadge: "برعاية",
+      endsIn: "ينتهي {time}",
+      empty: {
+        title: "لا توجد متاجر بعد",
+        description: "نحن نضم شركاء جدد. تحقق مرة أخرى قريبًا.",
+      },
+    },
+    sponsorStore: {
+      sections: {
+        products: "المنتجات",
+        services: "العروض",
+      },
+      actions: {
+        call: "اتصال",
+        whatsapp: "واتساب",
+        directions: "الاتجاهات",
+        website: "الموقع",
+      },
+      savings: {
+        upTo: "حتى {percent} خصم",
+        dealsLabel: "العروض",
+      },
+      basket: {
+        title: "السلة",
+        send: "إرسال إلى واتساب",
+        clear: "مسح السلة",
+      },
+      noOffers: {
+        title: "لا توجد عروض فعالة الآن",
+        description: "تحقق قريبًا أو تواصل مع المتجر لمعرفة عروض اليوم.",
+      },
+      noProducts: {
+        title: "لا توجد منتجات بعد",
+        description: "هذا المتجر لم ينشر منتجات على KU BAZAR بعد.",
+      },
+    },
+    sponsorOffer: {
+      validFrom: "ساري من",
+      validUntil: "ساري حتى",
+      howToUse: {
+        title: "طريقة الاستخدام",
+        step1: "اذهب إلى المتجر.",
+        step2: "اعرض هذا العرض على الكاشير.",
+        step3: "سيتم تطبيق الخصم.",
+      },
+      termsTitle: "الشروط",
+      noTerms: "لا توجد شروط إضافية. اسأل المتجر إذا لديك استفسار.",
+      vouchersMvpNote: "لا تحتاج قسيمة: اعرض هذا العرض في المتجر للحصول على الخصم.",
+      backToStore: "العودة إلى المتجر",
     },
     partnership: {
       title: "شراكة مع KU BAZAR",
@@ -1453,6 +1557,58 @@ export const translations = {
       subscribeButton: "هاوبەشبوون",
       subscribeSuccess: "سوپاس بۆ هاوبەشبونت! بە زووترین کات ئاگادارت دەکەین.",
       subscribeError: "تکایە ناونیشانی پۆستی ئەلیکترۆنی دروست بنووسە.",
+    },
+    sponsorsHub: {
+      spotlightTitle: "فرۆشگاکانی سپۆنسەر",
+      sponsoredBadge: "سپۆنسەر",
+      endsIn: "کۆتایی دێت {time}",
+      empty: {
+        title: "هێشتا هیچ فرۆشگایەک نییە",
+        description: "لە پڕۆسەی زیادکردنی هاوبەشەکان داین. بە زودی دووبارە سەردان بکە.",
+      },
+    },
+    sponsorStore: {
+      sections: {
+        products: "بەرهەمەکان",
+        services: "پێشنیارەکان",
+      },
+      actions: {
+        call: "پەیوەندی",
+        whatsapp: "واتساپ",
+        directions: "ڕێنمایی",
+        website: "وێبسایت",
+      },
+      savings: {
+        upTo: "تا {percent} داشکاندن",
+        dealsLabel: "پێشنیارەکان",
+      },
+      basket: {
+        title: "سەبەتە",
+        send: "ناردن بۆ واتساپ",
+        clear: "پاککردنەوەی سەبەتە",
+      },
+      noOffers: {
+        title: "ئێستا هیچ پێشنیارێکی چالاک نییە",
+        description: "بە زودی دووبارە سەردان بکە یان پەیوەندی بە فرۆشگا بکە بۆ پێشنیارەکانی ئەمڕۆ.",
+      },
+      noProducts: {
+        title: "هێشتا بەرهەم نییە",
+        description: "ئەم فرۆشگایە هێشتا بەرهەم لە KU BAZAR دانەناوە.",
+      },
+    },
+    sponsorOffer: {
+      validFrom: "چالاکە لە",
+      validUntil: "چالاکە تا",
+      howToUse: {
+        title: "چۆنیەتی بەکارهێنان",
+        step1: "بڕۆ بۆ فرۆشگا.",
+        step2: "ئەم پێشنیارە پیشان بدە بە کاشێر.",
+        step3: "داشکاندنەکە جێبەجێ دەکرێت.",
+      },
+      termsTitle: "مەرجەکان",
+      noTerms: "هیچ مەرجێکی زیاد نییە. ئەگەر پرسیارت هەیە لە فرۆشگا بپرسە.",
+      vouchersMvpNote: "پێویست بە کوپۆن نییە: ئەم پێشنیارە لە فرۆشگا پیشان بدە بۆ داشکاندن.",
+      backToStore: "گەڕانەوە بۆ فرۆشگا",
     },
     partnership: {
       title: "هاوبەشبوون لەگەڵ KU BAZAR",
