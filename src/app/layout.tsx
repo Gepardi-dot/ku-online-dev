@@ -9,6 +9,7 @@ import { DM_Sans, Noto_Kufi_Arabic } from 'next/font/google';
 import { LocaleProvider } from '@/providers/locale-provider';
 import { getServerLocale } from '@/lib/locale/server';
 import { rtlLocales } from '@/lib/locale/dictionary';
+import { RadixDirectionProvider } from '@/providers/radix-direction-provider';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -61,11 +62,13 @@ export default async function RootLayout({
         )}
       >
         <LocaleProvider initialLocale={locale}>
-          <AnnouncementBar />
-          <div>{children}</div>
-          <MobileNav />
-          <AppFooter />
-          <Toaster />
+          <RadixDirectionProvider>
+            <AnnouncementBar />
+            <div>{children}</div>
+            <MobileNav />
+            <AppFooter />
+            <Toaster />
+          </RadixDirectionProvider>
         </LocaleProvider>
       </body>
     </html>

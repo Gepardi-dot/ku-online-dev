@@ -260,7 +260,7 @@ export function SponsorSpotlightStoreCard({
               )}
             </div>
 
-            <div className="min-w-0">
+            <div className={cn('min-w-0', isRtl ? 'pl-20 md:pl-24' : 'pr-20 md:pr-24')}>
               <div className="flex flex-wrap items-center gap-2">
                 <p className="break-words text-xl font-extrabold text-white drop-shadow-[0_2px_10px_rgba(0,0,0,0.35)]" dir="auto">
                   {store.name}
@@ -289,7 +289,7 @@ export function SponsorSpotlightStoreCard({
         </div>
 
         <div className="mt-3 flex items-end justify-between gap-3">
-          <div className="min-w-0">
+            <div className={cn('min-w-0', isRtl ? 'pl-20 md:pl-24' : 'pr-20 md:pr-24')}>
             {typeof originalPrice === 'number' && typeof dealPrice === 'number' ? (
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                 {(() => {
