@@ -1,8 +1,8 @@
 import type { User } from '@supabase/supabase-js';
 
-export function isModerator(user: User | null | undefined): boolean {
+export function getUserRole(user: User | null | undefined): string | null {
   if (!user) {
-    return false;
+    return null;
   }
 
   const role =
@@ -11,9 +11,17 @@ export function isModerator(user: User | null | undefined): boolean {
     (user.role as string | undefined);
 
   if (!role) {
-    return false;
+    return null;
   }
 
-  const normalized = role.toLowerCase();
+  return role.toLowerCase();
+}
+
+export function isAdmin(user: User | null | undefined): boolean {
+  return getUserRole(user) === 'admin';
+}
+
+export function isModerator(user: User | null | undefined): boolean {
+  const normalized = getUserRole(user);
   return normalized === 'admin' || normalized === 'moderator';
 }

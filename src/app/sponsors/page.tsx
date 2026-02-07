@@ -150,7 +150,11 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
             </div>
 
             <div className="pt-4">
-              <PartnershipInquiry />
+              <PartnershipInquiry
+                mode="seller"
+                isSignedIn={Boolean(user)}
+                buttonClassName="bg-brand text-white hover:bg-brand/90"
+              />
             </div>
           </div>
         </div>
