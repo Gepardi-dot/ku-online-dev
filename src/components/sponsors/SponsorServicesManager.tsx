@@ -1,8 +1,9 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useMemo, useRef, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Edit3, Loader2, Plus, Trash2 } from 'lucide-react';
+import Image from 'next/image';
+import { Edit3, ImagePlus, Loader2, Plus, Trash2, Upload, X } from 'lucide-react';
 
 import type { Locale } from '@/lib/locale/dictionary';
 import type { SponsorOffer } from '@/lib/services/sponsors';
@@ -31,7 +32,7 @@ export type SponsorServiceItem = {
   status: string;
 };
 
-type StoreInfo = { id: string; name: string; slug: string };
+type StoreInfo = { id: string; name: string; slug: string; coverUrl?: string | null };
 
 type CreateResponse =
   | { ok: true; offer: SponsorServiceItem }
@@ -45,6 +46,19 @@ type UpdateResponse =
 
 type DeleteResponse =
   | { ok: true }
+  | { ok: false; error?: string }
+  | { ok?: false; error?: string };
+
+type UpdateStoreResponse =
+  | {
+      ok: true;
+      store: {
+        id: string;
+        name: string;
+        slug: string;
+        coverUrl: string | null;
+      };
+    }
   | { ok: false; error?: string }
   | { ok?: false; error?: string };
 
@@ -100,6 +114,9 @@ function statusLabel(status: string) {
 function isActiveStatus(status: string) {
   return status.trim().toLowerCase() === 'active';
 }
+
+const ACCEPTED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
+const MAX_IMAGE_SIZE_BYTES = 50 * 1024 * 1024;
 
 function ServiceForm({
   mode,
@@ -390,6 +407,9 @@ export function SponsorServicesManager({
 }) {
   const [items, setItems] = useState<SponsorServiceItem[]>(initialItems ?? []);
   const [submitting, setSubmitting] = useState(false);
+  const [storeCardUrl, setStoreCardUrl] = useState<string | null>(store.coverUrl?.trim() || null);
+  const [storeCardBusy, setStoreCardBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const sorted = useMemo(() => {
     const score = (item: SponsorServiceItem) => {
@@ -403,6 +423,101 @@ export function SponsorServicesManager({
       .slice()
       .sort((a, b) => score(a) - score(b) || (b.endAt ?? '').localeCompare(a.endAt ?? ''));
   }, [items]);
+
+  const updateStoreCardUrl = async (nextCoverUrl: string | null): Promise<boolean> => {
+    if (mode === 'mock') {
+      setStoreCardUrl(nextCoverUrl);
+      return true;
+    }
+
+    setStoreCardBusy(true);
+    try {
+      const res = await fetch('/api/sponsors/store', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ coverUrl: nextCoverUrl }),
+      });
+      const data = (await res.json().catch(() => ({}))) as UpdateStoreResponse;
+      if (!res.ok || !data.ok) {
+        const message = typeof (data as any)?.error === 'string' ? (data as any).error : null;
+        toast({ title: 'Failed to update store card', description: message ?? 'Please try again.', variant: 'destructive' });
+        return false;
+      }
+      setStoreCardUrl(data.store.coverUrl ?? null);
+      return true;
+    } catch (error) {
+      console.error('Failed to update store card image', error);
+      toast({ title: 'Failed to update store card', description: 'Please try again.', variant: 'destructive' });
+      return false;
+    } finally {
+      setStoreCardBusy(false);
+    }
+  };
+
+  const handleStoreCardChange = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.currentTarget.value = '';
+    if (!file) return;
+
+    if (!ACCEPTED_IMAGE_MIME_TYPES.has(file.type)) {
+      toast({ title: 'Unsupported image format', description: 'Use JPG, PNG, WebP, or AVIF.', variant: 'destructive' });
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE_BYTES) {
+      toast({ title: 'Image is too large', description: 'Max file size is 50MB.', variant: 'destructive' });
+      return;
+    }
+
+    setStoreCardBusy(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const uploadRes = await fetch('/api/uploads', { method: 'POST', body: formData });
+      const uploadPayload = (await uploadRes.json().catch(() => ({}))) as {
+        path?: string;
+        publicUrl?: string | null;
+        signedUrl?: string | null;
+        error?: string;
+      };
+
+      if (!uploadRes.ok || !uploadPayload.path) {
+        const message = typeof uploadPayload.error === 'string' ? uploadPayload.error : 'Upload failed.';
+        toast({ title: 'Store card upload failed', description: message, variant: 'destructive' });
+        return;
+      }
+
+      const uploadedImageUrl =
+        typeof uploadPayload.publicUrl === 'string' && uploadPayload.publicUrl.trim().length > 0
+          ? uploadPayload.publicUrl.trim()
+          : typeof uploadPayload.signedUrl === 'string' && uploadPayload.signedUrl.trim().length > 0
+            ? uploadPayload.signedUrl.trim()
+            : null;
+
+      if (!uploadedImageUrl) {
+        toast({ title: 'Store card upload failed', description: 'Image URL is missing.', variant: 'destructive' });
+        return;
+      }
+
+      const ok = await updateStoreCardUrl(uploadedImageUrl);
+      if (ok) {
+        toast({ title: 'Store card updated' });
+      }
+    } catch (error) {
+      console.error('Failed to upload store card image', error);
+      toast({ title: 'Store card upload failed', description: 'Please try again.', variant: 'destructive' });
+    } finally {
+      setStoreCardBusy(false);
+    }
+  };
+
+  const handleStoreCardRemove = async () => {
+    if (!storeCardUrl) return;
+    const ok = await updateStoreCardUrl(null);
+    if (ok) {
+      toast({ title: 'Store card removed' });
+    }
+  };
 
   const createService = async (payload: Parameters<typeof ServiceForm>[0]['onSubmit'] extends (p: infer P) => void ? P : never) => {
     if (mode === 'mock') {
@@ -503,6 +618,72 @@ export function SponsorServicesManager({
 
   return (
     <div className="space-y-6">
+      <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/75 via-white/65 to-white/45 shadow-[0_10px_40px_rgba(15,23,42,0.10)] ring-1 ring-white/40">
+        <CardHeader>
+          <CardTitle className="text-brand">Front store card image</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Upload a complete AI-designed card image (16:9 works best). It will appear as the main front card in Sponsors.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative overflow-hidden rounded-2xl border border-black/10 bg-white/70">
+            <div className="relative aspect-[16/9]">
+              {storeCardUrl ? (
+                <Image src={storeCardUrl} alt={`${store.name} store card`} fill sizes="(max-width: 768px) 100vw, 560px" className="object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(120deg,#f8fafc,#e2e8f0)]">
+                  <div className="text-center text-muted-foreground">
+                    <ImagePlus className="mx-auto h-7 w-7" aria-hidden="true" />
+                    <p className="mt-2 text-sm font-semibold">No card image yet</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              className="hidden"
+              onChange={handleStoreCardChange}
+            />
+            <Button
+              type="button"
+              className="rounded-full"
+              disabled={storeCardBusy}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {storeCardBusy ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  Uploading...
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2">
+                  <Upload className="h-4 w-4" aria-hidden="true" />
+                  Upload card
+                </span>
+              )}
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-full bg-white/70"
+              disabled={!storeCardUrl || storeCardBusy}
+              onClick={() => void handleStoreCardRemove()}
+            >
+              <span className="inline-flex items-center gap-2">
+                <X className="h-4 w-4" aria-hidden="true" />
+                Remove
+              </span>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/75 via-white/65 to-white/45 shadow-[0_10px_40px_rgba(15,23,42,0.10)] ring-1 ring-white/40">
         <CardHeader>
           <CardTitle className="text-brand">Add an offer</CardTitle>
