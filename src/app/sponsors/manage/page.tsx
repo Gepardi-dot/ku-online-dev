@@ -12,6 +12,7 @@ import { getEnv } from '@/lib/env';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { getSponsorLiveStatsVisibility } from '@/lib/services/app-settings';
 import { getSponsorStoreLiveStats } from '@/lib/services/sponsors';
+import { buildPublicStorageUrl } from '@/lib/storage-public';
 import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
@@ -22,6 +23,7 @@ type StoreRow = {
   slug: string | null;
   status: string | null;
   owner_user_id: string | null;
+  cover_url: string | null;
 };
 
 type OfferRow = {
@@ -37,6 +39,13 @@ type OfferRow = {
   updated_at: string | null;
 };
 
+function normalizeStoreCoverUrl(value: string | null): string | null {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  if (!normalized) return null;
+  if (normalized.startsWith('/') || /^https?:\/\//i.test(normalized)) return normalized;
+  return buildPublicStorageUrl(normalized) ?? normalized;
+}
+
 async function getStoreForUser(userId: string) {
   const env = getEnv();
   const supabaseAdmin = createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
@@ -44,7 +53,7 @@ async function getStoreForUser(userId: string) {
   // Prefer direct owner store.
   const ownerRes = await supabaseAdmin
     .from('sponsor_stores')
-    .select('id, name, slug, status, owner_user_id')
+    .select('id, name, slug, status, owner_user_id, cover_url')
     .eq('owner_user_id', userId)
     .order('updated_at', { ascending: false })
     .limit(1)
@@ -57,7 +66,7 @@ async function getStoreForUser(userId: string) {
   // Fallback: allow store managers to manage services too.
   const staffRes = await supabaseAdmin
     .from('sponsor_store_staff')
-    .select('store_id, role, status, sponsor_stores ( id, name, slug, status, owner_user_id )')
+    .select('store_id, role, status, sponsor_stores ( id, name, slug, status, owner_user_id, cover_url )')
     .eq('user_id', userId)
     .eq('status', 'active')
     .eq('role', 'manager')
@@ -165,7 +174,12 @@ export default async function SponsorManagePage() {
         ) : null}
 
         <SponsorServicesManager
-          store={{ id: store.id, name: store.name ?? 'Store', slug: store.slug ?? store.id }}
+          store={{
+            id: store.id,
+            name: store.name ?? 'Store',
+            slug: store.slug ?? store.id,
+            coverUrl: normalizeStoreCoverUrl(store.cover_url ?? null),
+          }}
           initialItems={items}
           locale={locale}
           sponsoredLabel={sponsoredLabel}
