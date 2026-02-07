@@ -367,7 +367,7 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
                 <p className="text-sm opacity-85">
                   {messages.partnership.responseTime}
                 </p>
-                <PartnershipInquiry className="mt-6 md:items-start" />
+                <PartnershipInquiry className="mt-6 md:items-start" isSignedIn={Boolean(user)} />
               </div>
             </div>
           </div>
