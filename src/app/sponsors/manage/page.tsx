@@ -4,10 +4,14 @@ import { redirect } from 'next/navigation';
 import { createClient as createSupabaseServiceRole } from '@supabase/supabase-js';
 
 import AppLayout from '@/components/layout/app-layout';
+import { SponsorManageLivePerformance } from '@/components/sponsors/SponsorManageLivePerformance';
 import { SponsorServicesManager, type SponsorServiceItem } from '@/components/sponsors/SponsorServicesManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { isModerator } from '@/lib/auth/roles';
 import { getEnv } from '@/lib/env';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
+import { getSponsorLiveStatsVisibility } from '@/lib/services/app-settings';
+import { getSponsorStoreLiveStats } from '@/lib/services/sponsors';
 import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
@@ -124,6 +128,9 @@ export default async function SponsorManagePage() {
 
   const sponsoredLabel = t('sponsorsHub.sponsoredBadge');
   const endsLabel = (time: string) => t('sponsorsHub.endsIn').replace('{time}', time);
+  const liveStatsVisibility = await getSponsorLiveStatsVisibility();
+  const showLiveStats = isModerator(user) || liveStatsVisibility.publicVisible;
+  const liveStats = showLiveStats ? await getSponsorStoreLiveStats(store.id) : null;
 
   return (
     <AppLayout user={user}>
@@ -144,6 +151,18 @@ export default async function SponsorManagePage() {
             <span dir="auto">{t('sponsorManage.viewStore')}</span>
           </Link>
         </div>
+
+        {showLiveStats && liveStats ? (
+          <SponsorManageLivePerformance
+            storeId={store.id}
+            locale={locale}
+            initialStats={liveStats}
+            title={t('sponsorsHub.liveStats.performanceTitle')}
+            subtitle={t('sponsorsHub.liveStats.performanceDescription')}
+            viewsLabel={t('sponsorsHub.liveStats.views')}
+            likesLabel={t('sponsorsHub.liveStats.likes')}
+          />
+        ) : null}
 
         <SponsorServicesManager
           store={{ id: store.id, name: store.name ?? 'Store', slug: store.slug ?? store.id }}
