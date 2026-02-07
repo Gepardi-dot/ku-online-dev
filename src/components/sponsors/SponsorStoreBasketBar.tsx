@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { MessageCircle, Trash2 } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { getNumberLocale } from '@/lib/locale/formatting';
+import { applyArabicComma, getNumberLocale } from '@/lib/locale/formatting';
 
 type SponsorStoreBasketBarProps = {
   basketKey: string;
@@ -17,7 +17,15 @@ type SponsorStoreBasketBarProps = {
 };
 
 type StoredBasket = {
-  items: Array<{ id: string; title: string; price: number; currency: string | null; qty: number }>;
+  items: Array<{
+    id: string;
+    title: string;
+    price: number;
+    currency: string | null;
+    href?: string | null;
+    imageUrl?: string | null;
+    qty: number;
+  }>;
 };
 
 const CHANGE_EVENT = 'ku:sponsorBasket:changed';
@@ -27,7 +35,20 @@ function readBasket(key: string): StoredBasket {
     const raw = localStorage.getItem(key);
     if (!raw) return { items: [] };
     const parsed = JSON.parse(raw) as Partial<StoredBasket>;
-    return { items: Array.isArray(parsed.items) ? parsed.items : [] };
+    const items = Array.isArray(parsed.items) ? parsed.items : [];
+    return {
+      items: items
+        .filter((it) => it && typeof (it as any).id === 'string')
+        .map((it) => ({
+          id: String((it as any).id),
+          title: String((it as any).title ?? ''),
+          price: Number((it as any).price ?? 0),
+          currency: typeof (it as any).currency === 'string' ? (it as any).currency : null,
+          href: typeof (it as any).href === 'string' ? (it as any).href : null,
+          imageUrl: typeof (it as any).imageUrl === 'string' ? (it as any).imageUrl : null,
+          qty: Number((it as any).qty ?? 1) || 1,
+        })),
+    };
   } catch {
     return { items: [] };
   }
@@ -44,11 +65,25 @@ function formatCurrencyInline(amount: number, currency: string | null, locale: '
   const code = (currency ?? '').trim().toUpperCase();
   const numberLocale = getNumberLocale(locale);
   if (!code || code === 'IQD') {
-    const formatted = new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 0 }).format(Math.round(amount));
+    const formatted = applyArabicComma(
+      new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 0 }).format(Math.round(amount)),
+      locale,
+    );
     return `${formatted} IQD`;
   }
-  const formatted = new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 2 }).format(amount);
+  const formatted = applyArabicComma(
+    new Intl.NumberFormat(numberLocale, { maximumFractionDigits: 2 }).format(amount),
+    locale,
+  );
   return `${formatted} ${code}`;
+}
+
+function toAbsoluteUrl(value: string | null | undefined, origin: string | null): string | null {
+  const trimmed = (value ?? '').trim();
+  if (!trimmed) return null;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('/') && origin) return `${origin}${trimmed}`;
+  return null;
 }
 
 export function SponsorStoreBasketBar({
@@ -91,12 +126,19 @@ export function SponsorStoreBasketBar({
 
   const message = useMemo(() => {
     if (!items.length) return '';
+    const origin = typeof window !== 'undefined' ? window.location.origin : null;
     const header = locale === 'ar'
       ? `مرحباً ${storeName}، أريد هذه المنتجات:`
       : locale === 'ku'
         ? `سڵاو ${storeName}، ئەمانە دەوێتم:`
         : `Hi ${storeName}, I'm interested in:`;
-    const lines = items.slice(0, 12).map((it) => `- ${it.title} (${formatCurrencyInline(it.price, it.currency, locale)})`);
+    const lines = items.slice(0, 12).flatMap((it) => {
+      const productLine = `- ${it.title} (${formatCurrencyInline(it.price, it.currency, locale)})`;
+      const link = toAbsoluteUrl(it.href ?? null, origin);
+      const image = toAbsoluteUrl(it.imageUrl ?? null, origin);
+      const details = [link ? `  Link: ${link}` : null, image ? `  Image: ${image}` : null].filter(Boolean);
+      return [productLine, ...details];
+    });
     const footer = locale === 'ar'
       ? 'من خلال KU BAZAR'
       : locale === 'ku'
