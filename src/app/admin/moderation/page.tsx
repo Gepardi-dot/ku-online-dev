@@ -8,8 +8,10 @@ import { createClient } from '@/utils/supabase/server';
 import { getEnv } from '@/lib/env';
 import { isAdmin, isModerator } from '@/lib/auth/roles';
 import { getAppContacts } from '@/lib/services/app-contacts';
+import { getSponsorLiveStatsVisibility } from '@/lib/services/app-settings';
 import ModerationTable, { type ModerationReport } from './moderation-table';
 import AppContactsCard from './app-contacts-card';
+import SponsorLiveStatsVisibilityCard from './sponsor-live-stats-visibility-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,6 +109,7 @@ export default async function ModerationPage() {
   }
 
   const contacts = await getAppContacts();
+  const liveStatsVisibility = await getSponsorLiveStatsVisibility();
 
   return (
     <AppLayout user={user}>
@@ -120,6 +123,15 @@ export default async function ModerationPage() {
               initial={contacts}
               canEdit={canEditContacts}
             />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Sponsor Live Stats Visibility</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SponsorLiveStatsVisibilityCard initial={liveStatsVisibility} canEdit={canEditContacts} />
           </CardContent>
         </Card>
 
