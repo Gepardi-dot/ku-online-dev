@@ -6,6 +6,12 @@ export function getNumberLocale(locale: Locale): string {
   return 'en-US';
 }
 
+export function applyArabicComma(value: string, locale: Locale): string {
+  if (locale !== 'ar' && locale !== 'ku') return value;
+  // Replace Arabic thousands separator (U+066C) with Arabic comma (U+060C).
+  return value.replace(/\u066C/g, '\u060C');
+}
+
 function getLocalizedCurrencyLabel(currencyCode: string, locale: Locale): string | null {
   if (currencyCode === 'USD') return '$';
   if (locale === 'ar') {
@@ -39,7 +45,8 @@ export function formatCurrency(
       .format(amount)
       .trim();
     const label = getLocalizedCurrencyLabel(code, locale);
-    return label ? formatted.replace(new RegExp(code, 'g'), label) : formatted;
+    const localized = label ? formatted.replace(new RegExp(code, 'g'), label) : formatted;
+    return applyArabicComma(localized, locale);
   } catch {
     return `${amount} ${code}`;
   }

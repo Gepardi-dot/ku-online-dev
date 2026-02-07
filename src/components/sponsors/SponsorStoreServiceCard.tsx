@@ -6,7 +6,7 @@ import type { Locale } from '@/lib/locale/dictionary';
 import type { SponsorOffer } from '@/lib/services/sponsors';
 import { cn } from '@/lib/utils';
 import { SponsoredBadge } from '@/components/sponsors/SponsoredBadge';
-import { getNumberLocale } from '@/lib/locale/formatting';
+import { applyArabicComma, getNumberLocale } from '@/lib/locale/formatting';
 
 type SponsorStoreServiceCardProps = {
   offer: SponsorOffer;
@@ -25,8 +25,11 @@ function formatDiscount(offer: SponsorOffer, locale: Locale): string {
 
   if (offer.discountType === 'amount' && typeof offer.discountValue === 'number') {
     const currency = offer.currency ?? 'IQD';
-    const value = new Intl.NumberFormat(getNumberLocale(locale), { maximumFractionDigits: 0 }).format(
+    const value = applyArabicComma(
+      new Intl.NumberFormat(getNumberLocale(locale), { maximumFractionDigits: 0 }).format(
       Math.round(offer.discountValue),
+      ),
+      locale,
     );
     return `${value} ${currency} OFF`;
   }

@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/server';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { rtlLocales, translations, type Locale } from '@/lib/locale/dictionary';
-import { getNumberLocale } from '@/lib/locale/formatting';
+import { applyArabicComma, getNumberLocale } from '@/lib/locale/formatting';
 import { SponsoredBadge } from '@/components/sponsors/SponsoredBadge';
 import { getSponsorOfferById, type SponsorOfferDetails } from '@/lib/services/sponsors';
 
@@ -23,8 +23,11 @@ function formatDiscount(offer: SponsorOfferDetails, locale: Locale): string {
 
   if (offer.discountType === 'amount' && typeof offer.discountValue === 'number') {
     const currency = offer.currency ?? 'IQD';
-    const formatted = new Intl.NumberFormat(getNumberLocale(locale), { maximumFractionDigits: 0 }).format(
-      Math.round(offer.discountValue),
+    const formatted = applyArabicComma(
+      new Intl.NumberFormat(getNumberLocale(locale), { maximumFractionDigits: 0 }).format(
+        Math.round(offer.discountValue),
+      ),
+      locale,
     );
     return `${formatted} ${currency} OFF`;
   }
