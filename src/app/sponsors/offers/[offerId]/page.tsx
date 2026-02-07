@@ -14,6 +14,7 @@ import { rtlLocales, translations, type Locale } from '@/lib/locale/dictionary';
 import { applyArabicComma, getNumberLocale } from '@/lib/locale/formatting';
 import { SponsoredBadge } from '@/components/sponsors/SponsoredBadge';
 import { getSponsorOfferById, type SponsorOfferDetails } from '@/lib/services/sponsors';
+import { getMockSponsorOfferById } from '@/lib/services/sponsors-mock';
 
 function formatDiscount(offer: SponsorOfferDetails, locale: Locale): string {
   if (offer.discountType === 'percent' && typeof offer.discountValue === 'number') {
@@ -83,7 +84,10 @@ export default async function SponsorOfferPage({ params }: { params: Promise<{ o
   const isRtl = rtlLocales.includes(locale);
   const sponsoredLabel = serverTranslate(locale, 'sponsorsHub.sponsoredBadge');
 
-  const offer = await getSponsorOfferById(offerId);
+  let offer = await getSponsorOfferById(offerId);
+  if (!offer && process.env.NODE_ENV !== 'production') {
+    offer = getMockSponsorOfferById(offerId);
+  }
   if (!offer) {
     notFound();
   }

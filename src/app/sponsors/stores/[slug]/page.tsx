@@ -15,13 +15,20 @@ import { CATEGORY_LABEL_MAP } from '@/data/category-ui-config';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
 import type { Locale } from '@/lib/locale/dictionary';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
-import { getProducts } from '@/lib/services/products';
+import { getProducts, type ProductWithRelations } from '@/lib/services/products';
 import {
   getSponsorStoreBySlug,
   listSponsorOffersByStoreId,
+  type SponsorOffer,
   type SponsorStoreCategory,
   type SponsorStoreLocation,
 } from '@/lib/services/sponsors';
+import {
+  getMockProductsByStoreSlug,
+  getMockSponsorOffersByStoreId,
+  getMockSponsorStoreBySlug,
+  type MockSponsorProductCard,
+} from '@/lib/services/sponsors-mock';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/server';
 
@@ -151,13 +158,27 @@ export default async function SponsorStorePage({
   const locale = await getServerLocale();
   const isRtl = locale === 'ar' || locale === 'ku';
 
-  const store = await getSponsorStoreBySlug(slug);
-  if (!store) {
+  let store = await getSponsorStoreBySlug(slug);
+  let offers: SponsorOffer[] = [];
+  let ownerUserId: string | null = null;
+  let products: ProductWithRelations[] = [];
+  let mockProducts: MockSponsorProductCard[] = [];
+
+  if (store) {
+    offers = await listSponsorOffersByStoreId(store.id, 12);
+    ownerUserId = store.ownerUserId ?? null;
+    products = ownerUserId ? await getProducts({ sellerId: ownerUserId }, 12, 0, 'newest') : [];
+  } else if (process.env.NODE_ENV !== 'production') {
+    const mockStore = getMockSponsorStoreBySlug(slug);
+    if (!mockStore) {
+      notFound();
+    }
+    store = mockStore;
+    offers = getMockSponsorOffersByStoreId(mockStore.id, 12);
+    mockProducts = getMockProductsByStoreSlug(mockStore.slug);
+  } else {
     notFound();
   }
-  const offers = await listSponsorOffersByStoreId(store.id, 12);
-  const ownerUserId = store.ownerUserId ?? null;
-  const products = ownerUserId ? await getProducts({ sellerId: ownerUserId }, 12, 0, 'newest') : [];
 
   const canManage = Boolean(user?.id && ownerUserId && user.id === ownerUserId);
   const canUsePrivateContactActions = Boolean(user?.id);
@@ -191,15 +212,25 @@ export default async function SponsorStorePage({
 
   const services = offersForCards;
 
-  const productItems: SponsorStoreProductCardModel[] = products.map((product) => ({
-    id: product.id,
-    title: product.title,
-    price: product.price,
-    originalPrice: typeof product.originalPrice === 'number' ? product.originalPrice : null,
-    currency: product.currency ?? null,
-    imageUrl: product.imageUrls?.[0] ?? null,
-    href: `/product/${product.id}`,
-  }));
+  const productItems: SponsorStoreProductCardModel[] = products.length
+    ? products.map((product) => ({
+        id: product.id,
+        title: product.title,
+        price: product.price,
+        originalPrice: typeof product.originalPrice === 'number' ? product.originalPrice : null,
+        currency: product.currency ?? null,
+        imageUrl: product.imageUrls?.[0] ?? null,
+        href: `/product/${product.id}`,
+      }))
+    : mockProducts.map((item) => ({
+        id: item.id,
+        title: item.title,
+        price: item.price,
+        originalPrice: item.originalPrice ?? null,
+        currency: item.currency ?? null,
+        imageUrl: item.imageUrl ?? null,
+        href: `/sponsors/products/${item.id}`,
+      }));
 
   const basketKey = `ku:sponsorBasket:${store.slug}`;
   const maxProductOff = productItems.reduce((best, item) => {
