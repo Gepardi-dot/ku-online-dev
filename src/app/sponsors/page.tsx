@@ -7,10 +7,22 @@ import { PartnershipInquiry } from '@/components/marketing/partnership-inquiry';
 import { SponsorSpotlightStoreCard } from '@/components/sponsors/SponsorSpotlightStoreCard';
 import SwipeHint from '@/components/ui/swipe-hint';
 import { MARKET_CITY_OPTIONS, type MarketCityValue } from '@/data/market-cities';
+import { isModerator } from '@/lib/auth/roles';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { rtlLocales, type LocaleMessages, translations } from '@/lib/locale/dictionary';
 import { cn } from '@/lib/utils';
-import { listSponsorOfferPreviewsByStoreIds, listSpotlightSponsorStores } from '@/lib/services/sponsors';
+import { getProducts } from '@/lib/services/products';
+import { getSponsorLiveStatsVisibility } from '@/lib/services/app-settings';
+import {
+  listSponsorOfferPreviewsByStoreIds,
+  listSponsorStoreLiveStatsByIds,
+  listSpotlightSponsorStores,
+} from '@/lib/services/sponsors';
+import {
+  getMockProductsByStoreSlug,
+  getMockSponsorOfferPreviewsByStoreIds,
+  getMockSpotlightSponsorStores,
+} from '@/lib/services/sponsors-mock';
 import { createClient } from '@/utils/supabase/server';
 
 type SponsorsPageSearchParams = {
@@ -19,6 +31,7 @@ type SponsorsPageSearchParams = {
 
 const CITY_OPTIONS = MARKET_CITY_OPTIONS.filter((option) => option.value !== 'all');
 const DEFAULT_CITY = CITY_OPTIONS[0]?.value ?? 'erbil';
+const MIN_SPOTLIGHT_CARDS_FOR_DEV = 3;
 
 function normalizeCitySelection(value: string | null | undefined): MarketCityValue {
   const candidate = typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -43,6 +56,8 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const liveStatsVisibility = await getSponsorLiveStatsVisibility();
+  const showLiveStats = isModerator(user) || liveStatsVisibility.publicVisible;
 
   const locale = await getServerLocale();
   const messages: LocaleMessages = translations[locale];
@@ -52,10 +67,78 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
   const city = normalizeCitySelection(params.city);
   const cityFilter = city;
 
-  const spotlightStores = await listSpotlightSponsorStores({ city: cityFilter, limit: 8 });
-  const offerByStoreId = await listSponsorOfferPreviewsByStoreIds(spotlightStores.map((s) => s.id));
+  let spotlightStores = await listSpotlightSponsorStores({ city: cityFilter, limit: 8 });
+  let offerByStoreId = await listSponsorOfferPreviewsByStoreIds(spotlightStores.map((s) => s.id));
 
-  const sponsoredLabel = serverTranslate(locale, 'sponsorsHub.sponsoredBadge');
+  if (process.env.NODE_ENV !== 'production') {
+    const mockStores = getMockSpotlightSponsorStores({ city: cityFilter, limit: 8 });
+    const mockOfferByStoreId = getMockSponsorOfferPreviewsByStoreIds(mockStores.map((s) => s.id));
+
+    if (!spotlightStores.length) {
+      spotlightStores = mockStores;
+      offerByStoreId = mockOfferByStoreId;
+    } else if (spotlightStores.length < MIN_SPOTLIGHT_CARDS_FOR_DEV) {
+      const existingStoreIds = new Set(spotlightStores.map((store) => store.id));
+      for (const mockStore of mockStores) {
+        if (existingStoreIds.has(mockStore.id)) continue;
+        spotlightStores.push(mockStore);
+        existingStoreIds.add(mockStore.id);
+        if (spotlightStores.length >= MIN_SPOTLIGHT_CARDS_FOR_DEV) break;
+      }
+
+      for (const [storeId, offer] of Object.entries(mockOfferByStoreId)) {
+        if (offerByStoreId[storeId]) continue;
+        offerByStoreId[storeId] = offer;
+      }
+    }
+  }
+
+  const productImageByStoreId: Record<string, string[]> = {};
+  const initialStatsByStoreId = showLiveStats
+    ? await listSponsorStoreLiveStatsByIds(spotlightStores.map((store) => store.id))
+    : {};
+
+  await Promise.all(
+    spotlightStores.map(async (store) => {
+      const picked: string[] = [];
+
+      if (store.ownerUserId) {
+        try {
+          const products = await getProducts({ sellerId: store.ownerUserId }, 10, 0, 'newest');
+          for (const product of products) {
+            const image = product.imageUrls?.[0]?.trim();
+            if (!image || picked.includes(image)) continue;
+            picked.push(image);
+            if (picked.length >= 3) break;
+          }
+        } catch (error) {
+          console.warn('Failed to load sponsor product previews', {
+            storeId: store.id,
+            storeSlug: store.slug,
+            error,
+          });
+        }
+      }
+
+      if (process.env.NODE_ENV !== 'production' && picked.length < 3) {
+        const mockImages = getMockProductsByStoreSlug(store.slug)
+          .map((item) => item.imageUrl?.trim() ?? '')
+          .filter((value) => value.length > 0);
+
+        for (const image of mockImages) {
+          if (picked.includes(image)) continue;
+          picked.push(image);
+          if (picked.length >= 3) break;
+        }
+      }
+
+      if (!picked.length && store.coverUrl?.trim()) {
+        picked.push(store.coverUrl.trim());
+      }
+
+      productImageByStoreId[store.id] = picked;
+    }),
+  );
 
   return (
     <AppLayout user={user}>
@@ -130,10 +213,14 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
                   key={store.slug}
                   store={store}
                   offer={offerByStoreId[store.id] ?? null}
-                  sponsoredLabel={sponsoredLabel}
+                  productImageUrls={productImageByStoreId[store.id] ?? []}
                   cityLabel={store.primaryCity ? serverTranslate(locale, `header.city.${store.primaryCity}`) : null}
                   href={`/sponsors/stores/${store.slug}`}
                   locale={locale}
+                  initialStats={initialStatsByStoreId[store.id] ?? null}
+                  viewsLabel={serverTranslate(locale, 'sponsorsHub.liveStats.views')}
+                  likesLabel={serverTranslate(locale, 'sponsorsHub.liveStats.likes')}
+                  showLiveStats={showLiveStats}
                 />
               ))}
 
@@ -150,7 +237,11 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
             </div>
 
             <div className="pt-4">
-              <PartnershipInquiry />
+              <PartnershipInquiry
+                mode="seller"
+                isSignedIn={Boolean(user)}
+                buttonClassName="bg-brand text-white hover:bg-brand/90"
+              />
             </div>
           </div>
         </div>

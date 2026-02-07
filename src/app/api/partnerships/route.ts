@@ -6,6 +6,7 @@ import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 import { createClient } from '@/utils/supabase/server';
 import { withSentryRoute } from '@/utils/sentry-route';
 import { getEnv } from '@/lib/env';
+import { PARTNERSHIP_TYPE_CODES, PARTNERSHIP_TYPE_EMAIL_LABELS, SELLER_APPLICATION_TYPE } from '@/lib/partnership-types';
 import {
   buildOriginAllowList,
   checkRateLimit,
@@ -34,7 +35,8 @@ const schema = z.object({
   company: z.string().trim().max(140).optional().or(z.literal('')),
   email: z.string().trim().email().max(255),
   website: z.string().trim().max(512).optional().or(z.literal('')),
-  partnershipType: z.string().trim().min(2).max(64),
+  partnershipType: z.enum(PARTNERSHIP_TYPE_CODES),
+  partnershipTypeLabel: z.string().trim().min(1).max(140).optional(),
   message: z.string().trim().min(10).max(4000),
   budgetRange: z.string().trim().max(64).optional().or(z.literal('')),
   country: z.string().trim().max(80).optional().or(z.literal('')),
@@ -122,6 +124,7 @@ const handler = async (request: Request) => {
     email,
     website,
     partnershipType,
+    partnershipTypeLabel,
     message,
     budgetRange,
     country,
@@ -139,6 +142,10 @@ const handler = async (request: Request) => {
   const supabase = await createClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
   const resolvedUserId = await resolveUserId(user?.id ?? null);
+
+  if (partnershipType === SELLER_APPLICATION_TYPE && !resolvedUserId) {
+    return NextResponse.json({ error: 'Sign in is required to submit a seller application.' }, { status: 401 });
+  }
 
   const insertPayload = {
     user_id: resolvedUserId,
@@ -165,12 +172,14 @@ const handler = async (request: Request) => {
   }
 
   const subject = `Partnership inquiry: ${name}`;
+  const resolvedTypeLabel = partnershipTypeLabel?.trim() || PARTNERSHIP_TYPE_EMAIL_LABELS[partnershipType];
   const bodyLines = [
     `Name: ${name}`,
     `Company: ${company || '-'}`,
     `Email: ${email}`,
     `Website: ${website || '-'}`,
-    `Type: ${partnershipType}`,
+    `Type code: ${partnershipType}`,
+    `Type label: ${resolvedTypeLabel}`,
     `Budget: ${budgetRange || '-'}`,
     `Country: ${country || '-'}`,
     `City: ${city || '-'}`,

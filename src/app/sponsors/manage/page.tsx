@@ -4,10 +4,15 @@ import { redirect } from 'next/navigation';
 import { createClient as createSupabaseServiceRole } from '@supabase/supabase-js';
 
 import AppLayout from '@/components/layout/app-layout';
+import { SponsorManageLivePerformance } from '@/components/sponsors/SponsorManageLivePerformance';
 import { SponsorServicesManager, type SponsorServiceItem } from '@/components/sponsors/SponsorServicesManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { isModerator } from '@/lib/auth/roles';
 import { getEnv } from '@/lib/env';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
+import { getSponsorLiveStatsVisibility } from '@/lib/services/app-settings';
+import { getSponsorStoreLiveStats } from '@/lib/services/sponsors';
+import { buildPublicStorageUrl } from '@/lib/storage-public';
 import { createClient } from '@/utils/supabase/server';
 
 export const runtime = 'nodejs';
@@ -18,6 +23,7 @@ type StoreRow = {
   slug: string | null;
   status: string | null;
   owner_user_id: string | null;
+  cover_url: string | null;
 };
 
 type OfferRow = {
@@ -33,6 +39,13 @@ type OfferRow = {
   updated_at: string | null;
 };
 
+function normalizeStoreCoverUrl(value: string | null): string | null {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  if (!normalized) return null;
+  if (normalized.startsWith('/') || /^https?:\/\//i.test(normalized)) return normalized;
+  return buildPublicStorageUrl(normalized) ?? normalized;
+}
+
 async function getStoreForUser(userId: string) {
   const env = getEnv();
   const supabaseAdmin = createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
@@ -40,7 +53,7 @@ async function getStoreForUser(userId: string) {
   // Prefer direct owner store.
   const ownerRes = await supabaseAdmin
     .from('sponsor_stores')
-    .select('id, name, slug, status, owner_user_id')
+    .select('id, name, slug, status, owner_user_id, cover_url')
     .eq('owner_user_id', userId)
     .order('updated_at', { ascending: false })
     .limit(1)
@@ -53,7 +66,7 @@ async function getStoreForUser(userId: string) {
   // Fallback: allow store managers to manage services too.
   const staffRes = await supabaseAdmin
     .from('sponsor_store_staff')
-    .select('store_id, role, status, sponsor_stores ( id, name, slug, status, owner_user_id )')
+    .select('store_id, role, status, sponsor_stores ( id, name, slug, status, owner_user_id, cover_url )')
     .eq('user_id', userId)
     .eq('status', 'active')
     .eq('role', 'manager')
@@ -124,6 +137,9 @@ export default async function SponsorManagePage() {
 
   const sponsoredLabel = t('sponsorsHub.sponsoredBadge');
   const endsLabel = (time: string) => t('sponsorsHub.endsIn').replace('{time}', time);
+  const liveStatsVisibility = await getSponsorLiveStatsVisibility();
+  const showLiveStats = isModerator(user) || liveStatsVisibility.publicVisible;
+  const liveStats = showLiveStats ? await getSponsorStoreLiveStats(store.id) : null;
 
   return (
     <AppLayout user={user}>
@@ -145,8 +161,25 @@ export default async function SponsorManagePage() {
           </Link>
         </div>
 
+        {showLiveStats && liveStats ? (
+          <SponsorManageLivePerformance
+            storeId={store.id}
+            locale={locale}
+            initialStats={liveStats}
+            title={t('sponsorsHub.liveStats.performanceTitle')}
+            subtitle={t('sponsorsHub.liveStats.performanceDescription')}
+            viewsLabel={t('sponsorsHub.liveStats.views')}
+            likesLabel={t('sponsorsHub.liveStats.likes')}
+          />
+        ) : null}
+
         <SponsorServicesManager
-          store={{ id: store.id, name: store.name ?? 'Store', slug: store.slug ?? store.id }}
+          store={{
+            id: store.id,
+            name: store.name ?? 'Store',
+            slug: store.slug ?? store.id,
+            coverUrl: normalizeStoreCoverUrl(store.cover_url ?? null),
+          }}
           initialItems={items}
           locale={locale}
           sponsoredLabel={sponsoredLabel}
