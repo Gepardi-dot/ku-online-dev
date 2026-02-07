@@ -10,6 +10,8 @@ export type SponsorBasketItem = {
   title: string;
   price: number;
   currency: string | null;
+  href?: string | null;
+  imageUrl?: string | null;
 };
 
 type SponsorStoreBasketButtonProps = {
@@ -39,6 +41,8 @@ function readBasket(key: string): StoredBasket {
           title: String((it as any).title ?? ''),
           price: Number((it as any).price ?? 0),
           currency: typeof (it as any).currency === 'string' ? (it as any).currency : null,
+          href: typeof (it as any).href === 'string' ? (it as any).href : null,
+          imageUrl: typeof (it as any).imageUrl === 'string' ? (it as any).imageUrl : null,
           qty: Number((it as any).qty ?? 1) || 1,
         })),
     };
@@ -65,8 +69,10 @@ export function SponsorStoreBasketButton({ basketKey, item, className }: Sponsor
       title: item.title,
       price: Number(item.price),
       currency: item.currency ?? null,
+      href: item.href?.trim() || null,
+      imageUrl: item.imageUrl?.trim() || null,
     }),
-    [item.currency, item.id, item.price, item.title],
+    [item.currency, item.href, item.id, item.imageUrl, item.price, item.title],
   );
 
   useEffect(() => {

@@ -449,7 +449,6 @@ export default function NotificationMenu({ userId, strings }: NotificationMenuPr
                                 amount={price}
                                 currencyCode={currency}
                                 locale={locale}
-                                usdClassName="text-brand"
                               />
                             </p>
                             <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/60 transition-transform group-hover:translate-x-0.5" />
