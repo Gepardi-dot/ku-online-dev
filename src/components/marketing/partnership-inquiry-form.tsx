@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,10 +9,23 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
+import { getPublicEnv } from '@/lib/env-public';
+import {
+  PARTNERSHIP_TYPE_CODES,
+  PARTNERSHIP_TYPE_LABEL_KEYS,
+  SELLER_APPLICATION_TYPE,
+  type PartnershipTypeCode,
+} from '@/lib/partnership-types';
+import { cn } from '@/lib/utils';
 import { useLocale } from '@/providers/locale-provider';
 
 type PartnershipInquiryFormProps = {
   onClose: () => void;
+  mode?: 'partner' | 'seller';
+  isSignedIn?: boolean;
+  initialPartnershipType?: PartnershipTypeCode;
+  panelTitle?: string;
+  panelDescription?: string;
 };
 
 type PartnershipFormState = {
@@ -29,6 +42,12 @@ type PartnershipFormState = {
   attachmentUrl: string;
 };
 
+type RuntimeContacts = {
+  supportEmail: string | null;
+  supportWhatsapp: string | null;
+  source: 'db' | 'env' | 'none';
+};
+
 const initialState: PartnershipFormState = {
   name: '',
   company: '',
@@ -43,27 +62,105 @@ const initialState: PartnershipFormState = {
   attachmentUrl: '',
 };
 
-export function PartnershipInquiryForm({ onClose }: PartnershipInquiryFormProps) {
+function toWhatsAppHref(value: string | null | undefined, message: string): string | null {
+  const normalized = (value ?? '').replace(/[^\d+]/g, '').replace(/^00/, '+').trim();
+  if (!normalized) return null;
+  const number = normalized.startsWith('+') ? normalized.slice(1) : normalized;
+  if (!number) return null;
+  const query = message.trim() ? `?text=${encodeURIComponent(message.trim())}` : '';
+  return `https://wa.me/${encodeURIComponent(number)}${query}`;
+}
+
+export function PartnershipInquiryForm({
+  onClose,
+  mode = 'partner',
+  isSignedIn = false,
+  initialPartnershipType,
+  panelTitle,
+  panelDescription,
+}: PartnershipInquiryFormProps) {
   const { t } = useLocale();
+  const isSellerMode = mode === 'seller';
   const [submitting, setSubmitting] = useState(false);
-  const [formState, setFormState] = useState<PartnershipFormState>(initialState);
+  const [formState, setFormState] = useState<PartnershipFormState>({
+    ...initialState,
+    partnershipType: initialPartnershipType ?? (isSellerMode ? SELLER_APPLICATION_TYPE : ''),
+  });
   const [honeypot, setHoneypot] = useState('');
 
-  const partnershipOptions = useMemo(
-    () => [
-      t('partnership.options.influencer'),
-      t('partnership.options.sponsored'),
-      t('partnership.options.storeOnboarding'),
-      t('partnership.options.affiliate'),
-      t('partnership.options.pr'),
-      t('partnership.options.integrations'),
-      t('partnership.options.investment'),
-    ],
-    [t],
+  const partnershipOptions = useMemo(() => {
+    return PARTNERSHIP_TYPE_CODES.map((code) => ({
+      code,
+      label: t(PARTNERSHIP_TYPE_LABEL_KEYS[code]),
+    }));
+  }, [t]);
+
+  const publicEnv = useMemo(() => {
+    try {
+      return getPublicEnv();
+    } catch {
+      return null;
+    }
+  }, []);
+  const fallbackEmail = publicEnv?.NEXT_PUBLIC_PARTNERSHIPS_EMAIL?.trim() || null;
+  const fallbackWhatsapp = publicEnv?.NEXT_PUBLIC_PARTNERSHIPS_WHATSAPP?.trim() || null;
+  const [runtimeContacts, setRuntimeContacts] = useState<RuntimeContacts>({
+    supportEmail: fallbackEmail,
+    supportWhatsapp: fallbackWhatsapp,
+    source: fallbackEmail || fallbackWhatsapp ? 'env' : 'none',
+  });
+  const supportEmail = runtimeContacts.supportEmail?.trim() ?? '';
+  const whatsappHref = toWhatsAppHref(
+    runtimeContacts.supportWhatsapp,
+    isSellerMode ? t('partnership.sellerContactPrefill') : t('partnership.partnerContactPrefill'),
   );
+  const emailHref = supportEmail
+    ? `mailto:${encodeURIComponent(supportEmail)}?subject=${encodeURIComponent(
+        isSellerMode ? t('partnership.sellerContactEmailSubject') : t('partnership.partnerContactEmailSubject'),
+      )}`
+    : null;
+  const selectedTypeLabel =
+    partnershipOptions.find((option) => option.code === formState.partnershipType)?.label ??
+    t('partnership.options.influencer');
+
+  useEffect(() => {
+    if (!isSellerMode) return;
+    setFormState((prev) => ({
+      ...prev,
+      partnershipType: SELLER_APPLICATION_TYPE,
+    }));
+  }, [isSellerMode]);
+
+  useEffect(() => {
+    let active = true;
+    const loadContacts = async () => {
+      try {
+        const res = await fetch('/api/app/contacts', { method: 'GET', cache: 'no-store' });
+        const payload = await res.json().catch(() => ({}));
+        if (!active || !res.ok || !payload?.ok || !payload?.contacts) return;
+        const contacts = payload.contacts as {
+          supportEmail?: string | null;
+          supportWhatsapp?: string | null;
+          source?: 'db' | 'env' | 'none';
+        };
+        setRuntimeContacts({
+          supportEmail: typeof contacts.supportEmail === 'string' ? contacts.supportEmail : null,
+          supportWhatsapp: typeof contacts.supportWhatsapp === 'string' ? contacts.supportWhatsapp : null,
+          source: contacts.source ?? 'none',
+        });
+      } catch {}
+    };
+    loadContacts();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const resetForm = () => {
-    setFormState(initialState);
+    setFormState({
+      ...initialState,
+      partnershipType: initialPartnershipType ?? (isSellerMode ? SELLER_APPLICATION_TYPE : ''),
+    });
     setHoneypot('');
   };
 
@@ -104,12 +201,25 @@ export function PartnershipInquiryForm({ onClose }: PartnershipInquiryFormProps)
       return;
     }
 
+    if (isSellerMode && !isSignedIn) {
+      toast({
+        title: t('partnership.toast.errorTitle'),
+        description: t('header.loginRequired'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch('/api/partnerships', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...formState, honeypot }),
+        body: JSON.stringify({
+          ...formState,
+          partnershipTypeLabel: selectedTypeLabel,
+          honeypot,
+        }),
       });
 
       const payload = await res.json().catch(() => ({}));
@@ -149,11 +259,63 @@ export function PartnershipInquiryForm({ onClose }: PartnershipInquiryFormProps)
   return (
     <DialogContent className="sm:max-w-[640px] max-h-[85vh] overflow-y-auto">
       <DialogHeader>
-        <DialogTitle>{t('partnership.formTitle')}</DialogTitle>
-        <DialogDescription>{t('partnership.formDescription')}</DialogDescription>
+        <DialogTitle>{panelTitle ?? t('partnership.formTitle')}</DialogTitle>
+        <DialogDescription>{panelDescription ?? t('partnership.formDescription')}</DialogDescription>
       </DialogHeader>
 
       <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        {isSellerMode ? (
+          <div className="md:col-span-2 rounded-xl border border-black/10 bg-white/70 p-3.5">
+            <p className="text-sm font-semibold text-foreground" dir="auto">
+              {t('partnership.sellerPoliciesTitle')}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground" dir="auto">
+              {t('partnership.sellerPolicyReview')}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground" dir="auto">
+              {t('partnership.sellerPolicyPublish')}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground" dir="auto">
+              {t('partnership.sellerPolicyPayment')}
+            </p>
+          </div>
+        ) : null}
+
+        <div className="md:col-span-2 rounded-xl border border-black/10 bg-white/70 p-3.5">
+          <p className="text-sm font-semibold text-foreground" dir="auto">
+            {isSellerMode ? t('partnership.sellerContactTitle') : t('partnership.partnerContactTitle')}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <a
+              href={whatsappHref ?? '#'}
+              target={whatsappHref ? '_blank' : undefined}
+              rel={whatsappHref ? 'noreferrer' : undefined}
+              className={cn(
+                'inline-flex h-9 items-center justify-center rounded-full bg-[#25D366] px-4 text-sm font-semibold text-white hover:bg-[#1FB857]',
+                !whatsappHref && 'pointer-events-none opacity-60',
+              )}
+              aria-disabled={!whatsappHref}
+            >
+              {t('partnership.contactWhatsapp')}
+            </a>
+            <a
+              href={emailHref ?? '#'}
+              className={cn(
+                'inline-flex h-9 items-center justify-center rounded-full border border-black/10 bg-white px-4 text-sm font-semibold text-foreground hover:bg-accent',
+                !emailHref && 'pointer-events-none opacity-60',
+              )}
+              aria-disabled={!emailHref}
+            >
+              {t('partnership.contactEmail')}
+            </a>
+          </div>
+          {runtimeContacts.source !== 'db' ? (
+            <p className="mt-2 text-xs text-muted-foreground" dir="auto">
+              {t('partnership.contactFallbackNotice')}
+            </p>
+          ) : null}
+        </div>
+
         <div className="space-y-2">
           <Label htmlFor="partner-name">{t('partnership.fields.name')}</Label>
           <Input
@@ -191,24 +353,26 @@ export function PartnershipInquiryForm({ onClose }: PartnershipInquiryFormProps)
             placeholder={t('partnership.fields.websitePlaceholder')}
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="partner-type">{t('partnership.fields.partnershipType')}</Label>
-          <Select
-            value={formState.partnershipType}
-            onValueChange={(value) => updateField('partnershipType')(value)}
-          >
-            <SelectTrigger id="partner-type">
-              <SelectValue placeholder={t('partnership.fields.partnershipTypePlaceholder')} />
-            </SelectTrigger>
-            <SelectContent>
-              {partnershipOptions.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {!isSellerMode ? (
+          <div className="space-y-2">
+            <Label htmlFor="partner-type">{t('partnership.fields.partnershipType')}</Label>
+            <Select
+              value={formState.partnershipType}
+              onValueChange={(value) => updateField('partnershipType')(value)}
+            >
+              <SelectTrigger id="partner-type">
+                <SelectValue placeholder={t('partnership.fields.partnershipTypePlaceholder')} />
+              </SelectTrigger>
+              <SelectContent>
+                {partnershipOptions.map((option) => (
+                  <SelectItem key={option.code} value={option.code}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
         <div className="space-y-2">
           <Label htmlFor="partner-budget">{t('partnership.fields.budget')}</Label>
           <Input
@@ -276,12 +440,14 @@ export function PartnershipInquiryForm({ onClose }: PartnershipInquiryFormProps)
         </div>
 
         <div className="flex flex-col gap-3 md:col-span-2 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-xs text-muted-foreground">{t('partnership.privacyNote')}</p>
+          <p className="text-xs text-muted-foreground" dir="auto">
+            {isSellerMode && !isSignedIn ? t('partnership.sellerSignInNotice') : t('partnership.privacyNote')}
+          </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Button type="button" variant="outline" onClick={closeDialog} disabled={submitting}>
               {t('partnership.cancel')}
             </Button>
-            <Button type="submit" disabled={submitting}>
+            <Button type="submit" disabled={submitting || (isSellerMode && !isSignedIn)}>
               {submitting ? t('partnership.submitting') : t('partnership.submit')}
             </Button>
           </div>
