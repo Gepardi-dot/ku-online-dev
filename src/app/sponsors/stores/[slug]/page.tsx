@@ -109,7 +109,7 @@ export default async function SponsorStorePage({
     notFound();
   }
 
-  // Offer management UI is introduced separately; keep store browsing page public-only.
+  const canManage = Boolean(user?.id && ownerUserId && user.id === ownerUserId);
 
   const coverSrc = store.coverUrl?.trim() || '';
   const logoSrc = store.logoUrl?.trim() || '';
@@ -298,6 +298,18 @@ export default async function SponsorStorePage({
                       {serverTranslate(locale, 'sponsorStore.actions.website')}
                     </Link>
                   </Button>
+                  {canManage ? (
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className="h-9 shrink-0 rounded-full bg-white/80 px-3.5 shadow-sm hover:bg-white"
+                    >
+                      <Link href="/sponsors/manage" prefetch={false} className={cn(isRtl && 'flex-row-reverse')}>
+                        {serverTranslate(locale, 'sponsorManage.manageButton')}
+                      </Link>
+                    </Button>
+                  ) : null}
                 </div>
 
                 {categoriesLabel ? (
