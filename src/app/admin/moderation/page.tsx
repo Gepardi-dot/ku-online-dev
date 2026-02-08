@@ -6,8 +6,12 @@ import AppLayout from '@/components/layout/app-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { createClient } from '@/utils/supabase/server';
 import { getEnv } from '@/lib/env';
-import { isModerator } from '@/lib/auth/roles';
+import { isAdmin, isModerator } from '@/lib/auth/roles';
+import { getAppContacts } from '@/lib/services/app-contacts';
+import { getSponsorLiveStatsVisibility } from '@/lib/services/app-settings';
 import ModerationTable, { type ModerationReport } from './moderation-table';
+import AppContactsCard from './app-contacts-card';
+import SponsorLiveStatsVisibilityCard from './sponsor-live-stats-visibility-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +31,7 @@ export default async function ModerationPage() {
   if (!user || !isModerator(user)) {
     redirect('/');
   }
+  const canEditContacts = isAdmin(user);
 
   let reports: ModerationReport[] = [];
 
@@ -103,9 +108,33 @@ export default async function ModerationPage() {
     }
   }
 
+  const contacts = await getAppContacts();
+  const liveStatsVisibility = await getSponsorLiveStatsVisibility();
+
   return (
     <AppLayout user={user}>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">App Contacts</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AppContactsCard
+              initial={contacts}
+              canEdit={canEditContacts}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Sponsor Live Stats Visibility</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SponsorLiveStatsVisibilityCard initial={liveStatsVisibility} canEdit={canEditContacts} />
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Moderation dashboard</CardTitle>

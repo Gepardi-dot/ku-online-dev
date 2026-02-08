@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@/utils/supabase/server';
+import { buildPublicStorageUrl } from '@/lib/storage-public';
 
 export type SponsorTier = 'basic' | 'featured';
 
@@ -43,6 +44,14 @@ export type SponsorStoreCategory = {
 export type SponsorStoreDetails = SponsorStore & {
   locations: SponsorStoreLocation[];
   categories: SponsorStoreCategory[];
+};
+
+export type SponsorStoreLiveStats = {
+  storeId: string;
+  totalClicks: number;
+  totalLikes: number;
+  lastClickAt: Date | null;
+  updatedAt: Date | null;
 };
 
 export type SponsorOffer = {
@@ -136,6 +145,20 @@ type SponsorOfferPreviewRow = {
   created_at?: string | null;
 };
 
+type SponsorStoreLiveStatsRow = {
+  store_id: string | null;
+  total_clicks: number | string | null;
+  total_likes: number | string | null;
+  last_click_at: string | null;
+  updated_at: string | null;
+};
+
+function isMissingTableError(error: any): boolean {
+  const code = typeof error?.code === 'string' ? error.code : '';
+  const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
+  return code === '42P01' || (message.includes('relation') && message.includes('does not exist'));
+}
+
 function toDate(value: string | null): Date | null {
   if (!value) return null;
   const date = new Date(value);
@@ -172,14 +195,23 @@ function normalizeDiscountType(value: unknown): SponsorOfferDiscountType {
   return 'custom';
 }
 
+function normalizeStoreImage(value: string | null | undefined): string | null {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  if (!normalized) return null;
+  if (normalized.startsWith('/') || /^https?:\/\//i.test(normalized)) {
+    return normalized;
+  }
+  return buildPublicStorageUrl(normalized) ?? normalized;
+}
+
 function mapStore(row: SponsorStoreRow): SponsorStore {
   return {
     id: row.id,
     name: row.name ?? 'Store',
     slug: row.slug ?? row.id,
     description: row.description ?? null,
-    logoUrl: row.logo_url ?? null,
-    coverUrl: row.cover_url ?? null,
+    logoUrl: normalizeStoreImage(row.logo_url),
+    coverUrl: normalizeStoreImage(row.cover_url),
     primaryCity: row.primary_city ?? null,
     phone: row.phone ?? null,
     whatsapp: row.whatsapp ?? null,
@@ -199,7 +231,7 @@ function mapOffer(row: SponsorOfferRow): SponsorOffer {
         id: storeRow.id,
         name: storeRow.name ?? 'Store',
         slug: storeRow.slug ?? storeRow.id,
-        logoUrl: storeRow.logo_url ?? null,
+        logoUrl: normalizeStoreImage(storeRow.logo_url),
         primaryCity: storeRow.primary_city ?? null,
       }
     : null;
@@ -226,7 +258,7 @@ function mapOfferDetails(row: SponsorOfferRow): SponsorOfferDetails {
         id: storeRow.id,
         name: storeRow.name ?? 'Store',
         slug: storeRow.slug ?? storeRow.id,
-        logoUrl: storeRow.logo_url ?? null,
+        logoUrl: normalizeStoreImage(storeRow.logo_url),
         primaryCity: storeRow.primary_city ?? null,
         phone: storeRow.phone ?? null,
         whatsapp: storeRow.whatsapp ?? null,
@@ -253,6 +285,29 @@ function mapOfferPreview(row: SponsorOfferPreviewRow): SponsorOfferPreview {
     endAt: toDate(row.end_at),
     originalPrice: toNumber(row.original_price),
     dealPrice: toNumber(row.deal_price),
+  };
+}
+
+function mapStoreLiveStats(row: SponsorStoreLiveStatsRow): SponsorStoreLiveStats | null {
+  const storeId = row.store_id ?? '';
+  if (!storeId) return null;
+
+  return {
+    storeId,
+    totalClicks: Math.max(0, toNumber(row.total_clicks) ?? 0),
+    totalLikes: Math.max(0, toNumber(row.total_likes) ?? 0),
+    lastClickAt: toDate(row.last_click_at),
+    updatedAt: toDate(row.updated_at),
+  };
+}
+
+function makeDefaultStoreLiveStats(storeId: string): SponsorStoreLiveStats {
+  return {
+    storeId,
+    totalClicks: 0,
+    totalLikes: 0,
+    lastClickAt: null,
+    updatedAt: null,
   };
 }
 
@@ -283,6 +338,86 @@ function mapCategoryLink(row: SponsorStoreCategoryLinkRow): SponsorStoreCategory
 async function getSupabase() {
   const cookieStore = await cookies();
   return createClient(cookieStore);
+}
+
+export async function listSponsorStoreLiveStatsByIds(storeIds: string[]): Promise<Record<string, SponsorStoreLiveStats>> {
+  const unique = Array.from(new Set((storeIds ?? []).map((value) => value.trim()).filter(Boolean)));
+  if (!unique.length) return {};
+
+  const out: Record<string, SponsorStoreLiveStats> = {};
+  for (const storeId of unique) {
+    out[storeId] = makeDefaultStoreLiveStats(storeId);
+  }
+
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from('sponsor_store_live_stats')
+    .select('store_id, total_clicks, total_likes, last_click_at, updated_at')
+    .in('store_id', unique);
+
+  if (error) {
+    if (isMissingTableError(error)) {
+      return out;
+    }
+    console.error('Failed to load sponsor store live stats', error);
+    return out;
+  }
+
+  for (const row of (data ?? []) as SponsorStoreLiveStatsRow[]) {
+    const mapped = mapStoreLiveStats(row);
+    if (!mapped) continue;
+    out[mapped.storeId] = mapped;
+  }
+
+  return out;
+}
+
+export async function listViewerLikedSponsorStoreIds(storeIds: string[], viewerId: string | null): Promise<string[]> {
+  const unique = Array.from(new Set((storeIds ?? []).map((value) => value.trim()).filter(Boolean)));
+  if (!unique.length || !viewerId) return [];
+
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from('sponsor_store_likes')
+    .select('store_id')
+    .eq('user_id', viewerId)
+    .in('store_id', unique);
+
+  if (error) {
+    if (isMissingTableError(error)) {
+      return [];
+    }
+    console.error('Failed to load viewer liked sponsor stores', error);
+    return [];
+  }
+
+  return (data ?? [])
+    .map((row: { store_id?: string | null }) => row.store_id ?? '')
+    .filter((value): value is string => Boolean(value));
+}
+
+export async function getSponsorStoreLiveStats(storeId: string): Promise<SponsorStoreLiveStats> {
+  const normalizedStoreId = (storeId ?? '').trim();
+  if (!normalizedStoreId) return makeDefaultStoreLiveStats('');
+
+  const supabase = await getSupabase();
+  const { data, error } = await supabase
+    .from('sponsor_store_live_stats')
+    .select('store_id, total_clicks, total_likes, last_click_at, updated_at')
+    .eq('store_id', normalizedStoreId)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingTableError(error)) {
+      return makeDefaultStoreLiveStats(normalizedStoreId);
+    }
+    console.error('Failed to load sponsor store live stats', error);
+    return makeDefaultStoreLiveStats(normalizedStoreId);
+  }
+
+  if (!data) return makeDefaultStoreLiveStats(normalizedStoreId);
+
+  return mapStoreLiveStats(data as SponsorStoreLiveStatsRow) ?? makeDefaultStoreLiveStats(normalizedStoreId);
 }
 
 export async function listFeaturedSponsorStores(options: {
