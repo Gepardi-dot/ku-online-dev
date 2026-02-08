@@ -10,6 +10,7 @@ const baseSchema = z.object({
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
   NEXT_PUBLIC_PARTNERSHIPS_EMAIL: z.string().email().optional(),
+  NEXT_PUBLIC_PARTNERSHIPS_WHATSAPP: z.string().min(3).optional(),
 });
 
 const serverSchema = baseSchema.extend({

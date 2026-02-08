@@ -61,7 +61,7 @@ export function SponsorStoreProductCard({ item, locale, basketKey, className }: 
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent" />
 
         {percentOff ? (
-          <div className="absolute left-2 top-2 rounded-full bg-black/55 px-2.5 py-1 text-[0.7rem] font-extrabold text-white ring-1 ring-white/25">
+          <div className="absolute left-2 top-2 rounded-lg bg-[#F28C34] px-2.5 py-1 text-[0.78rem] font-extrabold leading-none text-white shadow-[0_4px_10px_rgba(242,140,52,0.45)]">
             -{percentOff}%
           </div>
         ) : null}
@@ -77,7 +77,14 @@ export function SponsorStoreProductCard({ item, locale, basketKey, className }: 
           >
             <SponsorStoreBasketButton
               basketKey={basketKey}
-              item={{ id: item.id, title: item.title, price: item.price, currency: item.currency }}
+              item={{
+                id: item.id,
+                title: item.title,
+                price: item.price,
+                currency: item.currency,
+                href,
+                imageUrl: item.imageUrl,
+              }}
             />
           </div>
         ) : null}
@@ -90,7 +97,7 @@ export function SponsorStoreProductCard({ item, locale, basketKey, className }: 
         <div className="mt-1.5 flex items-center justify-between gap-2">
           <div className="min-w-0">
             {original ? (
-              <div className="text-[0.85rem] font-semibold text-muted-foreground line-through decoration-1" dir="auto">
+              <div className="text-[0.85rem] font-semibold text-[#DA291C] line-through decoration-1" dir="auto">
                 <CurrencyText amount={original} currencyCode={item.currency} locale={locale} />
               </div>
             ) : null}

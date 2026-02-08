@@ -7,10 +7,12 @@ import { PartnershipInquiry } from '@/components/marketing/partnership-inquiry';
 import { SponsorSpotlightStoreCard } from '@/components/sponsors/SponsorSpotlightStoreCard';
 import SwipeHint from '@/components/ui/swipe-hint';
 import { MARKET_CITY_OPTIONS, type MarketCityValue } from '@/data/market-cities';
+import { isModerator } from '@/lib/auth/roles';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { rtlLocales, type LocaleMessages, translations } from '@/lib/locale/dictionary';
 import { cn } from '@/lib/utils';
-import { listSponsorOfferPreviewsByStoreIds, listSpotlightSponsorStores } from '@/lib/services/sponsors';
+import { getSponsorLiveStatsVisibility } from '@/lib/services/app-settings';
+import { listSponsorOfferPreviewsByStoreIds, listSponsorStoreLiveStatsByIds, listSpotlightSponsorStores } from '@/lib/services/sponsors';
 import { createClient } from '@/utils/supabase/server';
 
 type SponsorsPageSearchParams = {
@@ -43,6 +45,8 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const liveStatsVisibility = await getSponsorLiveStatsVisibility();
+  const showLiveStats = isModerator(user) || liveStatsVisibility.publicVisible;
 
   const locale = await getServerLocale();
   const messages: LocaleMessages = translations[locale];
@@ -54,8 +58,9 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
 
   const spotlightStores = await listSpotlightSponsorStores({ city: cityFilter, limit: 8 });
   const offerByStoreId = await listSponsorOfferPreviewsByStoreIds(spotlightStores.map((s) => s.id));
-
-  const sponsoredLabel = serverTranslate(locale, 'sponsorsHub.sponsoredBadge');
+  const initialStatsByStoreId = showLiveStats
+    ? await listSponsorStoreLiveStatsByIds(spotlightStores.map((store) => store.id))
+    : {};
 
   return (
     <AppLayout user={user}>
@@ -130,10 +135,13 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
                   key={store.slug}
                   store={store}
                   offer={offerByStoreId[store.id] ?? null}
-                  sponsoredLabel={sponsoredLabel}
                   cityLabel={store.primaryCity ? serverTranslate(locale, `header.city.${store.primaryCity}`) : null}
                   href={`/sponsors/stores/${store.slug}`}
                   locale={locale}
+                  initialStats={initialStatsByStoreId[store.id] ?? null}
+                  viewsLabel={serverTranslate(locale, 'sponsorsHub.liveStats.views')}
+                  likesLabel={serverTranslate(locale, 'sponsorsHub.liveStats.likes')}
+                  showLiveStats={showLiveStats}
                 />
               ))}
 
@@ -150,7 +158,11 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
             </div>
 
             <div className="pt-4">
-              <PartnershipInquiry />
+              <PartnershipInquiry
+                mode="seller"
+                isSignedIn={Boolean(user)}
+                buttonClassName="bg-brand text-white hover:bg-brand/90"
+              />
             </div>
           </div>
         </div>

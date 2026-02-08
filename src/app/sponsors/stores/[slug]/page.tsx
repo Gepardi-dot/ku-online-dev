@@ -11,17 +11,68 @@ import { SponsorStoreServiceCard } from '@/components/sponsors/SponsorStoreServi
 import { SponsorStoreTabs } from '@/components/sponsors/SponsorStoreTabs';
 import { Button } from '@/components/ui/button';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
+import { CATEGORY_LABEL_MAP } from '@/data/category-ui-config';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
 import type { Locale } from '@/lib/locale/dictionary';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { getProducts } from '@/lib/services/products';
-import { getSponsorStoreBySlug, listSponsorOffersByStoreId, type SponsorStoreCategory, type SponsorStoreLocation } from '@/lib/services/sponsors';
+import {
+  getSponsorStoreBySlug,
+  listSponsorOffersByStoreId,
+  type SponsorStoreCategory,
+  type SponsorStoreLocation,
+} from '@/lib/services/sponsors';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/server';
 
+const SPONSOR_CATEGORY_FALLBACK_LABELS: Record<string, { en: string; ar: string; ku: string }> = {
+  'phones & accessories': {
+    en: 'Phones & Accessories',
+    ar: 'الهواتف والإكسسوارات',
+    ku: 'مۆبایل و ئاکسسوار',
+  },
+  'phones and accessories': {
+    en: 'Phones & Accessories',
+    ar: 'الهواتف والإكسسوارات',
+    ku: 'مۆبایل و ئاکسسوار',
+  },
+  'home & furniture': {
+    en: 'Home & Furniture',
+    ar: 'المنزل والأثاث',
+    ku: 'ماڵ و کەلوپەل',
+  },
+  'home and furniture': {
+    en: 'Home & Furniture',
+    ar: 'المنزل والأثاث',
+    ku: 'ماڵ و کەلوپەل',
+  },
+};
+
+function normalizeCategoryKey(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
 function localizeCategoryName(value: SponsorStoreCategory, locale: Locale): string {
-  if (locale === 'ar') return value.nameAr ?? value.name;
-  if (locale === 'ku') return value.nameKu ?? value.name;
+  const normalized = normalizeCategoryKey(value.name);
+  const mapped = CATEGORY_LABEL_MAP[normalized];
+  const fallback = SPONSOR_CATEGORY_FALLBACK_LABELS[normalized];
+
+  if (locale === 'ar') {
+    if (value.nameAr?.trim()) return value.nameAr;
+    if (mapped?.labelAr?.trim()) return mapped.labelAr;
+    if (fallback?.ar?.trim()) return fallback.ar;
+    return value.name;
+  }
+
+  if (locale === 'ku') {
+    if (value.nameKu?.trim()) return value.nameKu;
+    if (mapped?.labelKu?.trim()) return mapped.labelKu;
+    if (fallback?.ku?.trim()) return fallback.ku;
+    return value.name;
+  }
+
+  if (mapped?.label?.trim()) return mapped.label;
+  if (fallback?.en?.trim()) return fallback.en;
   return value.name;
 }
 
@@ -100,16 +151,16 @@ export default async function SponsorStorePage({
   const locale = await getServerLocale();
   const isRtl = locale === 'ar' || locale === 'ku';
 
-  let store = await getSponsorStoreBySlug(slug);
-  let offers = store ? await listSponsorOffersByStoreId(store.id, 12) : [];
-  let ownerUserId = store?.ownerUserId ?? null;
-  let products = ownerUserId ? await getProducts({ sellerId: ownerUserId }, 12, 0, 'newest') : [];
-
+  const store = await getSponsorStoreBySlug(slug);
   if (!store) {
     notFound();
   }
+  const offers = await listSponsorOffersByStoreId(store.id, 12);
+  const ownerUserId = store.ownerUserId ?? null;
+  const products = ownerUserId ? await getProducts({ sellerId: ownerUserId }, 12, 0, 'newest') : [];
 
-  // Offer management UI is introduced separately; keep store browsing page public-only.
+  const canManage = Boolean(user?.id && ownerUserId && user.id === ownerUserId);
+  const canUsePrivateContactActions = Boolean(user?.id);
 
   const coverSrc = store.coverUrl?.trim() || '';
   const logoSrc = store.logoUrl?.trim() || '';
@@ -140,18 +191,15 @@ export default async function SponsorStorePage({
 
   const services = offersForCards;
 
-  const productItems: SponsorStoreProductCardModel[] =
-    products.length
-      ? products.map((product) => ({
-          id: product.id,
-          title: product.title,
-          price: product.price,
-          originalPrice: typeof product.originalPrice === 'number' ? product.originalPrice : null,
-          currency: product.currency ?? null,
-          imageUrl: product.imageUrls?.[0] ?? null,
-          href: `/product/${product.id}`,
-        }))
-      : [];
+  const productItems: SponsorStoreProductCardModel[] = products.map((product) => ({
+    id: product.id,
+    title: product.title,
+    price: product.price,
+    originalPrice: typeof product.originalPrice === 'number' ? product.originalPrice : null,
+    currency: product.currency ?? null,
+    imageUrl: product.imageUrls?.[0] ?? null,
+    href: `/product/${product.id}`,
+  }));
 
   const basketKey = `ku:sponsorBasket:${store.slug}`;
   const maxProductOff = productItems.reduce((best, item) => {
@@ -182,30 +230,13 @@ export default async function SponsorStorePage({
       <section className="pt-4 pb-24 bg-accent">
         <div className="container mx-auto px-3 sm:px-4">
           <div className="mx-auto max-w-5xl space-y-5">
-            {/* Compact store header (mobile-first): minimal scroll before content. */}
-            <div className="relative overflow-hidden rounded-[22px] border border-white/60 bg-white/70 shadow-[0_10px_34px_rgba(15,23,42,0.10)] ring-1 ring-white/40">
-              <div className="absolute inset-0">
-                {coverSrc ? (
-                  <>
-                    <Image src={coverSrc} alt="" fill sizes="100vw" className="object-cover opacity-35" priority />
-                    <div className="absolute inset-0 bg-gradient-to-t from-white/85 via-white/70 to-white/35" />
-                  </>
-                ) : (
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(247,111,29,0.18),rgba(255,255,255,0.0)_58%)]" />
-                )}
-
-                <div className="pointer-events-none absolute inset-0 opacity-70 motion-safe:animate-aurora motion-reduce:opacity-40">
-                  <div className="absolute -left-24 -top-24 h-64 w-64 rounded-full bg-brand/16 blur-3xl" />
-                  <div className="absolute -right-28 -bottom-28 h-72 w-72 rounded-full bg-brand-light/14 blur-3xl" />
-                </div>
-              </div>
-
-              <div className="relative p-3.5 md:p-4">
+            <div className="overflow-hidden rounded-[22px] border border-black/10 bg-[#EFEFEF] shadow-[0_10px_30px_rgba(15,23,42,0.12)]">
+              <div className="p-4 md:p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex min-w-0 items-start gap-3">
-                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl bg-white/85 shadow-sm ring-1 ring-black/5">
+                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-black/10">
                       {logoSrc ? (
-                        <Image src={logoSrc} alt="" fill sizes="48px" className="object-cover" />
+                        <Image src={logoSrc} alt="" fill sizes="56px" className="object-cover" />
                       ) : (
                         <span className="flex h-full w-full items-center justify-center text-base font-extrabold text-brand" aria-hidden="true">
                           {initials}
@@ -214,107 +245,136 @@ export default async function SponsorStorePage({
                     </div>
 
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h1 className="line-clamp-1 text-[1.05rem] font-extrabold text-[#2D2D2D] md:text-xl" dir="auto">
-                          {store.name}
-                        </h1>
-                        <span className="rounded-full bg-brand/12 px-2.5 py-1 text-[0.68rem] font-extrabold text-brand ring-1 ring-brand/15">
-                          {serverTranslate(locale, 'sponsorsHub.sponsoredBadge')}
-                        </span>
-                        <VerifiedBadge
-                          size="sm"
-                          label={serverTranslate(locale, 'profile.overview.trustedBadge')}
-                          className="h-6 w-6 justify-center rounded-full ring-2 ring-white/60 shadow-[0_10px_24px_rgba(0,0,0,0.14)]"
-                        />
-                      </div>
-
-                      {(cityLabel || address) ? (
-                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-muted-foreground" dir="auto">
-                          {cityLabel ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-3 py-1 ring-1 ring-black/5">
-                              <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-                              <span dir="auto">{cityLabel}</span>
-                            </span>
-                          ) : null}
-                          {address ? (
-                            <span className="line-clamp-1 inline-flex max-w-full items-center gap-1 rounded-full bg-white/70 px-3 py-1 ring-1 ring-black/5">
-                              <span dir="auto">{address}</span>
-                            </span>
-                          ) : null}
-                        </div>
+                      <h1 className="line-clamp-1 text-[1.15rem] font-extrabold text-[#1F2937] md:text-[1.7rem]" dir="auto">
+                        {store.name}
+                      </h1>
+                      {categoriesLabel ? (
+                        <p className="mt-0.5 line-clamp-1 text-base font-semibold text-[#6B7280]" dir={isRtl ? 'rtl' : 'ltr'}>
+                          {categoriesLabel}
+                        </p>
                       ) : null}
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-2.5 flex gap-2 overflow-x-auto pb-0.5 no-scrollbar [-webkit-overflow-scrolling:touch]">
-                  <Button
-                    asChild
-                    size="sm"
-                    className={cn(
-                      'h-9 shrink-0 rounded-full bg-[#25D366] px-3.5 text-white shadow-sm hover:bg-[#1FB857]',
-                      !waHref ? 'pointer-events-none opacity-55' : null,
-                    )}
-                  >
-                    <Link
-                      href={waHref ?? '#'}
-                      target={waHref ? '_blank' : undefined}
-                      rel={waHref ? 'noreferrer' : undefined}
-                      className={cn(isRtl && 'flex-row-reverse')}
-                    >
-                      <MessageCircle className="h-4 w-4" aria-hidden="true" />
-                      {serverTranslate(locale, 'sponsorStore.actions.whatsapp')}
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    size="sm"
-                    className={cn('h-9 shrink-0 rounded-full bg-[#111827] px-3.5 text-white hover:bg-[#111827]/90', !phoneHref ? 'pointer-events-none opacity-55' : null)}
-                  >
-                    <Link href={phoneHref ?? '#'} className={cn(isRtl && 'flex-row-reverse')}>
-                      <Phone className="h-4 w-4" aria-hidden="true" />
-                      {serverTranslate(locale, 'sponsorStore.actions.call')}
-                    </Link>
-                  </Button>
-                  <Button asChild size="sm" variant="secondary" className="h-9 shrink-0 rounded-full bg-white/80 px-3.5 text-primary shadow-sm hover:bg-white">
-                    <Link href={directionsHref} target="_blank" rel="noreferrer" className={cn(isRtl && 'flex-row-reverse')}>
-                      <MapPin className="h-4 w-4" aria-hidden="true" />
-                      {serverTranslate(locale, 'sponsorStore.actions.directions')}
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    size="sm"
-                    variant="secondary"
-                    className={cn('h-9 shrink-0 rounded-full bg-white/80 px-3.5 text-primary shadow-sm hover:bg-white', !siteHref ? 'pointer-events-none opacity-55' : null)}
-                  >
-                    <Link
-                      href={siteHref ?? '#'}
-                      target={siteHref ? '_blank' : undefined}
-                      rel={siteHref ? 'noreferrer' : undefined}
-                      className={cn(isRtl && 'flex-row-reverse')}
-                    >
-                      <Globe className="h-4 w-4" aria-hidden="true" />
-                      {serverTranslate(locale, 'sponsorStore.actions.website')}
-                    </Link>
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full border border-[#F87171] bg-[#B91C1C] px-3 py-1 text-xs font-extrabold text-white shadow-[0_6px_14px_rgba(185,28,28,0.35)]">
+                      {serverTranslate(locale, 'sponsorsHub.sponsoredBadge')}
+                    </span>
+                    <VerifiedBadge
+                      size="sm"
+                      label={serverTranslate(locale, 'profile.overview.trustedBadge')}
+                      className="h-6 w-6 justify-center rounded-full ring-2 ring-white shadow-sm"
+                    />
+                  </div>
                 </div>
+              </div>
 
-                {categoriesLabel ? (
-                  <p className="mt-1.5 line-clamp-1 text-xs font-semibold text-muted-foreground" dir="auto">
-                    {categoriesLabel}
-                  </p>
-                ) : null}
+              <div className="relative h-[180px] w-full overflow-hidden bg-white md:h-[220px]">
+                {coverSrc ? (
+                  <Image src={coverSrc} alt="" fill sizes="(max-width: 768px) 100vw, 960px" className="object-cover" priority />
+                ) : (
+                  <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(247,111,29,0.2),rgba(255,255,255,0.7))]" />
+                )}
 
                 {maxOff > 0 ? (
                   <div
                     className={cn(
-                      'mt-2 inline-flex items-center gap-2 rounded-full bg-red-600/90 px-3.5 py-1.5 text-sm font-extrabold text-white shadow-sm ring-1 ring-white/15',
-                      isRtl && 'flex-row-reverse',
+                      'absolute bottom-3 left-3 inline-flex items-center rounded-xl bg-[#F28C34] px-3.5 py-2 text-[1.1rem] font-extrabold text-white shadow-[0_8px_20px_rgba(0,0,0,0.24)]',
+                      isRtl && 'left-auto right-3',
                     )}
                   >
-                    <span className="inline-flex h-1.5 w-1.5 rounded-full bg-white/80" aria-hidden="true" />
                     {serverTranslate(locale, 'sponsorStore.savings.upTo').replace('{percent}', formattedMaxOff)}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="p-4 md:p-5">
+                {(cityLabel || address) ? (
+                  <div className="flex items-center gap-2 text-sm font-semibold text-[#6B7280] md:text-base" dir="auto">
+                    <MapPin className="h-5 w-5 shrink-0 text-[#7C8493]" aria-hidden="true" />
+                    <span className="line-clamp-1" dir="auto">
+                      {[cityLabel, address].filter(Boolean).join(' · ')}
+                    </span>
+                  </div>
+                ) : null}
+
+                <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-0.5 no-scrollbar [-webkit-overflow-scrolling:touch]">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      asChild
+                      size="icon"
+                      variant="secondary"
+                      className={cn(
+                        'h-11 w-11 rounded-full bg-[#E8E8E8] text-[#1F2937] shadow-sm hover:bg-[#DEDEDE]',
+                        !phoneHref || !canUsePrivateContactActions ? 'pointer-events-none opacity-55' : null,
+                      )}
+                    >
+                      <Link
+                        href={phoneHref && canUsePrivateContactActions ? phoneHref : '#'}
+                        aria-label={serverTranslate(locale, 'sponsorStore.actions.call')}
+                        aria-disabled={!phoneHref || !canUsePrivateContactActions}
+                        title={!canUsePrivateContactActions ? serverTranslate(locale, 'header.loginRequired') : undefined}
+                      >
+                        <Phone className="h-5 w-5" aria-hidden="true" />
+                      </Link>
+                    </Button>
+
+                    <Button asChild size="icon" variant="secondary" className="h-11 w-11 rounded-full bg-[#E8E8E8] text-[#1F2937] shadow-sm hover:bg-[#DEDEDE]">
+                      <Link href={directionsHref} target="_blank" rel="noreferrer" aria-label={serverTranslate(locale, 'sponsorStore.actions.directions')}>
+                        <MapPin className="h-5 w-5" aria-hidden="true" />
+                      </Link>
+                    </Button>
+
+                    <Button
+                      asChild
+                      size="icon"
+                      variant="secondary"
+                      className={cn('h-11 w-11 rounded-full bg-[#E8E8E8] text-[#1F2937] shadow-sm hover:bg-[#DEDEDE]', !siteHref ? 'pointer-events-none opacity-55' : null)}
+                    >
+                      <Link
+                        href={siteHref ?? '#'}
+                        target={siteHref ? '_blank' : undefined}
+                        rel={siteHref ? 'noreferrer' : undefined}
+                        aria-label={serverTranslate(locale, 'sponsorStore.actions.website')}
+                        aria-disabled={!siteHref}
+                      >
+                        <Globe className="h-5 w-5" aria-hidden="true" />
+                      </Link>
+                    </Button>
+                    <Button
+                      asChild
+                      className={cn(
+                        'h-11 shrink-0 rounded-full bg-[#57C878] px-4 text-base font-bold text-white shadow-[0_6px_18px_rgba(87,200,120,0.26),0_1px_6px_rgba(87,200,120,0.18)] hover:bg-[#4FB66D]',
+                        !waHref || !canUsePrivateContactActions ? 'pointer-events-none opacity-55' : null,
+                      )}
+                    >
+                      <Link
+                        href={waHref && canUsePrivateContactActions ? waHref : '#'}
+                        target={waHref && canUsePrivateContactActions ? '_blank' : undefined}
+                        rel={waHref && canUsePrivateContactActions ? 'noreferrer' : undefined}
+                        className={cn(isRtl && 'flex-row-reverse')}
+                        aria-disabled={!waHref || !canUsePrivateContactActions}
+                        title={!canUsePrivateContactActions ? serverTranslate(locale, 'header.loginRequired') : undefined}
+                      >
+                        <MessageCircle className="h-6 w-6" aria-hidden="true" />
+                        <span className="text-base leading-none">{serverTranslate(locale, 'sponsorStore.actions.whatsapp')}</span>
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+
+                {canManage ? (
+                  <div className="mt-3">
+                    <Button
+                      asChild
+                      size="sm"
+                      variant="outline"
+                      className="h-9 rounded-full border-black/10 bg-white/70 px-3.5 text-xs font-bold shadow-sm hover:bg-white"
+                    >
+                      <Link href="/sponsors/manage" prefetch={false} className={cn(isRtl && 'flex-row-reverse')}>
+                        {serverTranslate(locale, 'sponsorManage.manageButton')}
+                      </Link>
+                    </Button>
                   </div>
                 ) : null}
               </div>
