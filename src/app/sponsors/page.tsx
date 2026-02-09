@@ -7,7 +7,7 @@ import { PartnershipInquiry } from '@/components/marketing/partnership-inquiry';
 import { SponsorSpotlightStoreCard } from '@/components/sponsors/SponsorSpotlightStoreCard';
 import SwipeHint from '@/components/ui/swipe-hint';
 import { MARKET_CITY_OPTIONS, type MarketCityValue } from '@/data/market-cities';
-import { isModerator } from '@/lib/auth/roles';
+import { isAdmin, isModerator } from '@/lib/auth/roles';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { rtlLocales, type LocaleMessages, translations } from '@/lib/locale/dictionary';
 import { cn } from '@/lib/utils';
@@ -45,6 +45,7 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const canCreateStore = isAdmin(user);
   const liveStatsVisibility = await getSponsorLiveStatsVisibility();
   const showLiveStats = isModerator(user) || liveStatsVisibility.publicVisible;
 
@@ -123,9 +124,20 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
               <h2 className="text-xl font-extrabold text-[#2D2D2D] md:text-2xl" dir="auto">
                 {serverTranslate(locale, 'sponsorsHub.spotlightTitle')}
               </h2>
-              <span className="rounded-full bg-white/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-black/5" dir="auto">
-                {spotlightStores.length}/8
-              </span>
+              <div className="flex items-center gap-2">
+                {canCreateStore ? (
+                  <Link
+                    href="/admin/sponsors/new"
+                    className="rounded-full bg-brand px-3.5 py-1.5 text-xs font-semibold text-white shadow-[0_10px_26px_rgba(247,111,29,0.24)] transition hover:bg-brand/90"
+                    dir="auto"
+                  >
+                    Create store
+                  </Link>
+                ) : null}
+                <span className="rounded-full bg-white/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-black/5" dir="auto">
+                  {spotlightStores.length}/8
+                </span>
+              </div>
             </div>
 
             {/* Mobile: 1 column. Desktop: 2 columns. */}
