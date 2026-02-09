@@ -17,6 +17,7 @@ interface ProductCardProps {
   product: ProductWithRelations;
   viewerId?: string | null;
   searchQuery?: string | null;
+  interactive?: boolean;
 }
 
 const conditionColorMap: Record<string, string> = {
@@ -26,7 +27,12 @@ const conditionColorMap: Record<string, string> = {
   'used - fair': 'bg-orange-500',
 };
 
-const ProductCard = memo(function ProductCardImpl({ product, viewerId, searchQuery }: ProductCardProps) {
+const ProductCard = memo(function ProductCardImpl({
+  product,
+  viewerId,
+  searchQuery,
+  interactive = true,
+}: ProductCardProps) {
   const { t, locale, messages } = useLocale();
   const isRtl = rtlLocales.includes(locale);
   const cityLabels = messages.header.city as Record<string, string>;
@@ -86,6 +92,8 @@ const ProductCard = memo(function ProductCardImpl({ product, viewerId, searchQue
   const sellerDisplayNameRaw = product.seller?.fullName ?? product.seller?.name ?? product.seller?.email ?? '';
   const sellerDisplayName = sellerDisplayNameRaw.trim() || messages.product.sellerFallback;
   const conditionLabel = getConditionLabel(product.condition || 'New');
+  const numericPrice = Number(product.price);
+  const isFreeListing = Number.isFinite(numericPrice) && numericPrice <= 0;
   const titleLength = localizedTitle.trim().length;
   const titleSizeClass = titleLength > 52
     ? 'text-[0.78rem] sm:text-[0.85rem] leading-snug'
@@ -95,13 +103,8 @@ const ProductCard = memo(function ProductCardImpl({ product, viewerId, searchQue
         ? 'text-[0.9rem] sm:text-[0.95rem] leading-tight'
         : 'text-[0.95rem] sm:text-base leading-tight';
 
-  return (
-    <Link
-      href={`/product/${product.id}`}
-      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      prefetch
-      onClick={recordSearchClick}
-    >
+  const cardContent = (
+    <>
       <Card className="flex h-full flex-col overflow-hidden transition-all duration-300 group-hover:shadow-lg">
         {/* Responsive image container:
             - Mobile: height scales with viewport width using clamp for regular/pro/plus sizes
@@ -122,11 +125,15 @@ const ProductCard = memo(function ProductCardImpl({ product, viewerId, searchQue
             </div>
           )}
           <div
-            className="absolute top-2 right-2"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-            }}
+            className={`absolute top-2 right-2 ${interactive ? '' : 'pointer-events-none'}`}
+            onClick={
+              interactive
+                ? (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }
+                : undefined
+            }
           >
             <FavoriteToggle productId={product.id} userId={viewerId} size="sm" />
           </div>
@@ -157,12 +164,16 @@ const ProductCard = memo(function ProductCardImpl({ product, viewerId, searchQue
           </h3>
           
           <div className="flex items-center justify-start gap-2">
-            <CurrencyText
-              amount={Number(product.price)}
-              currencyCode={product.currency ?? null}
-              locale={locale}
-              className="text-lg font-bold text-primary bidi-auto"
-            />
+            {isFreeListing ? (
+              <span className="text-lg font-bold text-primary bidi-auto">{t('sellForm.fields.free')}</span>
+            ) : (
+              <CurrencyText
+                amount={numericPrice}
+                currencyCode={product.currency ?? null}
+                locale={locale}
+                className="text-lg font-bold text-primary bidi-auto"
+              />
+            )}
           </div>
           
           <div
@@ -206,6 +217,21 @@ const ProductCard = memo(function ProductCardImpl({ product, viewerId, searchQue
         </div>
         </CardContent>
       </Card>
+    </>
+  );
+
+  if (!interactive) {
+    return <div className="group block">{cardContent}</div>;
+  }
+
+  return (
+    <Link
+      href={`/product/${product.id}`}
+      className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      prefetch
+      onClick={recordSearchClick}
+    >
+      {cardContent}
     </Link>
   );
 });

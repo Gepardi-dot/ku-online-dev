@@ -14,16 +14,30 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CheckCircle2, ChevronDown, Circle, FileText, Info, Loader2, MapPin, Sparkles, Tag, Upload, X, ChevronUp } from 'lucide-react';
+import {
+  Camera,
+  CheckCircle2,
+  ChevronDown,
+  Circle,
+  FileText,
+  Info,
+  Loader2,
+  MapPin,
+  Sparkles,
+  Tag,
+  X,
+  ChevronUp,
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { CONDITION_OPTIONS } from '@/lib/products/filter-params';
 import { createProductSchema } from '@/lib/validation/schemas';
-import { Switch } from '@/components/ui/switch';
 import { compressToWebp } from '@/lib/images/client-compress';
-import { CurrencyText, highlightDollar } from '@/components/currency-text';
+import { highlightDollar } from '@/components/currency-text';
 import { useLocale } from '@/providers/locale-provider';
 import { rtlLocales } from '@/lib/locale/dictionary';
 import { CATEGORY_LABEL_MAP, SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
+import ProductCard from '@/components/product-card-new';
+import type { ProductWithRelations } from '@/lib/services/products';
 
 const conditionOptions = CONDITION_OPTIONS.filter((option) => option.value);
 const cityOptions = MARKET_CITY_OPTIONS.filter((option) => option.value !== 'all');
@@ -209,33 +223,33 @@ export default function SellForm({ user }: SellFormProps) {
   };
 
   const menuShellClassName = [
-    'mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white',
-    'shadow-[0_6px_16px_rgba(15,23,42,0.08)]',
+    'mt-3 overflow-hidden rounded-2xl border border-[#e6ddd4] bg-[#f7f3ee]/95',
+    'shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_10px_24px_rgba(124,45,18,0.10)] backdrop-blur-xl',
   ].join(' ');
 
-  const menuShellDropdownClassName = `${menuShellClassName} mt-0 w-fit border-slate-300 shadow-lg`;
+  const menuShellDropdownClassName = `${menuShellClassName} mt-0 w-fit border-[#dccfbe]`;
 
   const menuHeaderClassName = [
-    'flex items-center justify-between gap-3 border-b border-slate-200/80 bg-slate-50/80 px-4 py-2 text-[11px] font-semibold text-slate-500',
+    'flex items-center justify-between gap-3 border-b border-[#e6ddd4] bg-[#f3ece4]/90 px-4 py-2 text-[11px] font-semibold text-[#7a7168]',
     'md:px-5',
   ].join(' ');
 
-  const menuHeaderValueClassName = 'truncate text-xs font-semibold text-slate-800 normal-case tracking-normal';
+  const menuHeaderValueClassName = 'truncate text-xs font-semibold text-[#3f372f] normal-case tracking-normal';
 
   const menuListClassName = 'max-h-60 overflow-y-auto md:max-h-72';
   const menuListInnerClassName = 'flex flex-col';
 
   const menuRowClassName = [
-    'group flex w-full items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-slate-800',
-    'border-b border-slate-200 last:border-b-0',
-    'text-start transition hover:bg-slate-100 hover:text-slate-900',
-    'data-[state=checked]:bg-slate-50 data-[state=checked]:text-slate-900',
+    'group flex w-full items-center justify-between gap-3 px-4 py-3 text-lg font-medium text-[#3f372f]',
+    'border-b border-[#e6ddd4] last:border-b-0',
+    'text-start transition hover:bg-[#efe7dd] hover:text-[#2f2a25]',
+    'data-[state=checked]:bg-[#ece2d6] data-[state=checked]:text-[#2f2a25]',
     'md:px-5',
   ].join(' ');
 
   const menuRowIndicatorClassName = [
-    'flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 bg-white',
-    'shadow-[inset_0_1px_2px_rgba(0,0,0,0.08)]',
+    'flex h-4 w-4 items-center justify-center rounded-full border border-[#d5c8b8] bg-[#f7f3ee]',
+    'shadow-[inset_0_1px_2px_rgba(0,0,0,0.06)]',
     'group-data-[state=checked]:border-orange-500 group-data-[state=checked]:bg-orange-500',
   ].join(' ');
 
@@ -248,7 +262,7 @@ export default function SellForm({ user }: SellFormProps) {
     'h-3 w-3 rounded-full ring-1 ring-slate-200 shadow-[0_1px_3px_rgba(15,23,42,0.12)]';
 
   const menuEmptyStateClassName =
-    'border-b border-slate-100 bg-slate-50 px-4 py-4 text-center text-xs text-slate-500 md:px-5';
+    'border-b border-[#e6ddd4] bg-[#f3ece4]/80 px-4 py-4 text-center text-xs text-[#7a7168] md:px-5';
 
   const selectTriggerClassName = [
     'h-12 w-fit max-w-full rounded-2xl border border-[#eadbc5]/80 bg-linear-to-b from-[#fffdf7] to-[#fff2e2] px-4 text-sm text-[#1F1C1C]',
@@ -277,8 +291,10 @@ export default function SellForm({ user }: SellFormProps) {
   const menuScrollAreaClassName = 'relative max-h-60 overflow-y-auto overflow-x-hidden no-scrollbar scroll-smooth md:max-h-72';
   const menuCueTopClassName = 'absolute top-0 left-0 right-0 z-10 pointer-events-none';
   const menuCueBottomClassName = 'absolute bottom-0 left-0 right-0 z-10 pointer-events-none';
-  const menuCueBarTopClassName = 'h-8 w-full rounded-t-2xl bg-gradient-to-b from-white via-white/80 to-transparent';
-  const menuCueBarBottomClassName = 'h-8 w-full rounded-b-2xl bg-gradient-to-t from-white via-white/80 to-transparent';
+  const menuCueBarTopClassName =
+    'h-8 w-full rounded-t-2xl bg-gradient-to-b from-[#f7f3ee] via-[#f7f3ee]/85 to-transparent';
+  const menuCueBarBottomClassName =
+    'h-8 w-full rounded-b-2xl bg-gradient-to-t from-[#f7f3ee] via-[#f7f3ee]/85 to-transparent';
   const menuCueIconTopClassName = 'absolute inset-x-0 top-1 flex items-center justify-center';
   const menuCueIconBottomClassName = 'absolute inset-x-0 bottom-1 flex items-center justify-center';
   const menuCueChevronClassName = 'h-4 w-4 text-slate-400 drop-shadow-sm';
@@ -358,13 +374,13 @@ export default function SellForm({ user }: SellFormProps) {
 
   const textFieldClassName = [
     'h-12 rounded-2xl border border-border/80 bg-white/95 px-4 text-sm shadow-sm backdrop-blur-xl',
-    'ring-1 ring-black/5 transition hover:bg-white hover:shadow-md',
+    'ring-1 ring-black/5 transition hover:shadow-md',
     'focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white/80',
   ].join(' ');
 
   const textareaClassName = [
     'min-h-[140px] rounded-2xl border border-border/80 bg-white/95 px-4 py-3 text-sm shadow-sm backdrop-blur-xl',
-    'ring-1 ring-black/5 transition hover:bg-white hover:shadow-md',
+    'ring-1 ring-black/5 transition hover:shadow-md',
     'focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2 focus-visible:ring-offset-white/80',
   ].join(' ');
 
@@ -427,18 +443,22 @@ export default function SellForm({ user }: SellFormProps) {
   ].join(' ');
 
   const upperDropZoneBaseClassName = [
-    'relative flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed p-10 text-center transition',
+    'relative flex min-h-[136px] items-center rounded-2xl border border-dashed px-4 py-4 transition md:px-5',
     'bg-white/92 shadow-[0_8px_18px_rgba(124,45,18,0.08)]',
   ].join(' ');
 
   const detailsTextareaClassName = [
     textareaClassName,
-    'bg-white/92! shadow-[0_8px_18px_rgba(124,45,18,0.10)]!',
+    'border-[#e6ddd4] bg-[#f7f3ee] text-[#3f372f]',
+    'shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_18px_rgba(124,45,18,0.08)]',
+    'placeholder:text-[#7a7168]',
   ].join(' ');
 
   const detailsInputClassName = [
     textFieldClassName,
-    'bg-white/92 shadow-[0_8px_18px_rgba(124,45,18,0.10)]',
+    'border-[#e6ddd4] bg-[#f7f3ee] text-[#3f372f]',
+    'shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_18px_rgba(124,45,18,0.08)]',
+    'placeholder:text-[#7a7168]',
   ].join(' ');
 
   const heroBadgeClassName = [
@@ -447,25 +467,38 @@ export default function SellForm({ user }: SellFormProps) {
   ].join(' ');
 
   const detailsSelectTriggerClassName = [
-    'h-11 w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5',
+    'h-11 w-full rounded-xl border border-[#e6ddd4] bg-[#f7f3ee] px-4 py-2.5',
     'flex items-center justify-between gap-3 text-start',
-    'shadow-sm hover:shadow-md hover:border-slate-300',
+    'text-[#3f372f] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_4px_10px_rgba(124,45,18,0.06)]',
+    'hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_6px_14px_rgba(124,45,18,0.09)] hover:border-[#dccfbe]',
     'transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
   ].join(' ');
 
   const currencyToggleClassName = [
-    'inline-flex items-center gap-1 rounded-2xl border border-(--sell-panel-border) bg-white/92 p-1',
-    'shadow-[0_6px_14px_rgba(124,45,18,0.10)]',
+    'inline-flex items-center gap-1 rounded-2xl border border-[#e6ddd4] bg-[#f7f3ee] p-1',
+    'shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]',
   ].join(' ');
 
   const currencyToggleButtonBaseClassName = [
-    'flex h-8 items-center rounded-xl px-3 text-xs font-semibold transition',
+    'flex h-10 min-w-[48px] items-center justify-center rounded-xl px-1.5 text-[17px] font-semibold leading-none transition',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--sell-panel-accent) focus-visible:ring-offset-2',
   ].join(' ');
 
-  const freeToggleClassName = [
-    'flex items-center gap-2 rounded-2xl border border-(--sell-panel-border) bg-white/92 px-3 py-2',
-    'shadow-[0_6px_14px_rgba(124,45,18,0.10)]',
+  const priceInputShellClassName = [
+    'mt-3 flex min-h-14 items-center gap-2 rounded-2xl border border-[#e9dccd] bg-white/95 ps-4 pe-2',
+    'shadow-[0_10px_20px_rgba(124,45,18,0.10)] ring-1 ring-white/70 transition',
+    'focus-within:border-(--sell-panel-accent) focus-within:ring-2 focus-within:ring-(--sell-panel-accent)/25',
+  ].join(' ');
+
+  const priceFreeChipClassName = [
+    'inline-flex min-w-[94px] items-center justify-between gap-2 rounded-full border px-2.5 py-1.5',
+    'shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--sell-panel-accent) focus-visible:ring-offset-2',
+  ].join(' ');
+
+  const priceCurrencyCanvasClassName = [
+    'pointer-events-none inline-flex items-center rounded-lg border border-[#eadbca] bg-[#f8f2ea] px-2.5 py-1',
+    'text-[17px] font-semibold leading-none text-black shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]',
   ].join(' ');
 
   const glassAsideCardClassName = [
@@ -989,17 +1022,18 @@ export default function SellForm({ user }: SellFormProps) {
   ];
 
   const completedChecklistCount = checklistItems.filter((item) => item.completed).length;
+  const allChecklistCompleted = completedChecklistCount >= checklistItems.length;
   const completionPercent = Math.round((completedChecklistCount / checklistItems.length) * 100);
   const numberLocale = locale === 'ku' ? 'ku-u-nu-arab' : locale === 'ar' ? 'ar-u-nu-arab' : 'en-US';
   const completionLabel = t('sellForm.progress.completion')
     .replace('{count}', new Intl.NumberFormat(numberLocale).format(completedChecklistCount))
     .replace('{total}', new Intl.NumberFormat(numberLocale).format(checklistItems.length));
-  const completionPercentLabel = new Intl.NumberFormat(numberLocale, {
-    style: 'percent',
-    maximumFractionDigits: 0,
-  }).format(completionPercent / 100);
+  const compactUploadSupportLabel = t('sellForm.upload.compactSupport')
+    .replace('{maxImages}', new Intl.NumberFormat(numberLocale).format(MAX_IMAGES))
+    .replace('{types}', ACCEPTED_FILE_LABELS.join('/'));
+  const uploadInputDisabled = storageBusy || uploadedImages.length >= MAX_IMAGES;
   const completionColor = (() => {
-    if (completedChecklistCount >= checklistItems.length) {
+    if (allChecklistCompleted) {
       return '#16a34a';
     }
     const redSteps = ['#dc2626', '#ef4444', '#f97316', '#f59e0b', '#fbbf24'];
@@ -1029,24 +1063,57 @@ export default function SellForm({ user }: SellFormProps) {
   const colorTriggerLabel =
     formData.color.trim().length > 0 ? getSelectedColorLabel(formData.color) : t('sellForm.fields.colorPlaceholder');
   const previewTitle = formData.title.trim().length > 0 ? formData.title.trim() : t('sellForm.preview.placeholderTitle');
-  const previewCategory = selectedCategory ? getCategoryLabel(selectedCategory.name) : t('sellForm.fields.category');
-  const previewLocation = formData.location.trim().length > 0 ? getCityLabel(formData.location) : t('sellForm.fields.location');
-  const previewCondition = formData.condition.trim().length > 0 ? getConditionLabel(formData.condition) : null;
   const previewImage = uploadedImages[0]?.url ?? null;
-  const previewDetails = `${previewCategory} • ${previewLocation}`;
-
-  const previewPrice = (() => {
-    if (isFree) {
-      return t('sellForm.fields.free');
-    }
-
+  const previewNumericPrice = (() => {
+    if (isFree) return 0;
     const numericPrice = Number.parseFloat(formData.price);
-    if (!Number.isFinite(numericPrice)) {
-      return '—';
-    }
-
-    return <CurrencyText amount={numericPrice} currencyCode={formData.currency} locale={locale} />;
+    return Number.isFinite(numericPrice) ? numericPrice : 0;
   })();
+  const metadata =
+    currentUser && typeof currentUser.user_metadata === 'object' && currentUser.user_metadata !== null
+      ? (currentUser.user_metadata as Record<string, unknown>)
+      : null;
+  const rawFullName = typeof metadata?.full_name === 'string' ? metadata.full_name.trim() : '';
+  const rawName = typeof metadata?.name === 'string' ? metadata.name.trim() : '';
+  const rawEmail = typeof currentUser?.email === 'string' ? currentUser.email.trim() : '';
+  const previewSellerName =
+    rawFullName || rawName || (rawEmail.includes('@') ? rawEmail.split('@')[0] : rawEmail) || null;
+  const previewProduct: ProductWithRelations = {
+    id: 'preview-listing',
+    title: previewTitle,
+    description: formData.description.trim() || null,
+    price: previewNumericPrice,
+    currency: formData.currency,
+    condition: formData.condition.trim() || 'new',
+    colorToken: formData.color.trim() || null,
+    categoryId: formData.categoryId.trim() || null,
+    sellerId: currentUser?.id ?? 'preview-seller',
+    location: formData.location.trim() || null,
+    imagePaths: uploadedImages.map((image) => image.path),
+    imageUrls: previewImage ? [previewImage] : [],
+    isActive: true,
+    isSold: false,
+    isPromoted: false,
+    views: 0,
+    createdAt: null,
+    updatedAt: null,
+    seller: {
+      id: currentUser?.id ?? 'preview-seller',
+      email: currentUser?.email ?? null,
+      phone: null,
+      fullName: previewSellerName,
+      name: previewSellerName,
+      avatar: null,
+      location: null,
+      bio: null,
+      isVerified: false,
+      rating: null,
+      totalRatings: null,
+      createdAt: null,
+      updatedAt: null,
+    },
+    category: null,
+  };
 
   return (
     <div dir={direction} className="relative">
@@ -1068,7 +1135,7 @@ export default function SellForm({ user }: SellFormProps) {
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <CardTitle className="text-3xl md:text-4xl font-bold tracking-tight">{t('sellForm.title')}</CardTitle>
+                      <CardTitle className="text-3xl md:text-4xl font-bold tracking-tight text-[#f97316]">{t('sellForm.title')}</CardTitle>
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">{t('sellForm.hero.subtitle')}</p>
                   </div>
@@ -1086,46 +1153,65 @@ export default function SellForm({ user }: SellFormProps) {
                   <section className={firstSectionClassName}>
                     <div className={upperPanelClassName} style={upperPanelStyle}>
                       <div className="flex flex-col gap-4">
-                        <div className="flex items-center justify-between">
-                          <div className={detailsLabelClassName}>
-                            <span className={detailsIconClassName}>
-                              <Upload className="h-4 w-4" />
-                            </span>
-                            <h2 className="text-base font-semibold leading-tight text-(--sell-panel-ink)">
-                              {t('sellForm.fields.images')}{' '}
-                              <span className="text-(--sell-panel-accent)" aria-hidden="true">
-                                *
-                              </span>
-                            </h2>
-                          </div>
+                        <div className="flex items-center gap-3">
+                          <h2 className="text-[1.65rem] font-semibold leading-tight tracking-tight text-(--sell-panel-ink)">
+                            {t('sellForm.fields.images')}
+                          </h2>
                         </div>
 
                         <div
                           className={`${upperDropZoneBaseClassName} ${
                             isDragActive
-                              ? 'border-(--sell-panel-accent) bg-white/95'
-                              : storageBusy || uploadedImages.length >= MAX_IMAGES
-                                ? 'cursor-not-allowed opacity-60 border-(--sell-panel-border)'
-                                : 'cursor-pointer border-(--sell-panel-border) hover:border-(--sell-panel-accent) hover:bg-white/95'
+                              ? 'border-(--sell-panel-accent) bg-white'
+                              : uploadInputDisabled
+                                ? 'cursor-not-allowed opacity-65 border-(--sell-panel-border)'
+                                : 'cursor-pointer border-(--sell-panel-border) hover:border-(--sell-panel-accent) hover:bg-white'
                           }`}
                           onDragEnter={handleDragOver}
                           onDragOver={handleDragOver}
                           onDragLeave={handleDragLeave}
                           onDrop={handleDrop}
-                          role="presentation"
+                          role="button"
+                          tabIndex={uploadInputDisabled ? -1 : 0}
+                          aria-label={t('sellForm.upload.browse')}
+                          onKeyDown={(event) => {
+                            if (uploadInputDisabled) return;
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              handleFileButtonClick();
+                            }
+                          }}
                           onClick={() => {
-                            if (storageBusy || uploadedImages.length >= MAX_IMAGES) return;
+                            if (uploadInputDisabled) return;
                             handleFileButtonClick();
                           }}
                         >
-                          <div className="text-(--sell-panel-accent)">
-                            <Upload className="h-7 w-7" />
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-base font-semibold text-(--sell-panel-ink)">
-                              {t('sellForm.upload.dropHint')}
-                            </p>
-                            <p className="text-sm text-muted-foreground">{t('sellForm.upload.browse')}</p>
+                          <div className="flex w-full flex-col items-start gap-4 sm:flex-row sm:items-center">
+                            <div className="relative h-24 w-28 shrink-0 overflow-hidden rounded-xl border border-[#ece4dc] bg-[#f6f3ef]">
+                              <span className="absolute left-2 top-2 z-10 rounded-md bg-white/90 px-2 py-0.5 text-[10px] font-semibold text-slate-600 shadow-sm">
+                                {t('sellForm.preview.cover')}
+                              </span>
+                              {previewImage ? (
+                                <Image
+                                  src={previewImage}
+                                  alt={t('sellForm.upload.previewAlt')}
+                                  fill
+                                  sizes="112px"
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-slate-500">
+                                  <Camera className="h-10 w-10" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 text-start">
+                              <p className="text-xl font-semibold tracking-tight text-(--sell-panel-ink)">
+                                {t('sellForm.upload.dragDropCta')}{' '}
+                                <span className="text-[#eb7d22]">{t('sellForm.upload.browse')}</span>
+                              </p>
+                              <p className="mt-1 text-sm text-slate-500">{compactUploadSupportLabel}</p>
+                            </div>
                           </div>
 
                           <input
@@ -1260,65 +1346,75 @@ export default function SellForm({ user }: SellFormProps) {
                               </span>
                             </span>
                           </Label>
-                          <div className="mt-3 flex flex-wrap items-center gap-2">
+                          <div className="mt-3 flex items-center gap-2">
                             <div dir="ltr" role="group" aria-label="Currency" className={currencyToggleClassName}>
                               {currencyToggleOptions.map((option) => {
-                                const labelText = option.label.replace('$', '').trim();
                                 return (
                                   <button
                                     key={option.value}
                                     type="button"
                                     aria-pressed={formData.currency === option.value}
-                                    className={[
-                                      currencyToggleButtonBaseClassName,
+                                      className={[
+                                        currencyToggleButtonBaseClassName,
                                       formData.currency === option.value
-                                        ? 'bg-(--sell-panel-accent) text-white shadow-[0_6px_12px_var(--sell-panel-glow)]'
-                                        : 'text-(--sell-panel-ink) hover:bg-white/80',
+                                        ? 'bg-[linear-gradient(180deg,#f5a245,#ea7f1d)] text-white shadow-[0_8px_14px_rgba(234,127,29,0.34)]'
+                                        : 'text-[#3f372f]',
                                     ].join(' ')}
                                     onClick={() => {
                                       setHasUnsaved(true);
                                       setFormData((prev) => ({ ...prev, currency: option.value }));
                                     }}
                                   >
-                                    {option.label.includes('$') ? (
-                                      <span className="inline-flex items-center gap-1 leading-none">
-                                        <span className="text-lg leading-none text-emerald-600">$</span>
-                                        {labelText ? (
-                                          <span className="text-sm leading-none">{labelText}</span>
-                                        ) : null}
-                                      </span>
-                                    ) : (
-                                      <span className="text-sm leading-none">{option.label}</span>
-                                    )}
+                                    <span
+                                      className={
+                                        option.value === 'USD'
+                                          ? 'text-[24px] leading-none'
+                                          : 'text-[19px] leading-none'
+                                      }
+                                    >
+                                      {option.value === 'USD' ? '$' : option.value}
+                                    </span>
                                   </button>
                                 );
                               })}
                             </div>
-
-                            <div className={freeToggleClassName}>
-                              <span className="text-sm font-semibold text-muted-foreground">
-                                {t('sellForm.fields.free')}
+                            <button
+                              type="button"
+                              dir="ltr"
+                              className={`${priceFreeChipClassName} border-[#ead7c2] bg-[#faf4ed] text-slate-600 hover:bg-[#f4ebe1]`}
+                              aria-pressed={isFree}
+                              aria-label={t('sellForm.fields.freeAria')}
+                              onClick={() => {
+                                const nextIsFree = !isFree;
+                                setIsFree(nextIsFree);
+                                setHasUnsaved(true);
+                                setFormData((prev) => ({ ...prev, price: nextIsFree ? '0' : prev.price }));
+                              }}
+                            >
+                              <span className="text-sm font-semibold">{t('sellForm.fields.free')}</span>
+                              <span
+                                aria-hidden="true"
+                                className={`inline-flex h-6 w-10 items-center rounded-full transition ${
+                                  isFree ? 'bg-[#55c47a]' : 'bg-[#e8dfd7]'
+                                }`}
+                              >
+                                <span
+                                  className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                                    isFree ? 'translate-x-4' : 'translate-x-0.5'
+                                  }`}
+                                />
                               </span>
-                              <Switch
-                                checked={isFree}
-                                onCheckedChange={(checked) => {
-                                  setIsFree(checked);
-                                  setHasUnsaved(true);
-                                  setFormData((prev) => ({ ...prev, price: checked ? '0' : prev.price }));
-                                }}
-                                aria-label={t('sellForm.fields.freeAria')}
-                              />
-                            </div>
+                            </button>
                           </div>
 
-                            <div className="relative mt-3">
-                              <div className="pointer-events-none absolute start-4 top-1/2 z-10 -translate-y-1/2 text-xs font-semibold text-(--sell-panel-accent)">
-                                {highlightDollar(currencyInputLabel)}
-                              </div>
-                            <Input
+                          <div className={priceInputShellClassName}>
+                            <div className={priceCurrencyCanvasClassName}>
+                              {highlightDollar(currencyInputLabel, 'text-black')}
+                            </div>
+                            <input
                               id="price"
                               type="number"
-                              className={[detailsInputClassName, 'ps-14 text-xl font-semibold'].join(' ')}
+                              className="h-10 min-w-0 flex-1 bg-transparent text-xl font-semibold text-(--sell-panel-ink) outline-none placeholder:text-slate-400 disabled:cursor-not-allowed disabled:text-slate-400"
                               value={isFree ? '0' : formData.price}
                               onChange={(e) => {
                                 setHasUnsaved(true);
@@ -1717,31 +1813,8 @@ export default function SellForm({ user }: SellFormProps) {
                   <CardTitle className="text-lg">{t('sellForm.preview.title')}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 pt-4">
-                  <div className="overflow-hidden rounded-2xl border border-white/60 bg-white/50">
-                    <div className="relative aspect-4/3 bg-linear-to-br from-secondary/60 via-white/40 to-primary/10">
-                      {previewImage ? (
-                        <Image src={previewImage} alt={t('sellForm.upload.previewAlt')} fill className="object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                          {t('sellForm.fields.images')}
-                        </div>
-                      )}
-                      <div className="absolute left-3 top-3 rounded-full bg-white/75 px-2 py-1 text-[10px] font-semibold text-foreground ring-1 ring-white/70 backdrop-blur">
-                        {t('sellForm.preview.cover')}
-                      </div>
-                    </div>
-                    <div className="p-4">
-                      <p className="text-sm font-semibold leading-snug">{previewTitle}</p>
-                      <p className="mt-2 text-lg font-bold text-primary">{previewPrice}</p>
-                      <p className="mt-2 text-xs text-muted-foreground">{previewDetails}</p>
-                      {previewCondition && (
-                        <div className="mt-3">
-                          <span className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary ring-1 ring-primary/20">
-                            {previewCondition}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                  <div className="pointer-events-none select-none">
+                    <ProductCard product={previewProduct} viewerId={null} interactive={false} />
                   </div>
                 </CardContent>
               </Card>
@@ -1776,9 +1849,8 @@ export default function SellForm({ user }: SellFormProps) {
         <div className="mx-auto max-w-6xl px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <div className="flex items-center gap-3">
             <div className="flex-1">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center text-xs text-muted-foreground">
                 <span>{completionLabel}</span>
-                <span>{completionPercentLabel}</span>
               </div>
               <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/70 ring-1 ring-white/60">
                 <div
@@ -1792,10 +1864,11 @@ export default function SellForm({ user }: SellFormProps) {
               form="create-listing-form"
               className={[
                 'h-11 rounded-2xl px-6 font-semibold text-white',
-                'bg-[linear-gradient(120deg,#f59e0b,#f97316,#fb7185)]',
-                'shadow-[0_14px_30px_rgba(249,115,22,0.35)]',
-                'transition-transform duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_36px_rgba(249,115,22,0.45)]',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-400',
+                allChecklistCompleted
+                  ? 'bg-[linear-gradient(120deg,#f59e0b,#f97316,#fb7185)] shadow-[0_14px_30px_rgba(249,115,22,0.35)] hover:shadow-[0_18px_36px_rgba(249,115,22,0.45)] focus-visible:ring-orange-400'
+                  : 'bg-[linear-gradient(120deg,#64748b,#475569,#334155)] shadow-[0_14px_30px_rgba(51,65,85,0.32)] hover:shadow-[0_18px_36px_rgba(51,65,85,0.40)] focus-visible:ring-slate-400',
+                'transition-transform duration-200 hover:-translate-y-0.5',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
                 'disabled:opacity-60 disabled:shadow-none disabled:hover:translate-y-0',
               ].join(' ')}
               disabled={loading || storageBusy}
