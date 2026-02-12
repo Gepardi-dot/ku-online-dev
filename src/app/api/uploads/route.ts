@@ -287,6 +287,11 @@ export const POST = withSentryRoute(async (request: Request) => {
     const raw = formData.get('categoryId');
     return typeof raw === 'string' ? raw : null;
   })();
+  const purpose = (() => {
+    const raw = formData.get('purpose');
+    return typeof raw === 'string' ? raw.trim().toLowerCase() : '';
+  })();
+  const forceHighRes = purpose === 'sponsor_cover';
 
   if (!(fileEntry instanceof File)) {
     return NextResponse.json({ error: 'Invalid file payload.' }, { status: 400 });
@@ -321,7 +326,7 @@ export const POST = withSentryRoute(async (request: Request) => {
   try {
     const base = sharp(buffer, { limitInputPixels: 10000 * 10000 }).rotate();
     const meta = await base.metadata().catch(() => ({} as sharp.Metadata));
-    const isHiRes = await isHighResCategory(categoryId);
+    const isHiRes = forceHighRes || (await isHighResCategory(categoryId));
 
     if (!isHiRes) {
       processed = await encodeWebp(buffer, { maxEdge: MAX_EDGE_PX, quality: WEBP_QUALITY });

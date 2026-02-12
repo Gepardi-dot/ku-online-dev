@@ -16,6 +16,7 @@ import { CurrencyText } from '@/components/currency-text';
 interface ProductCardProps {
   product: ProductWithRelations;
   viewerId?: string | null;
+  viewerIsAdmin?: boolean;
   searchQuery?: string | null;
   interactive?: boolean;
 }
@@ -30,6 +31,7 @@ const conditionColorMap: Record<string, string> = {
 const ProductCard = memo(function ProductCardImpl({
   product,
   viewerId,
+  viewerIsAdmin = false,
   searchQuery,
   interactive = true,
 }: ProductCardProps) {
@@ -89,8 +91,11 @@ const ProductCard = memo(function ProductCardImpl({
     return conditionLabels[normalized] ?? value;
   };
 
-  const sellerDisplayNameRaw = product.seller?.fullName ?? product.seller?.name ?? product.seller?.email ?? '';
-  const sellerDisplayName = sellerDisplayNameRaw.trim() || messages.product.sellerFallback;
+  const sellerNameFromStore = (product.sellerStoreName ?? '').trim();
+  const sellerNameFromProfile = (product.seller?.fullName ?? product.seller?.name ?? product.seller?.email ?? '').trim();
+  const sellerDisplayName = sellerNameFromStore || sellerNameFromProfile || messages.product.sellerFallback;
+  const isAdminOwnedListing = Boolean(viewerIsAdmin && viewerId && product.sellerId && viewerId === product.sellerId);
+  const showVerifiedBadge = Boolean(product.seller?.isVerified || sellerNameFromStore || isAdminOwnedListing);
   const conditionLabel = getConditionLabel(product.condition || 'New');
   const numericPrice = Number(product.price);
   const isFreeListing = Number.isFinite(numericPrice) && numericPrice <= 0;
@@ -206,7 +211,7 @@ const ProductCard = memo(function ProductCardImpl({
               <span dir="auto" className="truncate bidi-auto">
                 {sellerDisplayName}
               </span>
-              {product.seller?.isVerified ? (
+              {showVerifiedBadge ? (
                 <>
                   <BadgeCheck className="h-3 w-3 text-blue-600" aria-hidden="true" />
                   <span className="sr-only">{t('profile.overview.trustedBadge')}</span>

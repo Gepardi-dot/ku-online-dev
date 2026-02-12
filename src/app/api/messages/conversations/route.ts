@@ -148,6 +148,18 @@ function isRpcMissing(error: { code?: string; message?: string } | null | undefi
   return message.includes('schema cache') && message.includes('list_conversation_summaries');
 }
 
+function isRpcIncompatible(error: { code?: string; message?: string; details?: string } | null | undefined) {
+  if (!error) return false;
+  const code = (error.code ?? '').toLowerCase();
+  const message = (error.message ?? '').toLowerCase();
+  const details = (error.details ?? '').toLowerCase();
+  return (
+    code === '42804' &&
+    message.includes('structure of query does not match function result type') &&
+    details.includes('returned type')
+  );
+}
+
 function buildServerTiming(parts: Array<[string, number | null | undefined]>, source?: string) {
   const segments = parts
     .filter(([, value]) => typeof value === 'number' && Number.isFinite(value))
@@ -177,7 +189,9 @@ export const GET = withSentryRoute(async (request: Request) => {
   const { data, error } = await supabaseAdmin.rpc('list_conversation_summaries', { p_user_id: user.id });
   const conversationsMs = TIMING_ENABLED ? performance.now() - conversationsStart : 0;
 
-  if (error && !isRpcMissing(error)) {
+  const shouldFallbackToLegacy = Boolean(error && (isRpcMissing(error) || isRpcIncompatible(error)));
+
+  if (error && !shouldFallbackToLegacy) {
     console.error('Conversations query failed', {
       code: error.code,
       message: error.message,
@@ -207,7 +221,14 @@ export const GET = withSentryRoute(async (request: Request) => {
   let unreadMs = 0;
   let rows: LegacyRow[] | RpcRow[] = [];
 
-  if (error && isRpcMissing(error)) {
+  if (shouldFallbackToLegacy) {
+    if (error) {
+      console.warn('Falling back to legacy conversations query', {
+        code: error.code ?? null,
+        message: error.message ?? null,
+        details: error.details ?? null,
+      });
+    }
     source = 'legacy';
     const legacyStart = TIMING_ENABLED ? performance.now() : 0;
     const legacyResult = await supabaseAdmin

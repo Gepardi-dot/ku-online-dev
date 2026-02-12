@@ -29,6 +29,13 @@ type LocaleContextValue = {
 
 const LocaleContext = createContext<LocaleContextValue | undefined>(undefined);
 
+const fallbackLocaleContext: LocaleContextValue = {
+  locale: defaultLocale,
+  setLocale: () => {},
+  t: (key: string) => translateFromDictionary(defaultLocale, key),
+  messages: translations[defaultLocale],
+};
+
 function applyDocumentLocale(nextLocale: Locale) {
   if (typeof document === "undefined") {
     return;
@@ -120,8 +127,9 @@ export function LocaleProvider({ children, initialLocale = defaultLocale }: Loca
 
 export function useLocale() {
   const context = useContext(LocaleContext);
-  if (!context) {
-    throw new Error("useLocale must be used within a LocaleProvider");
+  if (context) {
+    return context;
   }
-  return context;
+
+  return fallbackLocaleContext;
 }

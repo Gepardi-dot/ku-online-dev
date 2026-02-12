@@ -50,24 +50,38 @@ function normalizeCategoryLabel(name: string | null | undefined): string | null 
 }
 
 export function mapCategoriesForUi(rows: RawCategoryRow[]): CategoryOption[] {
-  const byLabel = new Map<string, CategoryOption>();
+  const knownByLabel = new Map<string, CategoryOption>();
+  const unknownByName = new Map<string, CategoryOption>();
 
   for (const row of rows) {
-    const label = normalizeCategoryLabel(row.name);
-    if (!label) continue;
-    if (!byLabel.has(label)) {
-      byLabel.set(label, { id: row.id, name: label });
+    const rawName = row.name?.trim();
+    if (!rawName) continue;
+
+    const label = normalizeCategoryLabel(rawName);
+    if (label) {
+      if (!knownByLabel.has(label)) {
+        knownByLabel.set(label, { id: row.id, name: label });
+      }
+      continue;
+    }
+
+    const key = rawName.toLowerCase();
+    if (!unknownByName.has(key)) {
+      unknownByName.set(key, { id: row.id, name: rawName });
     }
   }
 
   const result: CategoryOption[] = [];
   for (const label of CATEGORY_LABEL_ORDER) {
-    const entry = byLabel.get(label);
+    const entry = knownByLabel.get(label);
     if (entry) {
       result.push(entry);
     }
   }
 
-  return result;
-}
+  const unknown = Array.from(unknownByName.values()).sort((a, b) =>
+    a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }),
+  );
 
+  return [...result, ...unknown];
+}

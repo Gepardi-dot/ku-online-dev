@@ -5,6 +5,7 @@ import { createClient as createSupabaseServiceRole } from '@supabase/supabase-js
 
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@/utils/supabase/server';
+import { isAdmin } from '@/lib/auth/roles';
 import { getEnv } from '@/lib/env';
 import {
   buildOriginAllowList,
@@ -36,6 +37,8 @@ const CREATE_SERVICE_SCHEMA = z.object({
   endAt: z.string().datetime().nullable().optional(),
   status: z.enum(['active', 'paused']).optional(),
 });
+const STORE_ID_SCHEMA = z.string().uuid();
+const MAX_OFFERS_PER_STORE = 3;
 
 const RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 240 } as const;
 const RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 240 } as const;
@@ -66,6 +69,49 @@ async function getStoreForUser(userId: string): Promise<StoreRow | null> {
   return store?.id ? store : null;
 }
 
+async function getStoreById(storeId: string): Promise<StoreRow | null> {
+  const { data, error } = await supabaseAdmin
+    .from('sponsor_stores')
+    .select('id, name, slug, owner_user_id')
+    .eq('id', storeId)
+    .maybeSingle();
+
+  if (error || !data?.id) return null;
+  return data as StoreRow;
+}
+
+async function canUserManageStore(userId: string, storeId: string): Promise<boolean> {
+  if (!userId || !storeId) return false;
+
+  const ownerRes = await supabaseAdmin
+    .from('sponsor_stores')
+    .select('id')
+    .eq('id', storeId)
+    .eq('owner_user_id', userId)
+    .maybeSingle();
+
+  if (!ownerRes.error && ownerRes.data?.id) {
+    return true;
+  }
+
+  const staffRes = await supabaseAdmin
+    .from('sponsor_store_staff')
+    .select('store_id')
+    .eq('store_id', storeId)
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .eq('role', 'manager')
+    .maybeSingle();
+
+  return !staffRes.error && Boolean(staffRes.data?.store_id);
+}
+
+function parseRequestedStoreId(request: Request): string | null {
+  const raw = new URL(request.url).searchParams.get('storeId') ?? '';
+  const parsed = STORE_ID_SCHEMA.safeParse(raw.trim());
+  return parsed.success ? parsed.data : null;
+}
+
 export const GET = withSentryRoute(async (request: Request) => {
   const originHeader = request.headers.get('origin');
   if (originHeader && !isOriginAllowed(originHeader, originAllowList) && !isSameOriginRequest(request)) {
@@ -83,7 +129,15 @@ export const GET = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
   }
 
-  const store = await getStoreForUser(user.id);
+  const requestedStoreId = parseRequestedStoreId(request);
+  if (requestedStoreId && !isAdmin(user)) {
+    const hasAccess = await canUserManageStore(user.id, requestedStoreId);
+    if (!hasAccess) {
+      return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
+    }
+  }
+
+  const store = requestedStoreId ? await getStoreById(requestedStoreId) : await getStoreForUser(user.id);
   if (!store) {
     return NextResponse.json({ ok: false, error: 'No sponsor store found for this account.' }, { status: 404 });
   }
@@ -145,6 +199,15 @@ export const POST = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
   }
 
+  const userIsAdmin = isAdmin(user);
+  const requestedStoreId = parseRequestedStoreId(request);
+  if (requestedStoreId && !userIsAdmin) {
+    const hasAccess = await canUserManageStore(user.id, requestedStoreId);
+    if (!hasAccess) {
+      return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
+    }
+  }
+
   const userRate = checkRateLimit(`sponsor-services:create:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
@@ -152,9 +215,27 @@ export const POST = withSentryRoute(async (request: Request) => {
     return res;
   }
 
-  const store = await getStoreForUser(user.id);
+  const store = requestedStoreId ? await getStoreById(requestedStoreId) : await getStoreForUser(user.id);
   if (!store) {
     return NextResponse.json({ ok: false, error: 'No sponsor store found for this account.' }, { status: 404 });
+  }
+
+  const { count, error: countError } = await supabaseAdmin
+    .from('sponsor_offers')
+    .select('id', { count: 'exact', head: true })
+    .eq('store_id', store.id);
+
+  if (countError) {
+    console.error('Failed to enforce sponsor offer limit', countError);
+    return NextResponse.json({ ok: false, error: 'Failed to validate offer limit.' }, { status: 400 });
+  }
+
+  const maxOffersPerStore = userIsAdmin ? null : MAX_OFFERS_PER_STORE;
+  if (maxOffersPerStore !== null && (count ?? 0) >= maxOffersPerStore) {
+    return NextResponse.json(
+      { ok: false, error: `You can create up to ${maxOffersPerStore} offers per store.` },
+      { status: 400 },
+    );
   }
 
   const body = (await request.json().catch(() => ({}))) as unknown;
@@ -199,4 +280,3 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   return NextResponse.json({ ok: true, offer });
 }, 'sponsor-services-create');
-
