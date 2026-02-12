@@ -4,11 +4,27 @@ import { redirect } from 'next/navigation';
 
 import AppLayout from '@/components/layout/app-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { normalizeMarketCityValue } from '@/data/market-cities';
 import { isAdmin } from '@/lib/auth/roles';
+import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { createClient } from '@/utils/supabase/server';
 import NewSponsorStoreForm from './new-sponsor-store-form';
 
-export default async function NewSponsorStorePage() {
+type NewSponsorStoreSearchParams = {
+  name?: string;
+  ownerUserId?: string;
+  city?: string;
+  phone?: string;
+  website?: string;
+  whatsapp?: string;
+};
+
+export default async function NewSponsorStorePage({
+  searchParams,
+}: {
+  searchParams?: Promise<NewSponsorStoreSearchParams>;
+}) {
+  const params = searchParams ? await searchParams : {};
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
   const {
@@ -19,9 +35,19 @@ export default async function NewSponsorStorePage() {
     redirect('/');
   }
 
+  const initialName = typeof params.name === 'string' ? params.name : '';
+  const initialOwnerUserId = typeof params.ownerUserId === 'string' ? params.ownerUserId : '';
+  const initialPrimaryCity = normalizeMarketCityValue(typeof params.city === 'string' ? params.city : '');
+  const initialPhone = typeof params.phone === 'string' ? params.phone : '';
+  const initialWebsite = typeof params.website === 'string' ? params.website : '';
+  const initialWhatsapp = typeof params.whatsapp === 'string' ? params.whatsapp : '';
+  const locale = await getServerLocale();
+  const sponsoredLabel = serverTranslate(locale, 'sponsorsHub.sponsoredBadge');
+  const endsLabelTemplate = serverTranslate(locale, 'sponsorsHub.endsIn');
+
   return (
     <AppLayout user={user}>
-      <div className="container mx-auto max-w-3xl px-4 py-8">
+      <div className="container mx-auto max-w-6xl px-4 py-8">
         <div className="mb-4">
           <Link
             href="/sponsors"
@@ -35,11 +61,21 @@ export default async function NewSponsorStorePage() {
           <CardHeader className="space-y-2">
             <CardTitle className="text-2xl font-extrabold text-[#111827]">Create sponsor store</CardTitle>
             <p className="text-sm text-muted-foreground">
-              Use this admin form to create a store profile before assigning a seller.
+              Create and finish the full sponsor store setup in this single page.
             </p>
           </CardHeader>
           <CardContent>
-            <NewSponsorStoreForm />
+            <NewSponsorStoreForm
+              initialName={initialName}
+              initialOwnerUserId={initialOwnerUserId}
+              initialPrimaryCity={initialPrimaryCity}
+              initialPhone={initialPhone}
+              initialWebsite={initialWebsite}
+              initialWhatsapp={initialWhatsapp}
+              locale={locale}
+              sponsoredLabel={sponsoredLabel}
+              endsLabelTemplate={endsLabelTemplate}
+            />
           </CardContent>
         </Card>
       </div>

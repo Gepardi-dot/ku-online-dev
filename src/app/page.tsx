@@ -4,6 +4,7 @@ import { ArrowRight } from 'lucide-react';
 
 import AppLayout from '@/components/layout/app-layout';
 import ProductCard from '@/components/product-card-new';
+import { isAdmin } from '@/lib/auth/roles';
 import { ProductsFilterBar } from '@/components/products/filter-bar';
 import {
   Accordion,
@@ -58,6 +59,7 @@ interface ProductsListProps {
   searchParams: Promise<SearchPageParams>;
   messages: LocaleMessages;
   viewerId?: string | null;
+  viewerIsAdmin?: boolean;
 }
 
 function buildHomepageQuery(values: ProductsFilterValues) {
@@ -88,7 +90,7 @@ function buildHomepageQuery(values: ProductsFilterValues) {
   return query ? `/?${query}` : '/';
 }
 
-async function ProductsList({ searchParams, messages, viewerId }: ProductsListProps) {
+async function ProductsList({ searchParams, messages, viewerId, viewerIsAdmin = false }: ProductsListProps) {
   const params = await searchParams;
   const { initialValues, filters, sort, postedWithin } = parseProductQueryParams(
     params as unknown as Record<string, string | undefined>,
@@ -140,6 +142,13 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
     return null;
   }).filter((category): category is (typeof categoriesRaw)[number] => Boolean(category));
 
+  const orderedCategories = [...categories].sort((a, b) => {
+    const aIsSponsors = a.id === SPONSORS_CATEGORY_ID;
+    const bIsSponsors = b.id === SPONSORS_CATEGORY_ID;
+    if (aIsSponsors === bIsSponsors) return 0;
+    return aIsSponsors ? -1 : 1;
+  });
+
   const viewParams = createProductsSearchParams(initialValues);
   const viewAllHref = viewParams.toString() ? `/products?${viewParams.toString()}` : '/products';
 
@@ -147,7 +156,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
     <>
       <section className="py-1 bg-linear-to-b from-white to-[#fff4e5]">
         <div className="container mx-auto px-4 space-y-1">
-          {categories.length === 0 ? (
+          {orderedCategories.length === 0 ? (
             <span className="text-sm text-muted-foreground">
               {messages.homepage.noCategories}
             </span>
@@ -157,7 +166,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
               direction={categoriesDirection}
               containerClassName="no-scrollbar flex gap-1 overflow-x-auto pb-1 snap-x snap-proximity scroll-px-4 [-webkit-overflow-scrolling:touch] overscroll-x-contain touch-pan-x lg:gap-1.5 lg:overflow-visible lg:justify-center"
             >
-              {categories.map((category, idx) => {
+              {orderedCategories.map((category, idx) => {
                 const baseName = category.name ?? '';
                 const baseNameLc = baseName.toLowerCase();
                 const configForCategory = CATEGORY_LABEL_MAP[baseNameLc];
@@ -208,7 +217,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                 const normalizedSrc = isLocalImage ? (iconPath.startsWith('/') ? iconPath : `/${iconPath}`) : '';
 
                 const iconWrapperClass = isSponsors
-                  ? 'relative inline-flex h-[3.9rem] w-[3.9rem] sm:h-[3.9rem] sm:w-[3.9rem] md:h-[4.1rem] md:w-[4.1rem] items-center justify-center overflow-hidden bg-white rounded-[18px]'
+                  ? 'relative inline-flex h-[3.9rem] w-[3.9rem] sm:h-[3.9rem] sm:w-[3.9rem] md:h-[4.1rem] md:w-[4.1rem] items-center justify-center overflow-hidden rounded-[20px] bg-white ring-2 ring-rose-300/70 shadow-[0_10px_22px_rgba(244,63,94,0.32),0_0_18px_rgba(59,130,246,0.2)]'
                   : 'relative inline-flex h-[3.6rem] w-[3.6rem] sm:h-14 sm:w-14 md:h-16 md:w-16 items-center justify-center overflow-hidden bg-white rounded-[18px]';
 
                 return (
@@ -222,6 +231,13 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                       className={iconWrapperClass}
                       aria-hidden="true"
                     >
+                      {isSponsors ? (
+                        <>
+                          <span className="pointer-events-none absolute -inset-[2px] rounded-[22px] bg-[conic-gradient(from_140deg_at_50%_50%,rgba(251,113,133,0.65),rgba(59,130,246,0.5),rgba(251,191,36,0.45),rgba(251,113,133,0.65))] animate-spin [animation-duration:7s]" />
+                          <span className="pointer-events-none absolute inset-[2px] rounded-[18px] bg-white" />
+                          <span className="pointer-events-none absolute inset-0 rounded-[20px] shadow-[inset_0_0_14px_rgba(244,63,94,0.24)]" />
+                        </>
+                      ) : null}
                       {isLocalImage ? (
                         <Image
                           src={normalizedSrc}
@@ -230,7 +246,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                           sizes="(max-width: 640px) 80px, 96px"
                           className={
                             isSponsors
-                              ? 'object-contain scale-[1.85] p-1.5'
+                              ? 'relative z-10 object-contain scale-[1.9] p-1.5 drop-shadow-[0_5px_10px_rgba(37,99,235,0.3)] motion-safe:animate-pulse'
                               : isKidsToys
                               ? 'object-cover scale-[2.3] -translate-y-0.5'
                             : isFurniture
@@ -266,7 +282,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
       <section id="products" className="pt-2 pb-10 bg-accent">
         <div className="container mx-auto px-4 space-y-3">
           <ProductsFilterBar
-            categories={categories}
+            categories={orderedCategories}
             locations={locations}
             initialValues={initialValues}
             targetPath="/"
@@ -288,7 +304,13 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
 
           <div className="grid grid-cols-2 gap-x-2 gap-y-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} viewerId={viewerId} searchQuery={initialValues.search} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                viewerId={viewerId}
+                viewerIsAdmin={viewerIsAdmin}
+                searchQuery={initialValues.search}
+              />
             ))}
           </div>
 
@@ -325,7 +347,12 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
             </div>
           }
         >
-          <ProductsList searchParams={searchParams} messages={messages} viewerId={user?.id ?? null} />
+          <ProductsList
+            searchParams={searchParams}
+            messages={messages}
+            viewerId={user?.id ?? null}
+            viewerIsAdmin={isAdmin(user)}
+          />
         </Suspense>
 
         <section className="py-12 bg-gray-50">

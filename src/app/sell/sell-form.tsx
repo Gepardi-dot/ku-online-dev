@@ -1,9 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type CSSProperties } from 'react';
 import type { User } from '@supabase/supabase-js';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { getPublicEnv } from '@/lib/env-public';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
@@ -124,11 +124,13 @@ export default function SellForm({ user }: SellFormProps) {
     images: [] as string[],
   });
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<User | null>(user);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
+  const searchParams = useSearchParams();
+  const supabase = useMemo(() => createClient(), []);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [isFree, setIsFree] = useState(false);
@@ -141,6 +143,11 @@ export default function SellForm({ user }: SellFormProps) {
   const colorScrollRef = useRef<HTMLDivElement>(null);
   const { t, messages, locale } = useLocale();
   const direction = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
+  const returnTo = useMemo(() => {
+    const raw = searchParams.get('returnTo')?.trim() ?? '';
+    if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return null;
+    return raw;
+  }, [searchParams]);
   const contentAlign = direction === 'rtl' ? 'end' : 'start';
   const requiredFieldMessage = t('common.validation.required');
   const updateColorScrollState = useCallback(() => {
@@ -507,7 +514,11 @@ export default function SellForm({ user }: SellFormProps) {
   ].join(' ');
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadCategories = async () => {
+      setIsCategoriesLoading(true);
+
       const { data, error } = await supabase
         .from('categories')
         .select('id, name')
@@ -523,14 +534,25 @@ export default function SellForm({ user }: SellFormProps) {
           description: t('sellForm.toast.categoriesErrorDescription'),
           variant: 'destructive',
         });
+        if (isMounted) {
+          setCategories([]);
+          setIsCategoriesLoading(false);
+        }
         return;
       }
 
       const mapped = mapCategoriesForUi((data ?? []) as RawCategoryRow[]);
-      setCategories(mapped);
+      if (isMounted) {
+        setCategories(mapped);
+        setIsCategoriesLoading(false);
+      }
     };
 
     loadCategories();
+
+    return () => {
+      isMounted = false;
+    };
   }, [supabase, t]);
 
   useEffect(() => {
@@ -969,7 +991,7 @@ export default function SellForm({ user }: SellFormProps) {
       setIsFree(false);
 
       setHasUnsaved(false);
-      router.push('/');
+      router.push(returnTo ?? '/');
     } catch (error: any) {
       console.error('Error creating listing:', error);
       if (error && typeof error === 'object') {
@@ -1553,8 +1575,10 @@ export default function SellForm({ user }: SellFormProps) {
                               >
                                 <div className={menuShellDropdownClassName}>
                                   <div className={menuListClassName}>
-                                    {categories.length === 0 ? (
+                                    {isCategoriesLoading ? (
                                       <div className={menuEmptyStateClassName}>{t('sellForm.fields.categoryLoading')}</div>
+                                    ) : categories.length === 0 ? (
+                                      <div className={menuEmptyStateClassName}>{t('homepage.noCategories')}</div>
                                     ) : (
                                       categories.map((category) => (
                                         <button

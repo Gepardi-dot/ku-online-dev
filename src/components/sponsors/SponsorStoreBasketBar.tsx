@@ -3,13 +3,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { MessageCircle, Trash2 } from 'lucide-react';
 
+import { appendWhatsAppText } from '@/lib/contact-links';
 import { cn } from '@/lib/utils';
 import { applyArabicComma, getNumberLocale } from '@/lib/locale/formatting';
 
 type SponsorStoreBasketBarProps = {
   basketKey: string;
   storeName: string;
-  waHref: string | null;
+  waAppHref: string | null;
+  waWebHref: string | null;
   locale: 'en' | 'ar' | 'ku';
   sendLabel: string;
   basketLabel: string;
@@ -89,7 +91,8 @@ function toAbsoluteUrl(value: string | null | undefined, origin: string | null):
 export function SponsorStoreBasketBar({
   basketKey,
   storeName,
-  waHref,
+  waAppHref,
+  waWebHref,
   locale,
   sendLabel,
   basketLabel,
@@ -122,7 +125,7 @@ export function SponsorStoreBasketBar({
     };
   }, [key]);
 
-  const canSend = Boolean(waHref && count > 0);
+  const canSend = Boolean(waWebHref && count > 0);
 
   const message = useMemo(() => {
     if (!items.length) return '';
@@ -148,10 +151,54 @@ export function SponsorStoreBasketBar({
   }, [items, locale, storeName]);
 
   const openWhatsApp = () => {
-    if (!waHref || !message) return;
-    const separator = waHref.includes('?') ? '&' : '?';
-    const url = `${waHref}${separator}text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank', 'noreferrer');
+    if (!waWebHref || !message) return;
+    const webUrl = appendWhatsAppText(waWebHref, message);
+    const appUrl = waAppHref ? appendWhatsAppText(waAppHref, message) : null;
+
+    if (!appUrl) {
+      window.location.assign(webUrl);
+      return;
+    }
+
+    let timeoutId = 0;
+    let shouldFallback = true;
+
+    const cleanup = () => {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+      document.removeEventListener('visibilitychange', onVisibilityChange, true);
+      window.removeEventListener('pagehide', onPageHide, true);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        shouldFallback = false;
+        cleanup();
+      }
+    };
+
+    const onPageHide = () => {
+      shouldFallback = false;
+      cleanup();
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange, true);
+    window.addEventListener('pagehide', onPageHide, true);
+
+    timeoutId = window.setTimeout(() => {
+      cleanup();
+      if (shouldFallback) {
+        window.location.assign(webUrl);
+      }
+    }, 1100);
+
+    try {
+      window.location.assign(appUrl);
+    } catch {
+      cleanup();
+      window.location.assign(webUrl);
+    }
   };
 
   const clear = () => {

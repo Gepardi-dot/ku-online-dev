@@ -35,6 +35,26 @@ Follow these steps even if the user doesn’t explicitly ask for `supabase db di
 - Only run `supabase db push` when the user asks to **apply/promote** the migration to a remote environment (e.g., staging/production).
 - Default to pushing to **staging/preview** first; production pushes should be treated as high-risk and require explicit user intent.
 
+### Parity Workflow (When staging/local differ from production)
+1) Detect schema drift first (before coding):
+- `npm run supabase:parity -- --prod-ref <production_ref> --staging-ref <staging_ref> --keep-dumps`
+- This check now compares: migrations, tables, columns (type/null/default), functions, policies, constraints, and triggers.
+- It uses Supabase Management API (`SUPABASE_ACCESS_TOKEN`) and does **not** require Docker.
+
+2) Keep admin-role testing reproducible across environments:
+- `npm run supabase:admin:grant -- --email <admin_email> --create-missing --password <temporary_password>`
+- This sets auth role claim (`app_metadata.role`) to `admin` and ensures a row exists in `public.users`.
+- Add `--local` to target local Supabase from `supabase status -o env`.
+
+3) If drift includes production-only objects, codify them in a migration and apply to staging first.
+- Reference migration: `supabase/migrations/20260209194500_align_schema_with_production_drift.sql`.
+- Apply SQL safely via management API script:
+  - `npm run supabase:sql -- --project-ref <staging_ref> --file supabase/migrations/20260209194500_align_schema_with_production_drift.sql`
+- Prefer this targeted SQL apply when `supabase/migrations` contains newer feature migrations you do **not** want to push yet.
+
+4) After parity is restored, continue normal migration workflow:
+- Develop locally, generate migration, reset locally, then push to staging and finally production.
+
 ## Commit & Pull Request Guidelines
 Follow the conventional tone used in history (`feat:`, `fix:`, `chore:`). Each commit should group related changes and include any required schema or configuration updates. Pull requests must describe the problem, the Supabase tables/buckets touched, and include screenshots or screen recordings for UI updates. Tag the issue tracker ID in the PR title or description when applicable.
 

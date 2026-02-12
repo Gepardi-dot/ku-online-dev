@@ -65,7 +65,7 @@ export const translations = {
       city: {
         all: "Cities",
         erbil: "Erbil",
-        sulaymaniyah: "Sulaymaniyah",
+        sulaymaniyah: "Silemaniy",
         duhok: "Duhok",
         zaxo: "Zaxo",
       },
@@ -161,6 +161,10 @@ export const translations = {
     },
     sponsorsHub: {
       spotlightTitle: "Sponsored stores",
+      cityAllLabel: "All",
+      applicationsButton: "Seller applications",
+      applicationsCount: "{count} applications",
+      applicationsHint: "You have {count} seller applications ready for review.",
       sponsoredBadge: "Sponsored",
       endsIn: "Ends {time}",
       liveStats: {
@@ -224,6 +228,7 @@ export const translations = {
     },
     sponsorManage: {
       manageButton: "Manage offers",
+      addProduct: "Add product",
       title: "Offers",
       subtitle: "Add offers that appear on your store page.",
       viewStore: "View store page",
@@ -299,8 +304,10 @@ export const translations = {
       toast: {
         missingTitle: "Missing details",
         missingDescription: "Please fill in the required fields.",
+        nameTooShortDescription: "Name must be at least 2 characters.",
         invalidEmailTitle: "Invalid email",
         invalidEmailDescription: "Please enter a valid email address.",
+        messageTooShortDescription: "Message must be at least 10 characters.",
         successTitle: "Inquiry sent",
         successDescription: "Thanks! Our team will reply soon.",
         errorTitle: "Submission failed",
@@ -903,6 +910,10 @@ export const translations = {
     },
     sponsorsHub: {
       spotlightTitle: "المتاجر الممولة",
+      cityAllLabel: "الكل",
+      applicationsButton: "طلبات البائعين",
+      applicationsCount: "{count} طلب",
+      applicationsHint: "لديك {count} طلب بائع جاهز للمراجعة.",
       sponsoredBadge: "برعاية",
       endsIn: "ينتهي {time}",
       liveStats: {
@@ -966,6 +977,7 @@ export const translations = {
     },
     sponsorManage: {
       manageButton: "إدارة العروض",
+      addProduct: "إضافة منتج",
       title: "العروض",
       subtitle: "أضف عروضًا تظهر على صفحة متجرك.",
       viewStore: "عرض صفحة المتجر",
@@ -1041,8 +1053,10 @@ export const translations = {
       toast: {
         missingTitle: "بيانات ناقصة",
         missingDescription: "يرجى تعبئة الحقول المطلوبة.",
+        nameTooShortDescription: "يجب أن يكون الاسم حرفين على الأقل.",
         invalidEmailTitle: "بريد إلكتروني غير صالح",
         invalidEmailDescription: "يرجى إدخال بريد إلكتروني صحيح.",
+        messageTooShortDescription: "يجب أن تكون الرسالة 10 أحرف على الأقل.",
         successTitle: "تم إرسال الطلب",
         successDescription: "شكرًا لك! سنرد عليك قريبًا.",
         errorTitle: "فشل الإرسال",
@@ -1646,6 +1660,10 @@ export const translations = {
     },
     sponsorsHub: {
       spotlightTitle: "فرۆشگاکانی سپۆنسەر",
+      cityAllLabel: "هەموو",
+      applicationsButton: "داواکارییەکانی فرۆشیار",
+      applicationsCount: "{count} داواکاری",
+      applicationsHint: "{count} داواکاریی فرۆشیار هەیە بۆ پشکنین.",
       sponsoredBadge: "سپۆنسەر",
       endsIn: "کۆتایی دێت {time}",
       liveStats: {
@@ -1709,6 +1727,7 @@ export const translations = {
     },
     sponsorManage: {
       manageButton: "بەڕێوەبردنی پێشنیارەکان",
+      addProduct: "زیادکردنی کاڵا",
       title: "پێشنیارەکان",
       subtitle: "پێشنیارەکان زیاد بکە کە لە پەڕەی فرۆشگاکەتدا دەردەکەون.",
       viewStore: "بینینی پەڕەی فرۆشگا",
@@ -1785,8 +1804,10 @@ export const translations = {
       toast: {
         missingTitle: "زانیاری کەمە",
         missingDescription: "تکایە خانە پێویستەکان پڕ بکە.",
+        nameTooShortDescription: "ناو پێویستە لانیکەم 2 پیت بێت.",
         invalidEmailTitle: "ئیمەیڵی هەڵە",
         invalidEmailDescription: "تکایە ئیمەیڵێکی دروست بنووسە.",
+        messageTooShortDescription: "پەیام پێویستە لانیکەم 10 پیت بێت.",
         successTitle: "داواکاری نێردرا",
         successDescription: "سوپاس! بە زووترین کات وەڵامت دەدەین.",
         errorTitle: "ناردن سەرکەوتوو نەبوو",

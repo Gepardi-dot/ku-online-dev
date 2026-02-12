@@ -2,7 +2,6 @@
 import { createServer } from 'node:net';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
-import killPort from 'kill-port';
 
 const DEFAULT_PORT = Number(process.env.PORT ?? 5000);
 const DEFAULT_HOST = process.env.HOST ?? '0.0.0.0';
@@ -46,11 +45,17 @@ async function ensurePort(port) {
 
   console.warn(`Port ${port} appears busy. Attempting to free it automatically...`);
   try {
+    const { default: killPort } = await import('kill-port');
     await killPort(port);
     // give the OS a brief moment to release the socket
     await new Promise((resolve) => setTimeout(resolve, 500));
   } catch (error) {
-    console.warn('Automatic port cleanup failed:', error?.message ?? error);
+    const message = error?.message ?? String(error);
+    if (error?.code === 'ERR_MODULE_NOT_FOUND' || message.includes("Cannot find package 'kill-port'")) {
+      console.warn("Automatic port cleanup unavailable because package 'kill-port' is not installed.");
+    } else {
+      console.warn('Automatic port cleanup failed:', message);
+    }
   }
 
   const freed = await isPortAvailable(port);

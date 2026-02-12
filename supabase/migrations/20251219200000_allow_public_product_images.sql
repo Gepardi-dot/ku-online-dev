@@ -1,12 +1,8 @@
 -- Align product-images bucket to be public-readable while keeping writes restricted.
 do $$
 begin
-  begin
-    execute 'set role supabase_storage_admin';
-  exception
-    when insufficient_privilege then
-      raise notice 'Proceeding without supabase_storage_admin; using current role.';
-  end;
+  -- Keep current role; avoid role-switch side effects on migration bookkeeping.
+  raise notice 'Applying public product image policy with current role.';
 
   if to_regclass('storage.objects') is null then
     raise notice 'storage.objects table not found; skipping storage policy updates.';
@@ -65,11 +61,5 @@ begin
     end;
   end if;
 
-  begin
-    execute 'reset role';
-  exception
-    when others then
-      null;
-  end;
 end;
 $$;

@@ -153,10 +153,67 @@ type SponsorStoreLiveStatsRow = {
   updated_at: string | null;
 };
 
+type SupabaseErrorMeta = {
+  code: string;
+  message: string;
+  details: string;
+  hint: string;
+};
+
+function getSupabaseErrorMeta(error: unknown): SupabaseErrorMeta {
+  if (typeof error === 'string') {
+    return {
+      code: '',
+      message: error.toLowerCase(),
+      details: '',
+      hint: '',
+    };
+  }
+
+  const value = (error ?? {}) as Record<string, unknown>;
+  return {
+    code: typeof value.code === 'string' ? value.code : '',
+    message: typeof value.message === 'string' ? value.message.toLowerCase() : '',
+    details: typeof value.details === 'string' ? value.details.toLowerCase() : '',
+    hint: typeof value.hint === 'string' ? value.hint.toLowerCase() : '',
+  };
+}
+
+function hasSupabaseErrorMeta(meta: SupabaseErrorMeta): boolean {
+  return Boolean(meta.code || meta.message || meta.details || meta.hint);
+}
+
+function isMissingTableMeta(meta: SupabaseErrorMeta): boolean {
+  return (
+    meta.code === '42P01' ||
+    meta.code === 'PGRST205' ||
+    (meta.message.includes('relation') && meta.message.includes('does not exist')) ||
+    (meta.message.includes('could not find') && meta.message.includes('table') && meta.message.includes('schema cache'))
+  );
+}
+
+function isMissingColumnMeta(meta: SupabaseErrorMeta, column?: string): boolean {
+  const isMissingColumn =
+    meta.code === '42703' || meta.code === 'PGRST204' || (meta.message.includes('column') && meta.message.includes('does not exist'));
+  if (!isMissingColumn) return false;
+  if (!column) return true;
+  const needle = column.toLowerCase();
+  return meta.message.includes(needle) || meta.details.includes(needle) || meta.hint.includes(needle);
+}
+
 function isMissingTableError(error: any): boolean {
-  const code = typeof error?.code === 'string' ? error.code : '';
-  const message = typeof error?.message === 'string' ? error.message.toLowerCase() : '';
-  return code === '42P01' || (message.includes('relation') && message.includes('does not exist'));
+  return isMissingTableMeta(getSupabaseErrorMeta(error));
+}
+
+function isExpectedLiveStatsFallbackError(meta: SupabaseErrorMeta): boolean {
+  if (!hasSupabaseErrorMeta(meta)) return true;
+
+  const noRowsMaybeSingle =
+    (meta.code === 'PGRST116' ||
+      (meta.message.includes('json object requested') && meta.message.includes('multiple (or no) rows returned'))) &&
+    (meta.details.includes('0 rows') || meta.details.includes('no rows'));
+
+  return isMissingTableMeta(meta) || isMissingColumnMeta(meta) || noRowsMaybeSingle;
 }
 
 function toDate(value: string | null): Date | null {
@@ -195,13 +252,30 @@ function normalizeDiscountType(value: unknown): SponsorOfferDiscountType {
   return 'custom';
 }
 
+function promoteThumbToFull(value: string): string {
+  if (!value.includes('-thumb.')) return value;
+
+  if (!/^https?:\/\//i.test(value)) {
+    return value.replace('-thumb.', '-full.');
+  }
+
+  try {
+    const url = new URL(value);
+    url.pathname = url.pathname.replace('-thumb.', '-full.');
+    return url.toString();
+  } catch {
+    return value.replace('-thumb.', '-full.');
+  }
+}
+
 function normalizeStoreImage(value: string | null | undefined): string | null {
   const normalized = typeof value === 'string' ? value.trim() : '';
   if (!normalized) return null;
-  if (normalized.startsWith('/') || /^https?:\/\//i.test(normalized)) {
-    return normalized;
+  const canonical = promoteThumbToFull(normalized);
+  if (canonical.startsWith('/') || /^https?:\/\//i.test(canonical)) {
+    return canonical;
   }
-  return buildPublicStorageUrl(normalized) ?? normalized;
+  return buildPublicStorageUrl(canonical) ?? canonical;
 }
 
 function mapStore(row: SponsorStoreRow): SponsorStore {
@@ -356,10 +430,16 @@ export async function listSponsorStoreLiveStatsByIds(storeIds: string[]): Promis
     .in('store_id', unique);
 
   if (error) {
-    if (isMissingTableError(error)) {
+    const meta = getSupabaseErrorMeta(error);
+    if (isExpectedLiveStatsFallbackError(meta)) {
       return out;
     }
-    console.error('Failed to load sponsor store live stats', error);
+    console.warn('Failed to load sponsor store live stats', {
+      code: meta.code || null,
+      message: meta.message || null,
+      details: meta.details || null,
+      hint: meta.hint || null,
+    });
     return out;
   }
 
@@ -408,10 +488,16 @@ export async function getSponsorStoreLiveStats(storeId: string): Promise<Sponsor
     .maybeSingle();
 
   if (error) {
-    if (isMissingTableError(error)) {
+    const meta = getSupabaseErrorMeta(error);
+    if (isExpectedLiveStatsFallbackError(meta)) {
       return makeDefaultStoreLiveStats(normalizedStoreId);
     }
-    console.error('Failed to load sponsor store live stats', error);
+    console.warn('Failed to load sponsor store live stats', {
+      code: meta.code || null,
+      message: meta.message || null,
+      details: meta.details || null,
+      hint: meta.hint || null,
+    });
     return makeDefaultStoreLiveStats(normalizedStoreId);
   }
 
@@ -478,15 +564,18 @@ export async function listSpotlightSponsorStores(options: { city?: string | null
   const selectWithoutOwner =
     'id, name, slug, description, logo_url, cover_url, primary_city, phone, whatsapp, website, sponsor_tier, is_featured, updated_at';
 
-  const runQuery = (selectFields: string) => {
+  const runQuery = (opts: { selectFields: string; activeOnly: boolean }) => {
     let query = supabase
       .from('sponsor_stores')
-      .select(selectFields)
-      .eq('status', 'active')
+      .select(opts.selectFields)
       .order('is_featured', { ascending: false })
       .order('updated_at', { ascending: false })
       .order('name', { ascending: true })
       .limit(limit);
+
+    if (opts.activeOnly) {
+      query = query.eq('status', 'active');
+    }
 
     if (city && city !== 'all') {
       query = query.eq('primary_city', city);
@@ -497,18 +586,30 @@ export async function listSpotlightSponsorStores(options: { city?: string | null
 
   let data: any = null;
   let error: any = null;
-  ({ data, error } = await runQuery(selectWithOwner));
+  const attempts = [
+    { selectFields: selectWithOwner, activeOnly: true },
+    { selectFields: selectWithoutOwner, activeOnly: true },
+    { selectFields: selectWithOwner, activeOnly: false },
+    { selectFields: selectWithoutOwner, activeOnly: false },
+  ] as const;
 
-  if (error) {
-    const message = typeof error?.message === 'string' ? error.message : '';
-    const code = typeof error?.code === 'string' ? error.code : '';
-    if (message.toLowerCase().includes('owner_user_id') || code === '42703') {
-      ({ data, error } = await runQuery(selectWithoutOwner));
+  for (const attempt of attempts) {
+    ({ data, error } = await runQuery(attempt));
+    if (!error) break;
+
+    const meta = getSupabaseErrorMeta(error);
+    if (isMissingTableMeta(meta)) {
+      return [];
+    }
+
+    const retryableOwner = attempt.selectFields === selectWithOwner && isMissingColumnMeta(meta, 'owner_user_id');
+    const retryableStatus = attempt.activeOnly && isMissingColumnMeta(meta, 'status');
+    if (!retryableOwner && !retryableStatus) {
+      return [];
     }
   }
 
   if (error) {
-    console.error('Failed to load spotlight sponsor stores', error);
     return [];
   }
 
@@ -838,22 +939,30 @@ export async function getSponsorStoreBySlug(slug: string): Promise<SponsorStoreD
   };
 }
 
-export async function listSponsorOffersByStoreId(storeId: string, limit = 20): Promise<SponsorOffer[]> {
+export async function listSponsorOffersByStoreId(
+  storeId: string,
+  limit = 20,
+  options: { includeInactive?: boolean } = {},
+): Promise<SponsorOffer[]> {
   const supabase = await getSupabase();
   if (!storeId) return [];
   const boundedLimit = limit > 0 ? Math.min(limit, 50) : 20;
+  const includeInactive = Boolean(options.includeInactive);
 
-  const nowIso = new Date().toISOString();
-  const { data, error } = await supabase
+  let query = supabase
     .from('sponsor_offers')
     .select('id, store_id, title, description, discount_type, discount_value, currency, end_at')
     .eq('store_id', storeId)
-    .eq('status', 'active')
-    .lte('start_at', nowIso)
-    .or(`end_at.is.null,end_at.gt.${nowIso}`)
     .order('is_featured', { ascending: false })
     .order('end_at', { ascending: true, nullsFirst: false })
     .limit(boundedLimit);
+
+  if (!includeInactive) {
+    const nowIso = new Date().toISOString();
+    query = query.eq('status', 'active').lte('start_at', nowIso).or(`end_at.is.null,end_at.gt.${nowIso}`);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Failed to load sponsor offers for store', error);

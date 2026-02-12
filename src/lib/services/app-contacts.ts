@@ -31,6 +31,13 @@ type AppSettingsRow = {
     | null;
 };
 
+type SupabaseErrorMeta = {
+  code: string;
+  message: string;
+  details: string;
+  hint: string;
+};
+
 function normalizeEmail(value: string | null | undefined): string | null {
   const normalized = (value ?? '').trim().toLowerCase();
   return normalized || null;
@@ -47,6 +54,53 @@ function normalizeUserName(value: AppSettingsRow['updated_user']): string | null
   const candidate = Array.isArray(value) ? value[0] ?? null : value;
   if (!candidate) return null;
   return candidate.full_name?.trim() || candidate.name?.trim() || candidate.email?.trim() || null;
+}
+
+function getSupabaseErrorMeta(error: unknown): SupabaseErrorMeta {
+  if (typeof error === 'string') {
+    return {
+      code: '',
+      message: error.toLowerCase(),
+      details: '',
+      hint: '',
+    };
+  }
+
+  const value = (error ?? {}) as Record<string, unknown>;
+  return {
+    code: typeof value.code === 'string' ? value.code : '',
+    message: typeof value.message === 'string' ? value.message.toLowerCase() : '',
+    details: typeof value.details === 'string' ? value.details : '',
+    hint: typeof value.hint === 'string' ? value.hint : '',
+  };
+}
+
+function hasSupabaseErrorMeta(meta: SupabaseErrorMeta): boolean {
+  return Boolean(meta.code || meta.message || meta.details || meta.hint);
+}
+
+function isExpectedSchemaFallbackError(meta: SupabaseErrorMeta): boolean {
+  if (!hasSupabaseErrorMeta(meta)) {
+    return true;
+  }
+
+  const tableMissing =
+    meta.code === '42P01' ||
+    meta.code === 'PGRST205' ||
+    (meta.message.includes('relation') && meta.message.includes('does not exist')) ||
+    (meta.message.includes('could not find') && meta.message.includes('table') && meta.message.includes('schema cache'));
+  const columnMissing =
+    meta.code === '42703' || meta.code === 'PGRST204' || (meta.message.includes('column') && meta.message.includes('does not exist'));
+  const relationshipMissing =
+    meta.code === 'PGRST200' ||
+    (meta.message.includes('relationship') && meta.message.includes('schema cache')) ||
+    (meta.message.includes('could not find') && meta.message.includes('relationship'));
+  const detailsLower = meta.details.toLowerCase();
+  const noRowsMaybeSingle =
+    (meta.code === 'PGRST116' ||
+      (meta.message.includes('json object requested') && meta.message.includes('multiple (or no) rows returned'))) &&
+    (detailsLower.includes('0 rows') || detailsLower.includes('no rows'));
+  return tableMissing || columnMissing || relationshipMissing || noRowsMaybeSingle;
 }
 
 export function normalizeAppContactsInput(input: {
@@ -98,11 +152,14 @@ export async function getAppContacts(): Promise<AppContacts> {
     .maybeSingle();
 
   if (error) {
-    const code = typeof error.code === 'string' ? error.code : '';
-    const message = typeof error.message === 'string' ? error.message.toLowerCase() : '';
-    const tableMissing = code === '42P01' || message.includes('relation') && message.includes('does not exist');
-    if (!tableMissing) {
-      console.error('Failed to load app contacts', error);
+    const meta = getSupabaseErrorMeta(error);
+    if (!isExpectedSchemaFallbackError(meta)) {
+      console.error('Failed to load app contacts', {
+        code: meta.code || null,
+        message: meta.message || null,
+        details: meta.details || null,
+        hint: meta.hint || null,
+      });
     }
     return getFallbackAppContacts();
   }
@@ -126,4 +183,3 @@ export async function getAppContacts(): Promise<AppContacts> {
     source: 'db',
   };
 }
-

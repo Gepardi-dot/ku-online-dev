@@ -64,6 +64,99 @@ function normalizeSlug(input: string): string {
   return slug.slice(0, 80);
 }
 
+type SupabaseErrorLike = {
+  code?: unknown;
+  message?: unknown;
+  details?: unknown;
+  hint?: unknown;
+};
+
+function getErrorText(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function getSupabaseErrorMeta(error: SupabaseErrorLike) {
+  return {
+    code: getErrorText(error.code),
+    message: getErrorText(error.message),
+    details: getErrorText(error.details),
+    hint: getErrorText(error.hint),
+  };
+}
+
+function extractMissingColumn(error: SupabaseErrorLike): string | null {
+  const meta = getSupabaseErrorMeta(error);
+  const combined = `${meta.message} ${meta.details} ${meta.hint}`;
+  const patterns = [
+    /column\s+["']?([a-z0-9_]+)["']?/i,
+    /'([a-z0-9_]+)'\s+column/i,
+    /with name ['"]([a-z0-9_]+)['"]/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = combined.match(pattern);
+    const column = match?.[1]?.toLowerCase() ?? '';
+    if (column) return column;
+  }
+
+  return null;
+}
+
+async function insertSponsorStoreWithColumnFallback(payload: Record<string, unknown>) {
+  const optionalColumns = new Set([
+    'owner_user_id',
+    'sponsor_tier',
+    'is_featured',
+    'primary_city',
+    'phone',
+    'whatsapp',
+    'website',
+    'description',
+    'status',
+  ]);
+
+  const workingPayload = { ...payload };
+  const droppedColumns: string[] = [];
+
+  for (let attempt = 0; attempt <= optionalColumns.size; attempt += 1) {
+    const result = await supabaseAdmin
+      .from('sponsor_stores')
+      .insert(workingPayload)
+      .select('id, name, slug, status')
+      .single();
+
+    if (!result.error) {
+      return { ...result, droppedColumns };
+    }
+
+    const meta = getSupabaseErrorMeta(result.error as SupabaseErrorLike);
+    const missingColumn = extractMissingColumn(result.error as SupabaseErrorLike);
+    const missingColumnError =
+      meta.code === '42703' ||
+      meta.code === 'PGRST204' ||
+      (meta.message.toLowerCase().includes('column') && meta.message.toLowerCase().includes('does not exist')) ||
+      (meta.message.toLowerCase().includes('could not find') && meta.message.toLowerCase().includes('column'));
+
+    if (!missingColumnError || !missingColumn || !optionalColumns.has(missingColumn) || !(missingColumn in workingPayload)) {
+      return { ...result, droppedColumns };
+    }
+
+    delete workingPayload[missingColumn];
+    droppedColumns.push(missingColumn);
+  }
+
+  return {
+    data: null,
+    error: {
+      code: 'FALLBACK_EXHAUSTED',
+      message: 'Could not create sponsor store after removing optional columns.',
+      details: droppedColumns.join(','),
+      hint: '',
+    },
+    droppedColumns,
+  };
+}
+
 export const POST = withSentryRoute(async (request: Request) => {
   const originHeader = request.headers.get('origin');
   if (originHeader && !isOriginAllowed(originHeader, originAllowList) && !isSameOriginRequest(request)) {
@@ -115,7 +208,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     );
   }
 
-  const insertPayload = {
+  const insertPayload: Record<string, unknown> = {
     name: normalizedName,
     slug: normalizedSlug,
     description: normalizeNullable(parsed.data.description),
@@ -123,24 +216,41 @@ export const POST = withSentryRoute(async (request: Request) => {
     phone: normalizeNullable(parsed.data.phone),
     whatsapp: normalizeNullable(parsed.data.whatsapp),
     website: normalizeNullable(parsed.data.website),
-    owner_user_id: parsed.data.ownerUserId ?? null,
     status: parsed.data.status,
     sponsor_tier: parsed.data.sponsorTier,
     is_featured: Boolean(parsed.data.isFeatured),
   };
 
-  const { data, error } = await supabaseAdmin
-    .from('sponsor_stores')
-    .insert(insertPayload)
-    .select('id, name, slug, status, primary_city, owner_user_id, sponsor_tier, is_featured')
-    .single();
+  if (parsed.data.ownerUserId) {
+    insertPayload.owner_user_id = parsed.data.ownerUserId;
+  }
+
+  const { data, error, droppedColumns } = await insertSponsorStoreWithColumnFallback(insertPayload);
 
   if (error) {
     if (error.code === '23505') {
       return NextResponse.json({ ok: false, error: 'Slug already exists. Choose another slug.' }, { status: 409 });
     }
-    console.error('Failed to create sponsor store', error);
-    return NextResponse.json({ ok: false, error: 'Failed to create store.' }, { status: 400 });
+    if (error.code === '23503') {
+      return NextResponse.json({ ok: false, error: 'Owner user was not found.' }, { status: 400 });
+    }
+    const meta = getSupabaseErrorMeta(error as SupabaseErrorLike);
+    console.error('Failed to create sponsor store', {
+      code: meta.code || null,
+      message: meta.message || null,
+      details: meta.details || null,
+      hint: meta.hint || null,
+      droppedColumns: droppedColumns.length ? droppedColumns : null,
+    });
+    const diagnostic =
+      process.env.NODE_ENV !== 'production' && meta.code
+        ? `Failed to create store. (${meta.code})`
+        : 'Failed to create store.';
+    return NextResponse.json({ ok: false, error: diagnostic }, { status: 400 });
+  }
+
+  if (droppedColumns.length && process.env.NODE_ENV !== 'production') {
+    console.warn('Created sponsor store with schema fallback', { droppedColumns });
   }
 
   return NextResponse.json({
@@ -150,11 +260,6 @@ export const POST = withSentryRoute(async (request: Request) => {
       name: data.name,
       slug: data.slug,
       status: data.status,
-      primaryCity: data.primary_city,
-      ownerUserId: data.owner_user_id,
-      sponsorTier: data.sponsor_tier,
-      isFeatured: data.is_featured,
     },
   });
 }, 'admin-sponsor-store-create');
-

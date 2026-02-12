@@ -5,6 +5,7 @@ import { createClient as createSupabaseServiceRole } from '@supabase/supabase-js
 
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@/utils/supabase/server';
+import { isAdmin } from '@/lib/auth/roles';
 import { getEnv } from '@/lib/env';
 import {
   buildOriginAllowList,
@@ -28,6 +29,7 @@ const originAllowList = buildOriginAllowList([
 ]);
 
 const OFFER_ID_SCHEMA = z.string().uuid();
+const STORE_ID_SCHEMA = z.string().uuid();
 
 const UPDATE_SERVICE_SCHEMA = z.object({
   title: z.string().trim().min(2).max(200).optional(),
@@ -66,6 +68,49 @@ async function getStoreForUser(userId: string): Promise<StoreRow | null> {
 
   const store = (staffRes.data as any)?.sponsor_stores as StoreRow | null | undefined;
   return store?.id ? store : null;
+}
+
+async function getStoreById(storeId: string): Promise<StoreRow | null> {
+  const { data, error } = await supabaseAdmin
+    .from('sponsor_stores')
+    .select('id, name, slug, owner_user_id')
+    .eq('id', storeId)
+    .maybeSingle();
+
+  if (error || !data?.id) return null;
+  return data as StoreRow;
+}
+
+async function canUserManageStore(userId: string, storeId: string): Promise<boolean> {
+  if (!userId || !storeId) return false;
+
+  const ownerRes = await supabaseAdmin
+    .from('sponsor_stores')
+    .select('id')
+    .eq('id', storeId)
+    .eq('owner_user_id', userId)
+    .maybeSingle();
+
+  if (!ownerRes.error && ownerRes.data?.id) {
+    return true;
+  }
+
+  const staffRes = await supabaseAdmin
+    .from('sponsor_store_staff')
+    .select('store_id')
+    .eq('store_id', storeId)
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .eq('role', 'manager')
+    .maybeSingle();
+
+  return !staffRes.error && Boolean(staffRes.data?.store_id);
+}
+
+function parseRequestedStoreId(request: Request): string | null {
+  const raw = new URL(request.url).searchParams.get('storeId') ?? '';
+  const parsed = STORE_ID_SCHEMA.safeParse(raw.trim());
+  return parsed.success ? parsed.data : null;
 }
 
 async function ensureOfferBelongsToStore(offerId: string, storeId: string) {
@@ -120,6 +165,14 @@ export const PATCH = withSentryRoute(async (request: Request, ctx: { params: Pro
     return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
   }
 
+  const requestedStoreId = parseRequestedStoreId(request);
+  if (requestedStoreId && !isAdmin(user)) {
+    const hasAccess = await canUserManageStore(user.id, requestedStoreId);
+    if (!hasAccess) {
+      return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
+    }
+  }
+
   const userRate = checkRateLimit(`sponsor-services:update:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
@@ -127,7 +180,7 @@ export const PATCH = withSentryRoute(async (request: Request, ctx: { params: Pro
     return res;
   }
 
-  const store = await getStoreForUser(user.id);
+  const store = requestedStoreId ? await getStoreById(requestedStoreId) : await getStoreForUser(user.id);
   if (!store) {
     return NextResponse.json({ ok: false, error: 'No sponsor store found for this account.' }, { status: 404 });
   }
@@ -212,6 +265,14 @@ export const DELETE = withSentryRoute(async (request: Request, ctx: { params: Pr
     return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
   }
 
+  const requestedStoreId = parseRequestedStoreId(request);
+  if (requestedStoreId && !isAdmin(user)) {
+    const hasAccess = await canUserManageStore(user.id, requestedStoreId);
+    if (!hasAccess) {
+      return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
+    }
+  }
+
   const userRate = checkRateLimit(`sponsor-services:delete:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
@@ -219,7 +280,7 @@ export const DELETE = withSentryRoute(async (request: Request, ctx: { params: Pr
     return res;
   }
 
-  const store = await getStoreForUser(user.id);
+  const store = requestedStoreId ? await getStoreById(requestedStoreId) : await getStoreForUser(user.id);
   if (!store) {
     return NextResponse.json({ ok: false, error: 'No sponsor store found for this account.' }, { status: 404 });
   }
@@ -237,4 +298,3 @@ export const DELETE = withSentryRoute(async (request: Request, ctx: { params: Pr
 
   return NextResponse.json({ ok: true });
 }, 'sponsor-services-delete');
-
