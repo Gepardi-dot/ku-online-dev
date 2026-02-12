@@ -3,6 +3,7 @@
 import { ChangeEvent, FormEvent, useMemo, useRef, useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Edit3, ImagePlus, Loader2, Plus, Trash2, Upload, X } from 'lucide-react';
 
 import type { Locale } from '@/lib/locale/dictionary';
@@ -13,7 +14,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
@@ -32,7 +32,16 @@ export type SponsorServiceItem = {
   status: string;
 };
 
-type StoreInfo = { id: string; name: string; slug: string; coverUrl?: string | null };
+type StoreInfo = {
+  id: string;
+  name: string;
+  slug: string;
+  coverUrl?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  website?: string | null;
+  directionsUrl?: string | null;
+};
 
 type CreateResponse =
   | { ok: true; offer: SponsorServiceItem }
@@ -49,18 +58,42 @@ type DeleteResponse =
   | { ok: false; error?: string }
   | { ok?: false; error?: string };
 
+type StoreSnapshot = {
+  id: string;
+  name: string;
+  slug: string;
+  coverUrl: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  website: string | null;
+  directionsUrl: string | null;
+};
+
 type UpdateStoreResponse =
   | {
       ok: true;
-      store: {
-        id: string;
-        name: string;
-        slug: string;
-        coverUrl: string | null;
-      };
+      store: StoreSnapshot;
     }
   | { ok: false; error?: string }
   | { ok?: false; error?: string };
+
+type DeleteStoreResponse =
+  | { ok: true; deletedStoreId: string }
+  | { ok: false; error?: string }
+  | { ok?: false; error?: string };
+
+type StorePatchPayload = {
+  coverUrl?: string | null;
+  phone?: string | null;
+  whatsapp?: string | null;
+  website?: string | null;
+  directionsUrl?: string | null;
+};
+
+function normalizeNullable(value: string | null | undefined): string | null {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  return normalized.length > 0 ? normalized : null;
+}
 
 function toIsoFromLocalInput(value: string): string | null {
   const trimmed = value.trim();
@@ -115,8 +148,29 @@ function isActiveStatus(status: string) {
   return status.trim().toLowerCase() === 'active';
 }
 
+function withStoreId(path: string, storeId: string, include = true): string {
+  if (!include) return path;
+  const target = storeId.trim();
+  if (!target) return path;
+  const sep = path.includes('?') ? '&' : '?';
+  return `${path}${sep}storeId=${encodeURIComponent(target)}`;
+}
+
 const ACCEPTED_IMAGE_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/avif']);
 const MAX_IMAGE_SIZE_BYTES = 50 * 1024 * 1024;
+const DEFAULT_STORE_CARD_ASPECT_RATIO = 16 / 9;
+const MIN_STORE_CARD_ASPECT_RATIO = 0.65;
+const MAX_STORE_CARD_ASPECT_RATIO = 2.8;
+const MAX_OFFERS_PER_STORE = 3;
+const UNLIMITED_OFFERS_LABEL = 'unlimited';
+
+function normalizeStoreCardAspectRatio(width: number, height: number) {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return DEFAULT_STORE_CARD_ASPECT_RATIO;
+  }
+  const ratio = width / height;
+  return Math.min(MAX_STORE_CARD_ASPECT_RATIO, Math.max(MIN_STORE_CARD_ASPECT_RATIO, ratio));
+}
 
 function ServiceForm({
   mode,
@@ -135,7 +189,7 @@ function ServiceForm({
     currency: string | null;
     endAt: string | null;
     status?: 'active' | 'paused';
-  }) => void;
+  }) => Promise<boolean> | boolean;
 }) {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
@@ -155,7 +209,7 @@ function ServiceForm({
 
   const submitLabel = mode === 'create' ? 'Add offer' : 'Save';
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     const cleanedTitle = title.trim();
@@ -175,7 +229,7 @@ function ServiceForm({
       return;
     }
 
-    onSubmit({
+    const didSave = await onSubmit({
       title: cleanedTitle,
       description: description.trim() ? description.trim() : null,
       discountType,
@@ -184,11 +238,22 @@ function ServiceForm({
       endAt: noExpiry ? null : toIsoFromLocalInput(endAtLocal),
       status: active ? 'active' : 'paused',
     });
+
+    if (didSave && mode === 'create') {
+      setTitle('');
+      setDescription('');
+      setDiscountType('percent');
+      setDiscountValue('');
+      setCurrency('IQD');
+      setEndAtLocal('');
+      setNoExpiry(true);
+      setActive(true);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-[1.2fr_.8fr]">
+    <form onSubmit={handleSubmit} className="space-y-3">
+      <div className="grid gap-2 md:grid-cols-[1.2fr_.8fr]">
         <div className="space-y-2">
           <Label htmlFor={`${mode}-title`}>Title</Label>
           <Input
@@ -196,23 +261,22 @@ function ServiceForm({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="e.g. 20% off phone cases"
-            className="h-11 rounded-xl bg-white/80"
+            className="h-9 rounded-lg bg-white/90 text-sm"
           />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-2 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Deal</Label>
-            <Select value={discountType} onValueChange={(v) => setDiscountType(v as SponsorServiceDiscountType)}>
-              <SelectTrigger className="h-11 rounded-xl bg-white/80">
-                <SelectValue placeholder="Select" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="percent">Percent off</SelectItem>
-                <SelectItem value="amount">Amount off</SelectItem>
-                <SelectItem value="freebie">Freebie</SelectItem>
-                <SelectItem value="custom">Other</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Deal type</Label>
+            <select
+              value={discountType}
+              onChange={(e) => setDiscountType(e.target.value as SponsorServiceDiscountType)}
+              className="h-9 w-full rounded-lg border border-input bg-white/90 px-3 text-sm shadow-xs outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="percent">Percent off</option>
+              <option value="amount">Amount off</option>
+              <option value="freebie">Freebie</option>
+              <option value="custom">Other</option>
+            </select>
           </div>
           <div className="space-y-2">
             <Label>{discountType === 'amount' ? 'Value' : discountType === 'percent' ? 'Percent' : 'Value'}</Label>
@@ -220,63 +284,43 @@ function ServiceForm({
               value={discountValue}
               onChange={(e) => setDiscountValue(e.target.value)}
               inputMode="decimal"
-              placeholder={showValue ? (discountType === 'percent' ? '20' : '5000') : '—'}
+              placeholder={showValue ? (discountType === 'percent' ? '20' : '5000') : 'Not required'}
               disabled={!showValue}
-              className="h-11 rounded-xl bg-white/80"
+              className="h-9 rounded-lg bg-white/90 text-sm disabled:opacity-65"
             />
           </div>
         </div>
       </div>
 
-      {showCurrency ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+      <div className={cn('grid gap-2', showCurrency ? 'sm:grid-cols-2' : '')}>
+        {showCurrency ? (
           <div className="space-y-2">
             <Label>Currency</Label>
-            <Select value={currency} onValueChange={setCurrency}>
-              <SelectTrigger className="h-11 rounded-xl bg-white/80">
-                <SelectValue placeholder="IQD" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="IQD">IQD</SelectItem>
-                <SelectItem value="USD">USD</SelectItem>
-              </SelectContent>
-            </Select>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              className="h-9 w-full rounded-lg border border-input bg-white/90 px-3 text-sm shadow-xs outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+            >
+              <option value="IQD">IQD</option>
+              <option value="USD">USD</option>
+            </select>
           </div>
-          <div className="space-y-2">
-            <Label>Ends (optional)</Label>
-            <Input
-              type="datetime-local"
-              value={endAtLocal}
-              onChange={(e) => setEndAtLocal(e.target.value)}
-              disabled={noExpiry}
-              className="h-11 rounded-xl bg-white/80"
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Ends (optional)</Label>
-            <Input
-              type="datetime-local"
-              value={endAtLocal}
-              onChange={(e) => setEndAtLocal(e.target.value)}
-              disabled={noExpiry}
-              className="h-11 rounded-xl bg-white/80"
-            />
-          </div>
-          <div className="flex items-end justify-between gap-3 rounded-xl border border-black/10 bg-white/60 px-3 py-3">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#111827]">Active</p>
-              <p className="text-xs text-muted-foreground">Turn off to hide it.</p>
-            </div>
-            <Switch checked={active} onCheckedChange={setActive} aria-label="Toggle active" />
-          </div>
-        </div>
-      )}
+        ) : null}
 
-      <div className="flex items-center justify-between gap-3">
-        <label className="inline-flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+        <div className="space-y-2">
+          <Label>Ends (optional)</Label>
+          <Input
+            type="datetime-local"
+            value={endAtLocal}
+            onChange={(e) => setEndAtLocal(e.target.value)}
+            disabled={noExpiry}
+            className="h-9 rounded-lg bg-white/90 text-sm disabled:opacity-65"
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="inline-flex h-9 w-fit items-center gap-2 whitespace-nowrap rounded-lg border border-black/10 bg-white/70 px-2.5 text-xs font-semibold text-muted-foreground ring-1 ring-white/50">
           <input
             type="checkbox"
             checked={noExpiry}
@@ -286,7 +330,27 @@ function ServiceForm({
           No expiry
         </label>
 
-        <Button type="submit" disabled={submitting} className="rounded-full">
+        <div className="inline-flex h-9 w-fit items-center gap-2 whitespace-nowrap rounded-lg border border-black/10 bg-white/70 px-2.5 ring-1 ring-white/50">
+          <div>
+            <p className="text-xs font-semibold text-[#111827]">Active</p>
+          </div>
+          <Switch checked={active} onCheckedChange={setActive} aria-label="Toggle active" />
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor={`${mode}-desc`}>Description (optional)</Label>
+        <Textarea
+          id={`${mode}-desc`}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Short details. Keep it simple."
+          className="min-h-[68px] rounded-lg bg-white/90 text-sm"
+        />
+      </div>
+
+      <div className="flex items-center justify-end">
+        <Button type="submit" disabled={submitting} className="h-8 rounded-md px-4 text-xs">
           {submitting ? (
             <span className="inline-flex items-center gap-2">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -300,17 +364,6 @@ function ServiceForm({
           )}
         </Button>
       </div>
-
-      <div className="space-y-2">
-        <Label htmlFor={`${mode}-desc`}>Description (optional)</Label>
-        <Textarea
-          id={`${mode}-desc`}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Short details. Keep it simple."
-          className="min-h-[90px] rounded-xl bg-white/80"
-        />
-      </div>
     </form>
   );
 }
@@ -319,15 +372,21 @@ function EditServiceDialog({
   item,
   onUpdated,
   mode,
+  storeId,
+  includeStoreIdParam,
 }: {
   item: SponsorServiceItem;
   onUpdated: (next: SponsorServiceItem) => void;
   mode: 'remote' | 'mock';
+  storeId: string;
+  includeStoreIdParam: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const updateService = async (payload: Parameters<typeof ServiceForm>[0]['onSubmit'] extends (p: infer P) => void ? P : never) => {
+  const updateService = async (
+    payload: Parameters<typeof ServiceForm>[0]['onSubmit'] extends (p: infer P) => Promise<boolean> | boolean ? P : never,
+  ) => {
     if (mode === 'mock') {
       const next: SponsorServiceItem = {
         ...item,
@@ -342,12 +401,12 @@ function EditServiceDialog({
       onUpdated(next);
       setOpen(false);
       toast({ title: 'Saved' });
-      return;
+      return true;
     }
 
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/sponsors/services/${encodeURIComponent(item.id)}`, {
+      const res = await fetch(withStoreId(`/api/sponsors/services/${encodeURIComponent(item.id)}`, storeId, includeStoreIdParam), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -356,14 +415,16 @@ function EditServiceDialog({
       if (!res.ok || !data.ok) {
         const message = typeof (data as any)?.error === 'string' ? (data as any).error : null;
         toast({ title: 'Failed to save', description: message ?? 'Please try again.', variant: 'destructive' });
-        return;
+        return false;
       }
       onUpdated(data.offer);
       setOpen(false);
       toast({ title: 'Saved' });
+      return true;
     } catch (error) {
       console.error('Failed to update service', error);
       toast({ title: 'Failed to save', description: 'Please try again.', variant: 'destructive' });
+      return false;
     } finally {
       setSubmitting(false);
     }
@@ -372,14 +433,14 @@ function EditServiceDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="rounded-full bg-white/70">
+        <Button variant="outline" size="sm" className="h-8 rounded-md bg-white/70 px-3 text-xs">
           <span className="inline-flex items-center gap-2">
             <Edit3 className="h-4 w-4" aria-hidden="true" />
             Edit
           </span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>Edit offer</DialogTitle>
         </DialogHeader>
@@ -395,21 +456,40 @@ export function SponsorServicesManager({
   initialItems,
   locale,
   sponsoredLabel,
-  endsLabel,
+  endsLabelTemplate,
+  canDeleteStore = false,
+  isAdmin = false,
   mode = 'remote',
 }: {
   store: StoreInfo;
   initialItems: SponsorServiceItem[];
   locale: Locale;
   sponsoredLabel: string;
-  endsLabel: (time: string) => string;
+  endsLabelTemplate: string;
+  canDeleteStore?: boolean;
+  isAdmin?: boolean;
   mode?: 'remote' | 'mock';
 }) {
+  const router = useRouter();
   const [items, setItems] = useState<SponsorServiceItem[]>(initialItems ?? []);
   const [submitting, setSubmitting] = useState(false);
   const [storeCardUrl, setStoreCardUrl] = useState<string | null>(store.coverUrl?.trim() || null);
+  const [storeCardAspectRatio, setStoreCardAspectRatio] = useState(DEFAULT_STORE_CARD_ASPECT_RATIO);
   const [storeCardBusy, setStoreCardBusy] = useState(false);
+  const [storePhone, setStorePhone] = useState<string>(store.phone?.trim() || '');
+  const [storeWhatsapp, setStoreWhatsapp] = useState<string>(store.whatsapp?.trim() || '');
+  const [storeWebsite, setStoreWebsite] = useState<string>(store.website?.trim() || '');
+  const [storeDirectionsUrl, setStoreDirectionsUrl] = useState<string>(store.directionsUrl?.trim() || '');
+  const [storeContactBusy, setStoreContactBusy] = useState(false);
+  const [storeDeleteBusy, setStoreDeleteBusy] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const includeStoreIdParamForStore = true;
+  const includeStoreIdParamForOffers = true;
+  const formatEndsLabel = (time: string) =>
+    endsLabelTemplate.includes('{time}') ? endsLabelTemplate.replace('{time}', time) : `${endsLabelTemplate} ${time}`;
+  const maxOffersPerStore = isAdmin ? null : MAX_OFFERS_PER_STORE;
+  const canCreateMoreOffers = maxOffersPerStore === null || items.length < maxOffersPerStore;
+  const remainingOfferSlots = maxOffersPerStore === null ? null : Math.max(0, maxOffersPerStore - items.length);
 
   const sorted = useMemo(() => {
     const score = (item: SponsorServiceItem) => {
@@ -424,33 +504,127 @@ export function SponsorServicesManager({
       .sort((a, b) => score(a) - score(b) || (b.endAt ?? '').localeCompare(a.endAt ?? ''));
   }, [items]);
 
-  const updateStoreCardUrl = async (nextCoverUrl: string | null): Promise<boolean> => {
+  const applyStoreSnapshot = (nextStore: StoreSnapshot) => {
+    setStoreCardUrl(nextStore.coverUrl ?? null);
+    if (!nextStore.coverUrl) {
+      setStoreCardAspectRatio(DEFAULT_STORE_CARD_ASPECT_RATIO);
+    }
+    setStorePhone(nextStore.phone ?? '');
+    setStoreWhatsapp(nextStore.whatsapp ?? '');
+    setStoreWebsite(nextStore.website ?? '');
+    setStoreDirectionsUrl(nextStore.directionsUrl ?? '');
+  };
+
+  const patchStore = async (payload: StorePatchPayload, failureTitle: string): Promise<boolean> => {
     if (mode === 'mock') {
-      setStoreCardUrl(nextCoverUrl);
+      if (Object.prototype.hasOwnProperty.call(payload, 'coverUrl')) {
+        setStoreCardUrl(payload.coverUrl ?? null);
+        if (!payload.coverUrl) {
+          setStoreCardAspectRatio(DEFAULT_STORE_CARD_ASPECT_RATIO);
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, 'phone')) {
+        setStorePhone(payload.phone ?? '');
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, 'whatsapp')) {
+        setStoreWhatsapp(payload.whatsapp ?? '');
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, 'website')) {
+        setStoreWebsite(payload.website ?? '');
+      }
+      if (Object.prototype.hasOwnProperty.call(payload, 'directionsUrl')) {
+        setStoreDirectionsUrl(payload.directionsUrl ?? '');
+      }
       return true;
     }
 
-    setStoreCardBusy(true);
     try {
-      const res = await fetch('/api/sponsors/store', {
+      const res = await fetch(withStoreId('/api/sponsors/store', store.id, includeStoreIdParamForStore), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ coverUrl: nextCoverUrl }),
+        body: JSON.stringify(payload),
       });
       const data = (await res.json().catch(() => ({}))) as UpdateStoreResponse;
       if (!res.ok || !data.ok) {
         const message = typeof (data as any)?.error === 'string' ? (data as any).error : null;
-        toast({ title: 'Failed to update store card', description: message ?? 'Please try again.', variant: 'destructive' });
+        toast({ title: failureTitle, description: message ?? 'Please try again.', variant: 'destructive' });
         return false;
       }
-      setStoreCardUrl(data.store.coverUrl ?? null);
+      applyStoreSnapshot(data.store);
       return true;
     } catch (error) {
-      console.error('Failed to update store card image', error);
-      toast({ title: 'Failed to update store card', description: 'Please try again.', variant: 'destructive' });
+      console.error('Failed to update sponsor store', error);
+      toast({ title: failureTitle, description: 'Please try again.', variant: 'destructive' });
       return false;
+    }
+  };
+
+  const updateStoreCardUrl = async (nextCoverUrl: string | null): Promise<boolean> => {
+    setStoreCardBusy(true);
+    try {
+      return await patchStore({ coverUrl: nextCoverUrl }, 'Failed to update store card');
     } finally {
       setStoreCardBusy(false);
+    }
+  };
+
+  const persistStoreContactLinks = async (): Promise<boolean> => {
+    setStoreContactBusy(true);
+    try {
+      const ok = await patchStore(
+        {
+          phone: normalizeNullable(storePhone),
+          whatsapp: normalizeNullable(storeWhatsapp),
+          website: normalizeNullable(storeWebsite),
+          directionsUrl: normalizeNullable(storeDirectionsUrl),
+        },
+        'Failed to update store details',
+      );
+      if (ok) {
+        toast({ title: 'Store details updated' });
+      }
+      return ok;
+    } finally {
+      setStoreContactBusy(false);
+    }
+  };
+
+  const saveStoreContactLinks = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await persistStoreContactLinks();
+  };
+
+  const deleteStore = async () => {
+    if (!canDeleteStore) return;
+
+    const confirmed = window.confirm(
+      `Remove "${store.name}" store? This will permanently delete the store and all offers.`,
+    );
+    if (!confirmed) return;
+
+    if (mode === 'mock') {
+      toast({ title: 'Store removed (mock mode)' });
+      return;
+    }
+
+    setStoreDeleteBusy(true);
+    try {
+      const res = await fetch(withStoreId('/api/sponsors/store', store.id, includeStoreIdParamForStore), { method: 'DELETE' });
+      const data = (await res.json().catch(() => ({}))) as DeleteStoreResponse;
+      if (!res.ok || !data.ok) {
+        const message = typeof (data as any)?.error === 'string' ? (data as any).error : null;
+        toast({ title: 'Failed to remove store', description: message ?? 'Please try again.', variant: 'destructive' });
+        return;
+      }
+
+      toast({ title: 'Store removed' });
+      router.push('/sponsors');
+      router.refresh();
+    } catch (error) {
+      console.error('Failed to remove sponsor store', error);
+      toast({ title: 'Failed to remove store', description: 'Please try again.', variant: 'destructive' });
+    } finally {
+      setStoreDeleteBusy(false);
     }
   };
 
@@ -473,33 +647,21 @@ export function SponsorServicesManager({
     try {
       const formData = new FormData();
       formData.append('file', file);
+      formData.append('purpose', 'sponsor_cover');
       const uploadRes = await fetch('/api/uploads', { method: 'POST', body: formData });
       const uploadPayload = (await uploadRes.json().catch(() => ({}))) as {
         path?: string;
-        publicUrl?: string | null;
-        signedUrl?: string | null;
         error?: string;
       };
+      const uploadedImagePath = typeof uploadPayload.path === 'string' ? uploadPayload.path.trim() : '';
 
-      if (!uploadRes.ok || !uploadPayload.path) {
+      if (!uploadRes.ok || !uploadedImagePath) {
         const message = typeof uploadPayload.error === 'string' ? uploadPayload.error : 'Upload failed.';
         toast({ title: 'Store card upload failed', description: message, variant: 'destructive' });
         return;
       }
 
-      const uploadedImageUrl =
-        typeof uploadPayload.publicUrl === 'string' && uploadPayload.publicUrl.trim().length > 0
-          ? uploadPayload.publicUrl.trim()
-          : typeof uploadPayload.signedUrl === 'string' && uploadPayload.signedUrl.trim().length > 0
-            ? uploadPayload.signedUrl.trim()
-            : null;
-
-      if (!uploadedImageUrl) {
-        toast({ title: 'Store card upload failed', description: 'Image URL is missing.', variant: 'destructive' });
-        return;
-      }
-
-      const ok = await updateStoreCardUrl(uploadedImageUrl);
+      const ok = await updateStoreCardUrl(uploadedImagePath);
       if (ok) {
         toast({ title: 'Store card updated' });
       }
@@ -515,11 +677,23 @@ export function SponsorServicesManager({
     if (!storeCardUrl) return;
     const ok = await updateStoreCardUrl(null);
     if (ok) {
+      setStoreCardAspectRatio(DEFAULT_STORE_CARD_ASPECT_RATIO);
       toast({ title: 'Store card removed' });
     }
   };
 
-  const createService = async (payload: Parameters<typeof ServiceForm>[0]['onSubmit'] extends (p: infer P) => void ? P : never) => {
+  const createService = async (
+    payload: Parameters<typeof ServiceForm>[0]['onSubmit'] extends (p: infer P) => Promise<boolean> | boolean ? P : never,
+  ) => {
+    if (!canCreateMoreOffers) {
+      toast({
+        title: 'Offer limit reached',
+        description: `You can create up to ${maxOffersPerStore ?? MAX_OFFERS_PER_STORE} offers per store.`,
+        variant: 'destructive',
+      });
+      return false;
+    }
+
     if (mode === 'mock') {
       setSubmitting(true);
       try {
@@ -536,15 +710,15 @@ export function SponsorServicesManager({
         };
         setItems((prev) => [next, ...prev]);
         toast({ title: 'Offer added' });
+        return true;
       } finally {
         setSubmitting(false);
       }
-      return;
     }
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/sponsors/services', {
+      const res = await fetch(withStoreId('/api/sponsors/services', store.id, includeStoreIdParamForOffers), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -553,13 +727,15 @@ export function SponsorServicesManager({
       if (!res.ok || !data.ok) {
         const message = typeof (data as any)?.error === 'string' ? (data as any).error : null;
         toast({ title: 'Failed to add offer', description: message ?? 'Please try again.', variant: 'destructive' });
-        return;
+        return false;
       }
       setItems((prev) => [data.offer, ...prev]);
       toast({ title: 'Offer added' });
+      return true;
     } catch (error) {
       console.error('Failed to create service', error);
       toast({ title: 'Failed to add offer', description: 'Please try again.', variant: 'destructive' });
+      return false;
     } finally {
       setSubmitting(false);
     }
@@ -574,7 +750,9 @@ export function SponsorServicesManager({
       return;
     }
     try {
-      const res = await fetch(`/api/sponsors/services/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      const res = await fetch(withStoreId(`/api/sponsors/services/${encodeURIComponent(id)}`, store.id, includeStoreIdParamForOffers), {
+        method: 'DELETE',
+      });
       const data = (await res.json().catch(() => ({}))) as DeleteResponse;
       if (!res.ok || !data.ok) {
         const message = typeof (data as any)?.error === 'string' ? (data as any).error : null;
@@ -597,7 +775,7 @@ export function SponsorServicesManager({
       return;
     }
     try {
-      const res = await fetch(`/api/sponsors/services/${encodeURIComponent(item.id)}`, {
+      const res = await fetch(withStoreId(`/api/sponsors/services/${encodeURIComponent(item.id)}`, store.id, includeStoreIdParamForOffers), {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: nextStatus }),
@@ -616,30 +794,149 @@ export function SponsorServicesManager({
     }
   };
 
+  const surfaceCardClass =
+    'rounded-2xl border border-white/70 bg-[linear-gradient(160deg,rgba(255,255,255,0.95),rgba(255,255,255,0.80))] shadow-[0_8px_24px_rgba(15,23,42,0.09)] ring-1 ring-white/40';
+
   return (
-    <div className="space-y-6">
-      <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/75 via-white/65 to-white/45 shadow-[0_10px_40px_rgba(15,23,42,0.10)] ring-1 ring-white/40">
-        <CardHeader>
-          <CardTitle className="text-brand">Front store card image</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Upload a complete AI-designed card image (16:9 works best). It will appear as the main front card in Sponsors.
-          </p>
+    <div className="mx-auto w-full max-w-5xl space-y-3">
+      <Card className={surfaceCardClass}>
+        <CardHeader className="gap-1.5 pb-2.5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-base text-brand">Store contacts & links</CardTitle>
+            <p className="max-w-2xl text-xs text-muted-foreground md:text-sm">
+              Set phone, WhatsApp, directions, and website links used on your store page.
+            </p>
+          </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="relative overflow-hidden rounded-2xl border border-black/10 bg-white/70">
-            <div className="relative aspect-[16/9]">
-              {storeCardUrl ? (
-                <Image src={storeCardUrl} alt={`${store.name} store card`} fill sizes="(max-width: 768px) 100vw, 560px" className="object-cover" />
+        <CardContent className="pt-0">
+          <form onSubmit={saveStoreContactLinks} className="space-y-2.5">
+            <div className="grid gap-2 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="store-phone">Phone number</Label>
+                <Input
+                  id="store-phone"
+                  value={storePhone}
+                  onChange={(event) => setStorePhone(event.target.value)}
+                  placeholder="+964 7xx xxx xxxx"
+                  className="h-9 rounded-lg bg-white/90 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="store-whatsapp">WhatsApp</Label>
+                <Input
+                  id="store-whatsapp"
+                  value={storeWhatsapp}
+                  onChange={(event) => setStoreWhatsapp(event.target.value)}
+                  placeholder="+964 7xx xxx xxxx"
+                  className="h-9 rounded-lg bg-white/90 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="store-directions-link">Directions link</Label>
+                <Input
+                  id="store-directions-link"
+                  value={storeDirectionsUrl}
+                  onChange={(event) => setStoreDirectionsUrl(event.target.value)}
+                  placeholder="https://maps.google.com/..."
+                  className="h-9 rounded-lg bg-white/90 text-sm"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="store-website-link">Website / social link</Label>
+                <Input
+                  id="store-website-link"
+                  value={storeWebsite}
+                  onChange={(event) => setStoreWebsite(event.target.value)}
+                  placeholder="https://your-site.com or @handle"
+                  className="h-9 rounded-lg bg-white/90 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+              {canDeleteStore ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="h-8 rounded-md px-3 text-xs"
+                  disabled={storeDeleteBusy}
+                  onClick={() => void deleteStore()}
+                >
+                  {storeDeleteBusy ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                      Removing...
+                    </span>
+                  ) : (
+                    'Remove store'
+                  )}
+                </Button>
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(120deg,#f8fafc,#e2e8f0)]">
-                  <div className="text-center text-muted-foreground">
-                    <ImagePlus className="mx-auto h-7 w-7" aria-hidden="true" />
-                    <p className="mt-2 text-sm font-semibold">No card image yet</p>
-                  </div>
-                </div>
+                <span className="text-[10px] font-medium text-muted-foreground">
+                  Contact details are visible on your public sponsor page.
+                </span>
               )}
+
+              <Button type="submit" className="h-8 rounded-md px-3 text-xs" disabled={storeContactBusy}>
+                {storeContactBusy ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    Saving...
+                  </span>
+                ) : (
+                  'Save links'
+                )}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card className={surfaceCardClass}>
+        <CardHeader className="gap-1.5 pb-2.5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-base text-brand">Store front card image</CardTitle>
+            <p className="max-w-2xl text-xs text-muted-foreground md:text-sm">
+              Upload the image shoppers see first on your sponsor store card.
+            </p>
+          </div>
+          <span className="inline-flex rounded-full border border-black/10 bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+            16:9 recommended
+          </span>
+        </CardHeader>
+        <CardContent className="space-y-2.5 pt-0">
+          <div className="mx-auto w-full max-w-3xl">
+            <div className="relative overflow-hidden rounded-lg border border-dashed border-black/15 bg-white/80">
+              <div className="relative w-full" style={{ aspectRatio: storeCardAspectRatio }}>
+                {storeCardUrl ? (
+                  <Image
+                    src={storeCardUrl}
+                    alt={`${store.name} store card`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 720px"
+                    className="object-contain p-1.5"
+                    onLoadingComplete={(img) => {
+                      const nextAspect = normalizeStoreCardAspectRatio(img.naturalWidth, img.naturalHeight);
+                      if (Math.abs(nextAspect - storeCardAspectRatio) > 0.01) {
+                        setStoreCardAspectRatio(nextAspect);
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(120deg,#f8fafc,#e2e8f0)]">
+                    <div className="text-center text-muted-foreground">
+                      <ImagePlus className="mx-auto h-6 w-6" aria-hidden="true" />
+                      <p className="mt-1.5 text-xs font-semibold">No card image yet</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+
+          <p className="text-[10px] font-medium text-muted-foreground">
+            Supported formats: JPG, PNG, WebP, AVIF. Maximum size: 50MB.
+          </p>
 
           <div className="flex flex-wrap items-center gap-2">
             <input
@@ -651,7 +948,7 @@ export function SponsorServicesManager({
             />
             <Button
               type="button"
-              className="rounded-full"
+              className="h-8 rounded-md px-3 text-xs"
               disabled={storeCardBusy}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -671,7 +968,7 @@ export function SponsorServicesManager({
             <Button
               type="button"
               variant="outline"
-              className="rounded-full bg-white/70"
+              className="h-8 rounded-md bg-white/80 px-3 text-xs"
               disabled={!storeCardUrl || storeCardBusy}
               onClick={() => void handleStoreCardRemove()}
             >
@@ -684,98 +981,154 @@ export function SponsorServicesManager({
         </CardContent>
       </Card>
 
-      <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/75 via-white/65 to-white/45 shadow-[0_10px_40px_rgba(15,23,42,0.10)] ring-1 ring-white/40">
-        <CardHeader>
-          <CardTitle className="text-brand">Add an offer</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Keep it short. This shows under the <span className="font-semibold">Offers</span> tab on your store page.
+      <Card className={surfaceCardClass}>
+        <CardHeader className="gap-1.5 pb-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-base text-brand">Add an offer</CardTitle>
+            <span className="inline-flex rounded-full border border-black/10 bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">
+              {items.length}/{maxOffersPerStore ?? UNLIMITED_OFFERS_LABEL} offers
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground md:text-sm">
+            Keep each offer short and specific. Only active, unexpired offers show on your store page.
           </p>
+          {canCreateMoreOffers ? (
+            remainingOfferSlots === null ? (
+              <p className="text-[11px] font-semibold text-muted-foreground">Admins can add unlimited offers.</p>
+            ) : (
+              <p className="text-[11px] font-semibold text-muted-foreground">
+                You can add {remainingOfferSlots} more {remainingOfferSlots === 1 ? 'offer' : 'offers'}.
+              </p>
+            )
+          ) : (
+            <p className="text-[11px] font-semibold text-amber-700">Offer limit reached. Delete one to add another.</p>
+          )}
         </CardHeader>
-        <CardContent>
-          <ServiceForm mode="create" submitting={submitting} onSubmit={createService} />
+        <CardContent className="pt-0">
+          {canCreateMoreOffers ? (
+            <ServiceForm mode="create" submitting={submitting} onSubmit={createService} />
+          ) : (
+            <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50/70 p-3 text-xs font-semibold text-amber-800">
+              Maximum {maxOffersPerStore ?? MAX_OFFERS_PER_STORE} offers per store.
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      <div className="space-y-3">
-        <div className="flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-lg font-extrabold text-[#111827]">Your offers</h2>
-            <p className="text-sm text-muted-foreground">Active offers appear immediately.</p>
+      <Card className={surfaceCardClass}>
+        <CardHeader className="pb-1.5">
+          <div className="flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-sm font-extrabold text-[#111827] md:text-base">Your offers</h2>
+              <p className="text-xs text-muted-foreground md:text-sm">Manage visibility and edit details anytime.</p>
+            </div>
+            <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-muted-foreground ring-1 ring-black/10">
+              {items.length}
+            </span>
           </div>
-          <span className="rounded-full bg-white/70 px-3 py-1.5 text-xs font-semibold text-muted-foreground ring-1 ring-black/5">
-            {items.length}
-          </span>
-        </div>
+        </CardHeader>
+        <CardContent className="space-y-2 pt-0">
+          {sorted.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-black/15 bg-white/75 p-3 text-xs text-muted-foreground ring-1 ring-white/40">
+              No offers yet. Add your first offer above.
+            </div>
+          ) : (
+            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+              {sorted.map((item) => {
+                const offer = toOfferForCard(item, store.id);
+                const endsIn =
+                  item.endAt && !Number.isNaN(new Date(item.endAt).getTime())
+                    ? formatDistanceToNow(new Date(item.endAt), { addSuffix: true })
+                    : null;
+                const active = isActiveStatus(item.status);
 
-        {sorted.length === 0 ? (
-          <div className="rounded-[18px] border border-white/70 bg-white/75 p-4 text-sm text-muted-foreground shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-white/40">
-            No offers yet.
-          </div>
-        ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {sorted.map((item) => {
-              const offer = toOfferForCard(item, store.id);
-              const endsIn =
-                item.endAt && !Number.isNaN(new Date(item.endAt).getTime())
-                  ? formatDistanceToNow(new Date(item.endAt), { addSuffix: true })
-                  : null;
-              const active = isActiveStatus(item.status);
-
-              return (
-                <div key={item.id} className="space-y-2">
-                  <div className={cn(!active ? 'opacity-70' : '')}>
-                    <SponsorStoreServiceCard
-                      offer={offer}
-                      locale={locale}
-                      sponsoredLabel={sponsoredLabel}
-                      endsLabel={endsLabel}
-                      href={null}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/60 bg-white/60 px-3 py-2 text-xs shadow-sm ring-1 ring-black/5">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-black/5 px-2 py-1 font-extrabold text-[#111827] ring-1 ring-black/5">
-                        {statusLabel(item.status)}
-                      </span>
-                      {endsIn ? (
-                        <span className="text-muted-foreground" dir="auto">
-                          Ends {endsIn}
-                        </span>
-                      ) : null}
+                return (
+                  <div key={item.id} className="space-y-1.5">
+                    <div className={cn('transition-opacity', !active ? 'opacity-70' : '')}>
+                      <SponsorStoreServiceCard
+                        offer={offer}
+                        locale={locale}
+                        sponsoredLabel={sponsoredLabel}
+                        endsLabel={formatEndsLabel}
+                        href={null}
+                        className="w-full"
+                        compact
+                      />
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        checked={active}
-                        onCheckedChange={(checked) => void toggleActive(item, checked)}
-                        aria-label="Toggle offer visibility"
-                      />
-                      <EditServiceDialog
-                        item={item}
-                        mode={mode}
-                        onUpdated={(next) => setItems((prev) => prev.map((row) => (row.id === next.id ? next : row)))}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="rounded-full bg-white/70"
-                        onClick={() => void deleteService(item.id)}
-                      >
-                        <span className="inline-flex items-center gap-2">
-                          <Trash2 className="h-4 w-4" aria-hidden="true" />
-                          Delete
+                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-black/10 bg-white/80 px-2 py-1.5 text-[11px] ring-1 ring-white/50">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            'rounded-full px-2 py-0.5 text-[10px] font-extrabold ring-1',
+                            active
+                              ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                              : 'bg-slate-100 text-slate-600 ring-slate-200',
+                          )}
+                        >
+                          {statusLabel(item.status)}
                         </span>
-                      </Button>
+                        {endsIn ? (
+                          <span className="font-medium text-muted-foreground" dir="auto">
+                            Ends {endsIn}
+                          </span>
+                        ) : null}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <div className="inline-flex items-center gap-1.5 rounded-full border border-black/10 bg-white px-2 py-0.5">
+                          <span className="text-[10px] font-semibold text-muted-foreground">Visible</span>
+                          <Switch
+                            checked={active}
+                            onCheckedChange={(checked) => void toggleActive(item, checked)}
+                            aria-label="Toggle offer visibility"
+                          />
+                        </div>
+                        <EditServiceDialog
+                          item={item}
+                          mode={mode}
+                          storeId={store.id}
+                          includeStoreIdParam={includeStoreIdParamForOffers}
+                          onUpdated={(next) => setItems((prev) => prev.map((row) => (row.id === next.id ? next : row)))}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 rounded-md bg-white/80 px-3 text-xs"
+                          onClick={() => void deleteService(item.id)}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            <Trash2 className="h-4 w-4" aria-hidden="true" />
+                            Delete
+                          </span>
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          className="h-8 rounded-md px-4 text-xs"
+          disabled={storeContactBusy}
+          onClick={() => void persistStoreContactLinks()}
+        >
+          {storeContactBusy ? (
+            <span className="inline-flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+              Saving...
+            </span>
+          ) : (
+            'Save changes'
+          )}
+        </Button>
       </div>
     </div>
   );

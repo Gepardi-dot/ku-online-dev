@@ -1,7 +1,7 @@
 export const MARKET_CITY_OPTIONS = [
   { value: "all", label: "All Cities" },
   { value: "erbil", label: "Erbil" },
-  { value: "sulaymaniyah", label: "Sulaymaniyah" },
+  { value: "sulaymaniyah", label: "Silemaniy" },
   { value: "duhok", label: "Duhok" },
   { value: "zaxo", label: "Zaxo" },
 ] as const;

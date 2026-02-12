@@ -15,6 +15,7 @@ type SponsorStoreServiceCardProps = {
   endsLabel: (time: string) => string;
   href?: string | null;
   className?: string;
+  compact?: boolean;
 };
 
 function formatDiscount(offer: SponsorOffer, locale: Locale): string {
@@ -54,6 +55,7 @@ export function SponsorStoreServiceCard({
   endsLabel,
   href,
   className,
+  compact = false,
 }: SponsorStoreServiceCardProps) {
   const discount = formatDiscount(offer, locale);
   const dateFnsLocale = getDateFnsLocale(locale);
@@ -62,7 +64,10 @@ export function SponsorStoreServiceCard({
   const card = (
     <div
       className={cn(
-        'group relative shrink-0 overflow-hidden rounded-[18px] border border-white/70 bg-white/75 shadow-[0_10px_30px_rgba(15,23,42,0.10)] ring-1 ring-white/40 transition',
+        'group relative shrink-0 overflow-hidden border border-white/70 bg-white/75 ring-1 ring-white/40 transition',
+        compact
+          ? 'rounded-2xl shadow-[0_8px_22px_rgba(15,23,42,0.09)]'
+          : 'rounded-[18px] shadow-[0_10px_30px_rgba(15,23,42,0.10)]',
         href ? 'active:scale-[0.99] sm:hover:shadow-[0_14px_38px_rgba(15,23,42,0.14)]' : null,
         className,
       )}
@@ -71,26 +76,43 @@ export function SponsorStoreServiceCard({
       <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-55 motion-safe:opacity-65">
         <div className="absolute -left-1/2 top-0 h-full w-1/2 bg-gradient-to-r from-transparent via-white/35 to-transparent motion-safe:animate-shimmer motion-reduce:hidden" />
       </div>
-      <div className="relative p-3">
+      <div className={cn('relative', compact ? 'p-2.5' : 'p-3')}>
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <span className="inline-flex items-center rounded-full bg-brand/12 px-3 py-1 text-xs font-extrabold text-brand ring-1 ring-brand/15">
+            <span
+              className={cn(
+                'inline-flex items-center rounded-full bg-brand/12 font-extrabold text-brand ring-1 ring-brand/15',
+                compact ? 'px-2 py-0.5 text-[10px]' : 'px-3 py-1 text-xs',
+              )}
+            >
               {discount}
             </span>
             {endsIn ? (
-              <p className="mt-1 text-[0.72rem] font-semibold text-muted-foreground" dir="auto">
+              <p
+                className={cn(
+                  'font-semibold text-muted-foreground',
+                  compact ? 'mt-0.5 text-[0.67rem]' : 'mt-1 text-[0.72rem]',
+                )}
+                dir="auto"
+              >
                 {endsLabel(endsIn)}
               </p>
             ) : null}
           </div>
-          <SponsoredBadge label={sponsoredLabel} />
+          <SponsoredBadge label={sponsoredLabel} className={compact ? 'rounded-md px-2 py-0.5 text-[10px]' : undefined} />
         </div>
 
-        <p className="mt-2 line-clamp-2 text-sm font-bold text-[#111827]" dir="auto">
+        <p className={cn('line-clamp-2 font-bold text-[#111827]', compact ? 'mt-1.5 text-[0.82rem]' : 'mt-2 text-sm')} dir="auto">
           {offer.title}
         </p>
         {offer.description ? (
-          <p className="mt-1 line-clamp-2 text-[0.78rem] font-medium text-muted-foreground" dir="auto">
+          <p
+            className={cn(
+              'line-clamp-2 font-medium text-muted-foreground',
+              compact ? 'mt-0.5 text-[0.72rem]' : 'mt-1 text-[0.78rem]',
+            )}
+            dir="auto"
+          >
             {offer.description}
           </p>
         ) : null}

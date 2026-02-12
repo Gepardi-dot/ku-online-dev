@@ -48,6 +48,27 @@ const schema = z.object({
 
 const RATE_LIMIT_PER_IP = { windowMs: 5 * 60_000, max: 6 } as const;
 
+function mapValidationError(error: z.ZodError): string {
+  const issue = error.issues[0];
+  if (!issue) return 'Invalid payload';
+
+  const field = typeof issue.path[0] === 'string' ? issue.path[0] : null;
+  if (field === 'name' && issue.code === 'too_small') {
+    return 'Name must be at least 2 characters.';
+  }
+  if (field === 'email') {
+    return 'Please enter a valid email address.';
+  }
+  if (field === 'message' && issue.code === 'too_small') {
+    return 'Message must be at least 10 characters.';
+  }
+  if (field === 'partnershipType') {
+    return 'Please select a valid partnership type.';
+  }
+
+  return 'Invalid payload';
+}
+
 async function sendEmailNotification(payload: {
   subject: string;
   body: string;
@@ -115,7 +136,7 @@ const handler = async (request: Request) => {
   const body = (await request.json().catch(() => ({}))) as unknown;
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+    return NextResponse.json({ error: mapValidationError(parsed.error) }, { status: 400 });
   }
 
   const {

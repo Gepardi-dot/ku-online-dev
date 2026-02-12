@@ -6,6 +6,7 @@ import { Globe, MapPin, MessageCircle, Phone } from 'lucide-react';
 
 import AppLayout from '@/components/layout/app-layout';
 import { SponsorStoreBasketBar } from '@/components/sponsors/SponsorStoreBasketBar';
+import { WhatsAppDeepLink } from '@/components/sponsors/WhatsAppDeepLink';
 import { SponsorStoreProductCard, type SponsorStoreProductCardModel } from '@/components/sponsors/SponsorStoreProductCard';
 import { SponsorStoreServiceCard } from '@/components/sponsors/SponsorStoreServiceCard';
 import { SponsorStoreTabs } from '@/components/sponsors/SponsorStoreTabs';
@@ -13,6 +14,8 @@ import { Button } from '@/components/ui/button';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
 import { CATEGORY_LABEL_MAP } from '@/data/category-ui-config';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
+import { isAdmin } from '@/lib/auth/roles';
+import { toTelHref, toWhatsAppTargets } from '@/lib/contact-links';
 import type { Locale } from '@/lib/locale/dictionary';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { getProducts } from '@/lib/services/products';
@@ -85,22 +88,6 @@ function getInitials(name: string): string {
   return `${first}${second}`.toUpperCase();
 }
 
-function toTelHref(value: string | null): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  return `tel:${trimmed}`;
-}
-
-function toWhatsAppHref(value: string | null): string | null {
-  if (!value) return null;
-  const digits = value.replace(/[^\d+]/g, '').replace(/^00/, '+').trim();
-  if (!digits) return null;
-  const normalized = digits.startsWith('+') ? digits.slice(1) : digits;
-  if (!normalized) return null;
-  return `https://wa.me/${encodeURIComponent(normalized)}`;
-}
-
 function toWebsiteHref(value: string | null): string | null {
   if (!value) return null;
   const trimmed = value.trim();
@@ -110,10 +97,15 @@ function toWebsiteHref(value: string | null): string | null {
 }
 
 function toDirectionsHref(location: SponsorStoreLocation | null, fallbackName: string): string {
+  const rawAddress = location?.address?.trim() || '';
+  if (rawAddress && /^https?:\/\//i.test(rawAddress)) {
+    return rawAddress;
+  }
+
   if (location && typeof location.lat === 'number' && typeof location.lng === 'number') {
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${location.lat},${location.lng}`)}`;
   }
-  const query = location?.address?.trim() || fallbackName || 'Store';
+  const query = rawAddress || fallbackName || 'Store';
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
@@ -155,11 +147,39 @@ export default async function SponsorStorePage({
   if (!store) {
     notFound();
   }
-  const offers = await listSponsorOffersByStoreId(store.id, 12);
   const ownerUserId = store.ownerUserId ?? null;
-  const products = ownerUserId ? await getProducts({ sellerId: ownerUserId }, 12, 0, 'newest') : [];
+  const canManage = Boolean((user?.id && ownerUserId && user.id === ownerUserId) || isAdmin(user));
+  const offers = await listSponsorOffersByStoreId(store.id, canManage ? 24 : 3, { includeInactive: canManage });
+  const productSellerIds = Array.from(
+    new Set(
+      [ownerUserId, canManage ? (user?.id ?? null) : null]
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .map((value) => value.trim()),
+    ),
+  );
+  const mergedProducts =
+    productSellerIds.length > 0
+      ? Array.from(
+          new Map(
+            (
+              await Promise.all(
+                productSellerIds.map((sellerId) => getProducts({ sellerId }, canManage ? 24 : 12, 0, 'newest')),
+              )
+            )
+              .flat()
+              .map((product) => [product.id, product] as const),
+          ).values(),
+        )
+          .sort((a, b) => {
+            const bTs = b.createdAt?.getTime() ?? 0;
+            const aTs = a.createdAt?.getTime() ?? 0;
+            return bTs - aTs;
+          })
+          .slice(0, 12)
+      : [];
 
-  const canManage = Boolean(user?.id && ownerUserId && user.id === ownerUserId);
+  const manageHref = store.slug ? `/sponsors/manage?store=${encodeURIComponent(store.slug)}` : '/sponsors/manage';
+  const addProductHref = `/sell?returnTo=${encodeURIComponent(manageHref)}`;
   const canUsePrivateContactActions = Boolean(user?.id);
 
   const coverSrc = store.coverUrl?.trim() || '';
@@ -175,8 +195,9 @@ export default async function SponsorStorePage({
 
   const primaryLocation = store.locations.find((item) => item.isPrimary) ?? store.locations[0] ?? null;
   const address = primaryLocation?.address?.trim() || null;
+  const visibleAddress = address && !/^https?:\/\//i.test(address) ? address : null;
   const phoneHref = toTelHref(store.phone ?? primaryLocation?.phone ?? null);
-  const waHref = toWhatsAppHref(store.whatsapp ?? store.phone ?? null);
+  const waTargets = toWhatsAppTargets(store.whatsapp ?? store.phone ?? null);
   const siteHref = toWebsiteHref(store.website);
   const directionsHref = toDirectionsHref(primaryLocation, store.name);
 
@@ -191,7 +212,7 @@ export default async function SponsorStorePage({
 
   const services = offersForCards;
 
-  const productItems: SponsorStoreProductCardModel[] = products.map((product) => ({
+  const productItems: SponsorStoreProductCardModel[] = mergedProducts.map((product) => ({
     id: product.id,
     title: product.title,
     price: product.price,
@@ -257,13 +278,14 @@ export default async function SponsorStorePage({
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="rounded-full border border-[#F87171] bg-[#B91C1C] px-3 py-1 text-xs font-extrabold text-white shadow-[0_6px_14px_rgba(185,28,28,0.35)]">
+                    <span className="rounded-full border border-[#FF9AA2]/65 bg-[linear-gradient(180deg,#FF2D2D_0%,#E10613_58%,#C1000F_100%)] px-5 py-2 text-base font-extrabold tracking-[0.01em] text-white shadow-[0_10px_22px_rgba(193,0,15,0.38)]">
                       {serverTranslate(locale, 'sponsorsHub.sponsoredBadge')}
                     </span>
                     <VerifiedBadge
-                      size="sm"
+                      size="lg"
                       label={serverTranslate(locale, 'profile.overview.trustedBadge')}
-                      className="h-6 w-6 justify-center rounded-full ring-2 ring-white shadow-sm"
+                      iconClassName="h-7 w-7"
+                      className="h-10 w-10 justify-center rounded-full bg-white/95 ring-2 ring-white shadow-[0_8px_16px_rgba(15,23,42,0.18)]"
                     />
                   </div>
                 </div>
@@ -289,11 +311,11 @@ export default async function SponsorStorePage({
               </div>
 
               <div className="p-4 md:p-5">
-                {(cityLabel || address) ? (
+                {(cityLabel || visibleAddress) ? (
                   <div className="flex items-center gap-2 text-sm font-semibold text-[#6B7280] md:text-base" dir="auto">
                     <MapPin className="h-5 w-5 shrink-0 text-[#7C8493]" aria-hidden="true" />
                     <span className="line-clamp-1" dir="auto">
-                      {[cityLabel, address].filter(Boolean).join(' · ')}
+                      {[cityLabel, visibleAddress].filter(Boolean).join(' · ')}
                     </span>
                   </div>
                 ) : null}
@@ -309,14 +331,14 @@ export default async function SponsorStorePage({
                         !phoneHref || !canUsePrivateContactActions ? 'pointer-events-none opacity-55' : null,
                       )}
                     >
-                      <Link
+                      <a
                         href={phoneHref && canUsePrivateContactActions ? phoneHref : '#'}
                         aria-label={serverTranslate(locale, 'sponsorStore.actions.call')}
                         aria-disabled={!phoneHref || !canUsePrivateContactActions}
                         title={!canUsePrivateContactActions ? serverTranslate(locale, 'header.loginRequired') : undefined}
                       >
                         <Phone className="h-5 w-5" aria-hidden="true" />
-                      </Link>
+                      </a>
                     </Button>
 
                     <Button asChild size="icon" variant="secondary" className="h-11 w-11 rounded-full bg-[#E8E8E8] text-[#1F2937] shadow-sm hover:bg-[#DEDEDE]">
@@ -345,34 +367,40 @@ export default async function SponsorStorePage({
                       asChild
                       className={cn(
                         'h-11 shrink-0 rounded-full bg-[#57C878] px-4 text-base font-bold text-white shadow-[0_6px_18px_rgba(87,200,120,0.26),0_1px_6px_rgba(87,200,120,0.18)] hover:bg-[#4FB66D]',
-                        !waHref || !canUsePrivateContactActions ? 'pointer-events-none opacity-55' : null,
+                        !waTargets || !canUsePrivateContactActions ? 'pointer-events-none opacity-55' : null,
                       )}
                     >
-                      <Link
-                        href={waHref && canUsePrivateContactActions ? waHref : '#'}
-                        target={waHref && canUsePrivateContactActions ? '_blank' : undefined}
-                        rel={waHref && canUsePrivateContactActions ? 'noreferrer' : undefined}
+                      <WhatsAppDeepLink
+                        appHref={waTargets?.appHref ?? null}
+                        webHref={waTargets?.webHref ?? null}
+                        disabled={!canUsePrivateContactActions}
                         className={cn(isRtl && 'flex-row-reverse')}
-                        aria-disabled={!waHref || !canUsePrivateContactActions}
+                        aria-disabled={!waTargets || !canUsePrivateContactActions}
                         title={!canUsePrivateContactActions ? serverTranslate(locale, 'header.loginRequired') : undefined}
                       >
                         <MessageCircle className="h-6 w-6" aria-hidden="true" />
                         <span className="text-base leading-none">{serverTranslate(locale, 'sponsorStore.actions.whatsapp')}</span>
-                      </Link>
+                      </WhatsAppDeepLink>
                     </Button>
                   </div>
                 </div>
 
                 {canManage ? (
-                  <div className="mt-3">
+                  <div className="mt-3 flex items-center gap-2">
                     <Button
                       asChild
                       size="sm"
                       variant="outline"
                       className="h-9 rounded-full border-black/10 bg-white/70 px-3.5 text-xs font-bold shadow-sm hover:bg-white"
                     >
-                      <Link href="/sponsors/manage" prefetch={false} className={cn(isRtl && 'flex-row-reverse')}>
+                      <Link href={manageHref} prefetch={false} className={cn(isRtl && 'flex-row-reverse')}>
                         {serverTranslate(locale, 'sponsorManage.manageButton')}
+                      </Link>
+                    </Button>
+
+                    <Button asChild size="sm" className="h-9 rounded-full px-3.5 text-xs font-bold">
+                      <Link href={addProductHref} prefetch={false} className={cn(isRtl && 'flex-row-reverse')}>
+                        {serverTranslate(locale, 'sponsorManage.addProduct')}
                       </Link>
                     </Button>
                   </div>
@@ -442,7 +470,8 @@ export default async function SponsorStorePage({
       <SponsorStoreBasketBar
         basketKey={basketKey}
         storeName={store.name}
-        waHref={waHref}
+        waAppHref={waTargets?.appHref ?? null}
+        waWebHref={waTargets?.webHref ?? null}
         locale={locale}
         basketLabel={serverTranslate(locale, 'sponsorStore.basket.title')}
         sendLabel={serverTranslate(locale, 'sponsorStore.basket.send')}

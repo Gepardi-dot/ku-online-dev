@@ -6,7 +6,9 @@ import { BadgePercent, Clock, Globe, MapPin, MessageCircle, Phone, Store } from 
 import { format } from 'date-fns';
 
 import AppLayout from '@/components/layout/app-layout';
+import { WhatsAppDeepLink } from '@/components/sponsors/WhatsAppDeepLink';
 import { Button } from '@/components/ui/button';
+import { toTelHref, toWhatsAppTargets } from '@/lib/contact-links';
 import { cn } from '@/lib/utils';
 import { createClient } from '@/utils/supabase/server';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
@@ -37,22 +39,6 @@ function formatDiscount(offer: SponsorOfferDetails, locale: Locale): string {
   }
 
   return 'DEAL';
-}
-
-function toTelHref(value: string | null): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  return `tel:${trimmed}`;
-}
-
-function toWhatsAppHref(value: string | null): string | null {
-  if (!value) return null;
-  const digits = value.replace(/[^\d+]/g, '').replace(/^00/, '+').trim();
-  if (!digits) return null;
-  const normalized = digits.startsWith('+') ? digits.slice(1) : digits;
-  if (!normalized) return null;
-  return `https://wa.me/${encodeURIComponent(normalized)}`;
 }
 
 function toWebsiteHref(value: string | null): string | null {
@@ -94,7 +80,7 @@ export default async function SponsorOfferPage({ params }: { params: Promise<{ o
   const discount = formatDiscount(offer, locale);
 
   const phoneHref = toTelHref(store?.phone ?? null);
-  const waHref = toWhatsAppHref(store?.whatsapp ?? store?.phone ?? null);
+  const waTargets = toWhatsAppTargets(store?.whatsapp ?? store?.phone ?? null);
   const siteHref = toWebsiteHref(store?.website ?? null);
   const directionsHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store?.name ?? 'Store')}`;
 
@@ -177,13 +163,13 @@ export default async function SponsorOfferPage({ params }: { params: Promise<{ o
                     variant="secondary"
                     className={cn(
                       'h-11 rounded-full bg-[#25D366] text-white shadow-sm hover:bg-[#1FB857]',
-                      !waHref ? 'pointer-events-none opacity-55' : null,
+                      !waTargets ? 'pointer-events-none opacity-55' : null,
                     )}
                   >
-                    <Link href={waHref ?? '#'} target={waHref ? '_blank' : undefined} rel={waHref ? 'noreferrer' : undefined}>
+                    <WhatsAppDeepLink appHref={waTargets?.appHref ?? null} webHref={waTargets?.webHref ?? null}>
                       <MessageCircle className="h-4 w-4" aria-hidden="true" />
                       {serverTranslate(locale, 'sponsorStore.actions.whatsapp')}
-                    </Link>
+                    </WhatsAppDeepLink>
                   </Button>
                   <Button
                     asChild
@@ -193,10 +179,10 @@ export default async function SponsorOfferPage({ params }: { params: Promise<{ o
                       !phoneHref ? 'pointer-events-none opacity-55' : null,
                     )}
                   >
-                    <Link href={phoneHref ?? '#'}>
+                    <a href={phoneHref ?? '#'}>
                       <Phone className="h-4 w-4" aria-hidden="true" />
                       {serverTranslate(locale, 'sponsorStore.actions.call')}
-                    </Link>
+                    </a>
                   </Button>
                   <Button
                     asChild

@@ -106,6 +106,7 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
     initial.imagePaths.map((path, i) => ({ path, url: initial.imageUrls[i] ?? '', isNew: false })),
   );
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
   const [isDragActive, setIsDragActive] = useState(false);
   const [isFree, setIsFree] = useState(formData.price === '0');
   const currencyInputLabel = (() => {
@@ -121,10 +122,13 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
   const [pendingRemoval, setPendingRemoval] = useState<UploadedImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
+    let isMounted = true;
+
     const loadCategories = async () => {
+      setIsCategoriesLoading(true);
       const { data, error } = await supabase
         .from('categories')
         .select('id, name')
@@ -132,12 +136,21 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         .neq('id', SPONSORS_CATEGORY_ID)
         .order('sort_order', { ascending: true })
         .order('name', { ascending: true });
-      if (!error) {
+      if (!error && isMounted) {
         const mapped = mapCategoriesForUi((data ?? []) as RawCategoryRow[]);
         setCategories(mapped);
+      } else if (error && isMounted) {
+        setCategories([]);
+      }
+
+      if (isMounted) {
+        setIsCategoriesLoading(false);
       }
     };
     loadCategories();
+    return () => {
+      isMounted = false;
+    };
   }, [supabase]);
 
   const getCategoryLabel = (label: string) => {
@@ -720,12 +733,16 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
                         setHasUnsaved(true);
                         setFormData((p) => ({ ...p, categoryId: value }));
                       }}
-                      disabled={categories.length === 0}
+                      disabled={isCategoriesLoading || categories.length === 0}
                     >
                       <SelectTrigger className={selectTriggerClassName}>
                         <SelectValue
                           placeholder={
-                            categories.length ? t('sellForm.fields.categoryPlaceholder') : t('sellForm.fields.categoryLoading')
+                            isCategoriesLoading
+                              ? t('sellForm.fields.categoryLoading')
+                              : categories.length
+                                ? t('sellForm.fields.categoryPlaceholder')
+                                : t('homepage.noCategories')
                           }
                         />
                       </SelectTrigger>

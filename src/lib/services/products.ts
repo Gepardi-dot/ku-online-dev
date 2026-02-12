@@ -18,6 +18,7 @@ export interface SellerProfile {
   location: string | null;
   bio: string | null;
   isVerified: boolean;
+  isAdmin?: boolean;
   rating: number | null;
   totalRatings: number | null;
   createdAt: Date | null;
@@ -58,6 +59,7 @@ export interface ProductWithRelations {
   createdAt: Date | null;
   updatedAt: Date | null;
   seller: SellerProfile | null;
+  sellerStoreName?: string | null;
   category?: MarketplaceCategory | null;
   originalPrice?: number;
 }
@@ -160,6 +162,13 @@ type SupabaseLocationRow = {
   location: string | null;
 };
 
+type SponsorStoreOwnerRow = {
+  owner_user_id: string | null;
+  name: string | null;
+  primary_city?: string | null;
+  updated_at?: string | null;
+};
+
 type SupabaseProductMetadataRow = {
   id: string;
   title: string;
@@ -248,6 +257,7 @@ function mapSeller(row: any | null): SellerProfile | null {
     location: row.location ?? null,
     bio: row.bio ?? null,
     isVerified: Boolean(row.is_verified),
+    isAdmin: Boolean(row.is_admin),
     rating: typeof row.rating === "number" ? row.rating : row.rating ? Number(row.rating) : null,
     totalRatings: typeof row.total_ratings === "number" ? row.total_ratings : row.total_ratings ? Number(row.total_ratings) : null,
     createdAt: toDate(row.created_at ?? null),
@@ -301,6 +311,7 @@ export function mapProduct(row: SupabaseProductRow): ProductWithRelations {
     createdAt: toDate(row.created_at),
     updatedAt: toDate(row.updated_at),
     seller: mapSeller(row.seller ?? null),
+    sellerStoreName: null,
     category: mapCategory(row.category ?? null),
     originalPrice,
   };
@@ -412,6 +423,118 @@ async function hydrateSellerProfiles(products: ProductWithRelations[]): Promise<
       }
     }
   }
+}
+
+function toTimestamp(value: string | null | undefined): number {
+  if (!value) {
+    return 0;
+  }
+
+  const parsed = Date.parse(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function resolveProductStoreName(
+  product: ProductWithRelations,
+  ownerStores: SponsorStoreOwnerRow[],
+): string | null {
+  const normalizedStores = ownerStores
+    .map((item) => ({
+      name: typeof item.name === 'string' ? item.name.trim() : '',
+      city: normalizeMarketCityValue(item.primary_city ?? null),
+      updatedAtTs: toTimestamp(item.updated_at ?? null),
+    }))
+    .filter((item) => item.name.length > 0)
+    .sort((a, b) => b.updatedAtTs - a.updatedAtTs);
+
+  if (normalizedStores.length === 0) {
+    return null;
+  }
+
+  if (normalizedStores.length === 1) {
+    return normalizedStores[0]?.name ?? null;
+  }
+
+  const location = normalizeMarketCityValue(product.location);
+  if (location) {
+    const matchingCityStores = normalizedStores.filter((item) => {
+      if (!item.city) return false;
+      return item.city === location || item.city.includes(location) || location.includes(item.city);
+    });
+    if (matchingCityStores.length === 1) {
+      return matchingCityStores[0]?.name ?? null;
+    }
+  }
+
+  return normalizedStores[0]?.name ?? null;
+}
+
+async function hydrateSellerStoreFallback(products: ProductWithRelations[]): Promise<void> {
+  const sellerIds = Array.from(
+    new Set(
+      products
+        .map((product) => (typeof product.sellerId === 'string' ? product.sellerId.trim() : ''))
+        .filter((value) => value.length > 0),
+    ),
+  );
+
+  if (sellerIds.length === 0) {
+    return;
+  }
+
+  const adminClient = await getSupabaseAdmin();
+  if (!adminClient) {
+    return;
+  }
+
+  let stores: SponsorStoreOwnerRow[] = [];
+  const primaryResponse = await adminClient
+    .from('sponsor_stores')
+    .select('owner_user_id, name, primary_city, updated_at')
+    .eq('status', 'active')
+    .in('owner_user_id', sellerIds);
+
+  if (primaryResponse.error) {
+    const fallbackResponse = await adminClient
+      .from('sponsor_stores')
+      .select('owner_user_id, name')
+      .in('owner_user_id', sellerIds);
+    if (fallbackResponse.error) {
+      console.warn('Failed to load sponsor stores for seller fallback', fallbackResponse.error);
+      return;
+    }
+    stores = (fallbackResponse.data ?? []) as SponsorStoreOwnerRow[];
+  } else {
+    stores = (primaryResponse.data ?? []) as SponsorStoreOwnerRow[];
+  }
+
+  if (stores.length === 0) {
+    return;
+  }
+
+  const storesByOwner = new Map<string, SponsorStoreOwnerRow[]>();
+  for (const row of stores) {
+    const ownerId = typeof row.owner_user_id === 'string' ? row.owner_user_id.trim() : '';
+    if (!ownerId) continue;
+    const list = storesByOwner.get(ownerId) ?? [];
+    list.push(row);
+    storesByOwner.set(ownerId, list);
+  }
+
+  for (const product of products) {
+    const ownerStores = storesByOwner.get(product.sellerId) ?? [];
+    const fallbackStoreName = resolveProductStoreName(product, ownerStores);
+    product.sellerStoreName = fallbackStoreName;
+  }
+}
+
+async function hydrateSellerContext(products: ProductWithRelations[]): Promise<void> {
+  if (products.length === 0) {
+    return;
+  }
+
+  await hydrateSellerProfiles(products);
+  await hydrateSellerStoreFallback(products);
 }
 
 function buildProductsQuery(supabase: any, filters: ProductFilters = {}, options: { withCount?: boolean } = {}) {
@@ -892,6 +1015,7 @@ export async function searchProducts(
     looksFree,
   );
   if (algoliaResult && algoliaResult.items.length > 0) {
+    await hydrateSellerContext(algoliaResult.items);
     return algoliaResult;
   }
 
@@ -962,7 +1086,9 @@ export async function searchProducts(
 
   const sortedItems = sortProductsInMemory(orderedItems, sort);
   if (!detailError) {
-    await hydrateSellerProfiles(sortedItems);
+    await hydrateSellerContext(sortedItems);
+  } else {
+    await hydrateSellerStoreFallback(sortedItems);
   }
   hydrateProductPublicImages(sortedItems);
   return { items: sortedItems, count: parsedCount };
@@ -989,7 +1115,7 @@ export async function getProducts(
 
   const rows = (data ?? []) as SupabaseProductRow[];
   const products = rows.map((row) => mapProduct(row));
-  await hydrateSellerProfiles(products);
+  await hydrateSellerContext(products);
   hydrateProductPublicImages(products);
   return products;
 }
@@ -1015,7 +1141,7 @@ export async function getProductsWithCount(
 
   const rows = (data ?? []) as SupabaseProductRow[];
   const items = rows.map((row) => mapProduct(row));
-  await hydrateSellerProfiles(items);
+  await hydrateSellerContext(items);
   hydrateProductPublicImages(items);
   return {
     items,
@@ -1107,7 +1233,7 @@ export async function getProductById(id: string): Promise<ProductWithRelations |
   }
 
   const product = mapProduct(data as SupabaseProductRow);
-  await hydrateSellerProfiles([product]);
+  await hydrateSellerContext([product]);
   const name = product.category?.name?.toLowerCase() ?? '';
   const isHiRes = ['vehicle', 'vehicles', 'car', 'cars', 'auto', 'automotive', 'real estate', 'property', 'properties'].some((kw) => name.includes(kw));
   const width = isHiRes ? 1920 : 1400;
@@ -1274,7 +1400,7 @@ export async function getRecommendedProducts(
   const products = rows
     .map((row) => mapProduct(row))
     .filter((product) => product.id !== productId);
-  await hydrateSellerProfiles(products);
+  await hydrateSellerContext(products);
   hydrateProductPublicImages(products);
   return products;
 }

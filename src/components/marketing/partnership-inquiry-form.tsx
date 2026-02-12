@@ -48,6 +48,9 @@ type RuntimeContacts = {
   source: 'db' | 'env' | 'none';
 };
 
+const MIN_NAME_LENGTH = 2;
+const MIN_MESSAGE_LENGTH = 10;
+
 const initialState: PartnershipFormState = {
   name: '',
   company: '',
@@ -176,11 +179,15 @@ export function PartnershipInquiryForm({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    const normalizedName = formState.name.trim();
+    const normalizedEmail = formState.email.trim();
+    const normalizedType = formState.partnershipType.trim();
+    const normalizedMessage = formState.message.trim();
     const requiredValues = [
-      formState.name.trim(),
-      formState.email.trim(),
-      formState.partnershipType.trim(),
-      formState.message.trim(),
+      normalizedName,
+      normalizedEmail,
+      normalizedType,
+      normalizedMessage,
     ];
 
     if (requiredValues.some((value) => !value)) {
@@ -192,10 +199,28 @@ export function PartnershipInquiryForm({
       return;
     }
 
-    if (!formState.email.includes('@')) {
+    if (normalizedName.length < MIN_NAME_LENGTH) {
+      toast({
+        title: t('partnership.toast.missingTitle'),
+        description: t('partnership.toast.nameTooShortDescription'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!normalizedEmail.includes('@')) {
       toast({
         title: t('partnership.toast.invalidEmailTitle'),
         description: t('partnership.toast.invalidEmailDescription'),
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (normalizedMessage.length < MIN_MESSAGE_LENGTH) {
+      toast({
+        title: t('partnership.toast.missingTitle'),
+        description: t('partnership.toast.messageTooShortDescription'),
         variant: 'destructive',
       });
       return;
@@ -217,6 +242,10 @@ export function PartnershipInquiryForm({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formState,
+          name: normalizedName,
+          email: normalizedEmail,
+          partnershipType: normalizedType,
+          message: normalizedMessage,
           partnershipTypeLabel: selectedTypeLabel,
           honeypot,
         }),
