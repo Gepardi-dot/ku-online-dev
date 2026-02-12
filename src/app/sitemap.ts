@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next';
 import { getCachedCategories } from '@/lib/services/products-cache';
 import { getProducts } from '@/lib/services/products';
 import { getPublicEnv } from '@/lib/env-public';
+import { SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
 
 const { NEXT_PUBLIC_SITE_URL } = getPublicEnv();
 const SITE_URL = NEXT_PUBLIC_SITE_URL ?? 'https://ku-online.vercel.app';
@@ -18,6 +19,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily',
       priority: 0.9,
     },
+    {
+      url: `${SITE_URL}/sponsors`,
+      changeFrequency: 'weekly',
+      priority: 0.6,
+    },
   ];
 
   const [categories, recentProducts] = await Promise.all([
@@ -27,7 +33,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const visibleCategories = categories.filter((category) => {
     const name = (category.name || '').toLowerCase();
-    return name !== 'smartphones' && name !== 'motors';
+    return category.id !== SPONSORS_CATEGORY_ID && name !== 'smartphones' && name !== 'motors';
   });
 
   for (const category of visibleCategories) {

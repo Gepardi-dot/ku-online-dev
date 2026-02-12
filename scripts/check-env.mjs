@@ -55,6 +55,11 @@ const serverSchema = baseSchema.extend({
   ADMIN_REVALIDATE_TOKEN: z.string().min(1, 'ADMIN_REVALIDATE_TOKEN is required').optional(),
   SENTRY_DSN: z.string().url().optional(),
   SENTRY_ENVIRONMENT: z.string().optional(),
+  VONAGE_API_KEY: z.string().min(1).optional(),
+  VONAGE_API_SECRET: z.string().min(1).optional(),
+  VONAGE_APPLICATION_ID: z.string().min(1).optional(),
+  VONAGE_PRIVATE_KEY64: z.string().min(1).optional(),
+  VONAGE_VIRTUAL_NUMBER: z.string().min(1).optional(),
 });
 
 const result = serverSchema.safeParse(process.env);

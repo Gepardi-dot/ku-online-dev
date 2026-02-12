@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type MouseEvent } from 'react';
-import { Heart } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -93,7 +93,7 @@ export default function ProductFavoriteButton({
       aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
       onClick={handleClick}
     >
-      <Heart
+      <ShoppingCart
         className="h-4 w-4"
         fill={isFavorite ? 'currentColor' : 'none'}
       />

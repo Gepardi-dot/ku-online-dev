@@ -94,7 +94,7 @@ export function VerifyBadgeDialog({ isVerified, latestStatus, submittedAt, defau
     <div className="space-y-2">
       {statusLabel ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <ShieldCheck className="h-4 w-4 text-emerald-500" />
+          <ShieldCheck className="h-4 w-4 text-blue-500" />
           <span>{statusLabel}</span>
           {submittedAt ? <span className="text-xs text-muted-foreground">({new Date(submittedAt).toLocaleString()})</span> : null}
         </div>
@@ -120,7 +120,7 @@ export function VerifyBadgeDialog({ isVerified, latestStatus, submittedAt, defau
                   id="verify-phone"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+964 750 123 4567"
+                  placeholder="+964 770 123 4567"
                 />
               </div>
               <div className="space-y-1">

@@ -28,6 +28,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { cn } from '@/lib/utils';
 import React, { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
+import { SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
 
 type SidebarCategory = { id: string; name: string; icon?: string | null };
 
@@ -45,6 +46,7 @@ export default function AppSidebar() {
           .from('categories')
           .select('id, name, icon')
           .eq('is_active', true)
+          .neq('id', SPONSORS_CATEGORY_ID)
           .order('sort_order', { ascending: true })
           .order('name', { ascending: true });
         if (!mounted) return;

@@ -27,8 +27,12 @@ export default function AuthButton({ user }: AuthButtonProps) {
   const { t, locale } = useLocale();
   const isRtl = locale === 'ar' || locale === 'ku';
   const isKurdish = locale === 'ku';
+  const debugAuth = process.env.NEXT_PUBLIC_DEBUG_AUTH === '1';
+  const defaultCountryCode = '+964';
+  const defaultCountryDialCode = defaultCountryCode.slice(1);
   const [isLoading, setIsLoading] = useState(false);
   const [phone, setPhone] = useState('');
+  const [verificationPhone, setVerificationPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -76,6 +80,13 @@ export default function AuthButton({ user }: AuthButtonProps) {
     return () => window.cancelAnimationFrame(frame);
   }, [dialogOpen, showOtpInput, focusDialogInput]);
 
+  useEffect(() => {
+    if (!dialogOpen || showOtpInput) return;
+    if (!phone) {
+      setPhone(`${defaultCountryCode} `);
+    }
+  }, [dialogOpen, showOtpInput, phone, defaultCountryCode]);
+
   const handleGoogleLogin = async () => {
     setIsLoading(true);
     try {
@@ -97,31 +108,50 @@ export default function AuthButton({ user }: AuthButtonProps) {
     setIsLoading(false);
   };
 
+  const normalizePhoneToE164 = useCallback((value: string) => {
+    const raw = value.trim();
+    if (!raw) return null;
+
+    let normalized = raw.replace(/[\s().-]/g, '');
+    if (normalized.startsWith('00')) {
+      normalized = `+${normalized.slice(2)}`;
+    }
+
+    if (normalized.startsWith('+')) {
+      const digits = normalized.slice(1).replace(/\D/g, '');
+      if (!digits || digits[0] === '0') return null;
+      if (digits.length < 7 || digits.length > 15) return null;
+      return `+${digits}`;
+    }
+
+    let digits = normalized.replace(/\D/g, '');
+    if (!digits) return null;
+    if (digits.startsWith('0')) digits = digits.slice(1);
+    if (digits.startsWith(defaultCountryDialCode)) digits = digits.slice(defaultCountryDialCode.length);
+    if (digits.length < 7 || digits.length > 12) return null;
+
+    return `+${defaultCountryDialCode}${digits}`;
+  }, [defaultCountryDialCode]);
+
   const handlePhoneLogin = async () => {
     setIsLoading(true);
     setPhoneError(null);
     try {
       const raw = phone.trim();
-      if (!raw) {
+      if (!raw || raw === defaultCountryCode) {
         setPhoneError(t('auth.phoneRequiredError'));
         setIsLoading(false);
         return;
       }
 
-      // Normalise international numbers like 0044... to +44...
-      let normalized = raw;
-      if (normalized.startsWith('00')) {
-        normalized = `+${normalized.slice(2)}`;
-      }
-
-      // Basic E.164-style validation; Supabase/Twilio expect international format.
-      if (!/^\+?[0-9]{7,15}$/.test(normalized)) {
+      const normalized = normalizePhoneToE164(raw);
+      if (!normalized) {
         setPhoneError(t('auth.phoneInvalidError'));
         setIsLoading(false);
         return;
       }
 
-      setPhone(normalized);
+      setVerificationPhone(normalized);
 
       const { error } = await supabase.auth.signInWithOtp({
         phone: normalized,
@@ -130,11 +160,33 @@ export default function AuthButton({ user }: AuthButtonProps) {
       if (!error) {
         setShowOtpInput(true);
       } else {
-        setPhoneError(t('auth.sendVerificationFailed'));
+        if (debugAuth) {
+          console.error('Supabase signInWithOtp failed', {
+            status: (error as any)?.status,
+            code: (error as any)?.code ?? (error as any)?.error_code,
+            name: (error as any)?.name,
+            message: (error as any)?.message,
+          });
+        } else {
+          console.error('Supabase signInWithOtp failed');
+        }
+        setPhoneError(
+          debugAuth
+            ? `${t('auth.sendVerificationFailed')} (${(error as any)?.status ?? 'n/a'}: ${(error as any)?.message ?? 'n/a'})`
+            : t('auth.sendVerificationFailed')
+        );
       }
     } catch (error) {
-      console.error('Error sending OTP:', error);
-      setPhoneError(t('auth.sendVerificationFailed'));
+      if (debugAuth) {
+        console.error('Error sending OTP:', error);
+      } else {
+        console.error('Error sending OTP');
+      }
+      setPhoneError(
+        debugAuth && error instanceof Error
+          ? `${t('auth.sendVerificationFailed')} (exception: ${error.message})`
+          : t('auth.sendVerificationFailed')
+      );
     } finally {
       setIsLoading(false);
     }
@@ -145,18 +197,40 @@ export default function AuthButton({ user }: AuthButtonProps) {
     setOtpError(null);
     try {
       const { error } = await supabase.auth.verifyOtp({
-        phone,
+        phone: verificationPhone,
         token: otp,
         type: 'sms',
       });
       if (!error) {
         window.location.reload();
       } else {
-        setOtpError(t('auth.verifyCodeFailed'));
+        if (debugAuth) {
+          console.error('Supabase verifyOtp failed', {
+            status: (error as any)?.status,
+            code: (error as any)?.code ?? (error as any)?.error_code,
+            name: (error as any)?.name,
+            message: (error as any)?.message,
+          });
+        } else {
+          console.error('Supabase verifyOtp failed');
+        }
+        setOtpError(
+          debugAuth
+            ? `${t('auth.verifyCodeFailed')} (${(error as any)?.status ?? 'n/a'}: ${(error as any)?.message ?? 'n/a'})`
+            : t('auth.verifyCodeFailed')
+        );
       }
     } catch (error) {
-      console.error('Error verifying OTP:', error);
-      setOtpError(t('auth.verifyCodeFailed'));
+      if (debugAuth) {
+        console.error('Error verifying OTP:', error);
+      } else {
+        console.error('Error verifying OTP');
+      }
+      setOtpError(
+        debugAuth && error instanceof Error
+          ? `${t('auth.verifyCodeFailed')} (exception: ${error.message})`
+          : t('auth.verifyCodeFailed')
+      );
     } finally {
       setIsLoading(false);
     }
@@ -169,6 +243,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
 
   if (user) {
     const userIsModerator = isModerator(user);
+    const contactValue = user.email ?? user.phone ?? '';
 
     return (
       <DropdownMenu
@@ -205,7 +280,7 @@ export default function AuthButton({ user }: AuthButtonProps) {
               {user.user_metadata?.full_name || t('header.userMenu.defaultName')}
             </p>
             <p className="text-xs text-brand/80 mt-0.5">
-              {user.email}
+              {contactValue}
             </p>
           </div>
           <DropdownMenuItem asChild className="mb-2">
@@ -328,9 +403,19 @@ export default function AuthButton({ user }: AuthButtonProps) {
               <Input
                 id="phone"
                 type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 placeholder={t('auth.phonePlaceholder')}
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => {
+                  setPhone(e.target.value);
+                  if (phoneError) setPhoneError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isLoading) void handlePhoneLogin();
+                }}
+                className="text-left"
+                dir="ltr"
                 ref={phoneInputRef}
               />
               {phoneError && (
@@ -352,6 +437,9 @@ export default function AuthButton({ user }: AuthButtonProps) {
                 placeholder={t('auth.verificationCodePlaceholder')}
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isLoading && otp.length === 6) void handleOtpVerification();
+                }}
                 maxLength={6}
                 ref={otpInputRef}
               />
@@ -370,4 +458,3 @@ export default function AuthButton({ user }: AuthButtonProps) {
     </Dialog>
   );
 }
-

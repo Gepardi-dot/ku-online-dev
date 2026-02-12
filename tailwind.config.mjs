@@ -78,11 +78,42 @@ const config = {
           from: { transform: 'translateX(0)' },
           to: { transform: 'translateX(calc(-100% - var(--gap)))' },
         },
+        'ku-aurora': {
+          '0%, 100%': { transform: 'translate3d(-10%, -10%, 0) scale(1)' },
+          '50%': { transform: 'translate3d(10%, 6%, 0) scale(1.06)' },
+        },
+        'ku-shimmer': {
+          '0%': { transform: 'translateX(-140%) rotate(12deg)' },
+          '100%': { transform: 'translateX(140%) rotate(12deg)' },
+        },
+        'ku-float': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-6px)' },
+        },
+        'ku-glow': {
+          '0%, 100%': { opacity: '0.35' },
+          '50%': { opacity: '0.75' },
+        },
+        'ku-border-shift': {
+          '0%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+          '100%': { backgroundPosition: '0% 50%' },
+        },
+        'ku-sparkle': {
+          '0%, 100%': { opacity: '0.22', transform: 'translate3d(0, 0, 0) scale(0.98)' },
+          '50%': { opacity: '0.55', transform: 'translate3d(10px, -8px, 0) scale(1.03)' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         marquee: 'marquee var(--duration) linear infinite',
+        aurora: 'ku-aurora 18s ease-in-out infinite',
+        shimmer: 'ku-shimmer 3.6s ease-in-out infinite',
+        float: 'ku-float 6s ease-in-out infinite',
+        glow: 'ku-glow 2.8s ease-in-out infinite',
+        borderShift: 'ku-border-shift 6.5s ease-in-out infinite',
+        sparkle: 'ku-sparkle 4.2s ease-in-out infinite',
       },
     },
   },

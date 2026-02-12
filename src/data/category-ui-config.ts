@@ -7,6 +7,8 @@ export type CategoryUiConfig = {
   matchNames: string[];
 };
 
+export const SPONSORS_CATEGORY_ID = '00000000-0000-0000-0000-00000000000d';
+
 export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
   {
     key: 'smartphones-ipads',
@@ -15,6 +17,21 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     labelKu: 'مۆبایل و ئایپاد',
     icon: '/Smartphones and ipads.png',
     matchNames: ['smartphones and ipads', 'smartphones', 'smartphone'],
+  },
+  {
+    key: 'sponsors',
+    label: 'Stores and Sponsors',
+    labelAr: 'المحلات والرعاة',
+    labelKu: 'فرۆشگاکان و سپۆنسەرەکان',
+    icon: '/Sponsor.png.png',
+    matchNames: [
+      'stores and sponsors',
+      'stores & sponsors',
+      'stores',
+      'sponsors',
+      'store',
+      'sponsor',
+    ],
   },
   {
     key: 'fashion',
@@ -60,7 +77,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     key: 'furniture',
     label: 'Furniture',
     labelAr: 'أثاث',
-    labelKu: 'کاڵای خانووبەرە',
+    labelKu: 'کەلوپەلی ناو ماڵ',
     icon: '/Furniture (1).png',
     matchNames: ['furniture'],
   },

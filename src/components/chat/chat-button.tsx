@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type CSSProperties } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { createClient as createSupabaseClient } from '@/utils/supabase/client';
 import { useLocale } from '@/providers/locale-provider';
+import { cn } from '@/lib/utils';
 
 interface ChatButtonProps {
   sellerId: string;
@@ -26,6 +27,56 @@ interface ChatButtonProps {
   viewerId?: string | null;
 }
 
+interface VisualViewportState {
+  width: number;
+  height: number;
+  offsetTop: number;
+  offsetLeft: number;
+  scale: number;
+}
+
+type DialogStyle = CSSProperties & { '--chat-expanded-height'?: string };
+
+const useVisualViewport = (): { state: VisualViewportState; refresh: () => void } => {
+  const [state, setState] = useState<VisualViewportState>({
+    width: 0,
+    height: 0,
+    offsetTop: 0,
+    offsetLeft: 0,
+    scale: 1,
+  });
+
+  const update = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const viewport = window.visualViewport;
+    setState({
+      width: viewport?.width ?? window.innerWidth,
+      height: viewport?.height ?? window.innerHeight,
+      offsetTop: viewport?.offsetTop ?? 0,
+      offsetLeft: viewport?.offsetLeft ?? 0,
+      scale: viewport?.scale ?? 1,
+    });
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const viewport = window.visualViewport;
+    update();
+    viewport?.addEventListener('resize', update);
+    viewport?.addEventListener('scroll', update);
+    window.addEventListener('resize', update);
+
+    return () => {
+      viewport?.removeEventListener('resize', update);
+      viewport?.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, [update]);
+
+  return { state, refresh: update };
+};
+
 export default function ChatButton({
   sellerId,
   sellerName,
@@ -34,6 +85,7 @@ export default function ChatButton({
   viewerId,
 }: ChatButtonProps) {
   const { t, locale } = useLocale();
+  const { state: visualViewport, refresh: refreshVisualViewport } = useVisualViewport();
   const relativeTimeLocale = useMemo(() => {
     if (locale === 'ku') return 'ku-u-nu-arab';
     if (locale === 'ar') return 'ar-u-nu-arab';
@@ -77,7 +129,47 @@ export default function ChatButton({
     },
     [relativeTimeFormatter],
   );
+  const baselineHeightRef = useRef<number | null>(null);
+  const focusRefreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blurFocusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const viewportWidth =
+    visualViewport.width || (typeof window !== 'undefined' ? window.innerWidth : 0);
+  const viewportHeight =
+    visualViewport.height || (typeof window !== 'undefined' ? window.innerHeight : 0);
+  const isMobileViewport = viewportWidth > 0 && viewportWidth < 640;
   const [open, setOpen] = useState(false);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const isKeyboardOpen = useMemo(() => {
+    if (!isMobileViewport || typeof window === 'undefined' || !viewportHeight) {
+      return false;
+    }
+    const layoutHeight = (baselineHeightRef.current ?? window.innerHeight) || 0;
+    const delta = layoutHeight - viewportHeight;
+    const threshold = Math.max(80, layoutHeight * 0.15);
+    return delta > threshold;
+  }, [isMobileViewport, viewportHeight]);
+  const isExpanded = isMobileViewport && (isKeyboardOpen || isInputFocused);
+  const dialogStyle = useMemo<DialogStyle | undefined>(() => {
+    if (!isExpanded) {
+      return undefined;
+    }
+    const fallbackHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+    const resolvedHeight = viewportHeight || fallbackHeight;
+    const heightValue = resolvedHeight ? `${Math.round(resolvedHeight)}px` : '100dvh';
+    const top = Math.round(visualViewport.offsetTop || 0);
+    return {
+      position: 'fixed',
+      top: `${top}px`,
+      left: 0,
+      right: 0,
+      height: heightValue,
+      maxHeight: heightValue,
+      margin: 0,
+      transform: 'none',
+      borderRadius: 0,
+      '--chat-expanded-height': heightValue,
+    };
+  }, [isExpanded, viewportHeight, visualViewport.offsetTop]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<MessageRecord[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -137,6 +229,7 @@ export default function ChatButton({
 
   useEffect(() => {
     if (!open) {
+      baselineHeightRef.current = null;
       return;
     }
 
@@ -163,6 +256,14 @@ export default function ChatButton({
 
     loadConversation();
   }, [open, canChat, viewerId, sellerId, loadConversation, t]);
+
+  useEffect(() => {
+    if (!open || typeof window === 'undefined') {
+      return;
+    }
+    const candidate = Math.max(window.innerHeight, viewportHeight);
+    baselineHeightRef.current = Math.max(baselineHeightRef.current ?? 0, candidate);
+  }, [open, viewportHeight]);
 
   useEffect(() => {
     if (!conversationId || !viewerId || !open) {
@@ -348,13 +449,61 @@ export default function ChatButton({
   const handleOpenChange = useCallback(
     (nextOpen: boolean) => {
       if (nextOpen) {
+        if (typeof window !== 'undefined') {
+          const candidate = Math.max(
+            window.innerHeight,
+            window.visualViewport?.height ?? 0,
+          );
+          baselineHeightRef.current = Math.max(baselineHeightRef.current ?? 0, candidate);
+        }
         setOpen(true);
       } else {
+        if (blurFocusTimeoutRef.current) {
+          clearTimeout(blurFocusTimeoutRef.current);
+          blurFocusTimeoutRef.current = null;
+        }
+        setIsInputFocused(false);
         setOpen(false);
       }
     },
     [],
   );
+
+  const handleInputFocus = useCallback(() => {
+    if (blurFocusTimeoutRef.current) {
+      clearTimeout(blurFocusTimeoutRef.current);
+      blurFocusTimeoutRef.current = null;
+    }
+    setIsInputFocused(true);
+    refreshVisualViewport();
+    if (focusRefreshTimeoutRef.current) {
+      clearTimeout(focusRefreshTimeoutRef.current);
+    }
+    focusRefreshTimeoutRef.current = setTimeout(() => {
+      refreshVisualViewport();
+    }, 100);
+  }, [refreshVisualViewport]);
+
+  const handleInputBlur = useCallback(() => {
+    if (blurFocusTimeoutRef.current) {
+      clearTimeout(blurFocusTimeoutRef.current);
+    }
+    blurFocusTimeoutRef.current = setTimeout(() => {
+      setIsInputFocused(false);
+      blurFocusTimeoutRef.current = null;
+    }, 150);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (focusRefreshTimeoutRef.current) {
+        clearTimeout(focusRefreshTimeoutRef.current);
+      }
+      if (blurFocusTimeoutRef.current) {
+        clearTimeout(blurFocusTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleToggleTranslation = useCallback(
     async (message: MessageRecord) => {
@@ -514,7 +663,15 @@ export default function ChatButton({
           </span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[480px] rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-6 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40 font-sans">
+      <DialogContent
+        className={cn(
+          "sm:max-w-[480px] rounded-[32px] border border-white/60 bg-linear-to-br from-white/30 via-white/20 to-white/5 bg-transparent! p-6 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur-[50px] ring-1 ring-white/40 font-sans flex flex-col transition-[border-radius,padding,width,height,transform] duration-200 ease-out",
+          isExpanded
+            ? "left-0 right-0 top-0 bottom-0 translate-x-0 translate-y-0 rounded-none max-w-none w-full px-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(0.75rem+env(safe-area-inset-bottom))] touch-pan-y h-[var(--chat-expanded-height,100dvh)] max-h-[var(--chat-expanded-height,100dvh)] min-h-[var(--chat-expanded-height,100dvh)] overflow-hidden"
+            : "",
+        )}
+        style={dialogStyle}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-3">
             <Avatar className="h-10 w-10 border-2 border-white/60 shadow-sm">
@@ -542,8 +699,13 @@ export default function ChatButton({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <ScrollArea className="h-[300px] w-full rounded-2xl border border-[#eadbc5]/70 bg-white/50 shadow-sm ring-1 ring-black/3">
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
+          <ScrollArea
+            className={cn(
+              "w-full rounded-2xl border border-[#eadbc5]/70 bg-white/50 shadow-sm ring-1 ring-black/3",
+              isExpanded ? "flex-1 min-h-0 max-h-full" : "h-[300px]",
+            )}
+          >
             <div className="p-4">{renderMessages()}</div>
           </ScrollArea>
 
@@ -552,6 +714,8 @@ export default function ChatButton({
               value={newMessage}
               onChange={(event) => setNewMessage(event.target.value)}
               onKeyDown={handleKeyDown}
+              onFocus={handleInputFocus}
+              onBlur={handleInputBlur}
               placeholder={viewerId ? t('header.chatInputPlaceholder') : t('header.chatInputPlaceholderSignedOut')}
               disabled={!canChat || initializing || sending}
               className="rounded-full border-[#eadbc5]/70 bg-white/70 focus:border-brand/50 focus:ring-brand/20"

@@ -10,6 +10,7 @@ const baseSchema = z.object({
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
   NEXT_PUBLIC_PARTNERSHIPS_EMAIL: z.string().email().optional(),
+  NEXT_PUBLIC_PARTNERSHIPS_WHATSAPP: z.string().min(3).optional(),
 });
 
 const serverSchema = baseSchema.extend({
@@ -22,6 +23,14 @@ const serverSchema = baseSchema.extend({
   ALGOLIA_SEARCH_API_KEY: z.string().min(1).optional(),
   ALGOLIA_INDEX_NAME: z.string().min(1).optional(),
   RESEND_API_KEY: z.string().min(1).optional(),
+  VONAGE_API_KEY: z.string().min(1).optional(),
+  VONAGE_API_SECRET: z.string().min(1).optional(),
+  VONAGE_APPLICATION_ID: z.string().min(1).optional(),
+  VONAGE_PRIVATE_KEY64: z.string().min(1).optional(),
+  VONAGE_VIRTUAL_NUMBER: z.string().min(1).optional(),
+  VONAGE_SMS_SENDER_ID: z.string().min(1).optional(),
+  VONAGE_SMS_TEMPLATE: z.string().min(1).optional(),
+  SUPABASE_SMS_HOOK_SECRET: z.string().min(1).optional(),
   PARTNERSHIPS_NOTIFY_EMAIL: z.string().email().optional(),
   PARTNERSHIPS_FROM_EMAIL: z.string().email().optional(),
 });

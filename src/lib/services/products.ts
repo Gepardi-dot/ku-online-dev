@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server";
 import { createSignedUrls, createTransformedSignedUrls } from '@/lib/storage';
 import { assertAllowedProductImagePaths, buildPublicStorageUrl, deriveThumbPath, isAllowedProductImageInput } from '@/lib/storage-public';
 import { DEFAULT_MARKET_CITIES, MARKET_CITY_OPTIONS, getMarketCityLabel, normalizeMarketCityValue } from '@/data/market-cities';
+import { SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
 import { getEnv } from "@/lib/env";
 
 export interface SellerProfile {
@@ -59,6 +60,15 @@ export interface ProductWithRelations {
   seller: SellerProfile | null;
   category?: MarketplaceCategory | null;
   originalPrice?: number;
+}
+
+export interface ProductMetadata {
+  id: string;
+  title: string;
+  description: string | null;
+  titleTranslations?: Record<string, string> | null;
+  descriptionTranslations?: Record<string, string> | null;
+  imageUrls: string[];
 }
 
 export type ProductSort = 'newest' | 'price_asc' | 'price_desc' | 'views_desc';
@@ -148,6 +158,15 @@ type SupabaseCategoryRow = {
 
 type SupabaseLocationRow = {
   location: string | null;
+};
+
+type SupabaseProductMetadataRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  title_translations?: Record<string, unknown> | null;
+  description_translations?: Record<string, unknown> | null;
+  images: string[] | null;
 };
 
 function toDate(value: string | null): Date | null {
@@ -1097,6 +1116,37 @@ export async function getProductById(id: string): Promise<ProductWithRelations |
   return product;
 }
 
+export async function getProductMetadataById(id: string): Promise<ProductMetadata | null> {
+  const supabase = await getSupabase();
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, title, description, title_translations, description_translations, images')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) {
+      console.error('Failed to load product metadata', error);
+    }
+    return null;
+  }
+
+  const row = data as SupabaseProductMetadataRow;
+  const imageUrls = normalizeImages(row.images)
+    .map((path) => resolvePublicImageUrl(path))
+    .filter((url): url is string => typeof url === 'string' && url.trim().length > 0);
+
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    titleTranslations: normalizeTranslationMap(row.title_translations),
+    descriptionTranslations: normalizeTranslationMap(row.description_translations),
+    imageUrls,
+  };
+}
+
 export async function getCategories(): Promise<MarketplaceCategory[]> {
   const supabase = await getSupabase();
 
@@ -1104,6 +1154,7 @@ export async function getCategories(): Promise<MarketplaceCategory[]> {
     .from('categories')
     .select('id, name, name_ar, name_ku, description, icon, is_active, sort_order, created_at')
     .eq('is_active', true)
+    .neq('id', SPONSORS_CATEGORY_ID)
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true });
 

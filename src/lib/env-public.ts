@@ -10,6 +10,7 @@ const publicSchema = z.object({
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
   NEXT_PUBLIC_PARTNERSHIPS_EMAIL: z.string().email().optional(),
+  NEXT_PUBLIC_PARTNERSHIPS_WHATSAPP: z.string().min(3).optional(),
 });
 
 type PublicEnv = z.infer<typeof publicSchema>;
@@ -29,6 +30,7 @@ export function getPublicEnv(): PublicEnv {
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
     NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
     NEXT_PUBLIC_PARTNERSHIPS_EMAIL: process.env.NEXT_PUBLIC_PARTNERSHIPS_EMAIL,
+    NEXT_PUBLIC_PARTNERSHIPS_WHATSAPP: process.env.NEXT_PUBLIC_PARTNERSHIPS_WHATSAPP,
   });
 
   if (!result.success) {

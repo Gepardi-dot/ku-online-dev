@@ -6,9 +6,9 @@ import {
   useMemo,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import {
   MessageCircle,
   Loader2,
@@ -18,6 +18,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { formatDistanceToNow } from "date-fns";
 import { ar, ckb, enUS } from "date-fns/locale";
 import Link from "next/link";
@@ -33,7 +34,10 @@ import {
   deleteConversation,
   fetchConversation,
   fetchMessages,
-  listConversationsForUser,
+  cacheConversationsForUser,
+  getCachedConversations,
+  listConversationsForUserWithOptions,
+  prefetchConversationsForUser,
   markConversationRead,
   sendMessage,
   subscribeToConversation,
@@ -41,23 +45,20 @@ import {
   type ConversationSummary,
   type MessageRecord,
 } from "@/lib/services/messages-client";
+import { chatTimingNow, logChatTiming } from "@/lib/services/chat-timing";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/providers/locale-provider";
 import { rtlLocales } from "@/lib/locale/dictionary";
 
-const clampValue = (input: number, min: number, max: number) => Math.min(max, Math.max(min, input));
 const MOBILE_BOTTOM_GAP_PX = 92; // Increased spacing to ensure sheet clears mobile nav
+const EXTRA_KEYBOARD_LIFT_PX = 24;
 const ARABIC_SCRIPT_REGEX = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+const CONVERSATION_CACHE_TTL_MS = 60_000;
+const PREFETCH_DELAY_MS = 1200;
 
 const hasArabicScript = (value?: string | null) =>
   typeof value === "string" && value.length > 0 && ARABIC_SCRIPT_REGEX.test(value);
-
-interface DragState {
-  active: boolean;
-  startY: number;
-  startOffset: number;
-}
 
 interface MessagesMenuStrings {
   label: string;
@@ -151,18 +152,55 @@ export default function MessagesMenu({
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState("");
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth < 768 : false));
   const [mobileView, setMobileView] = useState<"list" | "thread">("list");
   const [cardHeight, setCardHeight] = useState<number>(420);
   const [cardOffsetTop, setCardOffsetTop] = useState<number>(56);
-  const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
+  const [mobileNavHeight, setMobileNavHeight] = useState<number>(0);
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const [visualViewportHeight, setVisualViewportHeight] = useState<number>(0);
+  const [visualViewportOffsetTop, setVisualViewportOffsetTop] = useState<number>(0);
+  const [sheetOffsetY, setSheetOffsetY] = useState(0);
+  const [sheetDragging, setSheetDragging] = useState(false);
 
   const conversationsRef = useRef<ConversationSummary[]>([]);
-  const dragStateRef = useRef<DragState>({ active: false, startY: 0, startOffset: 0 });
   const sheetRef = useRef<HTMLDivElement | null>(null);
+  const inputBlurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dragCloseTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sheetDragStateRef = useRef<{
+    pointerId: number;
+    startY: number;
+    lastY: number;
+    lastTime: number;
+  } | null>(null);
+  const sheetOffsetRef = useRef(0);
+  const messagesScrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const messagesViewportRef = useRef<HTMLDivElement | null>(null);
+  const autoScrollEnabledRef = useRef(true);
+  const scrollRafRef = useRef<number | null>(null);
+  const openStartRef = useRef<number | null>(null);
+  const conversationLoadSeqRef = useRef(0);
+  const messageLoadSeqRef = useRef(0);
+  const threadOpenStartRef = useRef<number | null>(null);
+  const prefetchTimerRef = useRef<number | null>(null);
+  const prefetchedUserRef = useRef<string | null>(null);
+  const conversationScrollAreaRef = useRef<HTMLDivElement | null>(null);
+  const conversationViewportRef = useRef<HTMLDivElement | null>(null);
 
   const canLoad = Boolean(userId);
+
+  const updateConversations = useCallback(
+    (updater: (previous: ConversationSummary[]) => ConversationSummary[]) => {
+      setConversations((previous) => {
+        const next = updater(previous);
+        if (userId) {
+          cacheConversationsForUser(userId, next, CONVERSATION_CACHE_TTL_MS);
+        }
+        return next;
+      });
+    },
+    [userId],
+  );
 
   // --- Layout / viewport ---
 
@@ -173,6 +211,12 @@ export default function MessagesMenu({
       const width = window.innerWidth || 0;
       const isSmallViewport = width < 768;
       setIsMobile(isSmallViewport);
+
+      const visualViewport = window.visualViewport;
+      const nextVisualHeight = visualViewport?.height ?? window.innerHeight ?? 0;
+      const nextVisualOffsetTop = visualViewport?.offsetTop ?? 0;
+      setVisualViewportHeight(nextVisualHeight);
+      setVisualViewportOffsetTop(nextVisualOffsetTop);
 
       // Compute layout offsets so the glass card sits neatly
       // between the top chrome (announcement + header) and
@@ -190,32 +234,55 @@ export default function MessagesMenu({
         offsetTop += header.getBoundingClientRect().height;
       }
 
-      const viewportHeight = window.innerHeight || 0;
       const navHeight = mobileNav ? mobileNav.getBoundingClientRect().height : 0;
+      const effectiveOffsetTop = Math.max(16, offsetTop - nextVisualOffsetTop);
+      const viewportHeight = isSmallViewport ? nextVisualHeight : window.innerHeight || 0;
 
       // On mobile we want the sheet to sit just above
       // the bottom navigation bar with a small gap, while
       // on larger screens we keep a bit more breathing room.
       const extraGap = isSmallViewport ? MOBILE_BOTTOM_GAP_PX : 24;
-      let available = viewportHeight - offsetTop - navHeight - extraGap;
+      let available = viewportHeight - effectiveOffsetTop - navHeight - extraGap;
 
       // Clamp the card height so it stays elegant on all screens.
       if (!Number.isFinite(available) || available <= 0) {
         available = 420;
       }
       const minHeight = isSmallViewport ? 440 : 320;
-      const maxHeight = isSmallViewport ? Math.min(640, viewportHeight - offsetTop - extraGap) : 420;
+      const maxHeight = isSmallViewport ? Math.min(640, viewportHeight - effectiveOffsetTop - extraGap) : 420;
       const clamped = Math.max(minHeight, Math.min(maxHeight, available));
 
-      setCardOffsetTop(offsetTop);
+      setCardOffsetTop(effectiveOffsetTop);
       setCardHeight(clamped);
+      setMobileNavHeight(navHeight);
     };
 
     handleResize();
     window.addEventListener("resize", handleResize);
+    window.visualViewport?.addEventListener("resize", handleResize);
+    window.visualViewport?.addEventListener("scroll", handleResize);
 
-    return () => window.removeEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.visualViewport?.removeEventListener("resize", handleResize);
+      window.visualViewport?.removeEventListener("scroll", handleResize);
+    };
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!open || !isMobile) return;
+    const previousOverflow = window.document.body.style.overflow;
+    window.document.body.style.overflow = "hidden";
+    return () => {
+      window.document.body.style.overflow = previousOverflow;
+    };
+  }, [open, isMobile]);
+
+  useEffect(() => {
+    if (!open) return;
+    openStartRef.current = chatTimingNow();
+  }, [open]);
 
   // --- Data loading helpers ---
 
@@ -233,7 +300,7 @@ export default function MessagesMenu({
     }
   }, [userId]);
 
-  const loadConversations = useCallback(async () => {
+  const loadConversations = useCallback(async (options?: { preferCache?: boolean }) => {
     if (!userId) {
       setConversations([]);
       setActiveConversationId(null);
@@ -241,17 +308,66 @@ export default function MessagesMenu({
       return;
     }
 
-    setLoadingConversations(true);
+    const preferCache = options?.preferCache !== false;
+    let usedCache = false;
+    let cachedCount = 0;
+
+    if (preferCache) {
+      const cached = getCachedConversations(userId, CONVERSATION_CACHE_TTL_MS);
+      if (cached) {
+        usedCache = true;
+        cachedCount = cached.length;
+        setConversations(cached);
+        setActiveConversationId((previous) => {
+          if (!previous) return null;
+          return cached.some((conversation) => conversation.id === previous) ? previous : null;
+        });
+        if (openStartRef.current) {
+          logChatTiming("menu:conversations:cache", chatTimingNow() - openStartRef.current, {
+            count: cachedCount,
+          });
+          openStartRef.current = null;
+        }
+      }
+    }
+
+    const loadId = conversationLoadSeqRef.current + 1;
+    conversationLoadSeqRef.current = loadId;
+    const startedAt = chatTimingNow();
+    setLoadingConversations(!usedCache);
+    let resultCount = 0;
     try {
-      const results = await listConversationsForUser(userId);
+      const results = await listConversationsForUserWithOptions(userId, {
+        preferCache: false,
+        cacheTtlMs: CONVERSATION_CACHE_TTL_MS,
+      });
+      resultCount = results.length;
       setConversations(results);
 
       setActiveConversationId((previous) => {
         if (!previous) return null;
         return results.some((conversation) => conversation.id === previous) ? previous : null;
       });
+      const meta: Record<string, unknown> = { count: resultCount, loadId };
+      if (openStartRef.current) {
+        meta.openMs = Math.round(chatTimingNow() - openStartRef.current);
+        openStartRef.current = null;
+      }
+      logChatTiming("menu:conversations:load", chatTimingNow() - startedAt, meta);
+      if (typeof window !== "undefined") {
+        const renderStart = chatTimingNow();
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            logChatTiming("menu:conversations:render", chatTimingNow() - renderStart, {
+              count: resultCount,
+              loadId,
+            });
+          });
+        });
+      }
     } catch (error) {
       console.error("Failed to load conversations", error);
+      logChatTiming("menu:conversations:error", chatTimingNow() - startedAt, { loadId });
       toast({
         title: "Unable to load conversations",
         description: "Please try again soon.",
@@ -271,6 +387,9 @@ export default function MessagesMenu({
         return;
       }
 
+      const loadId = messageLoadSeqRef.current + 1;
+      messageLoadSeqRef.current = loadId;
+      const startedAt = chatTimingNow();
       setLoadingMessages(true);
       try {
         const history = await fetchMessages(conversationId, { limit: 60, before: options?.before });
@@ -283,7 +402,7 @@ export default function MessagesMenu({
 
         await markConversationRead(conversationId, userId);
 
-        setConversations((previous) =>
+        updateConversations((previous) =>
           previous.map((conversation) =>
             conversation.id === conversationId
               ? { ...conversation, hasUnread: false, unreadCount: 0 }
@@ -291,8 +410,31 @@ export default function MessagesMenu({
           ),
         );
         void refreshUnread();
+        const meta: Record<string, unknown> = {
+          count: history.length,
+          loadId,
+          append: Boolean(options?.append),
+          hasBefore: Boolean(options?.before),
+        };
+        if (threadOpenStartRef.current) {
+          meta.openMs = Math.round(chatTimingNow() - threadOpenStartRef.current);
+          threadOpenStartRef.current = null;
+        }
+        logChatTiming("menu:messages:load", chatTimingNow() - startedAt, meta);
+        if (typeof window !== "undefined") {
+          const renderStart = chatTimingNow();
+          window.requestAnimationFrame(() => {
+            window.requestAnimationFrame(() => {
+              logChatTiming("menu:messages:render", chatTimingNow() - renderStart, {
+                count: history.length,
+                loadId,
+              });
+            });
+          });
+        }
       } catch (error) {
         console.error("Failed to load messages", error);
+        logChatTiming("menu:messages:error", chatTimingNow() - startedAt, { loadId });
         toast({
           title: "Unable to load messages",
           description: "Please try again.",
@@ -302,7 +444,7 @@ export default function MessagesMenu({
         setLoadingMessages(false);
       }
     },
-    [userId, oldestCursor, refreshUnread],
+    [userId, oldestCursor, refreshUnread, updateConversations],
   );
 
   // --- Initial unread + conversations when opened ---
@@ -317,6 +459,23 @@ export default function MessagesMenu({
   }, [userId, open, loadConversations]);
 
   useEffect(() => {
+    if (!userId || open) return;
+    if (prefetchedUserRef.current === userId) return;
+    prefetchedUserRef.current = userId;
+
+    prefetchTimerRef.current = window.setTimeout(() => {
+      prefetchConversationsForUser(userId, CONVERSATION_CACHE_TTL_MS);
+    }, PREFETCH_DELAY_MS);
+
+    return () => {
+      if (prefetchTimerRef.current) {
+        window.clearTimeout(prefetchTimerRef.current);
+        prefetchTimerRef.current = null;
+      }
+    };
+  }, [userId, open]);
+
+  useEffect(() => {
     conversationsRef.current = conversations;
   }, [conversations]);
 
@@ -329,7 +488,7 @@ export default function MessagesMenu({
       const shouldFlagUnread = !(open && message.conversationId === activeConversationId);
 
       // Keep contact list up to date
-      setConversations((previous) => {
+      updateConversations((previous) => {
         const existing = previous.find((item) => item.id === message.conversationId);
         if (!existing) {
           return previous;
@@ -363,7 +522,7 @@ export default function MessagesMenu({
               ? { ...summary, hasUnread: true, unreadCount: 1 }
               : { ...summary, hasUnread: false, unreadCount: 0 };
 
-            setConversations((previous) => {
+            updateConversations((previous) => {
               if (previous.some((item) => item.id === summaryWithUnread.id)) {
                 return previous;
               }
@@ -379,7 +538,7 @@ export default function MessagesMenu({
     return () => {
       channel.unsubscribe();
     };
-  }, [userId, open, activeConversationId]);
+  }, [userId, open, activeConversationId, updateConversations]);
 
   useEffect(() => {
     if (!activeConversationId || !open || !userId) return;
@@ -395,7 +554,7 @@ export default function MessagesMenu({
       if (message.receiverId === userId) {
         try {
           await markConversationRead(activeConversationId, userId);
-          setConversations((previous) =>
+          updateConversations((previous) =>
             previous.map((conversation) =>
               conversation.id === activeConversationId
                 ? { ...conversation, hasUnread: false, unreadCount: 0 }
@@ -407,7 +566,7 @@ export default function MessagesMenu({
         }
       }
 
-      setConversations((previous) => {
+      updateConversations((previous) => {
         const existing = previous.find((item) => item.id === message.conversationId);
         if (!existing) {
           return previous;
@@ -426,9 +585,14 @@ export default function MessagesMenu({
     return () => {
       channel.unsubscribe();
     };
-  }, [activeConversationId, userId, open]);
+  }, [activeConversationId, userId, open, updateConversations]);
 
   // --- Message loading when active thread changes ---
+
+  useEffect(() => {
+    if (!activeConversationId || !open) return;
+    threadOpenStartRef.current = chatTimingNow();
+  }, [activeConversationId, open]);
 
   useEffect(() => {
     if (!activeConversationId || !open) {
@@ -443,6 +607,7 @@ export default function MessagesMenu({
   // Clear draft when switching threads
   useEffect(() => {
     setDraft("");
+    autoScrollEnabledRef.current = true;
   }, [activeConversationId]);
 
   // --- Derived values ---
@@ -474,24 +639,76 @@ export default function MessagesMenu({
   const chipClass =
     "relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[#d6d6d6]/80 bg-linear-to-b from-[#fbfbfb] to-[#f1f1f1] text-[#1F1C1C] shadow-sm transition hover:border-brand/50 hover:text-brand hover:shadow-[0_10px_26px_rgba(120,72,0,0.14)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-white/40 active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:border-brand/60 data-[state=open]:bg-white/90 data-[state=open]:shadow-[0_16px_38px_rgba(247,111,29,0.18)]";
 
-  const minDragOffset = useMemo(() => {
-    if (!isMobile) return 0;
-    const availableLift = Math.max(cardOffsetTop - 12, 0);
-    const minimumLift = 80;
-    return -Math.max(availableLift, minimumLift);
-  }, [isMobile, cardOffsetTop]);
+  const resolveMessagesViewport = useCallback(() => {
+    const root = messagesScrollAreaRef.current;
+    if (!root) return null;
+    const viewport = root.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]");
+    messagesViewportRef.current = viewport;
+    return viewport;
+  }, []);
+
+  const resolveConversationViewport = useCallback(() => {
+    const root = conversationScrollAreaRef.current;
+    if (!root) return null;
+    const viewport = root.querySelector<HTMLDivElement>("[data-radix-scroll-area-viewport]");
+    conversationViewportRef.current = viewport;
+    return viewport;
+  }, []);
+
+  const updateAutoScrollState = useCallback(() => {
+    const viewport = resolveMessagesViewport();
+    if (!viewport) return;
+    const distance = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight;
+    autoScrollEnabledRef.current = distance < 64;
+  }, [resolveMessagesViewport]);
+
+  const scrollToBottom = useCallback(
+    (behavior: ScrollBehavior = "auto") => {
+      const viewport = resolveMessagesViewport();
+      if (!viewport) return;
+      viewport.scrollTo({ top: viewport.scrollHeight, behavior });
+    },
+    [resolveMessagesViewport],
+  );
+
+  const requestScrollToBottom = useCallback(
+    (behavior: ScrollBehavior = "auto") => {
+      if (typeof window === "undefined") return;
+      if (scrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollRafRef.current);
+      }
+      scrollRafRef.current = window.requestAnimationFrame(() => {
+        scrollToBottom(behavior);
+        scrollRafRef.current = null;
+      });
+    },
+    [scrollToBottom],
+  );
+
+  const showLoadMoreRow = Boolean(hasMore && oldestCursor);
+  const messagesCount = messages.length + (showLoadMoreRow ? 1 : 0);
+
+  const conversationVirtualizer = useVirtualizer({
+    count: conversations.length,
+    getScrollElement: resolveConversationViewport,
+    estimateSize: () => 76,
+    overscan: 6,
+  });
+
+  const messagesVirtualizer = useVirtualizer({
+    count: messagesCount,
+    getScrollElement: resolveMessagesViewport,
+    estimateSize: (index) => (showLoadMoreRow && index === messages.length ? 36 : 72),
+    overscan: 8,
+  });
 
   useEffect(() => {
-    setDragOffset((current) => clampValue(current, minDragOffset, 0));
-  }, [minDragOffset]);
+    conversationVirtualizer.measure();
+  }, [conversations.length, conversationVirtualizer]);
 
   useEffect(() => {
-    if (!open) {
-      dragStateRef.current.active = false;
-      setDragOffset(0);
-      setIsDragging(false);
-    }
-  }, [open]);
+    messagesVirtualizer.measure();
+  }, [messages.length, showLoadMoreRow, messagesVirtualizer]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -506,57 +723,39 @@ export default function MessagesMenu({
   }, []);
 
   useEffect(() => {
-    if (!isMobile) {
-      dragStateRef.current.active = false;
-      setDragOffset(0);
-      setIsDragging(false);
-    }
-  }, [isMobile]);
+    if (!open) return;
+    if (typeof window === "undefined") return;
 
-  useEffect(() => {
-    if (!open || !isMobile) return;
-
-    const handlePointerMove = (event: PointerEvent) => {
-      if (!dragStateRef.current.active) return;
-      const delta = event.clientY - dragStateRef.current.startY;
-      const next = clampValue(dragStateRef.current.startOffset + delta, minDragOffset, 0);
-      setDragOffset(next);
-    };
-
-    const stopDragging = () => {
-      if (!dragStateRef.current.active) return;
-      dragStateRef.current.active = false;
-      setIsDragging(false);
-    };
-
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", stopDragging);
-    window.addEventListener("pointercancel", stopDragging);
+    const raf = window.requestAnimationFrame(() => {
+      updateAutoScrollState();
+    });
 
     return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", stopDragging);
-      window.removeEventListener("pointercancel", stopDragging);
+      window.cancelAnimationFrame(raf);
     };
-  }, [open, isMobile, minDragOffset]);
+  }, [open, activeConversationId, mobileView, updateAutoScrollState]);
 
   useEffect(() => {
-    if (!open || !isMobile) return;
-    if (typeof window === "undefined") return;
-    if (!sheetRef.current) return;
+    if (!open) return;
+    const viewport = resolveMessagesViewport();
+    if (!viewport) return;
 
-    const viewportHeight = window.innerHeight || 0;
-    const mobileNav = document.querySelector<HTMLElement>("[data-mobile-nav]");
-    const navHeight = mobileNav ? mobileNav.getBoundingClientRect().height : 0;
-    const maxBottom = viewportHeight - navHeight - MOBILE_BOTTOM_GAP_PX;
+    const handleScroll = () => updateAutoScrollState();
+    viewport.addEventListener("scroll", handleScroll, { passive: true });
+    updateAutoScrollState();
 
-    const rect = sheetRef.current.getBoundingClientRect();
-    const overshoot = rect.bottom - maxBottom;
+    return () => {
+      viewport.removeEventListener("scroll", handleScroll);
+    };
+  }, [open, activeConversationId, mobileView, resolveMessagesViewport, updateAutoScrollState]);
 
-    if (Math.abs(overshoot) < 1) return;
-
-    setDragOffset((current) => clampValue(current - overshoot, minDragOffset, 0));
-  }, [open, isMobile, minDragOffset]);
+  useEffect(() => {
+    if (!open || !activeConversationId) return;
+    if (loadingMessages) return;
+    if (autoScrollEnabledRef.current || isInputFocused) {
+      requestScrollToBottom(isInputFocused ? "smooth" : "auto");
+    }
+  }, [messages, open, activeConversationId, loadingMessages, isInputFocused, requestScrollToBottom]);
 
   // --- Event handlers ---
 
@@ -568,29 +767,70 @@ export default function MessagesMenu({
           return;
         }
         setMobileView("list");
-        // On mobile, start with a negative offset to lift the window
-        // above the bottom navigation bar by default.
-        const initialOffset = isMobile ? -50 : 0;
-        setDragOffset(initialOffset);
-        dragStateRef.current.active = false;
-        setIsDragging(false);
+        setIsInputFocused(false);
         setOpen(true);
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("ku-menu-open", { detail: { source: "messages-menu" } }));
         }
       } else {
-        dragStateRef.current.active = false;
-        setDragOffset(0);
-        setIsDragging(false);
+        setIsInputFocused(false);
         setOpen(false);
       }
     },
-    [canLoad, strings.loginRequired, isMobile],
+    [canLoad, strings.loginRequired],
   );
+
+  useEffect(() => {
+    if (!open) {
+      setIsInputFocused(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    return () => {
+      if (inputBlurTimeoutRef.current) {
+        clearTimeout(inputBlurTimeoutRef.current);
+        inputBlurTimeoutRef.current = null;
+      }
+      if (dragCloseTimeoutRef.current) {
+        clearTimeout(dragCloseTimeoutRef.current);
+        dragCloseTimeoutRef.current = null;
+      }
+      if (scrollRafRef.current !== null && typeof window !== "undefined") {
+        window.cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleInputFocus = useCallback(() => {
+    if (inputBlurTimeoutRef.current) {
+      clearTimeout(inputBlurTimeoutRef.current);
+      inputBlurTimeoutRef.current = null;
+    }
+    setIsInputFocused(true);
+    autoScrollEnabledRef.current = true;
+    requestScrollToBottom("smooth");
+  }, [requestScrollToBottom]);
+
+  const handleInputBlur = useCallback(() => {
+    if (typeof window === "undefined") {
+      setIsInputFocused(false);
+      return;
+    }
+    if (inputBlurTimeoutRef.current) {
+      clearTimeout(inputBlurTimeoutRef.current);
+    }
+    inputBlurTimeoutRef.current = setTimeout(() => {
+      setIsInputFocused(false);
+      inputBlurTimeoutRef.current = null;
+    }, 120);
+  }, []);
 
   const handleConversationSelect = useCallback(
     (conversationId: string) => {
       setActiveConversationId(conversationId);
+      autoScrollEnabledRef.current = true;
       if (open) {
         void loadMessages(conversationId);
       }
@@ -628,6 +868,8 @@ export default function MessagesMenu({
         return [...previous, message];
       });
       setDraft("");
+      autoScrollEnabledRef.current = true;
+      requestScrollToBottom("smooth");
     } catch (error) {
       console.error("Failed to send message", error);
       const description =
@@ -642,13 +884,13 @@ export default function MessagesMenu({
     } finally {
       setSending(false);
     }
-  }, [activeConversation, userId, draft, sending]);
+  }, [activeConversation, userId, draft, sending, requestScrollToBottom]);
 
   const handleDeleteConversation = useCallback(
     async (conversationId: string) => {
       try {
         await deleteConversation(conversationId);
-        setConversations((previous) => previous.filter((item) => item.id !== conversationId));
+        updateConversations((previous) => previous.filter((item) => item.id !== conversationId));
 
         if (activeConversationId === conversationId) {
           setActiveConversationId(null);
@@ -665,23 +907,7 @@ export default function MessagesMenu({
         });
       }
     },
-    [activeConversationId, refreshUnread],
-  );
-
-  const handleDragStart = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      if (!isMobile) return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-      dragStateRef.current = {
-        active: true,
-        startY: event.clientY,
-        startOffset: dragOffset,
-      };
-      setIsDragging(true);
-    },
-    [isMobile, dragOffset],
+    [activeConversationId, refreshUnread, updateConversations],
   );
 
   // --- Render helpers ---
@@ -701,7 +927,6 @@ export default function MessagesMenu({
 
     return (
       <div
-        key={conversation.id}
         className={cn(
           "flex w-full items-center gap-3 rounded-3xl border p-3 text-sm shadow-sm transition-all hover:-translate-y-px hover:shadow-md active:translate-y-0",
           isActive
@@ -791,11 +1016,36 @@ export default function MessagesMenu({
       );
     }
 
-    const orderedMessages = [...messages].reverse();
+    const virtualItems = messagesVirtualizer.getVirtualItems();
 
     return (
-      <div className="space-y-3">
-        {orderedMessages.map((message) => {
+      <div style={{ height: messagesVirtualizer.getTotalSize(), position: "relative" }}>
+        {virtualItems.map((virtualItem) => {
+          if (showLoadMoreRow && virtualItem.index === messages.length) {
+            return (
+              <div
+                key="load-more"
+                ref={messagesVirtualizer.measureElement}
+                data-index={virtualItem.index}
+                className="absolute left-0 top-0 w-full pb-3"
+                style={{ transform: `translateY(${virtualItem.start}px)` }}
+              >
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    className="text-[11px] text-brand underline-offset-2 hover:underline"
+                    onClick={handleLoadMore}
+                    disabled={loadingMessages}
+                  >
+                    {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
+                  </button>
+                </div>
+              </div>
+            );
+          }
+
+          const message = messages[virtualItem.index];
+          if (!message) return null;
           const isViewer = message.senderId === userId;
           const timestamp = formatRelativeTime(new Date(message.createdAt));
           const messageIsArabic = hasArabicScript(message.content);
@@ -803,45 +1053,40 @@ export default function MessagesMenu({
           return (
             <div
               key={message.id}
-              className={cn(
-                "flex flex-col gap-1",
-                isViewer ? "items-end" : "items-start",
-              )}
+              ref={messagesVirtualizer.measureElement}
+              data-index={virtualItem.index}
+              className="absolute left-0 top-0 w-full pb-3"
+              style={{ transform: `translateY(${virtualItem.start}px)` }}
             >
               <div
                 className={cn(
-                  "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-[15px] leading-relaxed shadow-sm",
-                  messageIsArabic ? "font-arabic" : "font-sans",
-                  isViewer
-                    ? "bg-brand text-white"
-                    : "bg-[#EBDAC8] text-[#2D2D2D]",
+                  "flex flex-col gap-1",
+                  isViewer ? "items-end" : "items-start",
                 )}
               >
-                <p
-                  dir="auto"
-                  className={cn("whitespace-pre-line bidi-auto", messageIsArabic && "font-arabic")}
+                <div
+                  className={cn(
+                    "max-w-[70%] rounded-[16px] px-3.5 py-1.5 text-[15px] leading-relaxed shadow-sm",
+                    messageIsArabic ? "font-arabic" : "font-sans",
+                    isViewer
+                      ? "bg-brand text-white"
+                      : "bg-[#EBDAC8] text-[#2D2D2D]",
+                  )}
                 >
-                  {message.content}
-                </p>
+                  <p
+                    dir="auto"
+                    className={cn("whitespace-pre-line bidi-auto", messageIsArabic && "font-arabic")}
+                  >
+                    {message.content}
+                  </p>
+                </div>
+                <span dir="auto" className="text-[10px] uppercase tracking-wide text-[#777777] bidi-auto">
+                  {timestamp}
+                </span>
               </div>
-              <span dir="auto" className="text-[10px] uppercase tracking-wide text-[#777777] bidi-auto">
-                {timestamp}
-              </span>
             </div>
           );
         })}
-        {hasMore && oldestCursor && (
-          <div className="flex justify-center">
-            <button
-              type="button"
-              className="text-[11px] text-brand underline-offset-2 hover:underline"
-              onClick={handleLoadMore}
-              disabled={loadingMessages}
-            >
-              {loadingMessages ? t("header.chatLoading") : t("header.chatLoadEarlier")}
-            </button>
-          </div>
-        )}
       </div>
     );
   };
@@ -853,7 +1098,7 @@ export default function MessagesMenu({
           {t("header.chatContacts")}
         </span>
       </div>
-      <ScrollArea className={cn("flex-1", isRtl ? "pl-1" : "pr-1")}>
+      <ScrollArea ref={conversationScrollAreaRef} className={cn("flex-1", isRtl ? "pl-1" : "pr-1")}>
         {loadingConversations ? (
           <div className="flex h-full items-center justify-center text-[#777777]">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -863,8 +1108,22 @@ export default function MessagesMenu({
             {strings.empty}
           </p>
         ) : (
-          <div className="space-y-3">
-            {conversations.map((conversation) => renderConversationSummary(conversation))}
+          <div style={{ height: conversationVirtualizer.getTotalSize(), position: "relative" }}>
+            {conversationVirtualizer.getVirtualItems().map((virtualItem) => {
+              const conversation = conversations[virtualItem.index];
+              if (!conversation) return null;
+              return (
+                <div
+                  key={conversation.id}
+                  ref={conversationVirtualizer.measureElement}
+                  data-index={virtualItem.index}
+                  className="absolute left-0 top-0 w-full pb-3"
+                  style={{ transform: `translateY(${virtualItem.start}px)` }}
+                >
+                  {renderConversationSummary(conversation)}
+                </div>
+              );
+            })}
           </div>
         )}
       </ScrollArea>
@@ -877,8 +1136,18 @@ export default function MessagesMenu({
       product?.imageUrls?.find((url) => typeof url === "string" && url.trim().length > 0) ?? null;
 
     return (
-      <div className="flex h-full flex-col rounded-[24px] bg-transparent">
-        <div className="flex items-center gap-3 border-b border-[#D9C4AF] px-5 py-3">
+      <div
+        className={cn(
+          "flex h-full flex-col",
+          isKeyboardMode ? "rounded-none bg-white/95" : "rounded-[24px] bg-transparent",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center gap-3 border-b border-[#D9C4AF]",
+            isKeyboardMode ? "px-4 py-3" : "px-5 py-3",
+          )}
+        >
           {showBackButton && (
             <button
               type="button"
@@ -931,17 +1200,29 @@ export default function MessagesMenu({
           </div>
         </div>
 
-        <ScrollArea className="flex-1 px-5 py-4">
+        <ScrollArea
+          ref={messagesScrollAreaRef}
+          className={cn("flex-1", isKeyboardMode ? "bg-white/70 px-4 py-3" : "px-5 py-4")}
+        >
           {renderMessages()}
         </ScrollArea>
 
-        <div className="border-t border-[#EBDAC8] px-5 py-3">
+        <div
+          className={cn(
+            "border-t border-[#EBDAC8]",
+            isKeyboardMode
+              ? "px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]"
+              : "px-5 py-3",
+          )}
+        >
           <div className="flex items-center gap-3">
             <div className="flex-1 rounded-full bg-[#f5f5f5] px-1.5 py-1.5 shadow-[0_0_0_1px_rgba(255,255,255,0.9)]">
               <Input
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder={strings.typePlaceholder}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
                 className="h-10 rounded-full border border-[#e3e3e3] bg-white px-4 text-sm text-[#2D2D2D] placeholder:text-[#777777] focus-visible:ring-0"
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && !event.shiftKey) {
@@ -973,133 +1254,348 @@ export default function MessagesMenu({
 
   // --- Render root dropdown ---
 
+  const isKeyboardMode = isMobile && isInputFocused;
+  const mobileTopPaddingPx = Math.max(cardOffsetTop, 16);
+  const mobileBottomPaddingPx = mobileNavHeight + 12 + (isKeyboardMode ? EXTRA_KEYBOARD_LIFT_PX : 0);
+  const mobileCardHeight = isKeyboardMode ? "100%" : cardHeight;
+  const visualHeightFallback = typeof window !== "undefined" ? window.innerHeight : 0;
+  const resolvedVisualViewportHeight = Math.round(visualViewportHeight || visualHeightFallback || 0);
+  const resolvedVisualViewportTop = Math.round(visualViewportOffsetTop || 0);
+  const mobileViewportStyle = useMemo(
+    () => ({
+      top: `${resolvedVisualViewportTop}px`,
+      height: resolvedVisualViewportHeight ? `${resolvedVisualViewportHeight}px` : "100dvh",
+    }),
+    [resolvedVisualViewportTop, resolvedVisualViewportHeight],
+  );
+  const dragDismissThreshold = useMemo(() => {
+    const height = resolvedVisualViewportHeight || visualHeightFallback || 0;
+    if (!height) return 140;
+    return Math.min(260, Math.max(120, Math.round(height * 0.25)));
+  }, [resolvedVisualViewportHeight, visualHeightFallback]);
+  const maxDragOffset = useMemo(() => {
+    const height = resolvedVisualViewportHeight || visualHeightFallback || 0;
+    if (!height) return 360;
+    return Math.max(320, Math.round(height * 0.6));
+  }, [resolvedVisualViewportHeight, visualHeightFallback]);
+  const overlayOpacity = useMemo(() => {
+    if (isKeyboardMode) return 1;
+    if (!maxDragOffset) return 1;
+    const progress = Math.min(sheetOffsetY / maxDragOffset, 1);
+    return 1 - progress * 0.35;
+  }, [isKeyboardMode, sheetOffsetY, maxDragOffset]);
+
+  useEffect(() => {
+    sheetOffsetRef.current = sheetOffsetY;
+  }, [sheetOffsetY]);
+
+  useEffect(() => {
+    if (dragCloseTimeoutRef.current) {
+      clearTimeout(dragCloseTimeoutRef.current);
+      dragCloseTimeoutRef.current = null;
+    }
+    if (!open || isKeyboardMode) {
+      setSheetOffsetY(0);
+      sheetOffsetRef.current = 0;
+      setSheetDragging(false);
+      sheetDragStateRef.current = null;
+    }
+  }, [open, isKeyboardMode]);
+
+  const handleSheetDragPointerDown = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (isKeyboardMode) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      sheetDragStateRef.current = {
+        pointerId: event.pointerId,
+        startY: event.clientY,
+        lastY: event.clientY,
+        lastTime: event.timeStamp || Date.now(),
+      };
+      setSheetDragging(true);
+    },
+    [isKeyboardMode],
+  );
+
+  const handleSheetDragPointerMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!sheetDragging) return;
+      const state = sheetDragStateRef.current;
+      if (!state || state.pointerId !== event.pointerId) return;
+      const delta = Math.max(0, event.clientY - state.startY);
+      const clamped = Math.min(delta, maxDragOffset);
+      sheetOffsetRef.current = clamped;
+      setSheetOffsetY(clamped);
+      state.lastY = event.clientY;
+      state.lastTime = event.timeStamp || Date.now();
+    },
+    [sheetDragging, maxDragOffset],
+  );
+
+  const handleSheetDragPointerEnd = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!sheetDragging) return;
+      const state = sheetDragStateRef.current;
+      sheetDragStateRef.current = null;
+      setSheetDragging(false);
+
+      const lastTime = state?.lastTime ?? event.timeStamp ?? Date.now();
+      const lastY = state?.lastY ?? event.clientY;
+      const elapsed = Math.max(1, (event.timeStamp || Date.now()) - lastTime);
+      const velocity = (event.clientY - lastY) / elapsed;
+
+      const shouldDismiss = sheetOffsetRef.current > dragDismissThreshold || velocity > 0.6;
+
+      if (dragCloseTimeoutRef.current) {
+        clearTimeout(dragCloseTimeoutRef.current);
+      }
+
+      if (shouldDismiss) {
+        setSheetOffsetY(maxDragOffset);
+        sheetOffsetRef.current = maxDragOffset;
+        dragCloseTimeoutRef.current = setTimeout(() => {
+          setSheetOffsetY(0);
+          sheetOffsetRef.current = 0;
+          handleOpenChange(false);
+        }, 180);
+      } else {
+        setSheetOffsetY(0);
+        sheetOffsetRef.current = 0;
+        dragCloseTimeoutRef.current = null;
+      }
+    },
+    [sheetDragging, dragDismissThreshold, maxDragOffset, handleOpenChange],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!open || !isMobile) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      handleOpenChange(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, isMobile, handleOpenChange]);
+
+  const triggerButton = compactTrigger ? (
+    <button
+      type="button"
+      className={cn(
+        "relative inline-flex h-(--nav-icon-size) w-(--nav-icon-size) items-center justify-center bg-transparent p-0 text-current transition active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:text-brand",
+        triggerClassName,
+      )}
+      aria-label={strings.label}
+      aria-expanded={open}
+      data-state={open ? "open" : "closed"}
+      onClick={isMobile ? () => handleOpenChange(!open) : undefined}
+    >
+      {triggerIcon ? (
+        <span className="inline-flex h-full w-full items-center justify-center">
+          {triggerIcon}
+        </span>
+      ) : (
+        <MessageCircle className="h-full w-full" strokeWidth={1.6} />
+      )}
+      {indicator}
+    </button>
+  ) : (
+    <button
+      type="button"
+      className={cn(chipClass, triggerClassName)}
+      aria-label={strings.label}
+      aria-expanded={open}
+      data-state={open ? "open" : "closed"}
+      onClick={isMobile ? () => handleOpenChange(!open) : undefined}
+    >
+      {triggerIcon ? (
+        <span className="inline-flex items-center justify-center">{triggerIcon}</span>
+      ) : (
+        <MessageCircle className="h-6 w-6" strokeWidth={1.6} />
+      )}
+      {indicator}
+    </button>
+  );
+
+  if (isMobile) {
+    const overlay = open && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="fixed left-0 right-0 z-[100]"
+            style={mobileViewportStyle}
+            dir={isRtl ? "rtl" : "ltr"}
+            role="dialog"
+            aria-modal="true"
+            aria-label={strings.label}
+          >
+            <div
+              className={cn("absolute inset-0", isKeyboardMode ? "bg-black/35" : "bg-black/15")}
+              style={{ opacity: overlayOpacity }}
+              aria-hidden
+              onPointerDown={() => handleOpenChange(false)}
+            />
+            <div
+              className="relative flex h-full w-full justify-center"
+              style={{
+                paddingTop: isKeyboardMode ? 0 : mobileTopPaddingPx,
+                paddingBottom: isKeyboardMode ? 0 : mobileBottomPaddingPx,
+              }}
+            >
+              <div
+                className={cn(
+                  "relative flex h-full w-full flex-col overflow-hidden",
+                  sheetDragging ? "transition-none" : "transition-transform duration-200 ease-out",
+                  isKeyboardMode
+                    ? "bg-white/95 backdrop-blur-xl"
+                    : "w-[min(960px,calc(100vw-1.5rem))] rounded-[32px] border border-white/50 bg-linear-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40",
+                )}
+                style={{
+                  transform: isKeyboardMode ? "none" : `translateY(${Math.round(sheetOffsetY)}px)`,
+                }}
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                {!isKeyboardMode && (
+                  <div
+                    className="flex w-full justify-center pb-2 pt-1 touch-none"
+                    onPointerDown={handleSheetDragPointerDown}
+                    onPointerMove={handleSheetDragPointerMove}
+                    onPointerUp={handleSheetDragPointerEnd}
+                    onPointerCancel={handleSheetDragPointerEnd}
+                    onLostPointerCapture={handleSheetDragPointerEnd}
+                  >
+                    <div className="h-1.5 w-12 rounded-full bg-[#D9C4AF]/80" aria-hidden />
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenChange(false)}
+                  className={cn(
+                    "absolute right-3 top-3 z-10 inline-flex h-10 w-10 items-center justify-center rounded-full text-[#2D2D2D] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60",
+                    isKeyboardMode
+                      ? "bg-black/5 hover:bg-black/10"
+                      : "border border-[#eadbc5]/70 bg-white/80 shadow-sm hover:bg-white hover:text-brand hover:border-brand/40",
+                  )}
+                  aria-label={strings.label}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+
+                <div className={cn("min-h-0 flex-1", !isKeyboardMode && "pt-2")}>
+                  {!canLoad ? (
+                    <div className="relative flex h-full w-full items-center justify-center rounded-[24px] px-6 text-center text-sm text-[#777777]">
+                      {strings.loginRequired}
+                    </div>
+                  ) : (
+                    <div className={cn("h-full w-full", !isKeyboardMode && "p-1")}>
+                      {mobileView === "list" ? (
+                        <div className="h-full w-full" style={{ height: isKeyboardMode ? "100%" : mobileCardHeight }}>
+                          {renderConversationListSection()}
+                        </div>
+                      ) : (
+                        <div className="h-full w-full" style={{ height: isKeyboardMode ? "100%" : mobileCardHeight }}>
+                          {renderConversationThreadSection(true)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
+
+    return (
+      <>
+        {triggerButton}
+        {overlay}
+      </>
+    );
+  }
+
   return (
     <Popover open={open} onOpenChange={handleOpenChange} modal={false}>
       <PopoverTrigger asChild>
-        {compactTrigger ? (
-          <button
-            type="button"
-            className={cn(
-              "relative inline-flex h-(--nav-icon-size) w-(--nav-icon-size) items-center justify-center bg-transparent p-0 text-current transition active:scale-[0.98] data-[state=open]:scale-[1.03] data-[state=open]:text-brand",
-              triggerClassName,
-            )}
-            aria-label={strings.label}
-          >
-            {triggerIcon ? (
-              <span className="inline-flex h-full w-full items-center justify-center">
-                {triggerIcon}
-              </span>
-            ) : (
-              <MessageCircle className="h-full w-full" strokeWidth={1.6} />
-            )}
-            {indicator}
-          </button>
-        ) : (
-          <button
-            type="button"
-            className={cn(chipClass, triggerClassName)}
-            aria-label={strings.label}
-          >
-            {triggerIcon ? (
-              <span className="inline-flex items-center justify-center">{triggerIcon}</span>
-            ) : (
-              <MessageCircle className="h-6 w-6" strokeWidth={1.6} />
-            )}
-            {indicator}
-          </button>
-        )}
+        {triggerButton}
       </PopoverTrigger>
       <PopoverAnchor asChild>
         <div
           className="fixed left-1/2 -translate-x-1/2 pointer-events-none"
-          style={{ top: isMobile ? 16 : 56 }}
+          style={{ top: 56 }}
           aria-hidden
         />
       </PopoverAnchor>
 
       <PopoverContent
-        side={isMobile ? "top" : "bottom"}
+        side="bottom"
         align="center"
-        sideOffset={isMobile ? 12 : 12}
+        sideOffset={12}
         dir={isRtl ? "rtl" : "ltr"}
         forceMount
         className={cn(
           "group relative z-90 w-[960px] max-w-[min(1100px,calc(100vw-1.5rem))] border-none bg-transparent p-0 shadow-none ring-0",
-          isMobile &&
-            "data-[state=closed]:pointer-events-none",
         )}
       >
         <div
           ref={sheetRef}
           className={cn(
             "relative rounded-[32px] border border-white/50 bg-linear-to-br from-white/85 via-white/70 to-primary/10 p-4 shadow-[0_18px_48px_rgba(15,23,42,0.28)] backdrop-blur-2xl ring-1 ring-white/40 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]",
-            isMobile ? (
-              "data-[state=closed]:[--ku-sheet-enter:-48px] data-[state=open]:[--ku-sheet-enter:0px]"
-            ) : (
-              "data-[state=closed]:[--ku-sheet-enter:-48px] data-[state=open]:[--ku-sheet-enter:0px]"
-            ),
+            "data-[state=closed]:[--ku-sheet-enter:-48px] data-[state=open]:[--ku-sheet-enter:0px]",
             "group-data-[state=closed]:opacity-0 group-data-[state=open]:opacity-100",
             isRtl ? "text-right" : "text-left",
           )}
-          style={{
-            transform: `translateY(calc(var(--ku-sheet-enter, 0px) + ${dragOffset}px))`,
-            transition: isDragging ? "none" : undefined,
-          }}
+          style={{ transform: "translateY(var(--ku-sheet-enter, 0px))" }}
         >
-          {isMobile && (
-            <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center">
-              <div
-                role="presentation"
-                aria-hidden="true"
-                onPointerDown={handleDragStart}
-                className="pointer-events-auto h-1.5 w-16 cursor-grab rounded-full bg-[#D9C4AF]/80 touch-none select-none transition active:cursor-grabbing"
-              />
-            </div>
-          )}
-          {!canLoad ? (
-            <div className="relative flex h-[380px] w-full items-center justify-center rounded-[24px] px-6 text-center text-sm text-[#777777]">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#eadbc5]/70 bg-white/80 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-brand hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
-                aria-label={strings.label}
-              >
-                <X className="h-4 w-4" />
-              </button>
-              {strings.loginRequired}
-            </div>
-          ) : (
-            <div className="relative mx-auto flex w-full flex-col gap-4 p-1 md:flex-row">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#eadbc5]/70 bg-white/80 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-brand hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
-                aria-label={strings.label}
-              >
-                <X className="h-4 w-4" />
-              </button>
-              {isMobile ? (
-                mobileView === "list" ? (
-                  <div className="w-full" style={{ height: cardHeight }}>
-                    {renderConversationListSection()}
-                  </div>
+            {!canLoad ? (
+              <div className="relative flex h-[380px] w-full items-center justify-center rounded-[24px] px-6 text-center text-sm text-[#777777]">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#eadbc5]/70 bg-white/80 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-brand hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
+                  aria-label={strings.label}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                {strings.loginRequired}
+              </div>
+            ) : (
+              <div className="relative mx-auto flex w-full flex-col gap-4 p-1 md:flex-row">
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  className="absolute right-3 top-3 z-10 inline-flex h-8 w-8 items-center justify-center rounded-full border border-[#eadbc5]/70 bg-white/80 text-[#2D2D2D] shadow-sm transition hover:bg-white hover:text-brand hover:border-brand/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/60"
+                  aria-label={strings.label}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+                {isMobile ? (
+                  mobileView === "list" ? (
+                    <div className="w-full" style={{ height: cardHeight }}>
+                      {renderConversationListSection()}
+                    </div>
+                  ) : (
+                    <div className="w-full" style={{ height: cardHeight }}>
+                      {renderConversationThreadSection(true)}
+                    </div>
+                  )
                 ) : (
-                  <div className="w-full" style={{ height: cardHeight }}>
-                    {renderConversationThreadSection(true)}
-                  </div>
-                )
-              ) : (
-                <>
-                  <div className="w-[35%] min-w-[240px]" style={{ height: cardHeight }}>
-                    {renderConversationListSection()}
-                  </div>
-                  <div className="flex-1" style={{ height: cardHeight }}>
-                    {renderConversationThreadSection(false)}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+                  <>
+                    <div className="w-[35%] min-w-[240px]" style={{ height: cardHeight }}>
+                      {renderConversationListSection()}
+                    </div>
+                    <div className="flex-1" style={{ height: cardHeight }}>
+                      {renderConversationThreadSection(false)}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
         </div>
       </PopoverContent>
     </Popover>

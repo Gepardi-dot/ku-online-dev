@@ -33,9 +33,11 @@ import {
   CATEGORY_ICON_MAP,
   CATEGORY_LABEL_MAP,
   CATEGORY_BLUR_PLACEHOLDER,
+  SPONSORS_CATEGORY_ID,
 } from '@/data/category-ui-config';
 import { getServerLocale } from '@/lib/locale/server';
 import { LocaleMessages, rtlLocales, translations } from '@/lib/locale/dictionary';
+import type { MarketplaceCategory } from '@/lib/services/products';
 
 interface SearchPageParams {
   category?: string;
@@ -120,7 +122,22 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
       const nameLc = (category.name || '').toLowerCase();
       return config.matchNames.some((matchName) => matchName === nameLc);
     });
-    return match ?? null;
+    if (match) return match;
+    if (config.key === 'sponsors' && categoriesRaw.length > 0) {
+      const fallback: MarketplaceCategory = {
+        id: SPONSORS_CATEGORY_ID,
+        name: config.label,
+        nameAr: config.labelAr ?? null,
+        nameKu: config.labelKu ?? null,
+        description: null,
+        icon: config.icon,
+        isActive: true,
+        sortOrder: null,
+        createdAt: null,
+      };
+      return fallback;
+    }
+    return null;
   }).filter((category): category is (typeof categoriesRaw)[number] => Boolean(category));
 
   const viewParams = createProductsSearchParams(initialValues);
@@ -144,10 +161,11 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                 const baseName = category.name ?? '';
                 const baseNameLc = baseName.toLowerCase();
                 const configForCategory = CATEGORY_LABEL_MAP[baseNameLc];
+                const isSponsors = configForCategory?.key === 'sponsors' || category.id === SPONSORS_CATEGORY_ID;
                 const localizedLabel =
                   locale === 'ar'
                     ? category.nameAr || configForCategory?.labelAr || configForCategory?.label || baseName
-                    : locale === 'ku'
+                  : locale === 'ku'
                       ? category.nameKu || configForCategory?.labelKu || configForCategory?.label || baseName
                       : configForCategory?.label || baseName;
                 const label = localizedLabel;
@@ -157,7 +175,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                   ? createProductsSearchParams({ ...initialValues, category: '', freeOnly: true })
                   : createProductsSearchParams({ ...initialValues, category: category.id, freeOnly: false });
                 const qs = params.toString();
-                const categoryHref = qs ? `/products?${qs}` : '/products';
+                const categoryHref = isSponsors ? '/sponsors' : qs ? `/products?${qs}` : '/products';
 
                 const swatches = [
                   { iconBg: 'from-pink-500/10 to-rose-500/10', iconText: 'text-rose-600' },
@@ -189,6 +207,10 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                   /\.(png|webp|jpg|jpeg|gif|svg)$/i.test(iconPath);
                 const normalizedSrc = isLocalImage ? (iconPath.startsWith('/') ? iconPath : `/${iconPath}`) : '';
 
+                const iconWrapperClass = isSponsors
+                  ? 'relative inline-flex h-[3.9rem] w-[3.9rem] sm:h-[3.9rem] sm:w-[3.9rem] md:h-[4.1rem] md:w-[4.1rem] items-center justify-center overflow-hidden bg-white rounded-[18px]'
+                  : 'relative inline-flex h-[3.6rem] w-[3.6rem] sm:h-14 sm:w-14 md:h-16 md:w-16 items-center justify-center overflow-hidden bg-white rounded-[18px]';
+
                 return (
                   <Link
                     href={categoryHref}
@@ -197,7 +219,7 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                     className="snap-start inline-flex shrink-0 w-[6.1rem] sm:w-24 md:w-[5.8rem] lg:w-22 flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 text-[11px] sm:text-sm font-medium text-foreground/90 transition hover:bg-muted/60 active:scale-[0.99] md:snap-normal"
                   >
                     <span
-                      className="relative inline-flex h-[3.6rem] w-[3.6rem] sm:h-14 sm:w-14 md:h-16 md:w-16 items-center justify-center overflow-hidden bg-white rounded-[18px]"
+                      className={iconWrapperClass}
                       aria-hidden="true"
                     >
                       {isLocalImage ? (
@@ -207,7 +229,9 @@ async function ProductsList({ searchParams, messages, viewerId }: ProductsListPr
                           fill
                           sizes="(max-width: 640px) 80px, 96px"
                           className={
-                            isKidsToys
+                            isSponsors
+                              ? 'object-contain scale-[1.85] p-1.5'
+                              : isKidsToys
                               ? 'object-cover scale-[2.3] -translate-y-0.5'
                             : isFurniture
                               ? 'object-cover scale-[2.1] -translate-y-0.5'
@@ -343,7 +367,7 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
                 <p className="text-sm opacity-85">
                   {messages.partnership.responseTime}
                 </p>
-                <PartnershipInquiry className="mt-6 md:items-start" />
+                <PartnershipInquiry className="mt-6 md:items-start" isSignedIn={Boolean(user)} />
               </div>
             </div>
           </div>

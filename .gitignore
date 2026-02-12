@@ -13,11 +13,14 @@ out/
 .DS_Store
 .vercel
 .env*.local
-.cursor/
+# Cursor IDE (keep local settings ignored, allow shared MCP config)
+.cursor/*
+!.cursor/mcp.json
 push_*.log
 *.err
 ku-online/
 recovered-from-broken/
+.tmp/
 
 .vercel
 .env*.local
