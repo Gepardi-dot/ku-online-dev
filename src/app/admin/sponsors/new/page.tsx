@@ -36,7 +36,8 @@ export default async function NewSponsorStorePage({
   }
 
   const initialName = typeof params.name === 'string' ? params.name : '';
-  const initialOwnerUserId = typeof params.ownerUserId === 'string' ? params.ownerUserId : '';
+  const initialOwnerUserId =
+    typeof params.ownerUserId === 'string' && params.ownerUserId.trim().length > 0 ? params.ownerUserId : user.id;
   const initialPrimaryCity = normalizeMarketCityValue(typeof params.city === 'string' ? params.city : '');
   const initialPhone = typeof params.phone === 'string' ? params.phone : '';
   const initialWebsite = typeof params.website === 'string' ? params.website : '';
