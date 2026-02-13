@@ -18,6 +18,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { createClient as createSupabaseClient } from '@/utils/supabase/client';
 
 export type SponsorServiceDiscountType = 'percent' | 'amount' | 'freebie' | 'custom';
 
@@ -163,6 +164,33 @@ const MIN_STORE_CARD_ASPECT_RATIO = 0.65;
 const MAX_STORE_CARD_ASPECT_RATIO = 2.8;
 const MAX_OFFERS_PER_STORE = 3;
 const UNLIMITED_OFFERS_LABEL = 'unlimited';
+const STORAGE_BUCKET = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'product-images';
+
+function resolveUploadExtension(file: File): 'jpg' | 'png' | 'webp' | 'avif' | null {
+  const normalizedType = (file.type || '').toLowerCase();
+  if (normalizedType === 'image/jpeg' || normalizedType === 'image/jpg') {
+    return 'jpg';
+  }
+  if (normalizedType === 'image/png') {
+    return 'png';
+  }
+  if (normalizedType === 'image/webp') {
+    return 'webp';
+  }
+  if (normalizedType === 'image/avif') {
+    return 'avif';
+  }
+
+  const extension = file.name.split('.').pop()?.trim().toLowerCase();
+  if (extension === 'jpg' || extension === 'jpeg') {
+    return 'jpg';
+  }
+  if (extension === 'png' || extension === 'webp' || extension === 'avif') {
+    return extension;
+  }
+
+  return null;
+}
 
 function normalizeStoreCardAspectRatio(width: number, height: number) {
   if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
@@ -645,23 +673,54 @@ export function SponsorServicesManager({
 
     setStoreCardBusy(true);
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('purpose', 'sponsor_cover');
-      const uploadRes = await fetch('/api/uploads', { method: 'POST', body: formData });
-      const uploadPayload = (await uploadRes.json().catch(() => ({}))) as {
+      const extension = resolveUploadExtension(file);
+      if (!extension) {
+        toast({ title: 'Store card upload failed', description: 'Unsupported image format.', variant: 'destructive' });
+        return;
+      }
+
+      const signRes = await fetch('/api/uploads/sign', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ extension, contentType: file.type || undefined, kind: 'product' }),
+      });
+      const signPayload = (await signRes.json().catch(() => ({}))) as {
         path?: string;
+        token?: string;
+        contentType?: string;
         error?: string;
       };
-      const uploadedImagePath = typeof uploadPayload.path === 'string' ? uploadPayload.path.trim() : '';
+      const signedPath = typeof signPayload.path === 'string' ? signPayload.path.trim() : '';
+      const signedToken = typeof signPayload.token === 'string' ? signPayload.token.trim() : '';
 
-      if (!uploadRes.ok || !uploadedImagePath) {
-        const message = typeof uploadPayload.error === 'string' ? uploadPayload.error : 'Upload failed.';
+      if (!signRes.ok || !signedPath || !signedToken) {
+        const message =
+          typeof signPayload.error === 'string' && signPayload.error.trim().length > 0
+            ? signPayload.error
+            : 'Upload failed.';
         toast({ title: 'Store card upload failed', description: message, variant: 'destructive' });
         return;
       }
 
-      const ok = await updateStoreCardUrl(uploadedImagePath);
+      const supabase = createSupabaseClient();
+      const contentType =
+        typeof signPayload.contentType === 'string' && signPayload.contentType.trim().length > 0
+          ? signPayload.contentType
+          : file.type || 'application/octet-stream';
+      const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .uploadToSignedUrl(signedPath, signedToken, file, {
+          contentType,
+          cacheControl: '31536000',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        toast({ title: 'Store card upload failed', description: uploadError.message || 'Upload failed.', variant: 'destructive' });
+        return;
+      }
+
+      const ok = await updateStoreCardUrl(signedPath);
       if (ok) {
         toast({ title: 'Store card updated' });
       }
