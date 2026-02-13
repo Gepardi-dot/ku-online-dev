@@ -221,9 +221,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     is_featured: Boolean(parsed.data.isFeatured),
   };
 
-  if (parsed.data.ownerUserId) {
-    insertPayload.owner_user_id = parsed.data.ownerUserId;
-  }
+  insertPayload.owner_user_id = parsed.data.ownerUserId ?? user.id;
 
   const { data, error, droppedColumns } = await insertSponsorStoreWithColumnFallback(insertPayload);
 
