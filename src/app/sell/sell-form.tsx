@@ -107,9 +107,15 @@ interface SellFormData {
 
 interface SellFormProps {
   user: User | null;
+  storeContext?: {
+    id: string;
+    name: string;
+    slug: string | null;
+    ownerUserId: string | null;
+  } | null;
 }
 
-export default function SellForm({ user }: SellFormProps) {
+export default function SellForm({ user, storeContext = null }: SellFormProps) {
   const [loading, setLoading] = useState(false);
   const [storageBusy, setStorageBusy] = useState(false);
   const [formData, setFormData] = useState<SellFormData>({
@@ -896,6 +902,17 @@ export default function SellForm({ user }: SellFormProps) {
         return;
       }
 
+      const normalizedStoreOwnerId = storeContext?.ownerUserId?.trim() ?? '';
+      if (storeContext && normalizedStoreOwnerId.length === 0) {
+        toast({
+          title: 'Store owner is not set',
+          description: 'Set the store owner first, then add products to this store.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      const resolvedSellerId = normalizedStoreOwnerId || resolvedUser.id;
+
       const validation = createProductSchema.safeParse({
         title: formData.title,
         description: formData.description,
@@ -906,7 +923,7 @@ export default function SellForm({ user }: SellFormProps) {
         location: formData.location,
         color: formData.color || undefined,
         images: formData.images.length ? formData.images : uploadedImages.map((image) => image.path),
-        sellerId: resolvedUser.id,
+        sellerId: resolvedSellerId,
       });
 
       if (!validation.success) {
@@ -934,7 +951,8 @@ export default function SellForm({ user }: SellFormProps) {
           condition: payload.condition,
           location: payload.location,
           category_id: payload.categoryId,
-          seller_id: payload.sellerId,
+          seller_id: resolvedSellerId,
+          sponsor_store_id: storeContext?.id ?? null,
           images: payload.images,
           currency: payload.currency ?? 'IQD',
           color_token: payload.color ?? null,
@@ -1160,6 +1178,11 @@ export default function SellForm({ user }: SellFormProps) {
                       <CardTitle className="text-3xl md:text-4xl font-bold tracking-tight text-[#f97316]">{t('sellForm.title')}</CardTitle>
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">{t('sellForm.hero.subtitle')}</p>
+                    {storeContext ? (
+                      <p className="mt-2 text-xs font-semibold text-[#475569]" dir="auto">
+                        Posting to store: <span className="text-[#f97316]">{storeContext.name}</span>
+                      </p>
+                    ) : null}
                   </div>
 
                 </div>

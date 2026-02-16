@@ -150,36 +150,13 @@ export default async function SponsorStorePage({
   const ownerUserId = store.ownerUserId ?? null;
   const canManage = Boolean((user?.id && ownerUserId && user.id === ownerUserId) || isAdmin(user));
   const offers = await listSponsorOffersByStoreId(store.id, canManage ? 24 : 3, { includeInactive: canManage });
-  const productSellerIds = Array.from(
-    new Set(
-      [ownerUserId, canManage ? (user?.id ?? null) : null]
-        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
-        .map((value) => value.trim()),
-    ),
-  );
-  const mergedProducts =
-    productSellerIds.length > 0
-      ? Array.from(
-          new Map(
-            (
-              await Promise.all(
-                productSellerIds.map((sellerId) => getProducts({ sellerId }, canManage ? 24 : 12, 0, 'newest')),
-              )
-            )
-              .flat()
-              .map((product) => [product.id, product] as const),
-          ).values(),
-        )
-          .sort((a, b) => {
-            const bTs = b.createdAt?.getTime() ?? 0;
-            const aTs = a.createdAt?.getTime() ?? 0;
-            return bTs - aTs;
-          })
-          .slice(0, 12)
-      : [];
+  const mergedProducts = store.id
+    ? (await getProducts({ sponsorStoreId: store.id }, canManage ? 24 : 12, 0, 'newest')).slice(0, 12)
+    : [];
 
   const manageHref = store.slug ? `/sponsors/manage?store=${encodeURIComponent(store.slug)}` : '/sponsors/manage';
-  const addProductHref = `/sell?returnTo=${encodeURIComponent(manageHref)}`;
+  const storeRef = store.slug?.trim() || store.id;
+  const addProductHref = `/sell?store=${encodeURIComponent(storeRef)}&returnTo=${encodeURIComponent(manageHref)}`;
   const canUsePrivateContactActions = Boolean(user?.id);
 
   const coverSrc = store.coverUrl?.trim() || '';
