@@ -239,7 +239,8 @@ export default async function SponsorManagePage({
   const sponsoredLabel = t('sponsorsHub.sponsoredBadge');
   const endsLabelTemplate = t('sponsorsHub.endsIn');
   const manageHref = store.slug ? `/sponsors/manage?store=${encodeURIComponent(store.slug)}` : '/sponsors/manage';
-  const addProductHref = `/sell?returnTo=${encodeURIComponent(manageHref)}`;
+  const storeRef = store.slug?.trim() || store.id;
+  const addProductHref = `/sell?store=${encodeURIComponent(storeRef)}&returnTo=${encodeURIComponent(manageHref)}`;
 
   return (
     <AppLayout user={user}>
