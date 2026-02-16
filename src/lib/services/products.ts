@@ -84,6 +84,7 @@ export interface ProductFilters {
   location?: string;
   search?: string;
   sellerId?: string;
+  sponsorStoreId?: string;
   sort?: ProductSort;
   createdAfter?: string;
   freeOnly?: boolean;
@@ -591,6 +592,10 @@ function buildProductsQuery(supabase: any, filters: ProductFilters = {}, options
 
   if (filters.sellerId) {
     query = query.eq('seller_id', filters.sellerId);
+  }
+
+  if (filters.sponsorStoreId) {
+    query = query.eq('sponsor_store_id', filters.sponsorStoreId);
   }
 
   if (filters.createdAfter) {
