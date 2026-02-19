@@ -105,7 +105,7 @@
     "autoprefixer": "^10.4.21",
     "baseline-browser-mapping": "2.9.19",
     "drizzle-kit": "^0.31.8",
-    "eslint": "^9.39.2",
+    "eslint": "^10.0.0",
     "eslint-config-next": "^16.1.5",
     "kill-port": "^2.0.1",
     "msw": "^2.11.6",
