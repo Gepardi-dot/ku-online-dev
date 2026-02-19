@@ -12,6 +12,7 @@ import { getSponsorLiveStatsVisibility } from '@/lib/services/app-settings';
 import ModerationTable, { type ModerationReport } from './moderation-table';
 import AppContactsCard from './app-contacts-card';
 import SponsorLiveStatsVisibilityCard from './sponsor-live-stats-visibility-card';
+import PwaTelemetryCard from './pwa-telemetry-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -132,6 +133,15 @@ export default async function ModerationPage() {
           </CardHeader>
           <CardContent>
             <SponsorLiveStatsVisibilityCard initial={liveStatsVisibility} canEdit={canEditContacts} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">PWA Performance SLO Dashboard</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PwaTelemetryCard canTriggerAlerts={canEditContacts} />
           </CardContent>
         </Card>
 

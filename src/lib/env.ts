@@ -1,5 +1,49 @@
 import { z } from 'zod';
 
+const booleanFromEnv = z
+  .enum(['true', 'false'])
+  .optional()
+  .default('false')
+  .transform((value) => value === 'true');
+
+const booleanTrueDefaultFromEnv = z
+  .enum(['true', 'false'])
+  .optional()
+  .default('true')
+  .transform((value) => value === 'true');
+
+function normalizeOptionalString(value: unknown) {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function boundedIntegerFromEnv(fallback: number, min: number, max: number) {
+  return z.preprocess((value) => {
+    const normalized = normalizeOptionalString(value);
+    if (!normalized) {
+      return fallback;
+    }
+
+    const parsed = Number(normalized);
+    if (!Number.isFinite(parsed)) {
+      return fallback;
+    }
+
+    return Math.max(min, Math.min(max, Math.floor(parsed)));
+  }, z.number().int().min(min).max(max));
+}
+
+const optionalUrlFromEnv = z.preprocess(
+  (value) => normalizeOptionalString(value),
+  z.string().url().optional(),
+);
+
+const optionalSecretFromEnv = z.preprocess(
+  (value) => normalizeOptionalString(value),
+  z.string().min(1).optional(),
+);
+
 const baseSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url({ message: 'NEXT_PUBLIC_SUPABASE_URL must be a valid URL' }),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required'),
@@ -8,6 +52,20 @@ const baseSchema = z.object({
     .min(1)
     .default('product-images'),
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_PWA_ENABLED: booleanFromEnv,
+  NEXT_PUBLIC_PWA_INSTALL_UI_ENABLED: z
+    .enum(['true', 'false'])
+    .optional()
+    .default('true')
+    .transform((value) => value === 'true'),
+  NEXT_PUBLIC_PWA_PUSH_ENABLED: booleanFromEnv,
+  NEXT_PUBLIC_PWA_TELEMETRY_ENABLED: z
+    .enum(['true', 'false'])
+    .optional()
+    .default('true')
+    .transform((value) => value === 'true'),
+  NEXT_PUBLIC_PWA_ROLLOUT_PERCENT: boundedIntegerFromEnv(100, 0, 100),
+  NEXT_PUBLIC_PWA_VAPID_PUBLIC_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
   NEXT_PUBLIC_PARTNERSHIPS_EMAIL: z.string().email().optional(),
   NEXT_PUBLIC_PARTNERSHIPS_WHATSAPP: z.string().min(3).optional(),
@@ -33,6 +91,14 @@ const serverSchema = baseSchema.extend({
   SUPABASE_SMS_HOOK_SECRET: z.string().min(1).optional(),
   PARTNERSHIPS_NOTIFY_EMAIL: z.string().email().optional(),
   PARTNERSHIPS_FROM_EMAIL: z.string().email().optional(),
+  PWA_VAPID_PRIVATE_KEY: z.string().min(1).optional(),
+  PWA_TELEMETRY_DURABLE_ENABLED: booleanTrueDefaultFromEnv,
+  PWA_TELEMETRY_SUMMARY_MAX_ROWS: boundedIntegerFromEnv(15_000, 1_000, 50_000),
+  PWA_TELEMETRY_RETENTION_DAYS: boundedIntegerFromEnv(14, 1, 90),
+  PWA_SLO_ALERT_WEBHOOK_URL: optionalUrlFromEnv,
+  PWA_SLO_ALERT_SECRET: optionalSecretFromEnv,
+  PWA_SLO_ALERT_COOLDOWN_MINUTES: boundedIntegerFromEnv(30, 1, 24 * 60),
+  PWA_SLO_ALERT_TIMEOUT_MS: boundedIntegerFromEnv(8_000, 1_000, 30_000),
 });
 
 type ServerEnv = z.infer<typeof serverSchema>;

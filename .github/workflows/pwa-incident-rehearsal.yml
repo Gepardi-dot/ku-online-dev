@@ -1,0 +1,75 @@
+name: PWA Incident Rehearsal
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Override base URL (optional). Defaults to secret PWA_GOVERNANCE_BASE_URL.
+        required: false
+        type: string
+      window_minutes:
+        description: Window minutes for rollout status checks
+        required: false
+        default: '60'
+        type: string
+      trigger_alert_probe:
+        description: Trigger side-effect alert probe (may dispatch real alerts)
+        required: false
+        default: 'false'
+        type: string
+
+jobs:
+  incident-rehearsal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Resolve drill configuration
+        id: resolve
+        env:
+          INPUT_BASE_URL: ${{ github.event.inputs.base_url }}
+          SECRET_BASE_URL: ${{ secrets.PWA_GOVERNANCE_BASE_URL }}
+          ALERT_SECRET: ${{ secrets.PWA_SLO_ALERT_SECRET }}
+          WINDOW_MINUTES: ${{ github.event.inputs.window_minutes }}
+          TRIGGER_ALERT_PROBE: ${{ github.event.inputs.trigger_alert_probe }}
+        run: |
+          BASE_URL="${INPUT_BASE_URL:-$SECRET_BASE_URL}"
+          if [ -z "$BASE_URL" ] || [ -z "$ALERT_SECRET" ]; then
+            echo "Missing base URL or alert secret. Set input base_url or secret PWA_GOVERNANCE_BASE_URL, and PWA_SLO_ALERT_SECRET."
+            exit 1
+          fi
+
+          OUTPUT_FILE=".tmp/pwa-incident-rehearsal/report-${GITHUB_RUN_ID}.json"
+          echo "base_url=$BASE_URL" >> "$GITHUB_OUTPUT"
+          echo "output_file=$OUTPUT_FILE" >> "$GITHUB_OUTPUT"
+          echo "window_minutes=${WINDOW_MINUTES:-60}" >> "$GITHUB_OUTPUT"
+          echo "trigger_alert_probe=${TRIGGER_ALERT_PROBE:-false}" >> "$GITHUB_OUTPUT"
+
+      - name: Run incident rehearsal
+        env:
+          BASE_URL: ${{ steps.resolve.outputs.base_url }}
+          OUTPUT_FILE: ${{ steps.resolve.outputs.output_file }}
+          ALERT_SECRET: ${{ secrets.PWA_SLO_ALERT_SECRET }}
+          WINDOW_MINUTES: ${{ steps.resolve.outputs.window_minutes }}
+          TRIGGER_ALERT_PROBE: ${{ steps.resolve.outputs.trigger_alert_probe }}
+        run: |
+          node tools/scripts/pwa-incident-rehearsal.mjs \
+            --base-url "$BASE_URL" \
+            --alert-secret "$ALERT_SECRET" \
+            --window-minutes "$WINDOW_MINUTES" \
+            --trigger-alert-probe "$TRIGGER_ALERT_PROBE" \
+            --output-file "$OUTPUT_FILE"
+
+      - name: Upload drill artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pwa-incident-rehearsal-${{ github.run_id }}
+          path: ${{ steps.resolve.outputs.output_file }}
+          if-no-files-found: warn

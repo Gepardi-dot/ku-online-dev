@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>KU BAZAR | Offline</title>
+    <style>
+      :root {
+        color-scheme: light;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background: linear-gradient(160deg, #fef6f0 0%, #fffaf5 55%, #ffffff 100%);
+        color: #1f1812;
+      }
+
+      main {
+        width: min(460px, 100%);
+        background: #ffffff;
+        border: 1px solid #f3d8bf;
+        border-radius: 16px;
+        padding: 28px 24px;
+        box-shadow: 0 16px 36px rgba(151, 83, 23, 0.12);
+        text-align: center;
+      }
+
+      .logo {
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 14px;
+      }
+
+      h1 {
+        margin: 0 0 10px;
+        font-size: 1.3rem;
+        line-height: 1.3;
+      }
+
+      p {
+        margin: 0 0 16px;
+        color: #5a4738;
+        line-height: 1.45;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #ffffff;
+        background: #f97316;
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #ea660f;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img class="logo" src="/icon-192.png" alt="KU BAZAR" />
+      <h1>You are offline</h1>
+      <p>KU BAZAR cannot reach the network right now. Check your connection and try again.</p>
+      <button type="button" onclick="window.location.reload()">Try again</button>
+    </main>
+  </body>
+</html>
