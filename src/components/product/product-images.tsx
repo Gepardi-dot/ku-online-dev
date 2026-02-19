@@ -524,6 +524,12 @@ function Lightbox({
 
   useEffect(() => {
     if (!open) return;
+    pointers.current.clear();
+    resetZoom();
+  }, [open, resetZoom]);
+
+  useEffect(() => {
+    if (!open) return;
     const handleResize = () => {
       const clamped = clampPan(txRef.current, tyRef.current, scaleRef.current);
       setTransformImmediate(scaleRef.current, clamped.tx, clamped.ty);
@@ -627,12 +633,15 @@ function Lightbox({
     }
   };
 
+  const hasActiveTransform =
+    Math.abs(transform.scale - 1) > 0.001 || Math.abs(transform.tx) > 0.01 || Math.abs(transform.ty) > 0.01;
+
   return (
     <Dialog
       open={open}
       onOpenChange={handleOpenChange}
     >
-      <DialogContent className="inset-0 left-0 top-0 translate-x-0 translate-y-0 max-w-none w-screen h-dvh border-0 bg-white/10 p-0 shadow-none backdrop-blur-3xl">
+      <DialogContent className="!inset-0 !left-0 !top-0 !right-0 !bottom-0 !translate-x-0 !translate-y-0 !max-w-none !w-full !h-[100dvh] border-0 bg-white/10 p-0 shadow-none backdrop-blur-3xl data-[state=open]:animate-none data-[state=closed]:animate-none sm:!rounded-none">
         <DialogTitle className="sr-only">
           {title ? `${title} image ${current + 1} of ${images.length}` : 'Product image viewer'}
         </DialogTitle>
@@ -643,8 +652,8 @@ function Lightbox({
             <div className="absolute -bottom-36 -right-36 h-96 w-96 rounded-full bg-orange-200/25 blur-3xl" />
           </div>
 
-          <div className="relative mx-auto flex h-full w-full max-w-7xl flex-col overflow-hidden rounded-[28px] border border-white/60 bg-white/70 shadow-[0_30px_90px_rgba(15,23,42,0.25)] ring-1 ring-white/30 backdrop-blur-2xl lg:flex-row">
-            <div className="relative flex-1 bg-linear-to-br from-white/65 via-white/55 to-white/40">
+          <div className="relative mx-auto flex h-full w-full min-w-0 max-w-7xl flex-col overflow-hidden rounded-[28px] border border-white/60 bg-white/70 shadow-[0_30px_90px_rgba(15,23,42,0.25)] ring-1 ring-white/30 backdrop-blur-2xl lg:flex-row">
+            <div className="relative flex-1 min-w-0 bg-linear-to-br from-white/65 via-white/55 to-white/40">
               <div className="absolute inset-0">
                 <div
                   ref={containerRef}
@@ -679,11 +688,16 @@ function Lightbox({
                       alt={title}
                       fill
                       sizes="(max-width: 1024px) 100vw, 70vw"
-                      className="object-contain will-change-transform"
-                      style={{
-                        transform: `translate3d(${transform.tx}px, ${transform.ty}px, 0) scale(${transform.scale})`,
-                        transformOrigin: 'center',
-                      }}
+                      className="object-contain"
+                      style={
+                        hasActiveTransform
+                          ? {
+                              objectPosition: 'center center',
+                              transform: `translate(${transform.tx}px, ${transform.ty}px) scale(${transform.scale})`,
+                              transformOrigin: 'center',
+                            }
+                          : { objectPosition: 'center center' }
+                      }
                       onLoadingComplete={(img) => {
                         imageSizeRef.current = { width: img.naturalWidth, height: img.naturalHeight };
                         const clamped = clampPan(txRef.current, tyRef.current, scaleRef.current);
@@ -697,12 +711,12 @@ function Lightbox({
 
             <aside
               className={[
-                'flex w-full flex-col border-t border-white/60 bg-white/75 backdrop-blur-2xl',
+                'flex w-full min-w-0 flex-col border-t border-white/60 bg-white/75 backdrop-blur-2xl',
                 'max-h-[42dvh] overflow-y-auto',
                 'lg:w-[420px] lg:shrink-0 lg:max-h-none lg:overflow-visible lg:border-t-0 lg:border-l',
               ].join(' ')}
             >
-              <div className="flex items-start justify-between gap-3 p-4 pb-0">
+              <div className="flex min-w-0 items-start justify-between gap-3 p-4 pb-0">
                 <div className="min-w-0">
                   <h2 dir="auto" className="truncate text-base font-bold text-slate-900">
                     {title}
@@ -802,4 +816,3 @@ function Lightbox({
     </Dialog>
   );
 }
-
