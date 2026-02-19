@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect, type ReactNode } from 'react';
 import Image from 'next/image';
 import { Eye, MapPin, Maximize2, Tag, X, ZoomIn, ZoomOut } from 'lucide-react';
-import { Dialog, DialogContent, DialogClose, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogClose, DialogFullscreenContent, DialogTitle } from '@/components/ui/dialog';
 import { transformSignedImageUrl } from '@/lib/storage-transform';
 import FavoriteToggle, { favoritesEvents } from '@/components/product/favorite-toggle';
 import ShareButton from '@/components/share-button';
@@ -451,10 +451,13 @@ function Lightbox({
       window.cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
-    scaleRef.current = nextScale;
-    txRef.current = nextTx;
-    tyRef.current = nextTy;
-    setTransform({ scale: nextScale, tx: nextTx, ty: nextTy });
+    const normalizedScale = nextScale <= 1.01 ? 1 : nextScale;
+    const normalizedTx = normalizedScale === 1 ? 0 : nextTx;
+    const normalizedTy = normalizedScale === 1 ? 0 : nextTy;
+    scaleRef.current = normalizedScale;
+    txRef.current = normalizedTx;
+    tyRef.current = normalizedTy;
+    setTransform({ scale: normalizedScale, tx: normalizedTx, ty: normalizedTy });
   }, []);
 
   const resetZoom = useCallback(() => {
@@ -538,6 +541,15 @@ function Lightbox({
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, [open, clampPan, setTransformImmediate]);
+
+  useEffect(() => {
+    if (!open) return;
+    const frame = window.requestAnimationFrame(() => {
+      const clamped = clampPan(txRef.current, tyRef.current, scaleRef.current);
+      setTransformImmediate(scaleRef.current, clamped.tx, clamped.ty);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [open, current, clampPan, setTransformImmediate]);
 
   useEffect(() => {
     return () => {
@@ -633,15 +645,17 @@ function Lightbox({
     }
   };
 
-  const hasActiveTransform =
-    Math.abs(transform.scale - 1) > 0.001 || Math.abs(transform.tx) > 0.01 || Math.abs(transform.ty) > 0.01;
+  const hasActiveTransform = transform.scale > 1.01;
 
   return (
     <Dialog
       open={open}
       onOpenChange={handleOpenChange}
     >
-      <DialogContent className="!inset-0 !left-0 !top-0 !right-0 !bottom-0 !translate-x-0 !translate-y-0 !max-w-none !w-full !h-[100dvh] border-0 bg-white/10 p-0 shadow-none backdrop-blur-3xl data-[state=open]:animate-none data-[state=closed]:animate-none sm:!rounded-none">
+      <DialogFullscreenContent
+        className="bg-white/10 backdrop-blur-3xl"
+        onOpenAutoFocus={(event) => event.preventDefault()}
+      >
         <DialogTitle className="sr-only">
           {title ? `${title} image ${current + 1} of ${images.length}` : 'Product image viewer'}
         </DialogTitle>
@@ -721,7 +735,7 @@ function Lightbox({
                   <h2 dir="auto" className="truncate text-base font-bold text-slate-900">
                     {title}
                   </h2>
-                  <p className="mt-1 text-xs font-medium text-slate-500">
+                  <p dir="ltr" className="mt-1 text-xs font-medium text-slate-500 tabular-nums">
                     {current + 1} / {images.length}
                   </p>
                 </div>
@@ -812,7 +826,7 @@ function Lightbox({
             </aside>
           </div>
         </div>
-      </DialogContent>
+      </DialogFullscreenContent>
     </Dialog>
   );
 }
