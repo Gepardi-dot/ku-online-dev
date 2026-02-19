@@ -23,6 +23,21 @@ This is a Next.js frontend project for the KU BAZAR marketplace. It features a m
 - `npm test` – run the Node test runner
 - `npm run build` / `npm run start` – production build and local serve
 
+## PWA setup
+
+The app now includes a browser-installable PWA baseline (manifest, service worker, offline fallback page).
+
+1. Set `NEXT_PUBLIC_PWA_ENABLED=true` to enable service-worker registration.
+2. Start controlled rollout with `NEXT_PUBLIC_PWA_ROLLOUT_PERCENT` (for example `10`), then ramp gradually to `100`.
+3. Keep `NEXT_PUBLIC_PWA_INSTALL_UI_ENABLED=true` to show in-app install CTA prompts.
+4. Set `NEXT_PUBLIC_PWA_PUSH_ENABLED=true` and `NEXT_PUBLIC_PWA_VAPID_PUBLIC_KEY=<public-vapid-key>` to enable push subscription prompts.
+5. Keep `PWA_VAPID_PRIVATE_KEY=<private-vapid-key>` on the server for push delivery tooling (when delivery endpoints are added).
+6. Keep `NEXT_PUBLIC_PWA_TELEMETRY_ENABLED=true` to collect client vitals/lifecycle events and ingest via `/api/pwa/telemetry`.
+7. Keep `PWA_TELEMETRY_DURABLE_ENABLED=true` to persist telemetry in Supabase tables and power admin summaries.
+8. Set `PWA_SLO_ALERT_WEBHOOK_URL=<https-webhook-endpoint>` and `PWA_SLO_ALERT_SECRET=<strong-shared-secret>` to enable alert dispatch from `/api/internal/pwa/slo-alerts`.
+9. Deploy on HTTPS (required for service workers in production).
+10. Verify `/manifest.webmanifest`, `/sw.js`, and `/offline.html` respond successfully after deploy.
+
 ## Supabase storage setup
 
 Image uploads for product listings rely on a Supabase Storage bucket. The frontend defaults to a bucket named `product-images` (or the value of `NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET`). Create the bucket once in your Supabase project and make it public-read:
@@ -64,6 +79,19 @@ Local .env.local
   SUPABASE_SERVICE_ROLE_KEY
   NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET=product-images
   NEXT_PUBLIC_SITE_URL=http://localhost:5000
+  NEXT_PUBLIC_PWA_ENABLED=false
+  NEXT_PUBLIC_PWA_ROLLOUT_PERCENT=100
+  NEXT_PUBLIC_PWA_INSTALL_UI_ENABLED=true
+  NEXT_PUBLIC_PWA_PUSH_ENABLED=false
+  NEXT_PUBLIC_PWA_TELEMETRY_ENABLED=true
+  NEXT_PUBLIC_PWA_VAPID_PUBLIC_KEY=<public-vapid-key>
+  PWA_VAPID_PRIVATE_KEY=<private-vapid-key>
+  PWA_TELEMETRY_DURABLE_ENABLED=true
+  PWA_TELEMETRY_SUMMARY_MAX_ROWS=15000
+  PWA_TELEMETRY_RETENTION_DAYS=14
+  PWA_SLO_ALERT_WEBHOOK_URL=<https-webhook-endpoint>
+  PWA_SLO_ALERT_SECRET=<strong-shared-secret>
+  PWA_SLO_ALERT_COOLDOWN_MINUTES=30
   OPENAI_API_KEY=<openai-key-for-embeddings>
   ADMIN_REVALIDATE_TOKEN=<your-admin-revalidate-token>
   ALGOLIA_APP_ID=<algolia-app-id>
@@ -78,6 +106,19 @@ Vercel (Dev/Preview/Prod)
   SUPABASE_SERVICE_ROLE_KEY
   NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET
   NEXT_PUBLIC_SITE_URL
+  NEXT_PUBLIC_PWA_ENABLED
+  NEXT_PUBLIC_PWA_ROLLOUT_PERCENT
+  NEXT_PUBLIC_PWA_INSTALL_UI_ENABLED
+  NEXT_PUBLIC_PWA_PUSH_ENABLED
+  NEXT_PUBLIC_PWA_TELEMETRY_ENABLED
+  NEXT_PUBLIC_PWA_VAPID_PUBLIC_KEY
+  PWA_VAPID_PRIVATE_KEY
+  PWA_TELEMETRY_DURABLE_ENABLED
+  PWA_TELEMETRY_SUMMARY_MAX_ROWS
+  PWA_TELEMETRY_RETENTION_DAYS
+  PWA_SLO_ALERT_WEBHOOK_URL
+  PWA_SLO_ALERT_SECRET
+  PWA_SLO_ALERT_COOLDOWN_MINUTES
   OPENAI_API_KEY
   ADMIN_REVALIDATE_TOKEN
   ALGOLIA_APP_ID
@@ -90,6 +131,29 @@ Vercel (Dev/Preview/Prod)
 - Purge caches after deploys: `ADMIN_REVALIDATE_TOKEN=... NEXT_PUBLIC_SITE_URL=https://KU BAZAR.vercel.app node tools/revalidate.mjs categories`.
 - Rotate Supabase keys via *Project Settings → API*, update `.env.local`, then `vercel env add <NAME> <environment>`.
 - Maintain the `product-images` bucket with `node tools/storage-ensure.mjs`; audit RLS using `node tools/audit-supabase.mjs`. The bucket should remain public—reads are anonymous and the app can still use signed URLs when needed.
+- Trigger a manual PWA alert check after deployment with:
+  `curl -X POST -H "Authorization: Bearer $PWA_SLO_ALERT_SECRET" "$NEXT_PUBLIC_SITE_URL/api/internal/pwa/slo-alerts"`.
+- Inspect live rollout status with:
+  `curl -H "Authorization: Bearer $PWA_SLO_ALERT_SECRET" "$NEXT_PUBLIC_SITE_URL/api/internal/pwa/rollout-status?windowMinutes=60&dispatchLimit=10"`.
+- Admins can also run checks from the moderation dashboard or via
+  `POST /api/admin/pwa/slo-alerts/trigger` (auth required, optional JSON body: `windowMinutes`, `displayMode`, `pathPrefix`, `force`).
+- Configure GitHub Actions secrets `PWA_SLO_ALERT_RUN_URL` and `PWA_SLO_ALERT_SECRET` to enable `.github/workflows/pwa-slo-alerts.yml`.
+- Run the rollout burn-in checker:
+  `npm run pwa:burn-in-check -- --base-url "$NEXT_PUBLIC_SITE_URL" --require-alert-success true`.
+- Run live rollout observation:
+  `npm run pwa:rollout-watch -- --base-url "$NEXT_PUBLIC_SITE_URL" --alert-secret "$PWA_SLO_ALERT_SECRET" --cycles 30`.
+- Run strict ramp governance gate:
+  `npm run pwa:ramp-governance -- --base-url "$NEXT_PUBLIC_SITE_URL" --alert-secret "$PWA_SLO_ALERT_SECRET" --expected-rollout-percent 25`.
+- Run incident rehearsal (non-destructive by default):
+  `npm run pwa:incident-rehearsal -- --base-url "$NEXT_PUBLIC_SITE_URL" --alert-secret "$PWA_SLO_ALERT_SECRET"`.
+- Report install A/B funnel (shown/CTA/accepted per variant):
+  `npm run pwa:install-variant-report -- --base-url "$NEXT_PUBLIC_SITE_URL" --alert-secret "$PWA_SLO_ALERT_SECRET" --window-minutes 1440`.
+- Configure GitHub Actions secrets `PWA_BURN_IN_BASE_URL`, `PWA_SLO_ALERT_SECRET`, and optional `PWA_BURN_IN_REQUIRE_ALERT_SUCCESS` to enable `.github/workflows/pwa-burn-in-monitor.yml`.
+- Configure GitHub Actions secrets `PWA_GOVERNANCE_BASE_URL` and `PWA_SLO_ALERT_SECRET` to enable `.github/workflows/pwa-ramp-governance.yml`.
+- Use `.github/workflows/pwa-incident-rehearsal.yml` for manual drill runs and artifacted rehearsal reports.
+- Follow the full rollout/rollback playbook in `docs/pwa-rollout-burn-in-runbook.md`.
+- Use the staged promotion execution sheet in `docs/pwa-phase-13-promotion-checklist.md`.
+- Use the governance/drill procedure in `docs/pwa-phase-14-governance-incident-rehearsal.md`.
 
 ### What the migration enables
 
