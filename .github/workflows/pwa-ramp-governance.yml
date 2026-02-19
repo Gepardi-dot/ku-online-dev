@@ -1,0 +1,95 @@
+name: PWA Ramp Governance
+
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+    inputs:
+      expected_rollout_percent:
+        description: Expected NEXT_PUBLIC_PWA_ROLLOUT_PERCENT (optional)
+        required: false
+        type: string
+      max_alert_count:
+        description: Max active alert count (optional override)
+        required: false
+        type: string
+      max_poor_vitals_rate:
+        description: Max poor vitals rate 0-1 (optional override)
+        required: false
+        type: string
+      max_sw_failure_rate:
+        description: Max SW failure rate 0-1 (optional override)
+        required: false
+        type: string
+      max_dispatch_failures:
+        description: Max failed dispatches in sampled rows (optional override)
+        required: false
+        type: string
+      fail_on_warn:
+        description: Fail gate when warnings exist
+        required: false
+        default: 'false'
+        type: string
+
+jobs:
+  governance-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate required settings
+        env:
+          BASE_URL: ${{ secrets.PWA_GOVERNANCE_BASE_URL }}
+          ALERT_SECRET: ${{ secrets.PWA_SLO_ALERT_SECRET }}
+        run: |
+          if [ -z "$BASE_URL" ] || [ -z "$ALERT_SECRET" ]; then
+            echo "Missing required secrets: PWA_GOVERNANCE_BASE_URL and/or PWA_SLO_ALERT_SECRET"
+            exit 1
+          fi
+
+      - name: Run governance gate
+        id: gate
+        env:
+          PWA_GOVERNANCE_BASE_URL: ${{ secrets.PWA_GOVERNANCE_BASE_URL }}
+          PWA_SLO_ALERT_SECRET: ${{ secrets.PWA_SLO_ALERT_SECRET }}
+
+          INPUT_EXPECTED_ROLLOUT_PERCENT: ${{ github.event.inputs.expected_rollout_percent }}
+          INPUT_MAX_ALERT_COUNT: ${{ github.event.inputs.max_alert_count }}
+          INPUT_MAX_POOR_VITALS_RATE: ${{ github.event.inputs.max_poor_vitals_rate }}
+          INPUT_MAX_SW_FAILURE_RATE: ${{ github.event.inputs.max_sw_failure_rate }}
+          INPUT_MAX_DISPATCH_FAILURES: ${{ github.event.inputs.max_dispatch_failures }}
+          INPUT_FAIL_ON_WARN: ${{ github.event.inputs.fail_on_warn }}
+
+          SECRET_EXPECTED_ROLLOUT_PERCENT: ${{ secrets.PWA_GOVERNANCE_EXPECTED_ROLLOUT_PERCENT }}
+          SECRET_MAX_ALERT_COUNT: ${{ secrets.PWA_GOVERNANCE_MAX_ALERT_COUNT }}
+          SECRET_MAX_POOR_VITALS_RATE: ${{ secrets.PWA_GOVERNANCE_MAX_POOR_VITALS_RATE }}
+          SECRET_MAX_SW_FAILURE_RATE: ${{ secrets.PWA_GOVERNANCE_MAX_SW_FAILURE_RATE }}
+          SECRET_MAX_DISPATCH_FAILURES: ${{ secrets.PWA_GOVERNANCE_MAX_DISPATCH_FAILURES }}
+          SECRET_FAIL_ON_WARN: ${{ secrets.PWA_GOVERNANCE_FAIL_ON_WARN }}
+        run: |
+          export PWA_GOVERNANCE_EXPECTED_ROLLOUT_PERCENT="${INPUT_EXPECTED_ROLLOUT_PERCENT:-$SECRET_EXPECTED_ROLLOUT_PERCENT}"
+          export PWA_GOVERNANCE_MAX_ALERT_COUNT="${INPUT_MAX_ALERT_COUNT:-$SECRET_MAX_ALERT_COUNT}"
+          export PWA_GOVERNANCE_MAX_POOR_VITALS_RATE="${INPUT_MAX_POOR_VITALS_RATE:-$SECRET_MAX_POOR_VITALS_RATE}"
+          export PWA_GOVERNANCE_MAX_SW_FAILURE_RATE="${INPUT_MAX_SW_FAILURE_RATE:-$SECRET_MAX_SW_FAILURE_RATE}"
+          export PWA_GOVERNANCE_MAX_DISPATCH_FAILURES="${INPUT_MAX_DISPATCH_FAILURES:-$SECRET_MAX_DISPATCH_FAILURES}"
+          export PWA_GOVERNANCE_FAIL_ON_WARN="${INPUT_FAIL_ON_WARN:-$SECRET_FAIL_ON_WARN}"
+
+          node tools/scripts/pwa-ramp-governance.mjs
+
+      - name: Trigger escalation alert probe on gate failure
+        if: failure()
+        env:
+          BASE_URL: ${{ secrets.PWA_GOVERNANCE_BASE_URL }}
+          ALERT_SECRET: ${{ secrets.PWA_SLO_ALERT_SECRET }}
+        run: |
+          curl --fail --show-error --silent \
+            --request POST \
+            --header "Authorization: Bearer $ALERT_SECRET" \
+            --header "Content-Type: application/json" \
+            "$BASE_URL/api/internal/pwa/slo-alerts?force=true&windowMinutes=60"
