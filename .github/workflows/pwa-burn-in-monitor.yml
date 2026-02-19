@@ -1,0 +1,36 @@
+name: PWA Burn-in Monitor
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  burn-in-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate required settings
+        env:
+          BASE_URL: ${{ secrets.PWA_BURN_IN_BASE_URL }}
+          ALERT_SECRET: ${{ secrets.PWA_SLO_ALERT_SECRET }}
+        run: |
+          if [ -z "$BASE_URL" ] || [ -z "$ALERT_SECRET" ]; then
+            echo "Missing required secrets: PWA_BURN_IN_BASE_URL and/or PWA_SLO_ALERT_SECRET"
+            exit 1
+          fi
+
+      - name: Run PWA burn-in check
+        env:
+          PWA_BURN_IN_BASE_URL: ${{ secrets.PWA_BURN_IN_BASE_URL }}
+          PWA_SLO_ALERT_SECRET: ${{ secrets.PWA_SLO_ALERT_SECRET }}
+          PWA_BURN_IN_REQUIRE_ALERT_SUCCESS: ${{ secrets.PWA_BURN_IN_REQUIRE_ALERT_SUCCESS }}
+          PWA_BURN_IN_TIMEOUT_MS: '12000'
+        run: node tools/scripts/pwa-burn-in-check.mjs

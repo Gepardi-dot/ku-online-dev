@@ -31,28 +31,87 @@ const remotePatterns: RemotePattern[] = [
 ];
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
-let supabaseHostname: string | null = null;
+
+type SupabaseOrigin = {
+  protocol: 'http' | 'https';
+  hostname: string;
+  port: string;
+};
+
+const supabaseImageOriginKeys = new Set<string>();
+const supabaseCspConnectSources = new Set<string>();
+const supabaseCspImageSources = new Set<string>();
+
+function addSupabaseImageOrigin(origin: SupabaseOrigin): void {
+  const key = `${origin.protocol}|${origin.hostname}|${origin.port}`;
+  if (supabaseImageOriginKeys.has(key)) {
+    return;
+  }
+  supabaseImageOriginKeys.add(key);
+
+  remotePatterns.push({
+    protocol: origin.protocol,
+    hostname: origin.hostname,
+    port: origin.port,
+    pathname: '/storage/v1/object/**',
+  });
+
+  remotePatterns.push({
+    protocol: origin.protocol,
+    hostname: origin.hostname,
+    port: origin.port,
+    pathname: '/storage/v1/render/**',
+  });
+}
+
+function addSupabaseCspSources(origin: SupabaseOrigin): void {
+  const portSuffix = origin.port ? `:${origin.port}` : '';
+  const originUrl = `${origin.protocol}://${origin.hostname}${portSuffix}`;
+  const websocketProtocol = origin.protocol === 'https' ? 'wss' : 'ws';
+  const websocketUrl = `${websocketProtocol}://${origin.hostname}${portSuffix}`;
+
+  supabaseCspConnectSources.add(originUrl);
+  supabaseCspConnectSources.add(websocketUrl);
+  supabaseCspImageSources.add(originUrl);
+}
 
 if (supabaseUrl) {
   try {
-    const { hostname } = new URL(supabaseUrl);
-    supabaseHostname = hostname;
-    remotePatterns.push({
-      protocol: 'https',
-      hostname,
-      port: '',
-      pathname: '/storage/v1/object/**',
-    });
-    remotePatterns.push({
-      protocol: 'https',
-      hostname,
-      port: '',
-      pathname: '/storage/v1/render/**',
-    });
+    const parsedSupabaseUrl = new URL(supabaseUrl);
+    const protocol =
+      parsedSupabaseUrl.protocol === 'http:'
+        ? 'http'
+        : parsedSupabaseUrl.protocol === 'https:'
+          ? 'https'
+          : null;
+
+    if (!protocol) {
+      console.warn('Unsupported Supabase URL protocol, storage images will not be whitelisted.');
+    } else {
+      const supabaseOrigin: SupabaseOrigin = {
+        protocol,
+        hostname: parsedSupabaseUrl.hostname,
+        port: parsedSupabaseUrl.port,
+      };
+      addSupabaseImageOrigin(supabaseOrigin);
+      addSupabaseCspSources(supabaseOrigin);
+    }
   } catch (error) {
     console.warn('Invalid Supabase URL, storage images will not be whitelisted.');
   }
 }
+
+// Local Supabase defaults used in development when URLs point at localhost/127.0.0.1.
+addSupabaseImageOrigin({
+  protocol: 'http',
+  hostname: '127.0.0.1',
+  port: '54321',
+});
+addSupabaseImageOrigin({
+  protocol: 'http',
+  hostname: 'localhost',
+  port: '54321',
+});
 
 const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN ?? process.env.SENTRY_DSN ?? null;
 let sentryHostname: string | null = null;
@@ -96,10 +155,12 @@ function buildContentSecurityPolicy(): string {
     ['connect-src', new Set(["'self'"])],
   ]);
 
-  if (supabaseHostname) {
-    directiveMap.get('connect-src')?.add(`https://${supabaseHostname}`);
-    directiveMap.get('connect-src')?.add(`wss://${supabaseHostname}`);
-    directiveMap.get('img-src')?.add(`https://${supabaseHostname}`);
+  for (const source of supabaseCspConnectSources) {
+    directiveMap.get('connect-src')?.add(source);
+  }
+
+  for (const source of supabaseCspImageSources) {
+    directiveMap.get('img-src')?.add(source);
   }
 
   if (sentryHostname) {
@@ -158,10 +219,14 @@ const securityHeaders = (() => {
 
 const nextConfig: NextConfig = {
   /* config options here */
+  allowedDevOrigins: ['192.168.32.1'],
   outputFileTracingRoot: path.join(__dirname, '.'),
   images: {
     remotePatterns,
-    qualities: [75, 82],
+    qualities: [60, 70, 75, 82],
+    // Local Supabase storage runs on 127.0.0.1 in dev; Next.js blocks private-IP
+    // upstreams unless this flag is enabled.
+    dangerouslyAllowLocalIP: !isProduction,
   },
   webpack(config, options) {
     const shouldDebugWebpack = process.env.NEXT_DEBUG_WEBPACK_OUTPUT === 'true';
@@ -196,6 +261,37 @@ const nextConfig: NextConfig = {
     }
 
     return [
+      {
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          {
+            key: 'Service-Worker-Allowed',
+            value: '/',
+          },
+        ],
+      },
+      {
+        source: '/manifest.webmanifest',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
+      {
+        source: '/offline.html',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=0, must-revalidate',
+          },
+        ],
+      },
       {
         source: '/(.*)',
         headers: securityHeaders,

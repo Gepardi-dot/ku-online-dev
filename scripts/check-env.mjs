@@ -39,6 +39,40 @@ if (process.env.NODE_ENV !== 'production') {
   loadEnvFile('.env.local');
 }
 
+function normalizeOptionalString(value) {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function boundedIntegerFromEnv(fallback, min, max) {
+  return z.preprocess((value) => {
+    const normalized = normalizeOptionalString(value);
+    if (!normalized) return fallback;
+
+    const parsed = Number(normalized);
+    if (!Number.isFinite(parsed)) return fallback;
+
+    return Math.max(min, Math.min(max, Math.floor(parsed)));
+  }, z.number().int().min(min).max(max));
+}
+
+const booleanTrueDefaultFromEnv = z
+  .enum(['true', 'false'])
+  .optional()
+  .default('true')
+  .transform((value) => value === 'true');
+
+const optionalUrlFromEnv = z.preprocess(
+  (value) => normalizeOptionalString(value),
+  z.string().url().optional(),
+);
+
+const optionalSecretFromEnv = z.preprocess(
+  (value) => normalizeOptionalString(value),
+  z.string().min(1).optional(),
+);
+
 const baseSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url({ message: 'NEXT_PUBLIC_SUPABASE_URL must be a valid URL' }),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required'),
@@ -47,6 +81,7 @@ const baseSchema = z.object({
     .min(1)
     .default('product-images'),
   NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_PWA_ROLLOUT_PERCENT: boundedIntegerFromEnv(100, 0, 100),
   NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
 });
 
@@ -60,6 +95,13 @@ const serverSchema = baseSchema.extend({
   VONAGE_APPLICATION_ID: z.string().min(1).optional(),
   VONAGE_PRIVATE_KEY64: z.string().min(1).optional(),
   VONAGE_VIRTUAL_NUMBER: z.string().min(1).optional(),
+  PWA_TELEMETRY_DURABLE_ENABLED: booleanTrueDefaultFromEnv,
+  PWA_TELEMETRY_SUMMARY_MAX_ROWS: boundedIntegerFromEnv(15000, 1000, 50000),
+  PWA_TELEMETRY_RETENTION_DAYS: boundedIntegerFromEnv(14, 1, 90),
+  PWA_SLO_ALERT_WEBHOOK_URL: optionalUrlFromEnv,
+  PWA_SLO_ALERT_SECRET: optionalSecretFromEnv,
+  PWA_SLO_ALERT_COOLDOWN_MINUTES: boundedIntegerFromEnv(30, 1, 24 * 60),
+  PWA_SLO_ALERT_TIMEOUT_MS: boundedIntegerFromEnv(8000, 1000, 30000),
 });
 
 const result = serverSchema.safeParse(process.env);

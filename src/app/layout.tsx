@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
@@ -9,6 +9,10 @@ import { DM_Sans, Noto_Kufi_Arabic } from 'next/font/google';
 import { LocaleProvider } from '@/providers/locale-provider';
 import { getServerLocale } from '@/lib/locale/server';
 import { rtlLocales } from '@/lib/locale/dictionary';
+import PwaBootstrap from '@/components/pwa/pwa-bootstrap';
+import PwaInstallBanner from '@/components/pwa/pwa-install-banner';
+import PwaPushBanner from '@/components/pwa/pwa-push-banner';
+import PwaTelemetry from '@/components/pwa/pwa-telemetry';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -27,6 +31,27 @@ const notoKufiArabic = Noto_Kufi_Arabic({
 export const metadata: Metadata = {
   title: 'KU BAZAR - Your Global Online Shopping Destination',
   description: 'A multi-vendor local marketplace for the Kurdistan region.',
+  applicationName: 'KU BAZAR',
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'KU BAZAR',
+    statusBarStyle: 'default',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#f97316',
 };
 
 export default async function RootLayout({
@@ -60,10 +85,14 @@ export default async function RootLayout({
           'font-body antialiased min-h-screen bg-background font-sans pt-(--app-header-offset) pb-(--mobile-nav-offset) md:pb-0',
         )}
       >
+        <PwaTelemetry />
+        <PwaBootstrap />
         <LocaleProvider initialLocale={locale}>
           <AnnouncementBar />
           <div>{children}</div>
           <MobileNav />
+          <PwaInstallBanner />
+          <PwaPushBanner />
           <AppFooter />
           <Toaster />
         </LocaleProvider>

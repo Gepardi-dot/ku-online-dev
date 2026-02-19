@@ -1,0 +1,35 @@
+name: PWA SLO Alerts
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run-alert-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate secrets
+        id: validate
+        env:
+          ALERT_RUN_URL: ${{ secrets.PWA_SLO_ALERT_RUN_URL }}
+          ALERT_SECRET: ${{ secrets.PWA_SLO_ALERT_SECRET }}
+        run: |
+          if [ -z "$ALERT_RUN_URL" ] || [ -z "$ALERT_SECRET" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Skipping PWA SLO alert check because required secrets are missing."
+            exit 0
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger PWA SLO alert check
+        if: steps.validate.outputs.configured == 'true'
+        env:
+          ALERT_RUN_URL: ${{ secrets.PWA_SLO_ALERT_RUN_URL }}
+          ALERT_SECRET: ${{ secrets.PWA_SLO_ALERT_SECRET }}
+        run: |
+          curl --fail --show-error --silent \
+            --request POST \
+            --header "Authorization: Bearer $ALERT_SECRET" \
+            --header "Content-Type: application/json" \
+            "$ALERT_RUN_URL"
