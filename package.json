@@ -79,7 +79,7 @@
     "react-hook-form": "^7.69.0",
     "recharts": "^3.7.0",
     "sharp": "^0.34.5",
-    "tailwind-merge": "^3.4.0",
+    "tailwind-merge": "^3.4.1",
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.25.76"
   },
