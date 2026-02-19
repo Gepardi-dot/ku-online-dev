@@ -157,7 +157,6 @@ export default async function SponsorStorePage({
   const manageHref = store.slug ? `/sponsors/manage?store=${encodeURIComponent(store.slug)}` : '/sponsors/manage';
   const storeRef = store.slug?.trim() || store.id;
   const addProductHref = `/sell?store=${encodeURIComponent(storeRef)}&returnTo=${encodeURIComponent(manageHref)}`;
-  const canUsePrivateContactActions = Boolean(user?.id);
 
   const coverSrc = store.coverUrl?.trim() || '';
   const logoSrc = store.logoUrl?.trim() || '';
@@ -305,14 +304,13 @@ export default async function SponsorStorePage({
                       variant="secondary"
                       className={cn(
                         'h-11 w-11 rounded-full bg-[#E8E8E8] text-[#1F2937] shadow-sm hover:bg-[#DEDEDE]',
-                        !phoneHref || !canUsePrivateContactActions ? 'pointer-events-none opacity-55' : null,
+                        !phoneHref ? 'pointer-events-none opacity-55' : null,
                       )}
                     >
                       <a
-                        href={phoneHref && canUsePrivateContactActions ? phoneHref : '#'}
+                        href={phoneHref ?? '#'}
                         aria-label={serverTranslate(locale, 'sponsorStore.actions.call')}
-                        aria-disabled={!phoneHref || !canUsePrivateContactActions}
-                        title={!canUsePrivateContactActions ? serverTranslate(locale, 'header.loginRequired') : undefined}
+                        aria-disabled={!phoneHref}
                       >
                         <Phone className="h-5 w-5" aria-hidden="true" />
                       </a>
@@ -344,16 +342,14 @@ export default async function SponsorStorePage({
                       asChild
                       className={cn(
                         'h-11 shrink-0 rounded-full bg-[#57C878] px-4 text-base font-bold text-white shadow-[0_6px_18px_rgba(87,200,120,0.26),0_1px_6px_rgba(87,200,120,0.18)] hover:bg-[#4FB66D]',
-                        !waTargets || !canUsePrivateContactActions ? 'pointer-events-none opacity-55' : null,
+                        !waTargets ? 'pointer-events-none opacity-55' : null,
                       )}
                     >
                       <WhatsAppDeepLink
                         appHref={waTargets?.appHref ?? null}
                         webHref={waTargets?.webHref ?? null}
-                        disabled={!canUsePrivateContactActions}
                         className={cn(isRtl && 'flex-row-reverse')}
-                        aria-disabled={!waTargets || !canUsePrivateContactActions}
-                        title={!canUsePrivateContactActions ? serverTranslate(locale, 'header.loginRequired') : undefined}
+                        aria-disabled={!waTargets}
                       >
                         <MessageCircle className="h-6 w-6" aria-hidden="true" />
                         <span className="text-base leading-none">{serverTranslate(locale, 'sponsorStore.actions.whatsapp')}</span>
