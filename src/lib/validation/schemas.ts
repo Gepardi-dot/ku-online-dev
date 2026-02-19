@@ -24,7 +24,7 @@ export const createProductSchema = z
       .max(140, 'Title must be 140 characters or fewer.'),
     description: descriptionSchema,
     price: z.coerce
-      .number({ invalid_type_error: 'Price must be a number.' })
+      .number({ error: 'Price must be a number.' })
       .min(0, 'Price must be zero or greater.'),
     currency: productCurrencyEnum.default('IQD'),
     condition: productConditionEnum,
