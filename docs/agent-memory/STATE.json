@@ -1,0 +1,167 @@
+{
+  "schema_version": "1.0.0",
+  "last_updated_utc": "2026-02-19T11:35:54.908Z",
+  "project_context": {
+    "repository_path": "c:\\Users\\miroa\\Downloads\\kubazar-dev",
+    "framework": "Next.js App Router",
+    "language": "TypeScript",
+    "package_manager": "npm",
+    "default_dev_url": "http://localhost:5000",
+    "default_dev_command": "npm run dev",
+    "build_command": "npm run build",
+    "start_command": "npm run start",
+    "lint_command": "npm run lint",
+    "typecheck_command": "npm run typecheck"
+  },
+  "guardrails": {
+    "respect_existing_dirty_worktree": true,
+    "do_not_revert_unrelated_changes": true,
+    "supabase_workflow_is_mandatory_for_db_changes": true,
+    "minimum_pre_ship_validation": [
+      "npm run lint",
+      "npm run typecheck",
+      "npm run build",
+      "npm run start"
+    ]
+  },
+  "session_context": {
+    "active_objective": "Implement PWA with installability + offline-safe service worker",
+    "current_task": {
+      "id": "pwa-phase-14",
+      "title": "Production ramp governance and incident rehearsal",
+      "status": "completed",
+      "phase": "phase_14"
+    },
+    "next_task": {
+      "id": "pwa-post-rollout",
+      "title": "Optional post-rollout optimization backlog"
+    },
+    "latest_user_request": "proceed"
+  },
+  "technical_findings": [
+    "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
+    "This repository currently has no first-class PWA implementation.",
+    "Current proxy matcher may need exclusions for service worker and manifest routes during PWA rollout."
+  ],
+  "decisions": [
+    {
+      "timestamp_utc": "2026-02-18T15:31:42Z",
+      "decision": "Use phased PWA rollout with conservative cache strategy to avoid auth/session regressions."
+    },
+    {
+      "timestamp_utc": "2026-02-18T15:31:42Z",
+      "decision": "Add dedicated agent-memory system (state + journal + updater script) before implementation work."
+    }
+  ],
+  "open_risks": [
+    "Service worker caching can cause stale authenticated behavior if API routes are cached incorrectly.",
+    "Proxy matcher may interfere with service worker delivery if not explicitly excluded."
+  ],
+  "verification_log": [
+    {
+      "timestamp_utc": "2026-02-18T15:31:42Z",
+      "check": "Initial memory baseline written",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T15:33:21.940Z",
+      "check": "Agent memory system bootstrapped and validated",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T15:51:55.893Z",
+      "check": "PWA Phase 1 implementation completed and build-validated",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T16:04:33.785Z",
+      "check": "PWA Phase 2/3 code integrated and build-validated",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T16:30:13.876Z",
+      "check": "Push flow implementation and migration workflow completed locally",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T16:47:06.746Z",
+      "check": "SW hardening deployed in code with successful build validation",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T17:05:23.687Z",
+      "check": "npx eslint on changed telemetry/PWA files",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T17:05:24.935Z",
+      "check": "npm run typecheck",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T17:05:25.990Z",
+      "check": "npm run build",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T17:31:25.340Z",
+      "check": "npx eslint on phase-9 changed files",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T17:31:33.116Z",
+      "check": "npm run build",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T17:31:36.341Z",
+      "check": "npm run typecheck",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T17:31:39.838Z",
+      "check": "npm run perf:budget",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T19:59:37.160Z",
+      "check": "Phase 10 final validation completed (env hardening + admin trigger wiring)",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T20:02:31.732Z",
+      "check": "npm run check:env",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T20:16:40.588Z",
+      "check": "Phase 11 rollout/burn-in automation validation completed",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T20:18:30.771Z",
+      "check": "Phase 11 check-env",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T20:32:10.723Z",
+      "check": "Phase 12 rollout controls and live observation validation completed",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T20:44:35.485Z",
+      "check": "Phase 13 promotion toolkit validation completed",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T21:03:11.296Z",
+      "check": "Phase 14 governance and incident rehearsal validation completed",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-02-18T21:12:21.895Z",
+      "check": "Phase 14 operational local run executed",
+      "status": "pass"
+    }
+  ]
+}

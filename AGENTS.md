@@ -60,3 +60,54 @@ Follow the conventional tone used in history (`feat:`, `fix:`, `chore:`). Each c
 
 ## Security & Configuration Tips
 Secrets are managed via Vercel environment variables; never commit `.env.local`. Ensure Supabase storage buckets (e.g., `product-images`) are provisioned and policies verified before deploying. When modifying auth or storage rules, document the change in the PR and confirm Vercel preview builds succeed at https://ku-online.vercel.app/.
+
+## MCP Acquisition Protocol (Required)
+Use MCP selectively and deliberately. The goal is to acquire MCP when it materially improves correctness/safety, and keep MCP off when unnecessary.
+
+### Core rule
+For high-risk domains, you must not proceed until MCP readiness is confirmed (or the user explicitly overrides).
+
+### Mandatory flow
+1) Ensure MCP availability baseline before implementation:
+- `npm run mcp:ensure`
+2) Classify task risk + domain.
+3) Prefer one-step autopilot:
+- `npm run mcp:auto -- --task <ui|core|db|deploy|comms>`
+4) If not using autopilot, select and activate the MCP profile from `docs/mcp/task-matrix.md`:
+- `minimal` (default): high-value MCPs off.
+- `core`: Supabase read-only + Vercel.
+- `db-admin`: Supabase write-capable + optional remote Supabase MCP.
+- `deploy`: Vercel-focused.
+- `comms`: Vonage-focused.
+5) Run `npm run mcp:doctor -- --profile <profile>` before high-risk execution (autopilot does this automatically).
+6) If blocked, use doctor checklist output and ask the user only for missing config/actions.
+7) If non-blocked, continue and report active profile + doctor outcome in your summary.
+8) At task end, return to minimal with `npm run mcp:off` (autopilot auto-resets after command execution unless `--keep-profile` is used).
+
+### Risk gates
+Hard gate (MCP required before execution):
+- DB schema, RLS, storage, auth policy, or migration operations.
+- Deployment diagnostics / production environment operations.
+- External provider operations (Vonage API actions).
+
+Soft gate (MCP recommended but fallback allowed with explicit warning):
+- Local UI/refactor/documentation tasks.
+- Low-risk read-only code exploration where MCP is not required for correctness.
+
+### Commands
+- `npm run mcp:ensure`
+- `npm run mcp:auto -- --task <ui|core|db|deploy|comms> [-- <command> ...]`
+- `npm run mcp:auto:core`
+- `npm run mcp:auto:db`
+- `npm run mcp:auto:deploy`
+- `npm run mcp:auto:comms`
+- `npm run mcp:profile -- list`
+- `npm run mcp:profile -- activate <profile>`
+- `npm run mcp:status`
+- `npm run mcp:doctor -- --profile <profile> [--emit-checklist] [--json] [--strict]`
+- `npm run mcp:off`
+
+### Safety rules
+- Never commit secrets to tracked config files (`.cursor/mcp.json`, docs, JSON contracts).
+- Keep user secrets in `.env.local` or user-level client config only.
+- Treat `.cursor/mcp.json` as generated from `tools/mcp/profiles.json`.
