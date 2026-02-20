@@ -140,49 +140,49 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
       <section className="pb-12 bg-accent">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-6xl space-y-5">
-            <div className="relative overflow-hidden rounded-[24px] border border-white/70 bg-linear-to-br from-white/90 via-white/82 to-white/70 p-4 shadow-[0_16px_45px_rgba(15,23,42,0.10)] ring-1 ring-white/55 md:p-5">
-              <div className="pointer-events-none absolute inset-0 opacity-80">
-                <div className="absolute -left-16 -top-12 h-44 w-44 rounded-full bg-brand/14 blur-3xl" />
-                <div className="absolute -right-20 -bottom-14 h-48 w-48 rounded-full bg-brand-light/14 blur-3xl" />
-              </div>
-              <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div className="min-w-0">
-                  <h2 className="text-xl font-extrabold text-[#2D2D2D] md:text-2xl" dir="auto">
-                    {serverTranslate(locale, 'sponsorsHub.spotlightTitle')}
-                  </h2>
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#4B5563] ring-1 ring-black/5" dir="auto">
-                      {serverTranslate(locale, 'header.filterLabel')}: {selectedCityLabel}
-                    </span>
-                    <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#4B5563] ring-1 ring-black/5" dir="auto">
-                      {spotlightStores.length}/8
-                    </span>
-                    {canReviewApplications && sellerApplicationsCount !== null ? (
+            {canCreateStore ? (
+              <div className="relative overflow-hidden rounded-[24px] border border-white/70 bg-linear-to-br from-white/90 via-white/82 to-white/70 p-4 shadow-[0_16px_45px_rgba(15,23,42,0.10)] ring-1 ring-white/55 md:p-5">
+                <div className="pointer-events-none absolute inset-0 opacity-80">
+                  <div className="absolute -left-16 -top-12 h-44 w-44 rounded-full bg-brand/14 blur-3xl" />
+                  <div className="absolute -right-20 -bottom-14 h-48 w-48 rounded-full bg-brand-light/14 blur-3xl" />
+                </div>
+                <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="min-w-0">
+                    <h2 className="text-xl font-extrabold text-[#2D2D2D] md:text-2xl" dir="auto">
+                      {serverTranslate(locale, 'sponsorsHub.spotlightTitle')}
+                    </h2>
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#4B5563] ring-1 ring-black/5" dir="auto">
+                        {serverTranslate(locale, 'header.filterLabel')}: {selectedCityLabel}
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#4B5563] ring-1 ring-black/5" dir="auto">
+                        {spotlightStores.length}/8
+                      </span>
+                      {canReviewApplications && sellerApplicationsCount !== null ? (
+                        <Link
+                          href={applicationsHref}
+                          className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#4B5563] ring-1 ring-black/5 transition hover:bg-[#F9FAFB]"
+                          dir="auto"
+                        >
+                          {serverTranslate(locale, 'sponsorsHub.applicationsCount').replace(
+                            '{count}',
+                            String(sellerApplicationsCount),
+                          )}
+                        </Link>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                    {canReviewApplications ? (
                       <Link
-                        href={applicationsHref}
-                        className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-[#4B5563] ring-1 ring-black/5 transition hover:bg-[#F9FAFB]"
+                        href="/admin/partnerships"
+                        className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-[#111827] shadow-sm transition hover:bg-[#F9FAFB]"
                         dir="auto"
                       >
-                        {serverTranslate(locale, 'sponsorsHub.applicationsCount').replace(
-                          '{count}',
-                          String(sellerApplicationsCount),
-                        )}
+                        {serverTranslate(locale, 'sponsorsHub.applicationsButton')}
                       </Link>
                     ) : null}
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                  {canReviewApplications ? (
-                    <Link
-                      href="/admin/partnerships"
-                      className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-[#111827] shadow-sm transition hover:bg-[#F9FAFB]"
-                      dir="auto"
-                    >
-                      {serverTranslate(locale, 'sponsorsHub.applicationsButton')}
-                    </Link>
-                  ) : null}
-                  {canCreateStore ? (
                     <Link
                       href="/admin/sponsors/new"
                       className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_28px_rgba(247,111,29,0.25)] transition hover:bg-brand/90"
@@ -190,10 +190,10 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
                     >
                       Create store
                     </Link>
-                  ) : null}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : null}
 
             {/* Mobile: 1 column. Desktop: 2 columns. */}
             <div className="relative">
