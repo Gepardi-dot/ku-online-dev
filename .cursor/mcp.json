@@ -1,9 +1,40 @@
 {
   "mcpServers": {
+    "context7": {
+      "headers": {
+        "CONTEXT7_API_KEY": "${input:context7_api_key}"
+      },
+      "serverUrl": "https://mcp.context7.com/mcp",
+      "url": "https://mcp.context7.com/mcp"
+    },
+    "mcp-playwright": {
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "command": "npx",
+      "env": {}
+    },
+    "supabase": {
+      "headers": {},
+      "url": "http://localhost:54321/mcp",
+      "serverUrl": "http://localhost:54321/mcp"
+    },
+    "vercel": {
+      "headers": {},
+      "serverUrl": "https://mcp.vercel.com",
+      "url": "https://mcp.vercel.com"
+    },
+    "vonage-docs": {
+      "serverUrl": "https://documentation-mcp.vonage.dev/mcp",
+      "url": "https://documentation-mcp.vonage.dev/mcp"
+    },
     "vonage-tooling": {
+      "args": [
+        "tools/mcp/run-vonage-tooling.mjs"
+      ],
       "command": "node",
-      "args": ["tools/mcp/run-vonage-tooling.mjs"]
+      "env": {}
     }
   }
 }
-
