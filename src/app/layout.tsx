@@ -13,6 +13,7 @@ import PwaBootstrap from '@/components/pwa/pwa-bootstrap';
 import PwaInstallBanner from '@/components/pwa/pwa-install-banner';
 import PwaPushBanner from '@/components/pwa/pwa-push-banner';
 import PwaTelemetry from '@/components/pwa/pwa-telemetry';
+import SessionPersistence from '@/components/auth/session-persistence';
 
 const dmSans = DM_Sans({
   subsets: ['latin'],
@@ -87,6 +88,7 @@ export default async function RootLayout({
       >
         <PwaTelemetry />
         <PwaBootstrap />
+        <SessionPersistence />
         <LocaleProvider initialLocale={locale}>
           <AnnouncementBar />
           <div>{children}</div>

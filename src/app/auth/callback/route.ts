@@ -1,12 +1,43 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient } from '@/utils/supabase/server';
 
-export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/';
+const FALLBACK_APP_ORIGIN = 'http://localhost:5000';
 
+function normalizeOrigin(origin: string): string {
+  try {
+    const url = new URL(origin);
+    if (url.hostname === '0.0.0.0' || url.hostname === '::' || url.hostname === '[::]') {
+      url.hostname = 'localhost';
+    }
+    return url.origin;
+  } catch {
+    return FALLBACK_APP_ORIGIN;
+  }
+}
+
+function resolveNextPath(nextParam: string | null): string {
+  if (!nextParam) {
+    return '/';
+  }
+
+  if (nextParam.startsWith('/')) {
+    return nextParam;
+  }
+
+  try {
+    const nextUrl = new URL(nextParam);
+    return `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}` || '/';
+  } catch {
+    return '/';
+  }
+}
+
+export async function GET(request: Request) {
+  const requestUrl = new URL(request.url);
+  const code = requestUrl.searchParams.get('code');
+  const next = resolveNextPath(requestUrl.searchParams.get('next'));
+  const origin = normalizeOrigin(requestUrl.origin);
   const redirectUrl = `${origin}${next}`;
 
   if (!code) {
@@ -24,4 +55,3 @@ export async function GET(request: Request) {
 
   return NextResponse.redirect(redirectUrl);
 }
-
