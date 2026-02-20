@@ -23,6 +23,20 @@ This is a Next.js frontend project for the KU BAZAR marketplace. It features a m
 - `npm test` – run the Node test runner
 - `npm run build` / `npm run start` – production build and local serve
 
+## MCP workflow for agents
+
+This repo includes profile-based MCP orchestration for safer high-risk tasks (DB/auth/deploy/provider actions).
+Use autopilot so you do not need to remember separate activate/doctor/reset steps.
+
+- `npm run mcp:auto -- --task <ui|core|db|deploy|comms>` – one-step profile activation + doctor enforcement
+- `npm run mcp:auto -- --task db -- <your-command>` – enforce DB gate, run command, then auto-reset profile
+- `npm run mcp:profile -- list` – view available profiles
+- `npm run mcp:profile -- activate <profile>` – generate `.cursor/mcp.json` for the selected profile
+- `npm run mcp:doctor -- --profile <profile> --emit-checklist` – validate prerequisites and print exact missing setup steps
+- `npm run mcp:off` – return to the default minimal MCP state
+
+See `docs/mcp/README.md` and `docs/mcp/task-matrix.md` for the full workflow.
+
 ## PWA setup
 
 The app now includes a browser-installable PWA baseline (manifest, service worker, offline fallback page).

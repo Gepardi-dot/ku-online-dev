@@ -1,0 +1,256 @@
+{
+  "version": 1,
+  "servers": {
+    "supabase-local": {
+      "gate": "hard",
+      "summary": "Required for Supabase-backed DB/auth/storage work through the local MCP wrapper.",
+      "checks": [
+        {
+          "id": "supabase_cli",
+          "type": "command",
+          "required": true,
+          "description": "Supabase CLI is installed",
+          "command": "supabase",
+          "args": [
+            "--version"
+          ],
+          "onFail": "Install Supabase CLI: https://supabase.com/docs/guides/cli"
+        },
+        {
+          "id": "docker_engine",
+          "type": "command",
+          "required": true,
+          "description": "Docker engine is running",
+          "command": "docker",
+          "args": [
+            "info"
+          ],
+          "timeoutMs": 120000,
+          "onFail": "Start Docker Desktop and confirm the Docker engine is healthy."
+        },
+        {
+          "id": "supabase_local_status",
+          "type": "command",
+          "required": true,
+          "description": "Local Supabase stack is reachable",
+          "command": "supabase",
+          "args": [
+            "status"
+          ],
+          "timeoutMs": 60000,
+          "onFail": "Run `supabase start` in this repository and rerun MCP doctor."
+        },
+        {
+          "id": "supabase_url",
+          "type": "envAny",
+          "required": true,
+          "description": "Supabase URL is configured",
+          "keys": [
+            "SUPABASE_URL",
+            "NEXT_PUBLIC_SUPABASE_URL"
+          ],
+          "onFail": "Set `SUPABASE_URL` (or `NEXT_PUBLIC_SUPABASE_URL`) in `.env.local`."
+        },
+        {
+          "id": "supabase_service_role",
+          "type": "env",
+          "required": true,
+          "description": "Supabase service role key is configured",
+          "key": "SUPABASE_SERVICE_ROLE_KEY",
+          "onFail": "Set `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`."
+        },
+        {
+          "id": "supabase_anon_key",
+          "type": "envAny",
+          "required": false,
+          "description": "Supabase anon key is configured for anon read flow",
+          "keys": [
+            "SUPABASE_ANON_KEY",
+            "NEXT_PUBLIC_SUPABASE_ANON_KEY"
+          ],
+          "onFail": "Set `SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY` in `.env.local`."
+        }
+      ],
+      "setupChecklist": [
+        "Install Supabase CLI and Docker Desktop.",
+        "Run `supabase start` in the repo root.",
+        "Set `SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL`, plus `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`."
+      ]
+    },
+    "supabase-remote": {
+      "gate": "soft",
+      "summary": "Optional remote Supabase MCP server for parity/admin tasks when an access token is available.",
+      "checks": [
+        {
+          "id": "npx_available",
+          "type": "command",
+          "required": true,
+          "description": "npx is available",
+          "command": "npx",
+          "args": [
+            "--version"
+          ],
+          "onFail": "Install Node.js/npm so `npx` is available."
+        },
+        {
+          "id": "supabase_access_token",
+          "type": "env",
+          "required": true,
+          "description": "Supabase access token is configured",
+          "key": "SUPABASE_ACCESS_TOKEN",
+          "onFail": "Set `SUPABASE_ACCESS_TOKEN` in your user-level env or secure local env file."
+        }
+      ],
+      "setupChecklist": [
+        "Create a personal access token in Supabase dashboard.",
+        "Set `SUPABASE_ACCESS_TOKEN` in user-level secure environment settings.",
+        "Re-activate `db-admin` profile to auto-enable optional remote Supabase MCP."
+      ]
+    },
+    "vercel": {
+      "gate": "hard",
+      "summary": "Required for deployment diagnostics and Vercel environment operations.",
+      "checks": [
+        {
+          "id": "vercel_cli",
+          "type": "command",
+          "required": true,
+          "description": "Vercel CLI is installed",
+          "command": "vercel",
+          "args": [
+            "--version"
+          ],
+          "timeoutMs": 60000,
+          "onFail": "Install Vercel CLI with `npm install -D vercel` or `npm i -g vercel`."
+        },
+        {
+          "id": "vercel_auth",
+          "type": "command",
+          "required": true,
+          "description": "Vercel CLI is authenticated",
+          "command": "vercel",
+          "args": [
+            "whoami"
+          ],
+          "timeoutMs": 120000,
+          "onFail": "Run `npx vercel login` (or `vercel login`) and rerun MCP doctor."
+        }
+      ],
+      "setupChecklist": [
+        "Install Vercel CLI.",
+        "Authenticate with `vercel login`.",
+        "Confirm access by running `vercel whoami`."
+      ]
+    },
+    "vonage-tooling": {
+      "gate": "hard",
+      "summary": "Required for high-risk external provider operations via Vonage tooling.",
+      "checks": [
+        {
+          "id": "vonage_api_key",
+          "type": "env",
+          "required": true,
+          "description": "Vonage API key is configured",
+          "key": "VONAGE_API_KEY",
+          "onFail": "Set `VONAGE_API_KEY` in `.env.local`."
+        },
+        {
+          "id": "vonage_api_secret",
+          "type": "env",
+          "required": true,
+          "description": "Vonage API secret is configured",
+          "key": "VONAGE_API_SECRET",
+          "onFail": "Set `VONAGE_API_SECRET` in `.env.local`."
+        },
+        {
+          "id": "vonage_application_id",
+          "type": "env",
+          "required": true,
+          "description": "Vonage application id is configured",
+          "key": "VONAGE_APPLICATION_ID",
+          "onFail": "Set `VONAGE_APPLICATION_ID` in `.env.local`."
+        },
+        {
+          "id": "vonage_private_key64",
+          "type": "env",
+          "required": true,
+          "description": "Vonage private key payload is configured",
+          "key": "VONAGE_PRIVATE_KEY64",
+          "onFail": "Set `VONAGE_PRIVATE_KEY64` in `.env.local` (base64-encoded private key)."
+        },
+        {
+          "id": "vonage_virtual_number",
+          "type": "env",
+          "required": true,
+          "description": "Vonage virtual number is configured",
+          "key": "VONAGE_VIRTUAL_NUMBER",
+          "onFail": "Set `VONAGE_VIRTUAL_NUMBER` in `.env.local`."
+        }
+      ],
+      "setupChecklist": [
+        "Set `VONAGE_API_KEY`, `VONAGE_API_SECRET`, `VONAGE_APPLICATION_ID`, `VONAGE_PRIVATE_KEY64`, `VONAGE_VIRTUAL_NUMBER` in `.env.local`.",
+        "Run `npm run vonage:status` to validate credentials before enabling the comms profile."
+      ]
+    },
+    "github": {
+      "gate": "soft",
+      "summary": "Optional GitHub MCP integration (managed via user-level MCP configuration).",
+      "checks": [
+        {
+          "id": "github_token",
+          "type": "envAny",
+          "required": true,
+          "description": "GitHub MCP token is configured",
+          "keys": [
+            "GITHUB_MCP_PAT",
+            "GITHUB_TOKEN",
+            "GH_TOKEN"
+          ],
+          "onFail": "Set `GITHUB_MCP_PAT` (or `GITHUB_TOKEN`/`GH_TOKEN`) in your user-level secure env."
+        }
+      ],
+      "setupChecklist": [
+        "Create a GitHub PAT with scopes required by your MCP use cases.",
+        "Set `GITHUB_MCP_PAT` in user-level secure env and configure GitHub MCP in user-level MCP config."
+      ]
+    },
+    "playwright": {
+      "gate": "soft",
+      "summary": "Optional browser automation MCP integration.",
+      "checks": [
+        {
+          "id": "playwright_npx",
+          "type": "command",
+          "required": true,
+          "description": "npx is available for Playwright MCP",
+          "command": "npx",
+          "args": [
+            "--version"
+          ],
+          "onFail": "Install Node.js/npm to use Playwright MCP."
+        }
+      ],
+      "setupChecklist": [
+        "Ensure Node.js and npm are installed so `npx` is available."
+      ]
+    },
+    "context7": {
+      "gate": "soft",
+      "summary": "Optional Context7 MCP docs integration (managed via user-level MCP configuration).",
+      "checks": [
+        {
+          "id": "context7_api_key",
+          "type": "env",
+          "required": true,
+          "description": "Context7 API key is configured",
+          "key": "CONTEXT7_API_KEY",
+          "onFail": "Set `CONTEXT7_API_KEY` in user-level secure env before enabling Context7 MCP."
+        }
+      ],
+      "setupChecklist": [
+        "Set `CONTEXT7_API_KEY` in user-level secure env.",
+        "Configure Context7 MCP in user-level MCP config if not already present."
+      ]
+    }
+  }
+}

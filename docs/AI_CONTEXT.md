@@ -6,8 +6,10 @@
 - **Supabase CLI & MCP** – manage database schema, storage, and edge functions, plus leverage MCP workflows for Supabase-specific automation.
 - **Vercel CLI** – deploy previews, inspect logs, and manage environment variables for the Next.js frontend.
 - **Vonage MCP Tooling Server** – optional MCP server for Vonage SMS/voice/WhatsApp automation (see `docs/mcp/vonage-tooling.md`).
+- **MCP Profiles + Doctor** – profile-based MCP activation and readiness gating for high-risk tasks (see `docs/mcp/README.md`).
 
 Run `npm run tooling:status` to audit whether the Vercel and Supabase CLIs (including MCP support) are installed locally and authenticated. The script falls back to actionable guidance when a binary is missing or when additional login steps are required.
+Use `npm run mcp:auto -- --task <ui|core|db|deploy|comms>` for one-step MCP acquisition and doctor gating.
 
 ## Production Readiness Priorities
 1. **Centralize Supabase environment configuration** to avoid runtime crashes due to missing variables and to provide typed accessors for shared keys.

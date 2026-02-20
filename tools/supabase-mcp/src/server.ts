@@ -9,6 +9,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABAS
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET ?? "product-images";
+const SUPABASE_MCP_MODE = process.env.SUPABASE_MCP_MODE === "write" ? "write" : "read";
 
 if (!SUPABASE_URL) {
   throw new Error("SUPABASE_URL is required");
@@ -198,67 +199,69 @@ server.registerTool("supabase.select", {
   return responseFromJSON({ count, rows: data });
 });
 
-server.registerTool("supabase.insert", {
-  description: "Insert one or more rows using the Supabase service role.",
-  inputSchema: insertShape,
-}, async (args: InsertArgs) => {
-  const payload = Array.isArray(args.values) ? args.values : [args.values];
-  const baseQuery = adminClient.from(args.table).insert(payload);
-  const finalQuery =
-    args.returning === "representation" ? baseQuery.select() : baseQuery;
+if (SUPABASE_MCP_MODE === "write") {
+  server.registerTool("supabase.insert", {
+    description: "Insert one or more rows using the Supabase service role.",
+    inputSchema: insertShape,
+  }, async (args: InsertArgs) => {
+    const payload = Array.isArray(args.values) ? args.values : [args.values];
+    const baseQuery = adminClient.from(args.table).insert(payload);
+    const finalQuery =
+      args.returning === "representation" ? baseQuery.select() : baseQuery;
 
-  const { data, error } = await finalQuery;
+    const { data, error } = await finalQuery;
 
-  if (error) {
-    throw new Error(`Supabase insert failed: ${error.message}`);
-  }
+    if (error) {
+      throw new Error(`Supabase insert failed: ${error.message}`);
+    }
 
-  return responseFromJSON(data ?? null);
-});
+    return responseFromJSON(data ?? null);
+  });
 
-server.registerTool("supabase.update", {
-  description:
-    "Update rows in a table that match the provided filters using the service role.",
-  inputSchema: updateShape,
-}, async (args: UpdateArgs) => {
-  const filtered = applyFilters(
-    adminClient.from(args.table).update(args.values),
-    args.filters
-  );
+  server.registerTool("supabase.update", {
+    description:
+      "Update rows in a table that match the provided filters using the service role.",
+    inputSchema: updateShape,
+  }, async (args: UpdateArgs) => {
+    const filtered = applyFilters(
+      adminClient.from(args.table).update(args.values),
+      args.filters
+    );
 
-  const finalQuery =
-    args.returning === "representation" ? filtered.select() : filtered;
+    const finalQuery =
+      args.returning === "representation" ? filtered.select() : filtered;
 
-  const { data, error } = await finalQuery;
+    const { data, error } = await finalQuery;
 
-  if (error) {
-    throw new Error(`Supabase update failed: ${error.message}`);
-  }
+    if (error) {
+      throw new Error(`Supabase update failed: ${error.message}`);
+    }
 
-  return responseFromJSON(data ?? null);
-});
+    return responseFromJSON(data ?? null);
+  });
 
-server.registerTool("supabase.delete", {
-  description:
-    "Delete rows in a table that match the provided filters using the service role.",
-  inputSchema: deleteShape,
-}, async (args: DeleteArgs) => {
-  const filtered = applyFilters(
-    adminClient.from(args.table).delete(),
-    args.filters
-  );
+  server.registerTool("supabase.delete", {
+    description:
+      "Delete rows in a table that match the provided filters using the service role.",
+    inputSchema: deleteShape,
+  }, async (args: DeleteArgs) => {
+    const filtered = applyFilters(
+      adminClient.from(args.table).delete(),
+      args.filters
+    );
 
-  const finalQuery =
-    args.returning === "representation" ? filtered.select() : filtered;
+    const finalQuery =
+      args.returning === "representation" ? filtered.select() : filtered;
 
-  const { data, error } = await finalQuery;
+    const { data, error } = await finalQuery;
 
-  if (error) {
-    throw new Error(`Supabase delete failed: ${error.message}`);
-  }
+    if (error) {
+      throw new Error(`Supabase delete failed: ${error.message}`);
+    }
 
-  return responseFromJSON(data ?? null);
-});
+    return responseFromJSON(data ?? null);
+  });
+}
 
 const healthShape = {} satisfies z.ZodRawShape;
 const healthSchema = z.object(healthShape);
@@ -277,6 +280,7 @@ server.registerTool("supabase.health", {
 
   return responseFromJSON({
     status: bucketsError ? "error" : "ok",
+    mode: SUPABASE_MCP_MODE,
     bucketExists,
     bucket: STORAGE_BUCKET,
     bucketsError: bucketsError?.message ?? null,
@@ -285,30 +289,32 @@ server.registerTool("supabase.health", {
   });
 });
 
-server.registerTool("supabase.storageUpload", {
-  description:
-    "Upload a base64-encoded file to the configured storage bucket using the service role.",
-  inputSchema: storageShape,
-}, async (args: StorageArgs) => {
-  const fileBuffer = Buffer.from(args.base64, "base64");
+if (SUPABASE_MCP_MODE === "write") {
+  server.registerTool("supabase.storageUpload", {
+    description:
+      "Upload a base64-encoded file to the configured storage bucket using the service role.",
+    inputSchema: storageShape,
+  }, async (args: StorageArgs) => {
+    const fileBuffer = Buffer.from(args.base64, "base64");
 
-  const { error } = await adminClient.storage
-    .from(STORAGE_BUCKET)
-    .upload(args.path, fileBuffer, {
-      contentType: args.contentType,
-      upsert: args.upsert,
-    });
+    const { error } = await adminClient.storage
+      .from(STORAGE_BUCKET)
+      .upload(args.path, fileBuffer, {
+        contentType: args.contentType,
+        upsert: args.upsert,
+      });
 
-  if (error) {
-    throw new Error(`Supabase storage upload failed: ${error.message}`);
-  }
+    if (error) {
+      throw new Error(`Supabase storage upload failed: ${error.message}`);
+    }
 
-  const { data } = adminClient.storage
-    .from(STORAGE_BUCKET)
-    .getPublicUrl(args.path);
+    const { data } = adminClient.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(args.path);
 
-  return responseFromJSON(data);
-});
+    return responseFromJSON(data);
+  });
+}
 
 const transport = new StdioServerTransport();
 

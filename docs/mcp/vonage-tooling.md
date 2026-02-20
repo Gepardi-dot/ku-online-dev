@@ -2,6 +2,11 @@
 
 This repo supports running the Vonage MCP Tooling Server as a local MCP process (stdio), so your IDE/agent can send SMS/voice/WhatsApp actions through Vonage tooling.
 
+Use MCP profile commands for task-scoped activation:
+- `npm run mcp:profile -- activate comms`
+- `npm run mcp:doctor -- --profile comms --emit-checklist`
+- `npm run mcp:off`
+
 ## 1) Install prerequisites
 
 - Node.js (repo requirement: see `.node-version`)

@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "defaultProfile": "minimal",
+  "servers": {
+    "supabase-local": {
+      "description": "Repo-local Supabase MCP server (stdio wrapper).",
+      "managedBy": "cursor",
+      "config": {
+        "command": "node",
+        "args": [
+          "tools/mcp/run-supabase-tooling.mjs"
+        ],
+        "env": {
+          "SUPABASE_MCP_MODE": "read"
+        }
+      }
+    },
+    "supabase-remote": {
+      "description": "Official Supabase MCP server via access token (optional).",
+      "managedBy": "cursor",
+      "config": {
+        "command": "node",
+        "args": [
+          "tools/mcp/run-supabase-remote.mjs"
+        ]
+      }
+    },
+    "vercel": {
+      "description": "Vercel MCP server via npx.",
+      "managedBy": "cursor",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@vercel/mcp@latest"
+        ]
+      }
+    },
+    "vonage-tooling": {
+      "description": "Vonage MCP tooling server (stdio wrapper).",
+      "managedBy": "cursor",
+      "config": {
+        "command": "node",
+        "args": [
+          "tools/mcp/run-vonage-tooling.mjs"
+        ]
+      }
+    },
+    "github": {
+      "description": "GitHub MCP endpoint (configure in user-level MCP config with token).",
+      "managedBy": "external",
+      "config": {
+        "serverUrl": "https://api.githubcopilot.com/mcp/"
+      }
+    },
+    "playwright": {
+      "description": "Playwright MCP server via npx.",
+      "managedBy": "cursor",
+      "config": {
+        "command": "npx",
+        "args": [
+          "-y",
+          "@playwright/mcp@latest"
+        ]
+      }
+    },
+    "context7": {
+      "description": "Context7 documentation MCP endpoint (configure API key externally).",
+      "managedBy": "external",
+      "config": {
+        "serverUrl": "https://mcp.context7.com/mcp"
+      }
+    }
+  },
+  "profiles": {
+    "minimal": {
+      "description": "Default low-noise state. Keep high-value MCP servers off until needed.",
+      "servers": []
+    },
+    "core": {
+      "description": "Core engineering profile: Supabase read-only + Vercel.",
+      "servers": [
+        "supabase-local",
+        "vercel"
+      ]
+    },
+    "db-admin": {
+      "description": "Database admin profile: Supabase write mode + Vercel + optional remote Supabase.",
+      "servers": [
+        {
+          "id": "supabase-local",
+          "overrides": {
+            "env": {
+              "SUPABASE_MCP_MODE": "write"
+            }
+          }
+        },
+        "vercel"
+      ],
+      "optionalServers": [
+        "supabase-remote"
+      ]
+    },
+    "deploy": {
+      "description": "Deployment diagnostics profile centered on Vercel.",
+      "servers": [
+        "vercel"
+      ],
+      "optionalServers": [
+        "github"
+      ]
+    },
+    "comms": {
+      "description": "External provider profile centered on Vonage.",
+      "servers": [
+        "vonage-tooling"
+      ],
+      "optionalServers": [
+        "github",
+        "playwright",
+        "context7"
+      ]
+    }
+  }
+}

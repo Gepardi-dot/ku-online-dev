@@ -1,0 +1,4 @@
+version: 1
+display_name: MCP Acquisition
+short_description: Activate MCP profiles and run MCP doctor before high-risk work.
+default_prompt: Use this skill to select an MCP profile, run MCP doctor checks, and request only missing MCP setup before execution.
