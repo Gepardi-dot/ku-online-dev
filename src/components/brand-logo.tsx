@@ -9,19 +9,20 @@ type BrandLogoProps = HTMLAttributes<HTMLDivElement> & {
 };
 
 export default function BrandLogo({ className, size = 36, src = "/KU-LOGO.png", ...rest }: BrandLogoProps) {
-  // Expects the PNG to be placed at `public/KU-LOGO.png`.
-  // Uses object-contain to keep the aspect ratio of the provided artwork.
+  const resolvedSrc = src.trim().length > 0 ? src.trim() : "/KU-LOGO.png";
+
   return (
     <div className={cn("relative", className)} style={{ width: size, height: size }} {...rest}>
-      {/* Use a plain img to avoid Next/Image domain allowlist issues and ensure the exact PNG renders */}
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={process.env.NEXT_PUBLIC_LOGO_URL || src}
+        src={resolvedSrc}
         alt="KU BAZAR logo"
+        loading={size >= 36 ? "eager" : "lazy"}
+        decoding="async"
+        className="h-full w-full object-contain"
         style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
         aria-hidden={false}
       />
     </div>
   );
 }
-

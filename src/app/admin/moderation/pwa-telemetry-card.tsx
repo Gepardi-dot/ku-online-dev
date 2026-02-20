@@ -134,6 +134,7 @@ export default function PwaTelemetryCard({ canTriggerAlerts = false }: PwaTeleme
   const [alertRunLoading, setAlertRunLoading] = useState(false);
   const [alertRunSuccess, setAlertRunSuccess] = useState<string | null>(null);
   const [alertRunError, setAlertRunError] = useState<string | null>(null);
+  const [installResetSuccess, setInstallResetSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -228,6 +229,21 @@ export default function PwaTelemetryCard({ canTriggerAlerts = false }: PwaTeleme
     } finally {
       setAlertRunLoading(false);
     }
+  }
+
+  function resetInstallPromptForBrowser() {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    setInstallResetSuccess(null);
+
+    const onResetComplete = () => {
+      setInstallResetSuccess('Install prompt state reset for this browser.');
+    };
+
+    window.addEventListener('ku-pwa-install-debug-reset-complete', onResetComplete, { once: true });
+    window.dispatchEvent(new CustomEvent('ku-pwa-install-debug-reset'));
   }
 
   const vitalRows = useMemo(() => {
@@ -438,28 +454,45 @@ export default function PwaTelemetryCard({ canTriggerAlerts = false }: PwaTeleme
       </div>
 
       {canTriggerAlerts ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              void runAlertCheck(false);
-            }}
-            disabled={loading || alertRunLoading}
-          >
-            {alertRunLoading ? 'Running alert check...' : 'Run alert check'}
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => {
-              void runAlertCheck(true);
-            }}
-            disabled={loading || alertRunLoading}
-          >
-            Force send
-          </Button>
-          <p className="text-xs text-muted-foreground">Runs webhook dispatch logic using current filters.</p>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                void runAlertCheck(false);
+              }}
+              disabled={loading || alertRunLoading}
+            >
+              {alertRunLoading ? 'Running alert check...' : 'Run alert check'}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                void runAlertCheck(true);
+              }}
+              disabled={loading || alertRunLoading}
+            >
+              Force send
+            </Button>
+            <p className="text-xs text-muted-foreground">Runs webhook dispatch logic using current filters.</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="secondary" onClick={resetInstallPromptForBrowser}>
+              Reset install prompt (this browser)
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Clears local/session install-banner memory for QA testing.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {installResetSuccess ? (
+        <div className="rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-700">
+          {installResetSuccess}
         </div>
       ) : null}
 

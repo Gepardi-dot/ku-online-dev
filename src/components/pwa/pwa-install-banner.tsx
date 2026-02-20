@@ -11,18 +11,15 @@ const PWA_ENABLED = process.env.NEXT_PUBLIC_PWA_ENABLED === 'true';
 const INSTALL_UI_ENABLED = process.env.NEXT_PUBLIC_PWA_INSTALL_UI_ENABLED !== 'false';
 const BASE_INSTALL_ENABLED = PWA_ENABLED && INSTALL_UI_ENABLED;
 
-const DISMISS_STORAGE_KEY = 'ku_pwa_install_dismiss_until';
 const IMPRESSION_STORAGE_KEY = 'ku_pwa_install_impressions_v1';
 const SESSION_PAGE_VIEWS_KEY = 'ku_pwa_install_session_page_views';
 const SESSION_MINIMIZED_KEY = 'ku_pwa_install_session_minimized';
+const SESSION_DISMISSED_KEY = 'ku_pwa_install_session_dismissed';
+const INSTALLED_STORAGE_KEY = 'ku_pwa_install_installed_v1';
 const INSTALL_VARIANT_STORAGE_KEY = 'ku_pwa_install_variant_v1';
 const INSTALL_VARIANT_QUERY_KEY = 'pwa_install_variant';
+const INSTALL_DEBUG_RESET_QUERY_KEY = 'pwa_install_debug_reset';
 const ROLLOUT_ID_STORAGE_KEY = 'ku_pwa_rollout_id';
-
-const LATER_COOLDOWN_MS = 3 * 24 * 60 * 60 * 1000;
-const CLOSE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
-const PROMPT_DISMISSED_COOLDOWN_MS = 14 * 24 * 60 * 60 * 1000;
-const IOS_GUIDE_DONE_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1000;
 
 const IMPRESSION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_IMPRESSIONS_PER_WINDOW = 6;
@@ -48,7 +45,7 @@ type PwaInstallWindow = Window & {
 
 type InstallMode = 'prompt' | 'ios_manual';
 type IosBrowser = 'safari' | 'chrome' | 'edge' | 'firefox' | 'other';
-type DismissReason = 'later_button' | 'close_button' | 'prompt_dismissed' | 'ios_guide_done';
+type DismissReason = 'close_button' | 'prompt_dismissed';
 type InstallVariant = (typeof INSTALL_VARIANTS)[number];
 type InstallVariantSource = 'query' | 'storage' | 'deterministic';
 
@@ -153,6 +150,41 @@ function resolveInstallVariant(): { variant: InstallVariant; source: InstallVari
   return { variant, source: 'deterministic' };
 }
 
+function resetInstallPromptState() {
+  const localStorage = getLocalStorageSafe();
+  const sessionStorage = getSessionStorageSafe();
+
+  localStorage?.removeItem(IMPRESSION_STORAGE_KEY);
+  localStorage?.removeItem(INSTALLED_STORAGE_KEY);
+  sessionStorage?.removeItem(SESSION_PAGE_VIEWS_KEY);
+  sessionStorage?.removeItem(SESSION_MINIMIZED_KEY);
+  sessionStorage?.removeItem(SESSION_DISMISSED_KEY);
+}
+
+function consumeInstallDebugResetQuery() {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const url = new URL(window.location.href);
+  const resetValue = url.searchParams.get(INSTALL_DEBUG_RESET_QUERY_KEY);
+  if (!resetValue) {
+    return false;
+  }
+
+  const normalized = resetValue.trim().toLowerCase();
+  if (!['1', 'true', 'yes', 'on'].includes(normalized)) {
+    return false;
+  }
+
+  resetInstallPromptState();
+
+  url.searchParams.delete(INSTALL_DEBUG_RESET_QUERY_KEY);
+  window.history.replaceState(window.history.state, '', url.toString());
+
+  return true;
+}
+
 function readImpressionTimestamps(now = Date.now()) {
   const storage = getLocalStorageSafe();
   if (!storage) return [] as number[];
@@ -188,14 +220,6 @@ function recordImpression() {
   writeImpressionTimestamps(next);
 }
 
-function getDismissUntil() {
-  return readNumber(getLocalStorageSafe(), DISMISS_STORAGE_KEY, 0);
-}
-
-function setDismissUntil(timestamp: number) {
-  writeNumber(getLocalStorageSafe(), DISMISS_STORAGE_KEY, timestamp);
-}
-
 function incrementSessionPageViews() {
   const storage = getSessionStorageSafe();
   const next = readNumber(storage, SESSION_PAGE_VIEWS_KEY, 0) + 1;
@@ -211,6 +235,22 @@ function writeSessionMinimized(value: boolean) {
   writeNumber(getSessionStorageSafe(), SESSION_MINIMIZED_KEY, value ? 1 : 0);
 }
 
+function readSessionDismissed() {
+  return readNumber(getSessionStorageSafe(), SESSION_DISMISSED_KEY, 0) === 1;
+}
+
+function writeSessionDismissed(value: boolean) {
+  writeNumber(getSessionStorageSafe(), SESSION_DISMISSED_KEY, value ? 1 : 0);
+}
+
+function isInstallConfirmed() {
+  return readNumber(getLocalStorageSafe(), INSTALLED_STORAGE_KEY, 0) === 1;
+}
+
+function setInstallConfirmed(value: boolean) {
+  writeNumber(getLocalStorageSafe(), INSTALLED_STORAGE_KEY, value ? 1 : 0);
+}
+
 function normalizePathname(pathname: string | null) {
   if (!pathname || !pathname.trim()) return '/';
   return pathname.trim();
@@ -221,13 +261,6 @@ function isRouteEligible(pathname: string | null) {
   return !ROUTE_BLOCK_PREFIXES.some(
     (prefix) => normalized === prefix || normalized.startsWith(`${prefix}/`),
   );
-}
-
-function cooldownMsForReason(reason: DismissReason) {
-  if (reason === 'close_button') return CLOSE_COOLDOWN_MS;
-  if (reason === 'prompt_dismissed') return PROMPT_DISMISSED_COOLDOWN_MS;
-  if (reason === 'ios_guide_done') return IOS_GUIDE_DONE_COOLDOWN_MS;
-  return LATER_COOLDOWN_MS;
 }
 
 export default function PwaInstallBanner() {
@@ -252,6 +285,10 @@ export default function PwaInstallBanner() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
+    consumeInstallDebugResetQuery();
+    if (isStandaloneMode()) {
+      setInstallConfirmed(true);
+    }
     setEnabled(evaluatePwaRollout(BASE_INSTALL_ENABLED).enabled);
     setIosDevice(isIosDevice());
     setIosBrowser(detectIosBrowser());
@@ -336,7 +373,25 @@ export default function PwaInstallBanner() {
     impressionRecordedRef.current = false;
   }, []);
 
-  const dismissForCooldown = useCallback((reason: DismissReason) => {
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onDebugReset = () => {
+      resetInstallPromptState();
+      hideBanner();
+      setMinimized(false);
+      setInstalling(false);
+      setShowIosGuide(false);
+      window.dispatchEvent(new CustomEvent('ku-pwa-install-debug-reset-complete'));
+    };
+
+    window.addEventListener('ku-pwa-install-debug-reset', onDebugReset);
+    return () => {
+      window.removeEventListener('ku-pwa-install-debug-reset', onDebugReset);
+    };
+  }, [hideBanner]);
+
+  const dismissForSession = useCallback((reason: DismissReason) => {
     const mode = installMode ?? 'unknown';
     dispatchPwaTelemetryEvent(PWA_TELEMETRY_EVENTS.INSTALL_DISMISSED, {
       reason,
@@ -344,14 +399,18 @@ export default function PwaInstallBanner() {
       variant: installVariantRef.current,
       variantSource: installVariantSourceRef.current,
     });
-    setDismissUntil(Date.now() + cooldownMsForReason(reason));
+    writeSessionDismissed(true);
     hideBanner();
   }, [hideBanner, installMode]);
 
   const canShowInstallBanner = useCallback(() => {
     if (!enabled || !engaged || !routeEligible) return false;
-    if (isStandaloneMode()) return false;
-    if (Date.now() < getDismissUntil()) return false;
+    if (isStandaloneMode()) {
+      setInstallConfirmed(true);
+      return false;
+    }
+    if (isInstallConfirmed()) return false;
+    if (readSessionDismissed()) return false;
     if (hasReachedImpressionCap()) return false;
     return true;
   }, [enabled, engaged, routeEligible]);
@@ -413,7 +472,8 @@ export default function PwaInstallBanner() {
     };
 
     const onInstalled = () => {
-      setDismissUntil(0);
+      setInstallConfirmed(true);
+      writeSessionDismissed(true);
       hideBanner();
     };
 
@@ -490,16 +550,17 @@ export default function PwaInstallBanner() {
           variantSource,
         });
         dispatchVariantLifecycleEvent('accepted');
-        setDismissUntil(0);
+        setInstallConfirmed(true);
+        writeSessionDismissed(true);
         hideBanner();
         return;
       }
 
-      dismissForCooldown('prompt_dismissed');
+      dismissForSession('prompt_dismissed');
     } finally {
       setInstalling(false);
     }
-  }, [dismissForCooldown, dispatchVariantLifecycleEvent, hideBanner, installMode, iosDevice]);
+  }, [dismissForSession, dispatchVariantLifecycleEvent, hideBanner, installMode, iosDevice]);
 
   const onMinimize = useCallback(() => {
     dispatchPwaTelemetryEvent(PWA_TELEMETRY_EVENTS.INSTALL_MINIMIZED, {
@@ -527,8 +588,10 @@ export default function PwaInstallBanner() {
       variantSource: installVariantSourceRef.current,
     });
     dispatchVariantLifecycleEvent('accepted');
-    dismissForCooldown('ios_guide_done');
-  }, [dismissForCooldown, dispatchVariantLifecycleEvent, installMode]);
+    setInstallConfirmed(true);
+    writeSessionDismissed(true);
+    hideBanner();
+  }, [dispatchVariantLifecycleEvent, hideBanner, installMode]);
 
   if (!enabled || !installMode || !routeEligible) return null;
 
@@ -546,7 +609,7 @@ export default function PwaInstallBanner() {
           type="button"
           aria-label="Dismiss install helper"
           className="rounded-full border border-orange-200 px-2 py-0.5 text-xs font-semibold text-foreground hover:bg-orange-50"
-          onClick={() => dismissForCooldown('close_button')}
+          onClick={() => dismissForSession('close_button')}
         >
           x
         </button>
@@ -612,7 +675,7 @@ export default function PwaInstallBanner() {
           <button
             type="button"
             className="rounded-full border border-orange-200 px-2 py-0.5 text-[11px] font-semibold text-foreground hover:bg-orange-50"
-            onClick={() => dismissForCooldown('close_button')}
+            onClick={() => dismissForSession('close_button')}
           >
             Close
           </button>
