@@ -21,6 +21,24 @@ interface AuthButtonProps {
   user: any;
 }
 
+const FALLBACK_APP_ORIGIN = 'http://localhost:5000';
+
+function normalizeOAuthOrigin(origin: string | null | undefined): string {
+  if (!origin) {
+    return FALLBACK_APP_ORIGIN;
+  }
+
+  try {
+    const url = new URL(origin);
+    if (url.hostname === '0.0.0.0' || url.hostname === '::' || url.hostname === '[::]') {
+      url.hostname = 'localhost';
+    }
+    return url.origin;
+  } catch {
+    return FALLBACK_APP_ORIGIN;
+  }
+}
+
 export default function AuthButton({ user }: AuthButtonProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -92,9 +110,8 @@ export default function AuthButton({ user }: AuthButtonProps) {
     try {
       // Prefer the actual browser origin to avoid stale env values on Vercel.
       // Fallback to NEXT_PUBLIC_SITE_URL only when window is not available (SSR/dev tools).
-      let origin = (typeof window !== 'undefined' ? window.location.origin : NEXT_PUBLIC_SITE_URL) || 'http://localhost:5000';
-      // Normalize invalid host 0.0.0.0 for OAuth callbacks.
-      origin = origin.replace('://0.0.0.0', '://localhost');
+      const rawOrigin = typeof window !== 'undefined' ? window.location.origin : NEXT_PUBLIC_SITE_URL;
+      const origin = normalizeOAuthOrigin(rawOrigin ?? NEXT_PUBLIC_SITE_URL);
 
       await supabase.auth.signInWithOAuth({
         provider: 'google',
