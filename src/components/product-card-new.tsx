@@ -19,6 +19,9 @@ interface ProductCardProps {
   viewerIsAdmin?: boolean;
   searchQuery?: string | null;
   interactive?: boolean;
+  imagePriority?: boolean;
+  imageQuality?: number;
+  prefetch?: boolean;
 }
 
 const conditionColorMap: Record<string, string> = {
@@ -34,6 +37,9 @@ const ProductCard = memo(function ProductCardImpl({
   viewerIsAdmin = false,
   searchQuery,
   interactive = true,
+  imagePriority = false,
+  imageQuality = 70,
+  prefetch = false,
 }: ProductCardProps) {
   const { t, locale, messages } = useLocale();
   const isRtl = rtlLocales.includes(locale);
@@ -107,6 +113,7 @@ const ProductCard = memo(function ProductCardImpl({
       : titleLength > 28
         ? 'text-[0.9rem] sm:text-[0.95rem] leading-tight'
         : 'text-[0.95rem] sm:text-base leading-tight';
+  const shouldPrioritizeImage = imagePriority && interactive;
 
   const cardContent = (
     <>
@@ -121,6 +128,10 @@ const ProductCard = memo(function ProductCardImpl({
             fill
             sizes="(max-width: 639px) 50vw, (max-width: 767px) 33vw, (max-width: 1023px) 25vw, (max-width: 1279px) 20vw, 16vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
+            priority={shouldPrioritizeImage}
+            loading={shouldPrioritizeImage ? 'eager' : 'lazy'}
+            fetchPriority={shouldPrioritizeImage ? 'high' : 'auto'}
+            quality={imageQuality}
           />
           {product.isSold && (
             <div className="absolute inset-0 bg-black/35 flex items-center justify-center">
@@ -233,7 +244,7 @@ const ProductCard = memo(function ProductCardImpl({
     <Link
       href={`/product/${product.id}`}
       className="group block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      prefetch
+      prefetch={prefetch}
       onClick={recordSearchClick}
     >
       {cardContent}
