@@ -41,8 +41,10 @@ const originAllowList = buildOriginAllowList([
   'http://localhost:5000',
 ]);
 
-const RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 120 } as const;
-const RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 60 } as const;
+const RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 90 } as const;
+const RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 24 } as const;
+const RATE_LIMIT_PER_STORE = { windowMs: 60_000, max: 8 } as const;
+const STATUS_MAX_BODY_BYTES = 4096;
 
 const STORE_ID_SCHEMA = z.string().uuid();
 const UPDATE_STATUS_SCHEMA = z.object({
@@ -64,6 +66,16 @@ function normalizeStoreStatus(value: unknown): 'pending' | 'active' | 'disabled'
     return normalized;
   }
   return 'pending';
+}
+
+function parseContentLength(headers: Headers): number | null {
+  const raw = headers.get('content-length');
+  if (!raw) return null;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+  return Math.floor(parsed);
 }
 
 function createErrorResponse(args: {
@@ -140,6 +152,13 @@ export const PATCH = withSentryRoute(async (request: Request, ctx: { params: Pro
   if (clientIdentifier !== 'unknown') {
     const ipRate = checkRateLimit(`admin-sponsor-store:status:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
+      logSponsorError({
+        requestId,
+        route,
+        action: 'status_update.rate_limited_ip',
+        error: { message: 'ip rate limited' },
+        extra: { clientIdentifier },
+      });
       return createErrorResponse({
         requestId,
         status: 429,
@@ -179,12 +198,58 @@ export const PATCH = withSentryRoute(async (request: Request, ctx: { params: Pro
 
   const userRate = checkRateLimit(`admin-sponsor-store:status:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
+    logSponsorError({
+      requestId,
+      route,
+      action: 'status_update.rate_limited_user',
+      actorUserId: user.id,
+      storeId: parsedStoreId.data,
+      error: { message: 'user rate limited' },
+    });
     return createErrorResponse({
       requestId,
       status: 429,
       error: 'Too many requests. Please try again later.',
       errorCode: 'SPONSOR_RATE_LIMITED',
       retryAfterSeconds: userRate.retryAfter,
+    });
+  }
+
+  const storeRate = checkRateLimit(`admin-sponsor-store:status:store:${parsedStoreId.data}`, RATE_LIMIT_PER_STORE);
+  if (!storeRate.success) {
+    logSponsorError({
+      requestId,
+      route,
+      action: 'status_update.rate_limited_store',
+      actorUserId: user.id,
+      storeId: parsedStoreId.data,
+      error: { message: 'store rate limited' },
+    });
+    return createErrorResponse({
+      requestId,
+      status: 429,
+      error: 'Too many status changes for this store. Please wait and try again.',
+      errorCode: 'SPONSOR_RATE_LIMITED',
+      retryAfterSeconds: storeRate.retryAfter,
+    });
+  }
+
+  const contentLength = parseContentLength(request.headers);
+  if (contentLength !== null && contentLength > STATUS_MAX_BODY_BYTES) {
+    logSponsorError({
+      requestId,
+      route,
+      action: 'status_update.payload_too_large',
+      actorUserId: user.id,
+      storeId: parsedStoreId.data,
+      error: { message: 'payload too large' },
+      extra: { contentLength },
+    });
+    return createErrorResponse({
+      requestId,
+      status: 413,
+      error: 'Payload too large.',
+      errorCode: 'SPONSOR_INVALID_PAYLOAD',
     });
   }
 
