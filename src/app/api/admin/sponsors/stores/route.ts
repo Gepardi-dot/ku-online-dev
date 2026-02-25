@@ -40,11 +40,13 @@ const originAllowList = buildOriginAllowList([
   'http://localhost:5000',
 ]);
 
-const CREATE_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 60 } as const;
-const CREATE_RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 30 } as const;
+const CREATE_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 30 } as const;
+const CREATE_RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 12 } as const;
+const CREATE_RATE_LIMIT_PER_SLUG = { windowMs: 60_000, max: 4 } as const;
 const LIST_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 120 } as const;
 const LIST_RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 120 } as const;
 const LIST_LIMIT = 200;
+const CREATE_MAX_BODY_BYTES = 16_384;
 
 const CREATE_STORE_SCHEMA = z.object({
   name: z.string().trim().min(2).max(140),
@@ -111,6 +113,16 @@ function normalizeStoreStatus(value: unknown): SponsorStoreStatus {
     return normalized;
   }
   return 'pending';
+}
+
+function parseContentLength(headers: Headers): number | null {
+  const raw = headers.get('content-length');
+  if (!raw) return null;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+  return Math.floor(parsed);
 }
 
 function createErrorResponse(args: {
@@ -209,6 +221,13 @@ export const GET = withSentryRoute(async (request: Request) => {
   if (clientIdentifier !== 'unknown') {
     const ipRate = checkRateLimit(`admin-sponsor-store:list:ip:${clientIdentifier}`, LIST_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
+      logSponsorError({
+        requestId,
+        route,
+        action: 'list.rate_limited_ip',
+        error: { message: 'ip rate limited' },
+        extra: { clientIdentifier },
+      });
       return createErrorResponse({
         requestId,
         status: 429,
@@ -227,6 +246,13 @@ export const GET = withSentryRoute(async (request: Request) => {
 
   const userRate = checkRateLimit(`admin-sponsor-store:list:user:${user.id}`, LIST_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
+    logSponsorError({
+      requestId,
+      route,
+      action: 'list.rate_limited_user',
+      actorUserId: user.id,
+      error: { message: 'user rate limited' },
+    });
     return createErrorResponse({
       requestId,
       status: 429,
@@ -355,6 +381,13 @@ export const POST = withSentryRoute(async (request: Request) => {
   if (clientIdentifier !== 'unknown') {
     const ipRate = checkRateLimit(`admin-sponsor-store:create:ip:${clientIdentifier}`, CREATE_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
+      logSponsorError({
+        requestId,
+        route,
+        action: 'create.rate_limited_ip',
+        error: { message: 'ip rate limited' },
+        extra: { clientIdentifier },
+      });
       return createErrorResponse({
         requestId,
         status: 429,
@@ -373,12 +406,37 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const userRate = checkRateLimit(`admin-sponsor-store:create:user:${user.id}`, CREATE_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
+    logSponsorError({
+      requestId,
+      route,
+      action: 'create.rate_limited_user',
+      actorUserId: user.id,
+      error: { message: 'user rate limited' },
+    });
     return createErrorResponse({
       requestId,
       status: 429,
       error: 'Too many requests. Please try again later.',
       errorCode: 'SPONSOR_RATE_LIMITED',
       retryAfterSeconds: userRate.retryAfter,
+    });
+  }
+
+  const contentLength = parseContentLength(request.headers);
+  if (contentLength !== null && contentLength > CREATE_MAX_BODY_BYTES) {
+    logSponsorError({
+      requestId,
+      route,
+      action: 'create.payload_too_large',
+      actorUserId: user.id,
+      error: { message: 'payload too large' },
+      extra: { contentLength },
+    });
+    return createErrorResponse({
+      requestId,
+      status: 413,
+      error: 'Payload too large.',
+      errorCode: 'SPONSOR_INVALID_PAYLOAD',
     });
   }
 
@@ -402,6 +460,25 @@ export const POST = withSentryRoute(async (request: Request) => {
       status: 400,
       error: 'Store slug is invalid. Use letters and numbers.',
       errorCode: 'SPONSOR_INVALID_PAYLOAD',
+    });
+  }
+
+  const slugRate = checkRateLimit(`admin-sponsor-store:create:slug:${normalizedSlug}`, CREATE_RATE_LIMIT_PER_SLUG);
+  if (!slugRate.success) {
+    logSponsorError({
+      requestId,
+      route,
+      action: 'create.rate_limited_slug',
+      actorUserId: user.id,
+      error: { message: 'slug rate limited' },
+      extra: { slug: normalizedSlug },
+    });
+    return createErrorResponse({
+      requestId,
+      status: 429,
+      error: 'Too many attempts for this store slug. Please try again later.',
+      errorCode: 'SPONSOR_RATE_LIMITED',
+      retryAfterSeconds: slugRate.retryAfter,
     });
   }
 
