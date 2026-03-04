@@ -6,7 +6,7 @@ import { createClient as createSupabaseServiceRole } from '@supabase/supabase-js
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@/utils/supabase/server';
 import { getEnv } from '@/lib/env';
-import { isAdmin } from '@/lib/auth/roles';
+import { isModerator } from '@/lib/auth/roles';
 import {
   buildOriginAllowList,
   checkRateLimit,
@@ -168,7 +168,7 @@ export const PATCH = withSentryRoute(async (request: Request, ctx: { params: Pro
     error: authError,
   } = await supabase.auth.getUser();
 
-  if (authError || !user || !isAdmin(user)) {
+  if (authError || !user || !isModerator(user)) {
     return createErrorResponse({
       requestId,
       status: 401,

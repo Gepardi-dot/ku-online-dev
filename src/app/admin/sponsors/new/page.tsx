@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import AppLayout from '@/components/layout/app-layout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { normalizeMarketCityValue } from '@/data/market-cities';
-import { isAdmin } from '@/lib/auth/roles';
+import { isModerator } from '@/lib/auth/roles';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { createClient } from '@/utils/supabase/server';
 import NewSponsorStoreForm from './new-sponsor-store-form';
@@ -31,7 +31,7 @@ export default async function NewSponsorStorePage({
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user || !isAdmin(user)) {
+  if (!user || !isModerator(user)) {
     redirect('/');
   }
 
@@ -50,12 +50,20 @@ export default async function NewSponsorStorePage({
     <AppLayout user={user}>
       <div className="container mx-auto max-w-6xl px-4 py-8">
         <div className="mb-4">
-          <Link
-            href="/sponsors"
-            className="inline-flex items-center rounded-full border border-black/10 bg-white/70 px-4 py-2 text-sm font-semibold text-[#111827] transition hover:bg-white"
-          >
-            Back to Sponsors
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/admin/sponsors"
+              className="inline-flex items-center rounded-full border border-black/10 bg-white/70 px-4 py-2 text-sm font-semibold text-[#111827] transition hover:bg-white"
+            >
+              Back to Stores Console
+            </Link>
+            <Link
+              href="/sponsors"
+              className="inline-flex items-center rounded-full border border-black/10 bg-white/70 px-4 py-2 text-sm font-semibold text-[#111827] transition hover:bg-white"
+            >
+              Back to Sponsors
+            </Link>
+          </div>
         </div>
 
         <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/78 via-white/68 to-white/45 shadow-[0_16px_48px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
