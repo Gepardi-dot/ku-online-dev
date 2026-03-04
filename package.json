@@ -91,7 +91,7 @@
     "react": "^19.2.4",
     "react-day-picker": "^9.13.2",
     "react-dom": "^19.2.4",
-    "react-hook-form": "^7.71.1",
+    "react-hook-form": "^7.71.2",
     "recharts": "^3.7.0",
     "sharp": "^0.34.5",
     "tailwind-merge": "^3.5.0",
@@ -101,7 +101,7 @@
   "optionalDependencies": {
     "@img/sharp-libvips-linux-x64": "1.2.4",
     "@img/sharp-linux-x64": "0.34.5",
-    "@rollup/rollup-linux-x64-gnu": "4.57.1"
+    "@rollup/rollup-linux-x64-gnu": "4.59.0"
   },
   "overrides": {
     "esbuild": "0.25.10"
@@ -127,6 +127,6 @@
     "postcss": "^8",
     "tailwindcss": "^4.1.18",
     "typescript": "^5",
-    "vercel": "^50.22.0"
+    "vercel": "^50.22.1"
   }
 }
