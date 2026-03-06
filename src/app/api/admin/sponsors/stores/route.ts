@@ -6,7 +6,7 @@ import { createClient as createSupabaseServiceRole } from '@supabase/supabase-js
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@/utils/supabase/server';
 import { getEnv } from '@/lib/env';
-import { isAdmin } from '@/lib/auth/roles';
+import { isModerator } from '@/lib/auth/roles';
 import {
   buildOriginAllowList,
   checkRateLimit,
@@ -175,7 +175,7 @@ function mapListStoreFailure(meta: ReturnType<typeof getSupabaseErrorMeta>): {
   return { status: 400, error: 'Failed to load stores.', errorCode: 'SPONSOR_DB_READ_FAILED' };
 }
 
-async function ensureAdminUser(requestId: string) {
+async function ensureModeratorUser(requestId: string) {
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
   const {
@@ -183,7 +183,7 @@ async function ensureAdminUser(requestId: string) {
     error: authError,
   } = await supabase.auth.getUser();
 
-  if (authError || !user || !isAdmin(user)) {
+  if (authError || !user || !isModerator(user)) {
     return {
       user: null,
       response: createErrorResponse({
@@ -238,7 +238,7 @@ export const GET = withSentryRoute(async (request: Request) => {
     }
   }
 
-  const adminCheck = await ensureAdminUser(requestId);
+  const adminCheck = await ensureModeratorUser(requestId);
   if (adminCheck.response) {
     return adminCheck.response;
   }
@@ -398,7 +398,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     }
   }
 
-  const adminCheck = await ensureAdminUser(requestId);
+  const adminCheck = await ensureModeratorUser(requestId);
   if (adminCheck.response) {
     return adminCheck.response;
   }
