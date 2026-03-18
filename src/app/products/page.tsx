@@ -25,6 +25,8 @@ interface ProductsSearchParams {
   search?: string;
   category?: string;
   condition?: string;
+  listingType?: string;
+  rentalTerm?: string;
   location?: string;
   minPrice?: string;
   maxPrice?: string;

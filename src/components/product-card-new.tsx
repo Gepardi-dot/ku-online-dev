@@ -12,6 +12,7 @@ import { useLocale } from '@/providers/locale-provider';
 import { localizeListingText } from '@/lib/locale/localize';
 import { rtlLocales } from '@/lib/locale/dictionary';
 import { CurrencyText } from '@/components/currency-text';
+import { isPropertyCategory, normalizeProductListingType } from '@/lib/products/property-listing';
 
 interface ProductCardProps {
   product: ProductWithRelations;
@@ -92,7 +93,7 @@ const ProductCard = memo(function ProductCardImpl({
   };
 
   const getConditionLabel = (value?: string | null) => {
-    if (!value) return t('filters.conditionNew');
+    if (!value) return t('product.conditionUnknown');
     const normalized = value.trim().toLowerCase();
     return conditionLabels[normalized] ?? value;
   };
@@ -102,9 +103,35 @@ const ProductCard = memo(function ProductCardImpl({
   const sellerDisplayName = sellerNameFromStore || sellerNameFromProfile || messages.product.sellerFallback;
   const isAdminOwnedListing = Boolean(viewerIsAdmin && viewerId && product.sellerId && viewerId === product.sellerId);
   const showVerifiedBadge = Boolean(product.seller?.isVerified || sellerNameFromStore || isAdminOwnedListing);
-  const conditionLabel = getConditionLabel(product.condition || 'New');
+  const isPropertyListing = isPropertyCategory(product.categoryId, product.category?.name ?? null);
+  const normalizedListingType = normalizeProductListingType(product.listingType);
+  const conditionLabel = getConditionLabel(product.condition);
+  const propertyBadgeLabel = (() => {
+    if (!isPropertyListing) {
+      return conditionLabel;
+    }
+    if (normalizedListingType === 'rent') {
+      const termLabel =
+        product.rentalTerm === 'monthly' ? t('product.rentalTermMonthly') : product.rentalTerm === 'daily' ? t('product.rentalTermDaily') : null;
+      return termLabel ? `${t('product.listingTypeRent')} · ${termLabel}` : t('product.listingTypeRent');
+    }
+    return t('product.listingTypeSale');
+  })();
+  const badgeClassName = isPropertyListing
+    ? normalizedListingType === 'rent'
+      ? 'bg-sky-600'
+      : 'bg-emerald-600'
+    : getConditionColor(product.condition || null);
   const numericPrice = Number(product.price);
   const isFreeListing = Number.isFinite(numericPrice) && numericPrice <= 0;
+  const priceSuffix =
+    isPropertyListing && normalizedListingType === 'rent'
+      ? product.rentalTerm === 'monthly'
+        ? t('product.priceSuffixMonthly')
+        : product.rentalTerm === 'daily'
+          ? t('product.priceSuffixDaily')
+          : null
+      : null;
   const titleLength = localizedTitle.trim().length;
   const titleSizeClass = titleLength > 52
     ? 'text-[0.78rem] sm:text-[0.85rem] leading-snug'
@@ -154,8 +181,8 @@ const ProductCard = memo(function ProductCardImpl({
             <FavoriteToggle productId={product.id} userId={viewerId} size="sm" />
           </div>
         <div className="absolute top-2 left-2">
-          <Badge className={`text-white ${getConditionColor(product.condition || 'New')}`}>
-            {conditionLabel}
+          <Badge className={`text-white ${badgeClassName}`}>
+            {propertyBadgeLabel}
           </Badge>
         </div>
         {product.isPromoted && (
@@ -183,12 +210,17 @@ const ProductCard = memo(function ProductCardImpl({
             {isFreeListing ? (
               <span className="text-lg font-bold text-primary bidi-auto">{t('sellForm.fields.free')}</span>
             ) : (
-              <CurrencyText
-                amount={numericPrice}
-                currencyCode={product.currency ?? null}
-                locale={locale}
-                className="text-lg font-bold text-primary bidi-auto"
-              />
+              <div className="inline-flex items-baseline gap-1.5">
+                <CurrencyText
+                  amount={numericPrice}
+                  currencyCode={product.currency ?? null}
+                  locale={locale}
+                  className="text-lg font-bold text-primary bidi-auto"
+                />
+                {priceSuffix ? (
+                  <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{priceSuffix}</span>
+                ) : null}
+              </div>
             )}
           </div>
           

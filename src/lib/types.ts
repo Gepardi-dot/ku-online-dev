@@ -30,7 +30,9 @@ export interface Product {
   imageHint: string | null;
   seller: Seller;
   category: string;
-  condition: 'New' | 'Used - Like New' | 'Used - Good' | 'Used - Fair';
+  condition?: 'New' | 'Used - Like New' | 'Used - Good' | 'Used - Fair';
+  listingType?: 'sale' | 'rent';
+  rentalTerm?: 'daily' | 'monthly';
   createdAt: string; // ISO 8601 string format
   location: string;
   tags?: string[];

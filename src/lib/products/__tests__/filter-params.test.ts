@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  createProductsSearchParams,
   parseSortParam,
   parsePriceParam,
   parsePostedWithinParam,
@@ -40,6 +41,8 @@ describe('filter-params parsers', () => {
       search: '  camera ',
       category: 'not-a-uuid',
       condition: 'Used - Good',
+      listingType: 'rent',
+      rentalTerm: 'daily',
       location: '  Erbil ',
       minPrice: '1000',
       maxPrice: 'oops',
@@ -50,6 +53,8 @@ describe('filter-params parsers', () => {
 
     assert.equal(result.initialValues.search, 'camera');
     assert.equal(result.initialValues.condition, 'Used - Good');
+    assert.equal(result.initialValues.listingType, 'rent');
+    assert.equal(result.initialValues.rentalTerm, 'daily');
     assert.equal(result.initialValues.minPrice, '1000');
     assert.equal(result.initialValues.maxPrice, '');
     assert.equal(result.sort, 'price_desc');
@@ -57,7 +62,29 @@ describe('filter-params parsers', () => {
     assert.equal(result.filters.minPrice, 1000);
     assert.equal(result.filters.maxPrice, undefined);
     assert.equal(result.filters.category, undefined);
+    assert.equal(result.filters.listingType, 'rent');
+    assert.equal(result.filters.rentalTerm, 'daily');
     assert.equal(result.filters.location, 'Erbil');
     assert.equal(result.page, 3);
+  });
+
+  it('createProductsSearchParams drops rentalTerm unless listingType is rent', () => {
+    const params = createProductsSearchParams({
+      search: '',
+      category: '',
+      condition: '',
+      listingType: 'sale',
+      rentalTerm: 'daily',
+      color: '',
+      location: '',
+      minPrice: '',
+      maxPrice: '',
+      sort: 'newest',
+      postedWithin: 'any',
+      freeOnly: false,
+    });
+
+    assert.equal(params.get('listingType'), 'sale');
+    assert.equal(params.get('rentalTerm'), null);
   });
 });
