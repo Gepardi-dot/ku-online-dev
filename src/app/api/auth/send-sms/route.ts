@@ -4,11 +4,19 @@ import { createClient as createAdminClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
 import { getEnv } from '@/lib/env';
+import {
+  buildOriginAllowList,
+  checkRateLimit,
+  getClientIdentifier,
+  isOriginAllowed,
+  isSameOriginRequest,
+} from '@/lib/security/request';
 import { withSentryRoute } from '@/utils/sentry-route';
 
 export const runtime = 'nodejs';
 
 const {
+  NEXT_PUBLIC_SITE_URL,
   NEXT_PUBLIC_SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY,
   VONAGE_API_KEY,
@@ -19,7 +27,22 @@ const {
   SUPABASE_SMS_HOOK_SECRET,
 } = getEnv();
 
-const supabaseAdmin = createAdminClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createAdminClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
+
+const HOOK_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 600 } as const;
+const HOOK_RATE_LIMIT_PER_SECRET = { windowMs: 60_000, max: 600 } as const;
+const HOOK_RATE_LIMIT_PER_PRINCIPAL = { windowMs: 60_000, max: 12 } as const;
+
+const hookOriginAllowList = buildOriginAllowList([
+  NEXT_PUBLIC_SITE_URL ?? null,
+  process.env.SITE_URL ?? null,
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+  'https://ku-online.vercel.app',
+  'https://ku-online-dev.vercel.app',
+  'http://localhost:5000',
+]);
 
 const hookSchema = z.object({
   user: z.object({
@@ -37,6 +60,7 @@ function normalizeE164ForVonage(value: string) {
   let digits = value.trim();
   if (digits.startsWith('+')) digits = digits.slice(1);
   if (digits.startsWith('00')) digits = digits.slice(2);
+  digits = digits.replace(/\D/g, '');
   return digits;
 }
 
@@ -212,8 +236,8 @@ async function sendVonageSms({ to, text, from }: { to: string; text: string; fro
   };
 }
 
-function hookError(message: string, httpCode = 500) {
-  return NextResponse.json(
+function hookError(message: string, httpCode = 500, retryAfterSeconds?: number) {
+  const response = NextResponse.json(
     {
       error: {
         http_code: httpCode,
@@ -222,11 +246,37 @@ function hookError(message: string, httpCode = 500) {
     },
     { status: httpCode }
   );
+  if (typeof retryAfterSeconds === 'number') {
+    response.headers.set('Retry-After', String(Math.max(1, retryAfterSeconds)));
+  }
+  return response;
 }
 
 export const POST = withSentryRoute(async (request: Request) => {
+  const originHeader = request.headers.get('origin');
+  if (originHeader && !isOriginAllowed(originHeader, hookOriginAllowList) && !isSameOriginRequest(request)) {
+    return hookError('Forbidden origin.', 403);
+  }
+
+  const clientIdentifier = getClientIdentifier(request.headers);
+  if (clientIdentifier !== 'unknown') {
+    const ipRate = checkRateLimit(`send-sms-hook:ip:${clientIdentifier}`, HOOK_RATE_LIMIT_PER_IP);
+    if (!ipRate.success) {
+      return hookError('Too many requests. Please wait a moment.', 429, ipRate.retryAfter);
+    }
+  }
+
   const rawBody = await request.text();
+  if (!SUPABASE_SMS_HOOK_SECRET && process.env.NODE_ENV === 'production') {
+    return hookError('SMS hook secret is not configured.', 503);
+  }
+
   if (SUPABASE_SMS_HOOK_SECRET) {
+    const secretRate = checkRateLimit('send-sms-hook:secret', HOOK_RATE_LIMIT_PER_SECRET);
+    if (!secretRate.success) {
+      return hookError('Too many requests. Please try again later.', 429, secretRate.retryAfter);
+    }
+
     const verification = verifyStandardWebhookSignature({
       request,
       rawBody,
@@ -248,6 +298,22 @@ export const POST = withSentryRoute(async (request: Request) => {
   const otp = payload.sms.otp.trim();
   const phone = payload.user.phone.trim();
   const to = normalizeE164ForVonage(phone);
+  if (to.length < 7 || to.length > 15) {
+    return hookError('Invalid phone number.', 400);
+  }
+
+  const principalIdentifier =
+    typeof payload.user.id === 'string' && payload.user.id.trim().length > 0
+      ? payload.user.id.trim()
+      : to;
+  const principalRate = checkRateLimit(
+    `send-sms-hook:principal:${principalIdentifier}`,
+    HOOK_RATE_LIMIT_PER_PRINCIPAL,
+  );
+  if (!principalRate.success) {
+    return hookError('Too many requests. Please try again later.', 429, principalRate.retryAfter);
+  }
+
   const senderRaw = VONAGE_SMS_SENDER_ID?.trim() || VONAGE_VIRTUAL_NUMBER?.trim() || 'KUBAZAR';
   const senderNormalized = normalizeVonageSender(senderRaw);
 

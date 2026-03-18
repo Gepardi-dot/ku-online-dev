@@ -20,7 +20,9 @@ import { withSentryRoute } from '@/utils/sentry-route';
 export const runtime = 'nodejs';
 
 const env = getEnv();
-const supabaseAdmin = createSupabaseAdmin(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createSupabaseAdmin(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 const TRANSLATE_RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 10 } as const;
 const TRANSLATE_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 20 } as const;

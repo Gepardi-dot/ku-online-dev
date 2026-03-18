@@ -19,7 +19,9 @@ export const runtime = 'nodejs';
 
 const env = getEnv();
 
-const supabaseAdmin = createSupabaseAdmin(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createSupabaseAdmin(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 const SOLD_NOTIFICATION_TITLE = 'Listing you saved was sold';
 

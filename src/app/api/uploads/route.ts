@@ -60,7 +60,9 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('SUPABASE_SERVICE_ROLE_KEY must be set to enable media uploads.');
 }
 
-const supabaseAdmin = createAdminClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createAdminClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 let bucketInitialization: Promise<void> | null = null;
 
@@ -204,6 +206,22 @@ function determineIncomingType(file: File): 'jpg' | 'png' | 'webp' | 'avif' | nu
     default:
       return null;
   }
+}
+
+function isSafeStoragePath(path: string): boolean {
+  if (!path) return false;
+  if (path.startsWith('/')) return false;
+  if (path.includes('..')) return false;
+  if (path.includes('\\')) return false;
+  return true;
+}
+
+function canUserDeletePath(path: string, userId: string): boolean {
+  const normalized = path.trim();
+  if (!normalized) return false;
+  if (normalized.startsWith(`${userId}/`)) return true;
+  if (normalized.startsWith(`public/avatars/${userId}/`)) return true;
+  return false;
 }
 
 function tooManyRequestsResponse(retryAfter: number, message: string) {
@@ -493,9 +511,18 @@ export const DELETE = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Missing file path.' }, { status: 400 });
   }
 
+  if (!isSafeStoragePath(path)) {
+    return NextResponse.json({ error: 'Invalid file path.' }, { status: 400 });
+  }
+
   const paths = collectImageVariantPaths(path);
   if (paths.length === 0) {
     return NextResponse.json({ error: 'Invalid file path.' }, { status: 400 });
+  }
+
+  const unauthorizedPath = paths.find((candidate) => !canUserDeletePath(candidate, user.id));
+  if (unauthorizedPath) {
+    return NextResponse.json({ error: 'Not allowed to delete this file path.' }, { status: 403 });
   }
 
   const { error } = await supabaseAdmin.storage.from(STORAGE_BUCKET).remove(paths);
