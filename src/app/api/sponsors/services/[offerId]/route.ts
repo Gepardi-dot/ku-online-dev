@@ -18,7 +18,9 @@ import {
 export const runtime = 'nodejs';
 
 const env = getEnv();
-const supabaseAdmin = createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 const originAllowList = buildOriginAllowList([
   env.NEXT_PUBLIC_SITE_URL ?? null,
   process.env.SITE_URL ?? null,

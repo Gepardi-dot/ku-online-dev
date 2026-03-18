@@ -19,7 +19,9 @@ import { buildPublicStorageUrl, isAllowedProductImageInput } from '@/lib/storage
 export const runtime = 'nodejs';
 
 const env = getEnv();
-const supabaseAdmin = createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 const originAllowList = buildOriginAllowList([
   env.NEXT_PUBLIC_SITE_URL ?? null,
   process.env.SITE_URL ?? null,
@@ -45,6 +47,11 @@ type StoreRow = {
   id: string;
   name: string | null;
   slug: string | null;
+  description: string | null;
+  primary_city: string | null;
+  status: string | null;
+  sponsor_tier: string | null;
+  is_featured: boolean | null;
   owner_user_id: string | null;
   cover_url: string | null;
   phone: string | null;
@@ -52,10 +59,13 @@ type StoreRow = {
   website: string | null;
 };
 
+const STORE_SELECT =
+  'id, name, slug, description, primary_city, status, sponsor_tier, is_featured, owner_user_id, cover_url, phone, whatsapp, website';
+
 async function getStoreForUser(userId: string): Promise<StoreRow | null> {
   const ownerRes = await supabaseAdmin
     .from('sponsor_stores')
-    .select('id, name, slug, owner_user_id, cover_url, phone, whatsapp, website')
+    .select(STORE_SELECT)
     .eq('owner_user_id', userId)
     .order('updated_at', { ascending: false })
     .limit(1)
@@ -67,7 +77,7 @@ async function getStoreForUser(userId: string): Promise<StoreRow | null> {
 
   const staffRes = await supabaseAdmin
     .from('sponsor_store_staff')
-    .select('store_id, role, status, sponsor_stores ( id, name, slug, owner_user_id, cover_url, phone, whatsapp, website )')
+    .select(`store_id, role, status, sponsor_stores ( ${STORE_SELECT} )`)
     .eq('user_id', userId)
     .eq('status', 'active')
     .eq('role', 'manager')
@@ -81,7 +91,7 @@ async function getStoreForUser(userId: string): Promise<StoreRow | null> {
 async function getStoreById(storeId: string): Promise<StoreRow | null> {
   const { data, error } = await supabaseAdmin
     .from('sponsor_stores')
-    .select('id, name, slug, owner_user_id, cover_url, phone, whatsapp, website')
+    .select(STORE_SELECT)
     .eq('id', storeId)
     .maybeSingle();
 
@@ -155,6 +165,25 @@ function normalizeNullable(value: string | null | undefined): string | null {
   return normalized.length > 0 ? normalized : null;
 }
 
+function toStoreResponse(row: StoreRow, directionsUrl: string | null) {
+  return {
+    id: row.id,
+    name: row.name ?? 'Store',
+    slug: row.slug ?? row.id,
+    description: normalizeNullable(row.description),
+    primaryCity: normalizeNullable(row.primary_city),
+    status: normalizeNullable(row.status) ?? 'pending',
+    sponsorTier: normalizeNullable(row.sponsor_tier) ?? 'basic',
+    isFeatured: Boolean(row.is_featured),
+    ownerUserId: normalizeNullable(row.owner_user_id),
+    coverUrl: normalizeStoreCoverUrl(row.cover_url),
+    phone: normalizeNullable(row.phone),
+    whatsapp: normalizeNullable(row.whatsapp),
+    website: normalizeNullable(row.website),
+    directionsUrl: normalizeNullable(directionsUrl),
+  };
+}
+
 async function getPrimaryDirectionsUrl(storeId: string): Promise<string | null> {
   const { data, error } = await supabaseAdmin
     .from('sponsor_store_locations')
@@ -221,6 +250,61 @@ async function upsertPrimaryDirectionsUrl(storeId: string, directionsUrl: string
     throw updateError;
   }
 }
+
+export const GET = withSentryRoute(async (request: Request) => {
+  const originHeader = request.headers.get('origin');
+  if (originHeader && !isOriginAllowed(originHeader, originAllowList) && !isSameOriginRequest(request)) {
+    return NextResponse.json({ ok: false, error: 'Forbidden origin' }, { status: 403 });
+  }
+
+  const clientIdentifier = getClientIdentifier(request.headers);
+  if (clientIdentifier !== 'unknown') {
+    const ipRate = checkRateLimit(`sponsor-store:get:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    if (!ipRate.success) {
+      const res = NextResponse.json({ ok: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 });
+      res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
+      return res;
+    }
+  }
+
+  const cookieStore = await cookies();
+  const supabase = await createClient(cookieStore);
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
+
+  if (authError || !user) {
+    return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
+  }
+
+  const requestedStoreId = parseRequestedStoreId(request);
+  if (requestedStoreId && !isAdmin(user)) {
+    const hasAccess = await canUserManageStore(user.id, requestedStoreId);
+    if (!hasAccess) {
+      return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
+    }
+  }
+
+  const userRate = checkRateLimit(`sponsor-store:get:user:${user.id}`, RATE_LIMIT_PER_USER);
+  if (!userRate.success) {
+    const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
+    res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));
+    return res;
+  }
+
+  const store = requestedStoreId ? await getStoreById(requestedStoreId) : await getStoreForUser(user.id);
+  if (!store) {
+    return NextResponse.json({ ok: false, error: 'No sponsor store found for this account.' }, { status: 404 });
+  }
+
+  const directionsUrl = await getPrimaryDirectionsUrl(store.id);
+
+  return NextResponse.json({
+    ok: true,
+    store: toStoreResponse(store, directionsUrl),
+  });
+}, 'sponsor-store-get');
 
 export const PATCH = withSentryRoute(async (request: Request) => {
   const originHeader = request.headers.get('origin');
@@ -308,7 +392,7 @@ export const PATCH = withSentryRoute(async (request: Request) => {
       .from('sponsor_stores')
       .update(updatePayload)
       .eq('id', store.id)
-      .select('id, name, slug, owner_user_id, cover_url, phone, whatsapp, website')
+      .select(STORE_SELECT)
       .single();
 
     if (error) {
@@ -331,16 +415,7 @@ export const PATCH = withSentryRoute(async (request: Request) => {
 
   return NextResponse.json({
     ok: true,
-    store: {
-      id: updatedStore.id,
-      name: updatedStore.name ?? 'Store',
-      slug: updatedStore.slug ?? updatedStore.id,
-      coverUrl: normalizeStoreCoverUrl(updatedStore.cover_url),
-      phone: normalizeNullable(updatedStore.phone),
-      whatsapp: normalizeNullable(updatedStore.whatsapp),
-      website: normalizeNullable(updatedStore.website),
-      directionsUrl: normalizeNullable(resolvedDirectionsUrl),
-    },
+    store: toStoreResponse(updatedStore, resolvedDirectionsUrl),
   });
 }, 'sponsor-store-update');
 
