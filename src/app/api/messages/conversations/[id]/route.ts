@@ -1,15 +1,28 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient as createServerClient } from '@/utils/supabase/server';
-import { getEnv } from '@/lib/env';
 
 export const runtime = 'nodejs';
 
-const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = getEnv();
-const supabaseAdmin = createAdminClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+type ConversationDetailRow = {
+  id: string;
+  product_id: string | null;
+  seller_id: string;
+  buyer_id: string;
+  last_message: string | null;
+  last_message_at: string | null;
+  updated_at: string | null;
+  product_title: string | null;
+  product_price: number | string | null;
+  product_currency: string | null;
+  product_image: string | null;
+  seller_full_name: string | null;
+  seller_avatar_url: string | null;
+  buyer_full_name: string | null;
+  buyer_avatar_url: string | null;
+};
 
 export const DELETE = withSentryRoute(
   async (_request: NextRequest, context: { params: Promise<{ id: string }> }) => {
@@ -29,27 +42,22 @@ export const DELETE = withSentryRoute(
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const { data: convo, error: convoError } = await supabaseAdmin
-      .from('conversations')
-      .select('id, seller_id, buyer_id')
-      .eq('id', conversationId)
-      .maybeSingle();
-
-    if (convoError) {
-      console.error('Conversation lookup failed before delete', { code: convoError.code, message: convoError.message, details: convoError.details });
-      return NextResponse.json({ error: 'Failed to load conversation' }, { status: 500 });
-    }
-
-    if (!convo || (convo.seller_id !== user.id && convo.buyer_id !== user.id)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const { error } = await supabaseAdmin
-      .from('conversations')
-      .delete()
-      .eq('id', conversationId);
+    const { error } = await supabase.rpc('delete_conversation_secure', {
+      p_conversation_id: conversationId,
+    });
 
     if (error) {
+      const code = (error.code ?? '').toUpperCase();
+      const message = (error.message ?? '').toLowerCase();
+      if (code === '28000' || message.includes('not_authenticated')) {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      }
+      if (code === '42501' || message.includes('forbidden')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      if (code === '22P02' || message.includes('invalid input syntax for type uuid')) {
+        return NextResponse.json({ error: 'Invalid conversation id' }, { status: 400 });
+      }
       console.error('Conversation delete failed', { code: error.code, message: error.message, details: error.details });
       return NextResponse.json({ error: 'Failed to delete conversation' }, { status: 500 });
     }
@@ -67,28 +75,27 @@ export const GET = withSentryRoute(
       return NextResponse.json({ error: 'Missing conversation id' }, { status: 400 });
     }
 
-  const cookieStore = await cookies();
-  const supabase = await createServerClient(cookieStore);
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const cookieStore = await cookies();
+    const supabase = await createServerClient(cookieStore);
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-  const { data, error } = await supabaseAdmin
-    .from('conversations')
-    .select(
-      `id, product_id, seller_id, buyer_id, last_message, last_message_at, updated_at,
-       product:products(id, title, price, currency, images),
-       seller:public_user_profiles!conversations_seller_id_fkey(id, full_name, avatar_url),
-       buyer:public_user_profiles!conversations_buyer_id_fkey(id, full_name, avatar_url)`,
-    )
-    .eq('id', conversationId)
-    .maybeSingle();
+    const { data, error } = await supabase
+      .rpc('get_conversation_detail_secure', { p_conversation_id: conversationId })
+      .maybeSingle();
 
-  if (error) {
+    if (error) {
+      const code = (error.code ?? '').toUpperCase();
+      const message = (error.message ?? '').toLowerCase();
+      if (code === '42501' || message.includes('forbidden')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
       console.error('Conversation detail query failed', { code: error.code, message: error.message, details: error.details, hint: error.hint });
       return NextResponse.json(
         { error: 'Failed to load conversation', code: error.code ?? null, message: error.message ?? null, details: error.details ?? null },
@@ -100,46 +107,45 @@ export const GET = withSentryRoute(
       return NextResponse.json({ conversation: null });
     }
 
-    if (data.seller_id !== user.id && data.buyer_id !== user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    const productRecord = Array.isArray(data.product) ? data.product[0] : data.product;
-    const rawImages = productRecord ? ((productRecord.images as unknown) ?? []) : [];
-    const previewImagePaths = Array.isArray(rawImages)
-      ? rawImages.filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0).slice(0, 1)
-      : [];
+    const row = data as unknown as ConversationDetailRow;
+    const productPrice =
+      typeof row.product_price === 'number'
+        ? row.product_price
+        : row.product_price
+          ? Number(row.product_price)
+          : null;
+    const previewImagePaths = row.product_image && row.product_image.trim().length > 0 ? [row.product_image] : [];
 
     const conversation = {
-      id: String(data.id),
-      productId: data.product_id ? String(data.product_id) : null,
-      sellerId: String(data.seller_id),
-      buyerId: String(data.buyer_id),
-      lastMessage: (data.last_message as string | null) ?? null,
-      lastMessageAt: (data.last_message_at as string | null) ?? null,
-      updatedAt: (data.updated_at as string | null) ?? null,
-      product: productRecord
+      id: String(row.id),
+      productId: row.product_id ? String(row.product_id) : null,
+      sellerId: String(row.seller_id),
+      buyerId: String(row.buyer_id),
+      lastMessage: row.last_message ?? null,
+      lastMessageAt: row.last_message_at ?? null,
+      updatedAt: row.updated_at ?? null,
+      product: row.product_id
         ? {
-            id: String(productRecord.id),
-            title: (productRecord.title as string) ?? 'Untitled',
-            price: productRecord.price as number | null,
-            currency: (productRecord.currency as string) ?? 'IQD',
+            id: String(row.product_id),
+            title: row.product_title ?? 'Untitled',
+            price: productPrice,
+            currency: row.product_currency ?? 'IQD',
             imagePaths: previewImagePaths,
             imageUrls: [],
           }
         : null,
-      seller: data.seller
+      seller: row.seller_id
         ? {
-            id: String((data.seller as any).id),
-            fullName: ((data.seller as any).full_name as string | null) ?? null,
-            avatarUrl: ((data.seller as any).avatar_url as string | null) ?? null,
+            id: String(row.seller_id),
+            fullName: row.seller_full_name ?? null,
+            avatarUrl: row.seller_avatar_url ?? null,
           }
         : null,
-      buyer: data.buyer
+      buyer: row.buyer_id
         ? {
-            id: String((data.buyer as any).id),
-            fullName: ((data.buyer as any).full_name as string | null) ?? null,
-            avatarUrl: ((data.buyer as any).avatar_url as string | null) ?? null,
+            id: String(row.buyer_id),
+            fullName: row.buyer_full_name ?? null,
+            avatarUrl: row.buyer_avatar_url ?? null,
           }
         : null,
     };
