@@ -4,7 +4,13 @@ import { NextResponse } from 'next/server';
 import { getEnv } from '@/lib/env';
 import { getDurablePwaTelemetrySummary, isDurableTelemetryEnabled } from '@/lib/pwa/telemetry-durable';
 import { getPwaTelemetrySummary } from '@/lib/pwa/telemetry-store';
-import { checkRateLimit, getClientIdentifier } from '@/lib/security/request';
+import {
+  buildOriginAllowList,
+  checkRateLimit,
+  getClientIdentifier,
+  isOriginAllowed,
+  isSameOriginRequest,
+} from '@/lib/security/request';
 import { withSentryRoute } from '@/utils/sentry-route';
 
 export const runtime = 'nodejs';
@@ -21,9 +27,18 @@ type DispatchRow = {
 const env = getEnv();
 const alertSecret = env.PWA_SLO_ALERT_SECRET?.trim() || null;
 const RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 60 } as const;
+const RATE_LIMIT_PER_SECRET = { windowMs: 60_000, max: 30 } as const;
 const supabaseAdmin = createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+const originAllowList = buildOriginAllowList([
+  env.NEXT_PUBLIC_SITE_URL ?? null,
+  process.env.SITE_URL ?? null,
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+  'https://ku-online.vercel.app',
+  'https://ku-online-dev.vercel.app',
+  'http://localhost:5000',
+]);
 
 function normalizeWindowMinutes(value: string | null) {
   const raw = Number(value ?? 60);
@@ -62,6 +77,11 @@ function readSecretFromRequest(request: Request) {
 }
 
 async function handler(request: Request) {
+  const originHeader = request.headers.get('origin');
+  if (originHeader && !isOriginAllowed(originHeader, originAllowList) && !isSameOriginRequest(request)) {
+    return NextResponse.json({ ok: false, error: 'Forbidden origin' }, { status: 403 });
+  }
+
   if (!alertSecret) {
     return NextResponse.json({ ok: false, error: 'Alert secret is not configured.' }, { status: 503 });
   }
@@ -69,6 +89,16 @@ async function handler(request: Request) {
   const providedSecret = readSecretFromRequest(request);
   if (!providedSecret || providedSecret !== alertSecret) {
     return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
+  }
+
+  const secretRate = checkRateLimit('pwa-rollout-status:secret', RATE_LIMIT_PER_SECRET);
+  if (!secretRate.success) {
+    const response = NextResponse.json(
+      { ok: false, error: 'Too many requests. Please try again later.' },
+      { status: 429 },
+    );
+    response.headers.set('Retry-After', String(Math.max(1, secretRate.retryAfter)));
+    return response;
   }
 
   const clientIdentifier = getClientIdentifier(request.headers);
