@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { createClient as createSupabaseServiceRole } from '@supabase/supabase-js';
 
@@ -6,14 +6,33 @@ import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@/utils/supabase/server';
 import { isModerator } from '@/lib/auth/roles';
 import { getEnv } from '@/lib/env';
+import {
+  buildOriginAllowList,
+  checkRateLimit,
+  getClientIdentifier,
+  isOriginAllowed,
+  isSameOriginRequest,
+} from '@/lib/security/request';
 
 export const runtime = 'nodejs';
 
 const env = getEnv();
 const supabaseServiceRole =
   env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY
-    ? createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+    ? createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      })
     : null;
+const RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 60 } as const;
+const RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 60 } as const;
+const originAllowList = buildOriginAllowList([
+  env.NEXT_PUBLIC_SITE_URL ?? null,
+  process.env.SITE_URL ?? null,
+  process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
+  'https://ku-online.vercel.app',
+  'https://ku-online-dev.vercel.app',
+  'http://localhost:5000',
+]);
 
 type ManageReportBody = {
   id?: string;
@@ -21,7 +40,26 @@ type ManageReportBody = {
   reactivateProduct?: boolean;
 };
 
-const handler: (request: Request) => Promise<Response> = async (request: Request) => {
+function tooManyRequestsResponse(retryAfter: number, message: string) {
+  const response = NextResponse.json({ error: message }, { status: 429 });
+  response.headers.set('Retry-After', String(Math.max(1, retryAfter)));
+  return response;
+}
+
+const handler: (request: NextRequest) => Promise<Response> = async (request: NextRequest) => {
+  const originHeader = request.headers.get('origin');
+  if (originHeader && !isOriginAllowed(originHeader, originAllowList) && !isSameOriginRequest(request)) {
+    return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
+  }
+
+  const clientIdentifier = getClientIdentifier(request.headers);
+  if (clientIdentifier !== 'unknown') {
+    const ipRate = checkRateLimit(`abuse-report-manage:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    if (!ipRate.success) {
+      return tooManyRequestsResponse(ipRate.retryAfter, 'Too many requests. Please wait a moment.');
+    }
+  }
+
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
   const {
@@ -30,6 +68,11 @@ const handler: (request: Request) => Promise<Response> = async (request: Request
 
   if (!user || !isModerator(user)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+  }
+
+  const userRate = checkRateLimit(`abuse-report-manage:user:${user.id}`, RATE_LIMIT_PER_USER);
+  if (!userRate.success) {
+    return tooManyRequestsResponse(userRate.retryAfter, 'Too many requests. Please try again later.');
   }
 
   if (!supabaseServiceRole) {
