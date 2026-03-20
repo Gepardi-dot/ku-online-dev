@@ -18,7 +18,9 @@ import {
 export const runtime = 'nodejs';
 
 const env = getEnv();
-const supabaseAdmin = createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 const originAllowList = buildOriginAllowList([
   env.NEXT_PUBLIC_SITE_URL ?? null,
   process.env.SITE_URL ?? null,
@@ -118,6 +120,16 @@ export const GET = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ ok: false, error: 'Forbidden origin' }, { status: 403 });
   }
 
+  const clientIdentifier = getClientIdentifier(request.headers);
+  if (clientIdentifier !== 'unknown') {
+    const ipRate = checkRateLimit(`sponsor-services:list:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    if (!ipRate.success) {
+      const res = NextResponse.json({ ok: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 });
+      res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
+      return res;
+    }
+  }
+
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
   const {
@@ -127,6 +139,13 @@ export const GET = withSentryRoute(async (request: Request) => {
 
   if (authError || !user) {
     return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
+  }
+
+  const userRate = checkRateLimit(`sponsor-services:list:user:${user.id}`, RATE_LIMIT_PER_USER);
+  if (!userRate.success) {
+    const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
+    res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));
+    return res;
   }
 
   const requestedStoreId = parseRequestedStoreId(request);

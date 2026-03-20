@@ -72,6 +72,9 @@ type CreateStoreRow = {
   slug: string | null;
   status: string | null;
   owner_user_id: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  website: string | null;
 };
 
 type ListStoreRow = {
@@ -113,6 +116,32 @@ function normalizeStoreStatus(value: unknown): SponsorStoreStatus {
     return normalized;
   }
   return 'pending';
+}
+
+function toCreateStoreSnapshot(row: CreateStoreRow, fallbackName: string, fallbackSlug: string) {
+  return {
+    id: row.id,
+    name: row.name ?? fallbackName,
+    slug: row.slug ?? fallbackSlug,
+    status: normalizeStoreStatus(row.status),
+    phone: row.phone ?? null,
+    whatsapp: row.whatsapp ?? null,
+    website: row.website ?? null,
+  };
+}
+
+async function getExistingStoreBySlug(slug: string): Promise<CreateStoreRow | null> {
+  const { data, error } = await supabaseAdmin
+    .from('sponsor_stores')
+    .select('id, name, slug, status, owner_user_id, phone, whatsapp, website')
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if (error || !data?.id) {
+    return null;
+  }
+
+  return data as unknown as CreateStoreRow;
 }
 
 function parseContentLength(headers: Headers): number | null {
@@ -454,6 +483,7 @@ export const POST = withSentryRoute(async (request: Request) => {
   const normalizedName = parsed.data.name.trim();
   const preferredSlug = normalizeNullable(parsed.data.slug) ?? normalizedName;
   const normalizedSlug = normalizeSlug(preferredSlug);
+  const targetStatus = normalizeStoreStatus(parsed.data.status);
   if (normalizedSlug.length < 2) {
     return createErrorResponse({
       requestId,
@@ -490,7 +520,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     phone: normalizeNullable(parsed.data.phone),
     whatsapp: normalizeNullable(parsed.data.whatsapp),
     website: normalizeNullable(parsed.data.website),
-    status: 'pending' as const,
+    status: targetStatus,
     sponsor_tier: parsed.data.sponsorTier,
     is_featured: Boolean(parsed.data.isFeatured),
     owner_user_id: parsed.data.ownerUserId ?? null,
@@ -499,11 +529,36 @@ export const POST = withSentryRoute(async (request: Request) => {
   const { data, error } = await supabaseAdmin
     .from('sponsor_stores')
     .insert(insertPayload)
-    .select('id, name, slug, status, owner_user_id')
+    .select('id, name, slug, status, owner_user_id, phone, whatsapp, website')
     .single();
 
   if (error) {
     const meta = getSupabaseErrorMeta(error);
+    if (meta.code === '23505') {
+      const existing = await getExistingStoreBySlug(normalizedSlug);
+      if (existing) {
+        logSponsorInfo({
+          requestId,
+          route,
+          action: 'create.slug_conflict_existing_store',
+          actorUserId: user.id,
+          storeId: existing.id,
+          status: normalizeStoreStatus(existing.status),
+          extra: { slug: normalizedSlug },
+        });
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'Slug already exists. Loaded existing store so you can continue setup.',
+            errorCode: 'SPONSOR_SLUG_CONFLICT',
+            requestId,
+            existingStore: toCreateStoreSnapshot(existing, existing.name ?? normalizedName, normalizedSlug),
+          },
+          { status: 409 },
+        );
+      }
+    }
+
     const mapped = mapCreateStoreFailure(meta);
     logSponsorError({
       requestId,
@@ -530,7 +585,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     entity_type: 'sponsor_store',
     entity_id: storeId,
     metadata: {
-      status: 'pending',
+      status: targetStatus,
       owner_user_id: created.owner_user_id,
       created_via: 'admin_api',
     },
@@ -571,17 +626,12 @@ export const POST = withSentryRoute(async (request: Request) => {
     action: 'create.succeeded',
     actorUserId: user.id,
     storeId,
-    status: 'pending',
+    status: targetStatus,
   });
 
   return NextResponse.json({
     ok: true,
     requestId,
-    store: {
-      id: created.id,
-      name: created.name ?? normalizedName,
-      slug: created.slug ?? normalizedSlug,
-      status: normalizeStoreStatus(created.status),
-    },
+    store: toCreateStoreSnapshot(created, normalizedName, normalizedSlug),
   });
 }, 'admin-sponsor-store-create');

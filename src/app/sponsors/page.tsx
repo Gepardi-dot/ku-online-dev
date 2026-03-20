@@ -184,6 +184,13 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
                       </Link>
                     ) : null}
                     <Link
+                      href="/admin/sponsors"
+                      className="rounded-full border border-black/10 bg-white px-4 py-2 text-xs font-semibold text-[#111827] shadow-sm transition hover:bg-[#F9FAFB]"
+                      dir="auto"
+                    >
+                      Manage stores
+                    </Link>
+                    <Link
                       href="/admin/sponsors/new"
                       className="rounded-full bg-brand px-4 py-2 text-xs font-semibold text-white shadow-[0_12px_28px_rgba(247,111,29,0.25)] transition hover:bg-brand/90"
                       dir="auto"
