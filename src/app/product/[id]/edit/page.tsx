@@ -39,6 +39,8 @@ export default async function EditProductPage({ params }: PageProps) {
     price: String(product.price ?? 0),
     currency: (product.currency === 'USD' ? 'USD' : 'IQD') as 'USD' | 'IQD',
     condition: product.condition ?? '',
+    listingType: product.listingType,
+    rentalTerm: product.rentalTerm,
     categoryId: product.categoryId ?? '',
     location: product.location ?? '',
     imagePaths: product.imagePaths ?? [],

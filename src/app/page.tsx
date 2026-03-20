@@ -43,6 +43,8 @@ import type { MarketplaceCategory } from '@/lib/services/products';
 interface SearchPageParams {
   category?: string;
   condition?: string;
+  listingType?: string;
+  rentalTerm?: string;
   location?: string;
   search?: string;
   minPrice?: string;
@@ -68,6 +70,8 @@ function buildHomepageQuery(values: ProductsFilterValues) {
   const entries: Record<string, string> = {
     category: values.category,
     condition: values.condition,
+    listingType: values.listingType,
+    rentalTerm: values.rentalTerm,
     location: values.location,
     minPrice: values.minPrice.trim(),
     maxPrice: values.maxPrice.trim(),
@@ -181,8 +185,20 @@ async function ProductsList({ searchParams, messages, viewerId, viewerIsAdmin = 
                 const labelLc = (label ?? '').toLowerCase();
                 const isFree = ['free', 'مجاني', 'مجانا', 'فري', 'بلاش'].some((kw) => labelLc.includes(kw));
                 const params = isFree
-                  ? createProductsSearchParams({ ...initialValues, category: '', freeOnly: true })
-                  : createProductsSearchParams({ ...initialValues, category: category.id, freeOnly: false });
+                  ? createProductsSearchParams({
+                      ...initialValues,
+                      category: '',
+                      listingType: '',
+                      rentalTerm: '',
+                      freeOnly: true,
+                    })
+                  : createProductsSearchParams({
+                      ...initialValues,
+                      category: category.id,
+                      listingType: '',
+                      rentalTerm: '',
+                      freeOnly: false,
+                    });
                 const qs = params.toString();
                 const categoryHref = isSponsors ? '/sponsors' : qs ? `/products?${qs}` : '/products';
 

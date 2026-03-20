@@ -32,6 +32,7 @@ import { isModerator } from '@/lib/auth/roles';
 import RemoveListingButton from '@/components/product/RemoveListingButton';
 import { CurrencyText } from '@/components/currency-text';
 import { getNumberLocale } from '@/lib/locale/formatting';
+import { isPropertyCategory, normalizeProductListingType } from '@/lib/products/property-listing';
 
 const placeholderReviews = [
   {
@@ -206,6 +207,25 @@ export default async function ProductPage({ params }: ProductPageProps) {
   };
 
   const rawImages = product.imageUrls.length > 0 ? product.imageUrls : ['https://placehold.co/800x600?text=KU%20BAZAR'];
+  const isPropertyListing = isPropertyCategory(product.categoryId, product.category?.name ?? null);
+  const normalizedListingType = normalizeProductListingType(product.listingType);
+  const propertyListingBadgeLabel = normalizedListingType === 'rent' ? t('product.listingTypeRent') : t('product.listingTypeSale');
+  const rentalTermBadgeLabel =
+    normalizedListingType === 'rent'
+      ? product.rentalTerm === 'monthly'
+        ? t('product.rentalTermMonthly')
+        : product.rentalTerm === 'daily'
+          ? t('product.rentalTermDaily')
+          : null
+      : null;
+  const propertyPriceSuffix =
+    isPropertyListing && normalizedListingType === 'rent'
+      ? product.rentalTerm === 'monthly'
+        ? t('product.priceSuffixMonthly')
+        : product.rentalTerm === 'daily'
+          ? t('product.priceSuffixDaily')
+          : null
+      : null;
   const seller = product.seller;
   const sellerId = seller?.id ?? product.sellerId;
   const viewerId = user?.id ?? null;
@@ -310,7 +330,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   description={localizedDescription}
                   price={product.price}
                   currency={product.currency}
-                  condition={product.condition}
+                  condition={isPropertyListing ? null : product.condition}
                   location={product.location}
                   views={product.views}
                   isSold={product.isSold}
@@ -342,10 +362,23 @@ export default async function ProductPage({ params }: ProductPageProps) {
               <CardContent className="p-6 space-y-4">
                 <div>
                   <h1 dir="auto" className="text-2xl font-bold bidi-auto">{localizedTitle}</h1>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Badge className={`text-white ${getConditionColor(product.condition)}`}>
-                      {getConditionLabel(product.condition)}
-                    </Badge>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {isPropertyListing ? (
+                      <>
+                        <Badge className={normalizedListingType === 'rent' ? 'bg-sky-600 text-white' : 'bg-emerald-600 text-white'}>
+                          {propertyListingBadgeLabel}
+                        </Badge>
+                        {rentalTermBadgeLabel ? (
+                          <Badge variant="secondary" className="bg-slate-100 text-slate-800">
+                            {rentalTermBadgeLabel}
+                          </Badge>
+                        ) : null}
+                      </>
+                    ) : (
+                      <Badge className={`text-white ${getConditionColor(product.condition)}`}>
+                        {getConditionLabel(product.condition)}
+                      </Badge>
+                    )}
                     <div dir="auto" className="flex items-center gap-1 text-sm text-muted-foreground bidi-auto">
                       <Eye className="h-4 w-4" />
                       {formatNumber(product.views)} {t('product.viewsLabel')}
@@ -364,7 +397,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
                       </div>
                     ) : null}
                     <div dir="auto" className="text-3xl font-bold text-primary bidi-auto">
-                      <CurrencyText amount={product.price} currencyCode={product.currency} locale={locale} />
+                      <span className="inline-flex items-baseline gap-2">
+                        <CurrencyText amount={product.price} currencyCode={product.currency} locale={locale} />
+                        {propertyPriceSuffix ? (
+                          <span className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                            {propertyPriceSuffix}
+                          </span>
+                        ) : null}
+                      </span>
                     </div>
                   </div>
                   {product.isSold && (

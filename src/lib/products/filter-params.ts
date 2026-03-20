@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
 import type { ProductFilters, ProductSort } from '@/lib/services/products';
+import {
+  PRODUCT_LISTING_TYPE_VALUES,
+  PROPERTY_RENTAL_TERM_VALUES,
+  type ProductListingType,
+  type PropertyRentalTerm,
+} from '@/lib/products/property-listing';
 
 export const PRODUCT_SORT_VALUES = ['newest', 'price_asc', 'price_desc', 'views_desc'] as const;
 export const POSTED_WITHIN_VALUES = ['any', '24h', '7d', '30d'] as const;
@@ -8,15 +14,21 @@ export const CONDITION_VALUES = ['New', 'Used - Like New', 'Used - Good', 'Used 
 
 export type PostedWithin = (typeof POSTED_WITHIN_VALUES)[number];
 export type ConditionValue = (typeof CONDITION_VALUES)[number];
+export type ListingTypeValue = ProductListingType;
+export type RentalTermValue = PropertyRentalTerm;
 
 const productSortEnum = z.enum(PRODUCT_SORT_VALUES);
 const postedWithinEnum = z.enum(POSTED_WITHIN_VALUES);
 const conditionEnum = z.enum(CONDITION_VALUES);
+const listingTypeEnum = z.enum(PRODUCT_LISTING_TYPE_VALUES);
+const rentalTermEnum = z.enum(PROPERTY_RENTAL_TERM_VALUES);
 
 export interface ProductsFilterValues {
   search: string;
   category: string;
   condition: '' | ConditionValue;
+  listingType: '' | ListingTypeValue;
+  rentalTerm: '' | RentalTermValue;
   color: string;
   location: string;
   minPrice: string;
@@ -30,6 +42,8 @@ export const DEFAULT_FILTER_VALUES: ProductsFilterValues = {
   search: '',
   category: '',
   condition: '',
+  listingType: '',
+  rentalTerm: '',
   color: '',
   location: '',
   minPrice: '',
@@ -106,6 +120,8 @@ const productQuerySchema = z.object({
   search: z.string().optional(),
   category: z.string().optional(),
   condition: z.string().optional(),
+  listingType: z.string().optional(),
+  rentalTerm: z.string().optional(),
   color: z.string().optional(),
   location: z.string().optional(),
   minPrice: z.string().optional(),
@@ -144,6 +160,8 @@ export function parseProductQueryParams(
   const search = data.search ?? '';
   const category = data.category;
   const condition = data.condition;
+  const listingType = data.listingType;
+  const rentalTerm = data.rentalTerm;
   const color = data.color ?? '';
   const location = data.location ?? '';
   const sort = parseSortParam(data.sort);
@@ -161,11 +179,23 @@ export function parseProductQueryParams(
     typeof condition === 'string' && conditionEnum.safeParse(condition).success
       ? (condition as ConditionValue)
       : undefined;
+  const validListingType =
+    typeof listingType === 'string' && listingTypeEnum.safeParse(listingType).success
+      ? (listingType as ListingTypeValue)
+      : undefined;
+  const validRentalTermRaw =
+    typeof rentalTerm === 'string' && rentalTermEnum.safeParse(rentalTerm).success
+      ? (rentalTerm as RentalTermValue)
+      : undefined;
+  const effectiveListingType = validListingType ?? (validRentalTermRaw ? 'rent' : undefined);
+  const validRentalTerm = effectiveListingType === 'rent' ? validRentalTermRaw : undefined;
 
   const initialValues: ProductsFilterValues = {
     search,
     category: validCategory,
     condition: validCondition ?? '',
+    listingType: effectiveListingType ?? '',
+    rentalTerm: validRentalTerm ?? '',
     color,
     location,
     minPrice: minPrice !== undefined ? String(minPrice) : '',
@@ -178,6 +208,8 @@ export function parseProductQueryParams(
   const filters: ProductFilters = {
     category: validCategory || undefined,
     condition: validCondition,
+    listingType: effectiveListingType,
+    rentalTerm: validRentalTerm,
     color: color || undefined,
     location: location || undefined,
     search: search ? search : undefined,
@@ -216,6 +248,14 @@ export function createProductsSearchParams(
     params.set('condition', base.condition);
   }
 
+  if (base.listingType) {
+    params.set('listingType', base.listingType);
+  }
+
+  if (base.listingType === 'rent' && base.rentalTerm) {
+    params.set('rentalTerm', base.rentalTerm);
+  }
+
   if (base.location) {
     params.set('location', base.location);
   }
@@ -250,6 +290,10 @@ export function createProductsSearchParams(
     } else {
       params.set(key, String(value));
     }
+  }
+
+  if (params.get('listingType') !== 'rent') {
+    params.delete('rentalTerm');
   }
 
   return params;

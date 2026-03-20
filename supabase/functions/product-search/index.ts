@@ -88,6 +88,8 @@ async function runFallbackSearch(
   params: {
     query: string | null;
     categoryId: string | null;
+    listingType: string | null;
+    rentalTerm: string | null;
     minPrice: number | null;
     maxPrice: number | null;
     city: string | null;
@@ -100,7 +102,7 @@ async function runFallbackSearch(
   let query = supabase
     .from("products")
     .select(
-      "id,title,description,price,currency,condition,category_id,seller_id,location,images,is_active,is_sold,is_promoted,views,created_at,updated_at,expires_at",
+      "id,title,description,price,currency,condition,listing_type,rental_term,category_id,seller_id,location,images,is_active,is_sold,is_promoted,views,created_at,updated_at,expires_at",
     )
     .eq("is_active", true)
     .eq("is_sold", false)
@@ -115,6 +117,14 @@ async function runFallbackSearch(
 
   if (params.categoryId) {
     query = query.eq("category_id", params.categoryId);
+  }
+
+  if (params.listingType) {
+    query = query.eq("listing_type", params.listingType);
+  }
+
+  if (params.listingType === "rent" && params.rentalTerm) {
+    query = query.eq("rental_term", params.rentalTerm);
   }
 
   if (typeof params.minPrice === "number") {
@@ -167,6 +177,14 @@ serve(async (req) => {
     const categoryId =
       typeof payload?.categoryId === "string"
         ? payload.categoryId
+        : null;
+    const listingType =
+      payload?.listingType === "rent" || payload?.listingType === "sale"
+        ? payload.listingType
+        : null;
+    const rentalTerm =
+      payload?.rentalTerm === "daily" || payload?.rentalTerm === "monthly"
+        ? payload.rentalTerm
         : null;
     const minPrice = toNumber(payload?.minPrice);
     const maxPrice = toNumber(payload?.maxPrice);
@@ -222,6 +240,8 @@ serve(async (req) => {
     const baseRpcArgs: Record<string, unknown> = {
       search_term: query,
       category: categoryId,
+      listing_type: listingType,
+      rental_term: listingType === "rent" ? rentalTerm : null,
       min_price: minPrice,
       max_price: maxPrice,
       city,
@@ -250,6 +270,8 @@ serve(async (req) => {
       const fallback = await runFallbackSearch(supabase, {
         query,
         categoryId,
+        listingType,
+        rentalTerm: listingType === "rent" ? rentalTerm : null,
         minPrice,
         maxPrice,
         city,
@@ -292,6 +314,14 @@ serve(async (req) => {
 
     if (categoryId) {
       countQuery.eq("category_id", categoryId);
+    }
+
+    if (listingType) {
+      countQuery.eq("listing_type", listingType);
+    }
+
+    if (listingType === "rent" && rentalTerm) {
+      countQuery.eq("rental_term", rentalTerm);
     }
 
     if (typeof minPrice === "number") {
