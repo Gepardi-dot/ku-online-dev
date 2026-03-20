@@ -17,7 +17,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { normalizeMarketCityValue } from '@/data/market-cities';
 import { createClient } from '@/utils/supabase/server';
 import { SELLER_APPLICATION_TYPE } from '@/lib/partnership-types';
 import { getEnv } from '@/lib/env';
@@ -73,25 +72,7 @@ function normalizeTypeFilter(value: string | null | undefined): string {
 
 function buildCreateStoreHref(inquiry: PartnershipInquiry): string {
   const query = new URLSearchParams();
-  const preferredName = inquiry.company?.trim() || inquiry.name.trim();
-  if (preferredName) {
-    query.set('name', preferredName);
-  }
-  const normalizedCity = normalizeMarketCityValue(inquiry.city);
-  if (normalizedCity) {
-    query.set('city', normalizedCity);
-  }
-  if (inquiry.userId) {
-    query.set('ownerUserId', inquiry.userId);
-  }
-  const normalizedPhone = inquiry.phone?.trim() ?? '';
-  if (normalizedPhone) {
-    query.set('phone', normalizedPhone);
-  }
-  const normalizedWebsite = inquiry.website?.trim() ?? '';
-  if (normalizedWebsite) {
-    query.set('website', normalizedWebsite);
-  }
+  query.set('applicationId', inquiry.id);
   const qs = query.toString();
   return qs ? `/admin/sponsors/new?${qs}` : '/admin/sponsors/new';
 }

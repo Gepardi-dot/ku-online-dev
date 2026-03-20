@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { z } from 'zod';
-import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 
 import { createClient } from '@/utils/supabase/server';
 import { withSentryRoute } from '@/utils/sentry-route';
@@ -18,9 +17,6 @@ import {
 export const runtime = 'nodejs';
 
 const env = getEnv();
-const supabaseAdmin = createSupabaseAdmin(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
 const originAllowList = buildOriginAllowList([
   env.NEXT_PUBLIC_SITE_URL ?? null,
   process.env.SITE_URL ?? null,
@@ -47,6 +43,7 @@ const schema = z.object({
 });
 
 const RATE_LIMIT_PER_IP = { windowMs: 5 * 60_000, max: 6 } as const;
+type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
 function mapValidationError(error: z.ZodError): string {
   const issue = error.issues[0];
@@ -104,9 +101,12 @@ async function sendEmailNotification(payload: {
   return true;
 }
 
-async function resolveUserId(userId: string | null | undefined): Promise<string | null> {
+async function resolveUserId(
+  supabase: ServerSupabaseClient,
+  userId: string | null | undefined,
+): Promise<string | null> {
   if (!userId) return null;
-  const { data, error } = await supabaseAdmin.from('users').select('id').eq('id', userId).maybeSingle();
+  const { data, error } = await supabase.from('users').select('id').eq('id', userId).maybeSingle();
   if (error) {
     console.error('Failed to verify partnership inquiry user', error);
     return null;
@@ -162,7 +162,7 @@ const handler = async (request: Request) => {
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
-  const resolvedUserId = await resolveUserId(user?.id ?? null);
+  const resolvedUserId = await resolveUserId(supabase, user?.id ?? null);
 
   if (partnershipType === SELLER_APPLICATION_TYPE && !resolvedUserId) {
     return NextResponse.json({ error: 'Sign in is required to submit a seller application.' }, { status: 401 });
@@ -185,7 +185,7 @@ const handler = async (request: Request) => {
   } as const;
 
   let saved = false;
-  const { error } = await supabaseAdmin.from('partnership_inquiries').insert(insertPayload);
+  const { error } = await supabase.from('partnership_inquiries').insert(insertPayload);
   if (error) {
     console.error('Failed to create partnership inquiry', error);
   } else {
