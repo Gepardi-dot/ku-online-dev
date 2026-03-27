@@ -1,15 +1,21 @@
 import { NextResponse, NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { createClient as createAdminClient } from '@supabase/supabase-js';
 
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient as createServerClient } from '@/utils/supabase/server';
-import { getEnv } from '@/lib/env';
 
 export const runtime = 'nodejs';
 
-const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = getEnv();
-const supabaseAdmin = createAdminClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+type ConversationMessageRow = {
+  id: string;
+  conversation_id: string;
+  sender_id: string | null;
+  receiver_id: string | null;
+  product_id: string | null;
+  content: string | null;
+  is_read: boolean | null;
+  created_at: string;
+};
 
 export const GET = withSentryRoute(
   async (request: NextRequest, context: { params: Promise<{ id: string }> }) => {
@@ -29,44 +35,24 @@ export const GET = withSentryRoute(
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    // Use the service-role client for conversation lookups and message reads so the inbox
-    // works even if conversation RLS policies block selects for participants.
-    const { data: convo, error: convoError } = await supabaseAdmin
-      .from('conversations')
-      .select('id, seller_id, buyer_id')
-      .eq('id', conversationId)
-      .maybeSingle();
-
-    if (convoError) {
-      console.error('Conversation lookup failed for message history', {
-        code: convoError.code,
-        message: convoError.message,
-        details: convoError.details,
-      });
-      return NextResponse.json({ error: 'Failed to load conversation' }, { status: 500 });
-    }
-
-    if (!convo || (convo.seller_id !== user.id && convo.buyer_id !== user.id)) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
     const searchParams = new URL(request.url).searchParams;
     const limitParam = Number(searchParams.get('limit'));
     const limit = Number.isFinite(limitParam) ? Math.min(Math.max(limitParam, 10), 200) : 50;
     const before = searchParams.get('before');
 
-    let query = supabaseAdmin
-      .from('messages')
-      .select('id, conversation_id, sender_id, receiver_id, product_id, content, is_read, created_at')
-      .eq('conversation_id', conversationId);
-
-    if (before) {
-      query = query.lt('created_at', before);
-    }
-
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(limit);
+    const { data, error } = await supabase.rpc('list_conversation_messages_secure', {
+      p_conversation_id: conversationId,
+      p_before: before,
+      p_limit: limit,
+    });
 
     if (error) {
+      const code = (error.code ?? '').toUpperCase();
+      const message = (error.message ?? '').toLowerCase();
+      if (code === '42501' || message.includes('forbidden')) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+
       console.error('Messages history query failed', {
         code: error.code,
         message: error.message,
@@ -75,8 +61,8 @@ export const GET = withSentryRoute(
       return NextResponse.json({ error: 'Failed to load messages' }, { status: 500 });
     }
 
-    const messages = (data ?? [])
-      .map((row) => ({
+    const messages = ((data ?? []) as ConversationMessageRow[])
+      .map((row: ConversationMessageRow) => ({
         id: String(row.id),
         conversationId: String(row.conversation_id),
         senderId: row.sender_id ? String(row.sender_id) : null,

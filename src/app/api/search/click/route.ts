@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 
 import { createClient } from '@/utils/supabase/server';
 import { getEnv } from '@/lib/env';
@@ -16,9 +15,6 @@ import { withSentryRoute } from '@/utils/sentry-route';
 export const runtime = 'nodejs';
 
 const env = getEnv();
-const supabaseAdmin = createSupabaseAdmin(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
 
 const CLICK_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 120 } as const;
 
@@ -54,13 +50,13 @@ function sanitizeLocale(value: unknown): string | null {
   return trimmed.length <= 16 ? trimmed : trimmed.slice(0, 16);
 }
 
-async function getAuthenticatedUserId(): Promise<string | null> {
+async function getScopedSupabaseWithUser() {
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  return user?.id ?? null;
+  return { supabase, userId: user?.id ?? null };
 }
 
 function tooManyRequestsResponse(retryAfter: number) {
@@ -92,9 +88,9 @@ export const POST = withSentryRoute(async (request: NextRequest) => {
     return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
   }
 
-  const userId = await getAuthenticatedUserId();
+  const { supabase, userId } = await getScopedSupabaseWithUser();
 
-  const { error } = await supabaseAdmin.from('search_click_events').insert({
+  const { error } = await supabase.from('search_click_events').insert({
     user_id: userId,
     product_id: productId,
     locale,

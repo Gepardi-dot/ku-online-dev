@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 
 import { createClient } from '@/utils/supabase/server';
 import { getEnv } from '@/lib/env';
-import { isModerator } from '@/lib/auth/roles';
 import {
   buildOriginAllowList,
   checkRateLimit,
@@ -12,13 +10,12 @@ import {
   isOriginAllowed,
   isSameOriginRequest,
 } from '@/lib/security/request';
-import { fetchAlgoliaProductRow, syncAlgoliaProductRow } from '@/lib/services/algolia-products';
+import { type AlgoliaProductRow, syncAlgoliaProductRow } from '@/lib/services/algolia-products';
 import { withSentryRoute } from '@/utils/sentry-route';
 
 export const runtime = 'nodejs';
 
 const env = getEnv();
-const supabaseAdmin = createSupabaseAdmin(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
 const SYNC_RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 30 } as const;
 const SYNC_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 60 } as const;
@@ -32,13 +29,13 @@ const syncOriginAllowList = buildOriginAllowList([
   'http://localhost:5000',
 ]);
 
-async function getAuthenticatedUser() {
+async function getAuthenticatedContext() {
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  return user ?? null;
+  return { supabase, user: user ?? null };
 }
 
 function tooManyRequestsResponse(retryAfter: number, message: string) {
@@ -61,7 +58,7 @@ export const POST = withSentryRoute(async (request: NextRequest) => {
     }
   }
 
-  const user = await getAuthenticatedUser();
+  const { supabase, user } = await getAuthenticatedContext();
   if (!user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
@@ -77,16 +74,35 @@ export const POST = withSentryRoute(async (request: NextRequest) => {
     return NextResponse.json({ error: 'Missing productId' }, { status: 400 });
   }
 
-  const { row, error } = await fetchAlgoliaProductRow(productId, supabaseAdmin);
+  const { data, error } = await supabase.rpc('get_algolia_product_row_secure', {
+    p_product_id: productId,
+  });
+
   if (error) {
+    const code = (error.code ?? '').toUpperCase();
+    const message = (error.message ?? '').toLowerCase();
+    if (code === '28000' || message.includes('not_authenticated')) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+    if (code === '42501' || message.includes('forbidden')) {
+      return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
+    }
+    if (code === '22P02' || message.includes('invalid input syntax for type uuid')) {
+      return NextResponse.json({ error: 'Invalid productId' }, { status: 400 });
+    }
+
+    console.error('Failed to load product for Algolia sync', {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+    });
     return NextResponse.json({ error: 'Unable to sync listing right now.' }, { status: 500 });
   }
+
+  const row = (data as AlgoliaProductRow | null) ?? null;
   if (!row) {
     return NextResponse.json({ error: 'Listing not found' }, { status: 404 });
-  }
-
-  if (row.seller_id !== user.id && !isModerator(user)) {
-    return NextResponse.json({ error: 'Not allowed' }, { status: 403 });
   }
 
   const ok = await syncAlgoliaProductRow(row);
