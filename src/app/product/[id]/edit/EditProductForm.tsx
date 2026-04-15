@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 import { createClient } from '@/utils/supabase/client';
+import { PROPERTY_CATEGORY_ID } from '@/data/category-ui-config';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
 import { mapCategoriesForUi, type RawCategoryRow } from '@/data/category-labels';
 import { CATEGORY_LABEL_MAP, SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
@@ -18,6 +19,12 @@ import { Upload, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { CONDITION_OPTIONS } from '@/lib/products/filter-params';
 import { createProductSchema } from '@/lib/validation/schemas';
+import {
+  normalizeProductListingType,
+  normalizePropertyRentalTerm,
+  type ProductListingType,
+  type PropertyRentalTerm,
+} from '@/lib/products/property-listing';
 import { Switch } from '@/components/ui/switch';
 import { compressToWebp } from '@/lib/images/client-compress';
 import { highlightDollar } from '@/components/currency-text';
@@ -50,6 +57,8 @@ type EditProductFormProps = {
     price: string;
     currency: CurrencyCode;
     condition: string;
+    listingType: ProductListingType;
+    rentalTerm: PropertyRentalTerm | null;
     categoryId: string;
     location: string;
     imagePaths: string[];
@@ -98,6 +107,8 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
     price: initial.price,
     currency: initial.currency,
     condition: initial.condition,
+    listingType: normalizeProductListingType(initial.listingType),
+    rentalTerm: normalizePropertyRentalTerm(initial.rentalTerm),
     categoryId: initial.categoryId,
     location: initial.location,
     images: initial.imagePaths as string[],
@@ -118,9 +129,25 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
     }
     return formData.currency;
   })();
+  const isPropertyCategorySelected = formData.categoryId === PROPERTY_CATEGORY_ID;
+  const propertyListingOptions = useMemo(
+    () => [
+      { value: 'sale' as const, label: t('sellForm.fields.listingTypeSale') },
+      { value: 'rent' as const, label: t('sellForm.fields.listingTypeRent') },
+    ],
+    [t],
+  );
+  const propertyRentalTermOptions = useMemo(
+    () => [
+      { value: 'daily' as const, label: t('sellForm.fields.rentalTermDaily') },
+      { value: 'monthly' as const, label: t('sellForm.fields.rentalTermMonthly') },
+    ],
+    [t],
+  );
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<UploadedImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const categoryTriggerRef = useRef<HTMLButtonElement | null>(null);
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
@@ -346,13 +373,38 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         return;
       }
 
+      const normalizedCategoryId = formData.categoryId.trim();
+      const allowedCategoryIds = new Set(categories.map((category) => category.id));
+      const initialCategoryId = initial.categoryId.trim();
+      if (initialCategoryId) {
+        allowedCategoryIds.add(initialCategoryId);
+      }
+
+      if (!allowedCategoryIds.has(normalizedCategoryId)) {
+        requestAnimationFrame(() => {
+          categoryTriggerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          categoryTriggerRef.current?.focus();
+        });
+        toast({
+          title: t('sellForm.toast.validationTitle'),
+          description:
+            locale === 'en'
+              ? 'Choose a category from the Category field before saving.'
+              : t('sellForm.toast.validationDescription'),
+          variant: 'destructive',
+        });
+        return;
+      }
+
       const validation = createProductSchema.safeParse({
         title: formData.title,
         description: formData.description,
         price: formData.price,
         currency: formData.currency,
         condition: formData.condition,
-        categoryId: formData.categoryId,
+        categoryId: normalizedCategoryId,
+        listingType: formData.listingType,
+        rentalTerm: formData.rentalTerm,
         location: formData.location,
         images: formData.images,
         sellerId: data.user.id,
@@ -381,7 +433,9 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         description: payload.description,
         price: payload.price,
         currency: payload.currency ?? 'IQD',
-        condition: payload.condition,
+        condition: payload.condition ?? null,
+        listing_type: payload.listingType,
+        rental_term: payload.rentalTerm ?? null,
         location: payload.location,
         category_id: payload.categoryId,
         images: payload.images,
@@ -523,6 +577,10 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
     'relative flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed p-10 text-center transition',
     'bg-white/92 shadow-[0_8px_18px_rgba(124,45,18,0.08)]',
   ].join(' ');
+  const propertyPillGroupClassName =
+    'inline-flex w-full items-center gap-1 rounded-2xl border border-white/70 bg-white/90 p-1 shadow-[0_12px_26px_rgba(15,23,42,0.08)] ring-1 ring-black/5 sm:w-auto';
+  const propertyPillClassName =
+    'flex h-9 flex-1 items-center justify-center rounded-xl px-3 text-xs font-semibold transition sm:flex-none sm:px-4';
 
   return (
     <div dir={direction} className="relative">
@@ -665,25 +723,44 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div>
-                  <Label htmlFor="condition" className="text-sm font-semibold">
-                    {t('sellForm.fields.condition')} <span className="text-primary" aria-hidden="true">*</span>
+                  <Label htmlFor="category" className="text-sm font-semibold">
+                    {t('sellForm.fields.category')} <span className="text-primary" aria-hidden="true">*</span>
                   </Label>
                   <div className="mt-2">
                     <Select
                       dir={direction}
-                      value={formData.condition}
+                      value={formData.categoryId}
                       onValueChange={(value) => {
                         setHasUnsaved(true);
-                        setFormData((p) => ({ ...p, condition: value }));
+                        setFormData((p) => {
+                          const nextIsProperty = value === PROPERTY_CATEGORY_ID;
+                          const nextListingType = nextIsProperty ? p.listingType : 'sale';
+                          return {
+                            ...p,
+                            categoryId: value,
+                            listingType: nextListingType,
+                            rentalTerm: nextIsProperty && nextListingType === 'rent' ? (p.rentalTerm ?? 'daily') : null,
+                            condition: nextIsProperty ? '' : p.condition,
+                          };
+                        });
                       }}
+                      disabled={isCategoriesLoading || categories.length === 0}
                     >
-                      <SelectTrigger className={selectTriggerClassName}>
-                        <SelectValue placeholder={t('sellForm.fields.conditionPlaceholder')} />
+                      <SelectTrigger id="category" ref={categoryTriggerRef} className={selectTriggerClassName}>
+                        <SelectValue
+                          placeholder={
+                            isCategoriesLoading
+                              ? t('sellForm.fields.categoryLoading')
+                              : categories.length
+                                ? t('sellForm.fields.categoryPlaceholder')
+                                : t('homepage.noCategories')
+                          }
+                        />
                       </SelectTrigger>
-                      <SelectContent align={contentAlign} dir={direction} className={listSelectContentClassName}>
-                        {conditionOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value} className={selectItemClassName}>
-                            {getConditionLabel(option.value)}
+                      <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id} className={selectItemClassName}>
+                            {getCategoryLabel(category.name)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -721,42 +798,99 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
                   </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="category" className="text-sm font-semibold">
-                    {t('sellForm.fields.category')} <span className="text-primary" aria-hidden="true">*</span>
-                  </Label>
-                  <div className="mt-2">
-                    <Select
-                      dir={direction}
-                      value={formData.categoryId}
-                      onValueChange={(value) => {
-                        setHasUnsaved(true);
-                        setFormData((p) => ({ ...p, categoryId: value }));
-                      }}
-                      disabled={isCategoriesLoading || categories.length === 0}
-                    >
-                      <SelectTrigger className={selectTriggerClassName}>
-                        <SelectValue
-                          placeholder={
-                            isCategoriesLoading
-                              ? t('sellForm.fields.categoryLoading')
-                              : categories.length
-                                ? t('sellForm.fields.categoryPlaceholder')
-                                : t('homepage.noCategories')
-                          }
-                        />
-                      </SelectTrigger>
-                      <SelectContent align={contentAlign} dir={direction} className={selectContentClassName}>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id} className={selectItemClassName}>
-                            {getCategoryLabel(category.name)}
-                          </SelectItem>
+                {!isPropertyCategorySelected ? (
+                  <div>
+                    <Label htmlFor="condition" className="text-sm font-semibold">
+                      {t('sellForm.fields.condition')} <span className="text-primary" aria-hidden="true">*</span>
+                    </Label>
+                    <div className="mt-2">
+                      <Select
+                        dir={direction}
+                        value={formData.condition}
+                        onValueChange={(value) => {
+                          setHasUnsaved(true);
+                          setFormData((p) => ({ ...p, condition: value }));
+                        }}
+                      >
+                        <SelectTrigger className={selectTriggerClassName}>
+                          <SelectValue placeholder={t('sellForm.fields.conditionPlaceholder')} />
+                        </SelectTrigger>
+                        <SelectContent align={contentAlign} dir={direction} className={listSelectContentClassName}>
+                          {conditionOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value} className={selectItemClassName}>
+                              {getConditionLabel(option.value)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              {isPropertyCategorySelected ? (
+                <div className="rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[0_18px_38px_rgba(15,23,42,0.08)] ring-1 ring-black/5 sm:p-4">
+                  <div className="flex flex-col gap-3">
+                    <div className="space-y-1">
+                      <div className="text-sm font-semibold text-[#1f2937]">
+                        {t('sellForm.fields.listingType')}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{t('sellForm.fields.propertyModeHint')}</p>
+                    </div>
+
+                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                      <div className={propertyPillGroupClassName}>
+                        {propertyListingOptions.map((option) => (
+                          <button
+                            key={option.value}
+                            type="button"
+                            className={[
+                              propertyPillClassName,
+                              formData.listingType === option.value
+                                ? 'bg-[#1f2937] text-white shadow-[0_10px_20px_rgba(15,23,42,0.18)]'
+                                : 'text-slate-600 hover:bg-white hover:text-slate-900',
+                            ].join(' ')}
+                            onClick={() => {
+                              setHasUnsaved(true);
+                              setFormData((prev) => ({
+                                ...prev,
+                                listingType: option.value,
+                                rentalTerm: option.value === 'rent' ? (prev.rentalTerm ?? 'daily') : null,
+                                condition: '',
+                              }));
+                            }}
+                          >
+                            {option.label}
+                          </button>
                         ))}
-                      </SelectContent>
-                    </Select>
+                      </div>
+
+                      {formData.listingType === 'rent' ? (
+                        <div className={propertyPillGroupClassName}>
+                          {propertyRentalTermOptions.map((option) => (
+                            <button
+                              key={option.value}
+                              type="button"
+                              className={[
+                                propertyPillClassName,
+                                formData.rentalTerm === option.value
+                                  ? 'bg-[#0f766e] text-white shadow-[0_10px_20px_rgba(15,118,110,0.18)]'
+                                  : 'text-slate-600 hover:bg-white hover:text-slate-900',
+                              ].join(' ')}
+                              onClick={() => {
+                                setHasUnsaved(true);
+                                setFormData((prev) => ({ ...prev, rentalTerm: option.value }));
+                              }}
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : null}
 
               <div>
                 <div className="flex items-start justify-between gap-3">
@@ -867,7 +1001,7 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
               <Button
                 type="submit"
                 className="w-full rounded-2xl bg-primary py-6 text-base font-semibold shadow-[0_18px_38px_rgba(234,88,12,0.3)] hover:bg-primary/90"
-                disabled={loading || storageBusy || !hasUnsaved}
+                disabled={loading || storageBusy || isCategoriesLoading || !hasUnsaved}
               >
                 {loading ? t('profile.settingsPanel.saving') : t('profile.settingsPanel.save')}
               </Button>

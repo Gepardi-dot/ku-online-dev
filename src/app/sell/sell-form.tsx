@@ -35,9 +35,15 @@ import { compressToWebp } from '@/lib/images/client-compress';
 import { highlightDollar } from '@/components/currency-text';
 import { useLocale } from '@/providers/locale-provider';
 import { rtlLocales } from '@/lib/locale/dictionary';
-import { CATEGORY_LABEL_MAP, SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
+import { CATEGORY_LABEL_MAP, PROPERTY_CATEGORY_ID, SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
 import ProductCard from '@/components/product-card-new';
 import type { ProductWithRelations } from '@/lib/services/products';
+import {
+  normalizeProductListingType,
+  normalizePropertyRentalTerm,
+  type ProductListingType,
+  type PropertyRentalTerm,
+} from '@/lib/products/property-listing';
 
 const conditionOptions = CONDITION_OPTIONS.filter((option) => option.value);
 const cityOptions = MARKET_CITY_OPTIONS.filter((option) => option.value !== 'all');
@@ -99,6 +105,8 @@ interface SellFormData {
   price: string;
   currency: CurrencyCode;
   condition: string;
+  listingType: ProductListingType;
+  rentalTerm: PropertyRentalTerm | null;
   categoryId: string;
   location: string;
   color: string;
@@ -124,6 +132,8 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
     price: '',
     currency: 'IQD',
     condition: '',
+    listingType: 'sale',
+    rentalTerm: null,
     categoryId: '',
     location: '',
     color: '',
@@ -138,6 +148,7 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
   const searchParams = useSearchParams();
   const supabase = useMemo(() => createClient(), []);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const categoryTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [isFree, setIsFree] = useState(false);
   const [conditionOpen, setConditionOpen] = useState(false);
@@ -148,6 +159,7 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
   const [canScrollDown, setCanScrollDown] = useState(false);
   const colorScrollRef = useRef<HTMLDivElement>(null);
   const { t, messages, locale } = useLocale();
+  const isPropertyCategorySelected = formData.categoryId === PROPERTY_CATEGORY_ID;
   const direction = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
   const returnTo = useMemo(() => {
     const raw = searchParams.get('returnTo')?.trim() ?? '';
@@ -193,6 +205,14 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
   const currencyToggleOptions: Array<{ value: CurrencyCode; label: string }> = [
     { value: 'IQD', label: t('sellForm.currency.iqd') },
     { value: 'USD', label: t('sellForm.currency.usd') },
+  ];
+  const propertyListingOptions: Array<{ value: ProductListingType; label: string }> = [
+    { value: 'sale', label: t('sellForm.fields.listingTypeSale') },
+    { value: 'rent', label: t('sellForm.fields.listingTypeRent') },
+  ];
+  const propertyRentalTermOptions: Array<{ value: PropertyRentalTerm; label: string }> = [
+    { value: 'daily', label: t('sellForm.fields.rentalTermDaily') },
+    { value: 'monthly', label: t('sellForm.fields.rentalTermMonthly') },
   ];
   const maxFileSizeMb = Math.round(MAX_FILE_SIZE / (1024 * 1024));
 
@@ -486,6 +506,10 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
     'hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_6px_14px_rgba(124,45,18,0.09)] hover:border-[#dccfbe]',
     'transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2',
   ].join(' ');
+  const propertyPillGroupClassName =
+    'inline-flex w-full items-center gap-1 rounded-2xl border border-[#e6ddd4] bg-[#f7f3ee] p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_8px_18px_rgba(124,45,18,0.08)] sm:w-auto';
+  const propertyPillClassName =
+    'flex h-10 flex-1 items-center justify-center rounded-[14px] px-3 text-xs font-semibold transition sm:flex-none sm:px-4';
 
   const currencyToggleClassName = [
     'inline-flex items-center gap-1 rounded-2xl border border-[#e6ddd4] bg-[#f7f3ee] p-1',
@@ -912,6 +936,43 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
         return;
       }
       const resolvedSellerId = normalizedStoreOwnerId || resolvedUser.id;
+      const normalizedCategoryId = formData.categoryId.trim();
+
+      if (isCategoriesLoading) {
+        toast({
+          title: t('sellForm.toast.validationTitle'),
+          description: t('sellForm.fields.categoryLoading'),
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (categories.length === 0) {
+        toast({
+          title: t('sellForm.toast.categoriesErrorTitle'),
+          description: t('sellForm.toast.categoriesErrorDescription'),
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const categoryExists = categories.some((category) => category.id === normalizedCategoryId);
+      if (!categoryExists) {
+        setCategoryOpen(true);
+        requestAnimationFrame(() => {
+          categoryTriggerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          categoryTriggerRef.current?.focus();
+        });
+        toast({
+          title: t('sellForm.toast.validationTitle'),
+          description:
+            locale === 'en'
+              ? 'Choose a category from the Category field before posting.'
+              : t('sellForm.toast.validationDescription'),
+          variant: 'destructive',
+        });
+        return;
+      }
 
       const validation = createProductSchema.safeParse({
         title: formData.title,
@@ -919,7 +980,9 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
         price: formData.price,
         currency: formData.currency,
         condition: formData.condition,
-        categoryId: formData.categoryId,
+        categoryId: normalizedCategoryId,
+        listingType: formData.listingType,
+        rentalTerm: formData.rentalTerm,
         location: formData.location,
         color: formData.color || undefined,
         images: formData.images.length ? formData.images : uploadedImages.map((image) => image.path),
@@ -948,7 +1011,9 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
           title: payload.title,
           description: payload.description,
           price: payload.price,
-          condition: payload.condition,
+          condition: payload.condition ?? null,
+          listing_type: payload.listingType,
+          rental_term: payload.rentalTerm ?? null,
           location: payload.location,
           category_id: payload.categoryId,
           seller_id: resolvedSellerId,
@@ -1000,6 +1065,8 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
         price: '',
         currency: 'IQD',
         condition: '',
+        listingType: 'sale',
+        rentalTerm: null,
         categoryId: '',
         location: '',
         color: '',
@@ -1056,7 +1123,12 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
     { label: t('sellForm.fields.images'), completed: uploadedImages.length > 0 },
     { label: t('sellForm.fields.title'), completed: formData.title.trim().length >= 3 },
     { label: t('sellForm.fields.price'), completed: isFree || formData.price.trim().length > 0 },
-    { label: t('sellForm.fields.condition'), completed: formData.condition.trim().length > 0 },
+    {
+      label: isPropertyCategorySelected ? t('sellForm.fields.listingType') : t('sellForm.fields.condition'),
+      completed: isPropertyCategorySelected
+        ? formData.listingType === 'sale' || (formData.listingType === 'rent' && formData.rentalTerm !== null)
+        : formData.condition.trim().length > 0,
+    },
     { label: t('sellForm.fields.category'), completed: formData.categoryId.trim().length > 0 },
     { label: t('sellForm.fields.location'), completed: formData.location.trim().length > 0 },
   ];
@@ -1124,7 +1196,9 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
     description: formData.description.trim() || null,
     price: previewNumericPrice,
     currency: formData.currency,
-    condition: formData.condition.trim() || 'new',
+    condition: isPropertyCategorySelected ? null : formData.condition.trim() || null,
+    listingType: normalizeProductListingType(formData.listingType),
+    rentalTerm: normalizePropertyRentalTerm(formData.rentalTerm),
     colorToken: formData.color.trim() || null,
     categoryId: formData.categoryId.trim() || null,
     sellerId: currentUser?.id ?? 'preview-seller',
@@ -1476,75 +1550,81 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
                           </div>
                         </div>
 
-                        <div className={`${detailsCardClassName} motion-safe:[animation-delay:120ms]`}>
-                          <Label htmlFor="condition" className={detailsLabelClassName}>
-                            <span className={detailsIconClassName}>
-                              <Info className="h-4 w-4" />
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <span>{t('sellForm.fields.condition')}</span>
-                              <span className="text-(--sell-panel-accent)" aria-hidden="true">
-                                *
+                        {!isPropertyCategorySelected ? (
+                          <div className={`${detailsCardClassName} motion-safe:[animation-delay:120ms]`}>
+                            <Label htmlFor="condition" className={detailsLabelClassName}>
+                              <span className={detailsIconClassName}>
+                                <Info className="h-4 w-4" />
                               </span>
-                            </span>
-                          </Label>
-                          <div className="mt-3">
-                            <Popover
-                              open={conditionOpen}
-                              onOpenChange={(next) => {
-                                setConditionOpen(next);
-                                if (next) {
-                                  setCategoryOpen(false);
-                                  setLocationOpen(false);
-                                  setColorOpen(false);
-                                }
-                              }}
-                            >
-                              <PopoverTrigger asChild>
-                                <button type="button" className={detailsSelectTriggerClassName}>
-                                  <span
-                                    className={[
-                                      'flex-1 truncate text-sm',
-                                      formData.condition.trim().length > 0 ? 'text-[#1F1C1C]' : 'text-slate-700',
-                                    ].join(' ')}
-                                  >
-                                    {conditionTriggerLabel}
-                                  </span>
-                                  <ChevronDown className="h-4 w-4 text-slate-500" />
-                                </button>
-                              </PopoverTrigger>
-                              <PopoverContent
-                                align={contentAlign}
-                                dir={direction}
-                                sideOffset={8}
-                                className={dropdownPopoverContentClassName}
+                              <span className="flex items-center gap-1">
+                                <span>{t('sellForm.fields.condition')}</span>
+                                <span className="text-(--sell-panel-accent)" aria-hidden="true">
+                                  *
+                                </span>
+                              </span>
+                            </Label>
+                            <div className="mt-3">
+                              <Popover
+                                open={conditionOpen}
+                                onOpenChange={(next) => {
+                                  setConditionOpen(next);
+                                  if (next) {
+                                    setCategoryOpen(false);
+                                    setLocationOpen(false);
+                                    setColorOpen(false);
+                                  }
+                                }}
                               >
-                                <div className={menuShellDropdownClassName}>
-                                  <div className={menuListClassName}>
-                                    {conditionOptions.map((option) => (
-                                      <button
-                                        key={option.value}
-                                        type="button"
-                                        className={menuRowClassName}
-                                        data-state={formData.condition === option.value ? 'checked' : 'unchecked'}
-                                        onClick={() => {
-                                          setHasUnsaved(true);
-                                          setFormData((prev) => ({ ...prev, condition: option.value }));
-                                          setConditionOpen(false);
-                                        }}
-                                      >
-                                        <span className="flex-1">{getConditionLabel(option.value)}</span>
-                                        <span className={menuRowIndicatorClassName}>
-                                          <span className={menuRowIndicatorDotClassName} />
-                                        </span>
-                                      </button>
-                                    ))}
+                                <PopoverTrigger asChild>
+                                  <button
+                                    id="condition"
+                                    type="button"
+                                    className={detailsSelectTriggerClassName}
+                                  >
+                                    <span
+                                      className={[
+                                        'flex-1 truncate text-sm',
+                                        formData.condition.trim().length > 0 ? 'text-[#1F1C1C]' : 'text-slate-700',
+                                      ].join(' ')}
+                                    >
+                                      {conditionTriggerLabel}
+                                    </span>
+                                    <ChevronDown className="h-4 w-4 text-slate-500" />
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                  align={contentAlign}
+                                  dir={direction}
+                                  sideOffset={8}
+                                  className={dropdownPopoverContentClassName}
+                                >
+                                  <div className={menuShellDropdownClassName}>
+                                    <div className={menuListClassName}>
+                                      {conditionOptions.map((option) => (
+                                        <button
+                                          key={option.value}
+                                          type="button"
+                                          className={menuRowClassName}
+                                          data-state={formData.condition === option.value ? 'checked' : 'unchecked'}
+                                          onClick={() => {
+                                            setHasUnsaved(true);
+                                            setFormData((prev) => ({ ...prev, condition: option.value }));
+                                            setConditionOpen(false);
+                                          }}
+                                        >
+                                          <span className="flex-1">{getConditionLabel(option.value)}</span>
+                                          <span className={menuRowIndicatorClassName}>
+                                            <span className={menuRowIndicatorDotClassName} />
+                                          </span>
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
+                                </PopoverContent>
+                              </Popover>
+                            </div>
                           </div>
-                        </div>
+                        ) : null}
                       </div>
                     </div>
                   </section>
@@ -1578,7 +1658,7 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
                               }}
                             >
                               <PopoverTrigger asChild>
-                                <button type="button" className={detailsSelectTriggerClassName}>
+                                <button ref={categoryTriggerRef} id="category" type="button" className={detailsSelectTriggerClassName}>
                                   <span
                                     className={[
                                       'flex-1 truncate text-sm',
@@ -1611,7 +1691,19 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
                                           data-state={formData.categoryId === category.id ? 'checked' : 'unchecked'}
                                           onClick={() => {
                                             setHasUnsaved(true);
-                                            setFormData((prev) => ({ ...prev, categoryId: category.id }));
+                                            setFormData((prev) => {
+                                              const nextIsProperty = category.id === PROPERTY_CATEGORY_ID;
+                                              const nextListingType = nextIsProperty ? prev.listingType : 'sale';
+                                              return {
+                                                ...prev,
+                                                categoryId: category.id,
+                                                listingType: nextListingType,
+                                                rentalTerm: nextIsProperty && nextListingType === 'rent'
+                                                  ? (prev.rentalTerm ?? 'daily')
+                                                  : null,
+                                                condition: nextIsProperty ? '' : prev.condition,
+                                              };
+                                            });
                                             setCategoryOpen(false);
                                           }}
                                         >
@@ -1830,6 +1922,72 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
                             </Popover>
                           </div>
                         </div>
+
+                        {isPropertyCategorySelected ? (
+                          <div className="md:col-span-3">
+                            <div className="rounded-[24px] border border-[#e6ddd4] bg-[#f7f3ee]/96 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_12px_28px_rgba(124,45,18,0.08)]">
+                              <div className="flex flex-col gap-3">
+                                <div className="space-y-1">
+                                  <div className="text-sm font-semibold text-[#3f372f]">
+                                    {t('sellForm.fields.listingType')}
+                                  </div>
+                                  <p className="text-xs text-[#7a7168]">{t('sellForm.fields.propertyModeHint')}</p>
+                                </div>
+
+                                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                                  <div className={propertyPillGroupClassName}>
+                                    {propertyListingOptions.map((option) => (
+                                      <button
+                                        key={option.value}
+                                        type="button"
+                                        className={[
+                                          propertyPillClassName,
+                                          formData.listingType === option.value
+                                            ? 'bg-[#1f2937] text-white shadow-[0_10px_20px_rgba(15,23,42,0.18)]'
+                                            : 'text-[#6b5b50] hover:bg-white hover:text-[#1f2937]',
+                                        ].join(' ')}
+                                        onClick={() => {
+                                          setHasUnsaved(true);
+                                          setFormData((prev) => ({
+                                            ...prev,
+                                            listingType: option.value,
+                                            rentalTerm: option.value === 'rent' ? (prev.rentalTerm ?? 'daily') : null,
+                                            condition: '',
+                                          }));
+                                        }}
+                                      >
+                                        {option.label}
+                                      </button>
+                                    ))}
+                                  </div>
+
+                                  {formData.listingType === 'rent' ? (
+                                    <div className={propertyPillGroupClassName}>
+                                      {propertyRentalTermOptions.map((option) => (
+                                        <button
+                                          key={option.value}
+                                          type="button"
+                                          className={[
+                                            propertyPillClassName,
+                                            formData.rentalTerm === option.value
+                                              ? 'bg-[#0f766e] text-white shadow-[0_10px_20px_rgba(15,118,110,0.18)]'
+                                              : 'text-[#6b5b50] hover:bg-white hover:text-[#1f2937]',
+                                          ].join(' ')}
+                                          onClick={() => {
+                                            setHasUnsaved(true);
+                                            setFormData((prev) => ({ ...prev, rentalTerm: option.value }));
+                                          }}
+                                        >
+                                          {option.label}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   </section>
@@ -1844,7 +2002,7 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-orange-400',
                 'disabled:opacity-60 disabled:shadow-none disabled:hover:translate-y-0',
               ].join(' ')}
-              disabled={loading || storageBusy}
+              disabled={loading || storageBusy || isCategoriesLoading}
             >
               {loading ? t('sellForm.submit.creating') : t('sellForm.submit.create')}
             </Button>
@@ -1918,7 +2076,7 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
                 'disabled:opacity-60 disabled:shadow-none disabled:hover:translate-y-0',
               ].join(' ')}
-              disabled={loading || storageBusy}
+              disabled={loading || storageBusy || isCategoriesLoading}
             >
               {loading ? t('sellForm.submit.creating') : t('sellForm.submit.create')}
             </Button>

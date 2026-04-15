@@ -8,6 +8,7 @@ export type CategoryUiConfig = {
 };
 
 export const SPONSORS_CATEGORY_ID = '00000000-0000-0000-0000-00000000000d';
+export const PROPERTY_CATEGORY_ID = '00000000-0000-0000-0000-00000000000a';
 
 export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
   {

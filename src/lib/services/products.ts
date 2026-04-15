@@ -7,6 +7,12 @@ import { assertAllowedProductImagePaths, buildPublicStorageUrl, deriveThumbPath,
 import { DEFAULT_MARKET_CITIES, MARKET_CITY_OPTIONS, getMarketCityLabel, normalizeMarketCityValue } from '@/data/market-cities';
 import { SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
 import { getEnv } from "@/lib/env";
+import {
+  normalizeProductListingType,
+  normalizePropertyRentalTerm,
+  type ProductListingType,
+  type PropertyRentalTerm,
+} from '@/lib/products/property-listing';
 
 export interface SellerProfile {
   id: string;
@@ -46,6 +52,8 @@ export interface ProductWithRelations {
   price: number;
   currency: string | null;
   condition: string | null;
+  listingType: ProductListingType;
+  rentalTerm: PropertyRentalTerm | null;
   colorToken?: string | null;
   categoryId: string | null;
   sellerId: string;
@@ -78,6 +86,8 @@ export type ProductSort = 'newest' | 'price_asc' | 'price_desc' | 'views_desc';
 export interface ProductFilters {
   category?: string;
   condition?: string;
+  listingType?: ProductListingType;
+  rentalTerm?: PropertyRentalTerm;
   color?: string;
   minPrice?: number;
   maxPrice?: number;
@@ -132,6 +142,8 @@ export type SupabaseProductRow = {
   original_price?: number | string | null;
   currency: string | null;
   condition: string | null;
+  listing_type?: string | null;
+  rental_term?: string | null;
   color_token?: string | null;
   category_id: string | null;
   seller_id: string;
@@ -299,6 +311,8 @@ export function mapProduct(row: SupabaseProductRow): ProductWithRelations {
     price: typeof row.price === "number" ? row.price : row.price ? Number(row.price) : 0,
     currency: row.currency ?? "IQD",
     condition: row.condition,
+    listingType: normalizeProductListingType(row.listing_type ?? null),
+    rentalTerm: normalizePropertyRentalTerm(row.rental_term ?? null),
     colorToken: row.color_token ?? null,
     categoryId: row.category_id,
     sellerId: row.seller_id,
@@ -572,6 +586,14 @@ function buildProductsQuery(supabase: any, filters: ProductFilters = {}, options
     query = query.eq('color_token', filters.color);
   }
 
+  if (filters.listingType) {
+    query = query.eq('listing_type', filters.listingType);
+  }
+
+  if (filters.listingType === 'rent' && filters.rentalTerm) {
+    query = query.eq('rental_term', filters.rentalTerm);
+  }
+
   if (filters.freeOnly) {
     // Treat "free" listings as those with price exactly 0
     query = query.eq('price', 0);
@@ -650,6 +672,8 @@ type AlgoliaSearchHit = {
   original_price?: number | string | null;
   currency?: string | null;
   condition?: string | null;
+  listing_type?: string | null;
+  rental_term?: string | null;
   color_token?: string | null;
   category_id?: string | null;
   category_name?: string | null;
@@ -694,6 +718,8 @@ function toSupabaseRowFromEdge(row: EdgeSearchProductRow): SupabaseProductRow {
     original_price: row.original_price ?? null,
     currency: row.currency ?? null,
     condition: row.condition ?? null,
+    listing_type: row.listing_type ?? null,
+    rental_term: row.rental_term ?? null,
     category_id: row.category_id ?? null,
     seller_id: row.seller_id,
     location: row.location ?? null,
@@ -752,6 +778,14 @@ function buildAlgoliaSearchFilters(filters: ProductFilters, looksFree: boolean) 
 
   if (filters.condition) {
     clauses.push(`condition:${quoteAlgoliaFilterValue(filters.condition)}`);
+  }
+
+  if (filters.listingType) {
+    clauses.push(`listing_type:${quoteAlgoliaFilterValue(filters.listingType)}`);
+  }
+
+  if (filters.listingType === 'rent' && filters.rentalTerm) {
+    clauses.push(`rental_term:${quoteAlgoliaFilterValue(filters.rentalTerm)}`);
   }
 
   if (filters.color) {
@@ -877,6 +911,8 @@ function mapProductFromAlgolia(hit: AlgoliaSearchHit): ProductWithRelations | nu
     price: parseNumber(hit.price) ?? 0,
     currency: hit.currency ?? 'IQD',
     condition: hit.condition ?? null,
+    listingType: normalizeProductListingType(hit.listing_type ?? null),
+    rentalTerm: normalizePropertyRentalTerm(hit.rental_term ?? null),
     colorToken: hit.color_token ?? null,
     categoryId: hit.category_id ?? null,
     sellerId: hit.seller_id ?? '',
@@ -937,6 +973,8 @@ async function searchProductsViaAlgolia(
         'original_price',
         'currency',
         'condition',
+        'listing_type',
+        'rental_term',
         'color_token',
         'category_id',
         'category_name',
@@ -1028,6 +1066,8 @@ export async function searchProducts(
     body: {
       query: searchTerm,
       categoryId: filters.category,
+      listingType: filters.listingType,
+      rentalTerm: filters.rentalTerm,
       minPrice: looksFree ? 0 : filters.minPrice,
       maxPrice: looksFree ? 0 : filters.maxPrice,
       city: filters.location,
@@ -1307,7 +1347,9 @@ export async function createProduct(productData: {
   description?: string | null;
   price: number;
   currency?: string | null;
-  condition: string;
+  condition?: string | null;
+  listingType?: ProductListingType;
+  rentalTerm?: PropertyRentalTerm | null;
   categoryId?: string | null;
   location?: string | null;
   images?: string[];
@@ -1321,7 +1363,12 @@ export async function createProduct(productData: {
     description: productData.description ?? null,
     price: productData.price,
     currency: productData.currency ?? 'IQD',
-    condition: productData.condition,
+    condition: productData.condition ?? null,
+    listing_type: normalizeProductListingType(productData.listingType ?? null),
+    rental_term:
+      normalizeProductListingType(productData.listingType ?? null) === 'rent'
+        ? normalizePropertyRentalTerm(productData.rentalTerm ?? null)
+        : null,
     category_id: productData.categoryId ?? null,
     location: productData.location ?? null,
     images,

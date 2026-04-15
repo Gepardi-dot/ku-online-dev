@@ -1,12 +1,16 @@
 import { z } from 'zod';
 
+import { PROPERTY_CATEGORY_ID } from '@/data/category-ui-config';
 import { CONDITION_VALUES } from '@/lib/products/filter-params';
+import { PRODUCT_LISTING_TYPE_VALUES, PROPERTY_RENTAL_TERM_VALUES } from '@/lib/products/property-listing';
 import { isAllowedProductImageInput } from '@/lib/storage-public';
 
 const phoneRegex = /^[+0-9()\-\s]{6,20}$/;
 
 export const productConditionEnum = z.enum(CONDITION_VALUES);
 export const productCurrencyEnum = z.enum(['IQD', 'USD']);
+export const productListingTypeEnum = z.enum(PRODUCT_LISTING_TYPE_VALUES);
+export const propertyRentalTermEnum = z.enum(PROPERTY_RENTAL_TERM_VALUES);
 
 const descriptionSchema = z
   .string()
@@ -27,8 +31,22 @@ export const createProductSchema = z
       .number({ error: 'Price must be a number.' })
       .min(0, 'Price must be zero or greater.'),
     currency: productCurrencyEnum.default('IQD'),
-    condition: productConditionEnum,
-    categoryId: z.string().uuid({ message: 'Select a valid category.' }),
+    condition: z
+      .union([productConditionEnum, z.literal('')])
+      .optional()
+      .transform((value) => {
+        if (!value) return null;
+        return value;
+      }),
+    categoryId: z.string().trim().min(1, { message: 'Select a valid category.' }),
+    listingType: productListingTypeEnum.default('sale'),
+    rentalTerm: z
+      .union([propertyRentalTermEnum, z.literal('')])
+      .optional()
+      .transform((value) => {
+        if (!value) return null;
+        return value;
+      }),
     location: z
       .string()
       .trim()
@@ -52,9 +70,40 @@ export const createProductSchema = z
       .optional()
       .transform((v) => (v && v.length > 0 ? v : undefined)),
   })
+  .superRefine((value, ctx) => {
+    const isProperty = value.categoryId === PROPERTY_CATEGORY_ID;
+
+    if (isProperty) {
+      if (value.listingType === 'rent' && !value.rentalTerm) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['rentalTerm'],
+          message: 'Choose a rental term.',
+        });
+      }
+      return;
+    }
+
+    if (!value.condition) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['condition'],
+        message: 'Select a condition.',
+      });
+    }
+
+    if (value.listingType !== 'sale') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['listingType'],
+        message: 'Only property listings can be marked for rent.',
+      });
+    }
+  })
   .transform((value) => ({
     ...value,
     description: value.description ?? null,
+    rentalTerm: value.listingType === 'rent' ? value.rentalTerm ?? null : null,
   }));
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;

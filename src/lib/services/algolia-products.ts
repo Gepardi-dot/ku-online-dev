@@ -5,6 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { normalizeMarketCityValue } from '@/data/market-cities';
 import { getEnv } from '@/lib/env';
+import { normalizeProductListingType, normalizePropertyRentalTerm } from '@/lib/products/property-listing';
 import { deriveThumbPath } from '@/lib/storage-public';
 
 type AlgoliaCategoryRow = {
@@ -33,6 +34,8 @@ export type AlgoliaProductRow = {
   original_price?: number | string | null;
   currency: string | null;
   condition: string | null;
+  listing_type?: string | null;
+  rental_term?: string | null;
   color_token?: string | null;
   category_id: string | null;
   seller_id: string | null;
@@ -66,6 +69,8 @@ type AlgoliaProductRecord = {
   original_price?: number | null;
   currency: string | null;
   condition: string | null;
+  listing_type: string;
+  rental_term: string | null;
   color_token?: string | null;
   category_id: string | null;
   category_name: string | null;
@@ -250,6 +255,8 @@ export async function fetchAlgoliaProductRow(
         original_price,
         currency,
         condition,
+        listing_type,
+        rental_term,
         color_token,
         category_id,
         seller_id,
@@ -321,6 +328,11 @@ function toAlgoliaProductRecord(row: AlgoliaProductRow): AlgoliaProductRecord {
     original_price: parseOptionalNumber(row.original_price),
     currency: row.currency ?? null,
     condition: row.condition ?? null,
+    listing_type: normalizeProductListingType(row.listing_type ?? null),
+    rental_term:
+      normalizeProductListingType(row.listing_type ?? null) === 'rent'
+        ? normalizePropertyRentalTerm(row.rental_term ?? null)
+        : null,
     color_token: row.color_token ?? null,
     category_id: row.category_id ?? null,
     category_name: category?.name ?? null,
@@ -348,6 +360,8 @@ function toAlgoliaProductRecord(row: AlgoliaProductRow): AlgoliaProductRecord {
       title,
       description,
       row.location ?? '',
+      normalizeProductListingType(row.listing_type ?? null),
+      normalizePropertyRentalTerm(row.rental_term ?? null) ?? '',
       category?.name ?? '',
       category?.name_ar ?? '',
       category?.name_ku ?? '',

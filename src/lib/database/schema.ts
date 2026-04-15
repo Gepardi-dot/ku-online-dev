@@ -69,7 +69,9 @@ export const products = pgTable('products', {
   description: text('description'),
   price: decimal('price', { precision: 10, scale: 2 }).notNull(),
   currency: varchar('currency', { length: 3 }).default('IQD'),
-  condition: text('condition').notNull(), // New, Used - Like New, Used - Good, Used - Fair
+  condition: text('condition'), // New, Used - Like New, Used - Good, Used - Fair
+  listingType: text('listing_type').default('sale'),
+  rentalTerm: text('rental_term'),
   categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
   sellerId: uuid('seller_id').references(() => users.id, { onDelete: 'set null' }),
   location: text('location'),

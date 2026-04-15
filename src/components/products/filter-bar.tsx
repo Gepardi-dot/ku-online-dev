@@ -14,6 +14,7 @@ import { ScrollHintList } from "@/components/ui/scroll-hint-list";
 import * as SliderPrimitive from "@radix-ui/react-slider";
 import { cn } from "@/lib/utils";
 import { COLOR_OPTIONS, type ColorToken } from "@/data/colors";
+import { PROPERTY_CATEGORY_ID } from "@/data/category-ui-config";
 import { Check, ChevronDown } from 'lucide-react';
 import { useLocale } from "@/providers/locale-provider";
 import { rtlLocales } from "@/lib/locale/dictionary";
@@ -45,6 +46,8 @@ function useInitialState(initial?: ProductsFilterValues) {
   const maxCap = Math.max(MAX_PRICE_DEFAULT, max ?? 0);
   return {
     condition: base.condition ?? "",
+    listingType: base.listingType ?? "",
+    rentalTerm: base.rentalTerm ?? "",
     location: base.location ?? "",
     sort: base.sort ?? "newest",
     minPrice: min,
@@ -95,6 +98,8 @@ export function ProductsFilterBar({
   );
 
   const [condition, setCondition] = useState<string>(init.condition || "");
+  const [listingType, setListingType] = useState<string>(init.listingType || "");
+  const [rentalTerm, setRentalTerm] = useState<string>(init.rentalTerm || "");
   const [location, setLocation] = useState<string>(init.location || "");
   const [sort, setSort] = useState<string>(init.sort || "newest");
   const [conditionOpen, setConditionOpen] = useState(false);
@@ -111,6 +116,8 @@ export function ProductsFilterBar({
 
   useEffect(() => {
     setCondition(init.condition || "");
+    setListingType(init.listingType || "");
+    setRentalTerm(init.rentalTerm || "");
     setLocation(init.location || "");
     setSort(init.sort || "newest");
     setPrice([init.minPrice ?? 0, init.maxPrice ?? init.maxCap]);
@@ -122,6 +129,8 @@ export function ProductsFilterBar({
     setColorOpen(false);
   }, [
     init.condition,
+    init.listingType,
+    init.rentalTerm,
     init.location,
     init.sort,
     init.minPrice,
@@ -136,6 +145,7 @@ export function ProductsFilterBar({
   }, [anyMenuOpen]);
 
   const isPriceDefault = price[0] <= 0 && price[1] >= init.maxCap;
+  const showPropertyListingFilters = initialValues?.category === PROPERTY_CATEGORY_ID;
 
   const conditionLabels: Record<string, string> = {
     'new': t("filters.conditionNew"),
@@ -179,6 +189,8 @@ export function ProductsFilterBar({
     const base: ProductsFilterValues = {
       ...(initialValues ?? DEFAULT_FILTER_VALUES),
       condition: (condition as any) || "",
+      listingType: (listingType as any) || "",
+      rentalTerm: listingType === "rent" ? ((rentalTerm as any) || "") : "",
       location: location || "",
       color: color || "",
       minPrice: isPriceDefault ? "" : String(price[0] ?? ""),
@@ -192,6 +204,24 @@ export function ProductsFilterBar({
     router.push(`${targetPath}${query ? `?${query}` : ""}`);
   };
 
+  const applyWithOverrides = (overrides: Partial<ProductsFilterValues>) => {
+    const base: ProductsFilterValues = {
+      ...(initialValues ?? DEFAULT_FILTER_VALUES),
+      condition: (condition as any) || "",
+      listingType: (listingType as any) || "",
+      rentalTerm: listingType === "rent" ? ((rentalTerm as any) || "") : "",
+      location: location || "",
+      color: color || "",
+      minPrice: isPriceDefault ? "" : String(price[0] ?? ""),
+      maxPrice: isPriceDefault ? "" : String(price[1] ?? ""),
+      sort: (sort as any) || "newest",
+      postedWithin: "any",
+    };
+    const params = createProductsSearchParams({ ...base, ...overrides });
+    const query = params.toString();
+    router.push(`${targetPath}${query ? `?${query}` : ""}`);
+  };
+
   const reset = () => {
     setConditionOpen(false);
     setLocationOpen(false);
@@ -199,6 +229,8 @@ export function ProductsFilterBar({
     setPriceOpen(false);
     setColorOpen(false);
     setCondition("");
+    setListingType("");
+    setRentalTerm("");
     setLocation("");
     setSort("newest");
     setPrice([0, init.maxCap]);
@@ -206,6 +238,8 @@ export function ProductsFilterBar({
     const params = createProductsSearchParams({
       ...(initialValues ?? DEFAULT_FILTER_VALUES),
       condition: "",
+      listingType: "",
+      rentalTerm: "",
       location: "",
       color: "",
       minPrice: "",
@@ -274,6 +308,10 @@ export function ProductsFilterBar({
   const popoverContentClassName =
     "w-[min(92vw,22rem)] rounded-2xl border border-white/45 bg-white/35 p-3 " +
     "shadow-[0_30px_95px_rgba(15,23,42,0.2)] ring-1 ring-white/20 backdrop-blur-3xl backdrop-saturate-150 backdrop-brightness-110";
+  const propertyPillGroupClassName =
+    "inline-flex w-full items-center gap-1 rounded-2xl border border-slate-200/90 bg-white/85 p-1 shadow-[0_10px_24px_rgba(15,23,42,0.08)] ring-1 ring-black/5 sm:w-auto";
+  const propertyPillClassName =
+    "flex h-9 flex-1 items-center justify-center rounded-xl px-3 text-xs font-semibold transition sm:flex-none sm:px-4";
 
   return (
     <div
@@ -281,6 +319,73 @@ export function ProductsFilterBar({
       className={filterBarClassName}
     >
       <div className="flex flex-wrap items-center gap-1.5">
+        {showPropertyListingFilters ? (
+          <div className="flex w-full flex-col gap-1.5 sm:w-auto sm:flex-row sm:items-center">
+            <div className={propertyPillGroupClassName}>
+              {[
+                { value: "", label: t("filters.listingTypeAll") },
+                { value: "rent", label: t("filters.listingTypeRent") },
+                { value: "sale", label: t("filters.listingTypeSale") },
+              ].map((option) => (
+                <button
+                  key={option.value || "all-properties"}
+                  type="button"
+                  className={cn(
+                    propertyPillClassName,
+                    listingType === option.value
+                      ? "bg-[#1f2937] text-white shadow-[0_12px_24px_rgba(15,23,42,0.18)]"
+                      : "text-slate-600 hover:bg-white hover:text-slate-900"
+                  )}
+                  onClick={() => {
+                    const nextListingType = option.value;
+                    const nextRentalTerm = nextListingType === "rent" ? rentalTerm : "";
+                    setListingType(nextListingType);
+                    setRentalTerm(nextRentalTerm);
+                    applyWithOverrides({
+                      listingType: nextListingType as ProductsFilterValues["listingType"],
+                      rentalTerm: nextListingType === "rent"
+                        ? (nextRentalTerm as ProductsFilterValues["rentalTerm"])
+                        : "",
+                    });
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+
+            {listingType === "rent" ? (
+              <div className={propertyPillGroupClassName}>
+                {[
+                  { value: "", label: t("filters.rentalTermAll") },
+                  { value: "daily", label: t("filters.rentalTermDaily") },
+                  { value: "monthly", label: t("filters.rentalTermMonthly") },
+                ].map((option) => (
+                  <button
+                    key={option.value || "any-rental-term"}
+                    type="button"
+                    className={cn(
+                      propertyPillClassName,
+                      rentalTerm === option.value
+                        ? "bg-[#0f766e] text-white shadow-[0_12px_24px_rgba(15,118,110,0.18)]"
+                        : "text-slate-600 hover:bg-white hover:text-slate-900"
+                    )}
+                    onClick={() => {
+                      setRentalTerm(option.value);
+                      applyWithOverrides({
+                        listingType: "rent",
+                        rentalTerm: option.value as ProductsFilterValues["rentalTerm"],
+                      });
+                    }}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         {/* Condition */}
         <Popover
           open={conditionOpen}
