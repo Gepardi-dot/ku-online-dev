@@ -1,0 +1,19 @@
+name: Keep Alive – Weekly Production Redeploy
+
+on:
+  schedule:
+    # Every Monday at 09:00 UTC (after dependabot opens its weekly PRs at 08:00)
+    - cron: '0 9 * * 1'
+  workflow_dispatch:
+
+jobs:
+  redeploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Vercel production
+        run: npx vercel --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: team_7eU5928MpOB8p7W30xLozieg
+          VERCEL_PROJECT_ID: prj_WwkxcoVClYZDp71ERhA1HmCaq2ee
