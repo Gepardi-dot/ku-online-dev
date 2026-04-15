@@ -304,9 +304,6 @@ export function PartnershipInquiryForm({
             <p className="mt-1 text-xs text-muted-foreground" dir="auto">
               {t('partnership.sellerPolicyPublish')}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground" dir="auto">
-              {t('partnership.sellerPolicyPayment')}
-            </p>
           </div>
         ) : null}
 
@@ -403,24 +400,6 @@ export function PartnershipInquiryForm({
           </div>
         ) : null}
         <div className="space-y-2">
-          <Label htmlFor="partner-budget">{t('partnership.fields.budget')}</Label>
-          <Input
-            id="partner-budget"
-            value={formState.budgetRange}
-            onChange={(event) => updateField('budgetRange')(event.target.value)}
-            placeholder={t('partnership.fields.budgetPlaceholder')}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="partner-country">{t('partnership.fields.country')}</Label>
-          <Input
-            id="partner-country"
-            value={formState.country}
-            onChange={(event) => updateField('country')(event.target.value)}
-            placeholder={t('partnership.fields.countryPlaceholder')}
-          />
-        </div>
-        <div className="space-y-2">
           <Label htmlFor="partner-city">{t('partnership.fields.city')}</Label>
           <Input
             id="partner-city"
@@ -438,15 +417,37 @@ export function PartnershipInquiryForm({
             placeholder={t('partnership.fields.phonePlaceholder')}
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="partner-attachment">{t('partnership.fields.attachment')}</Label>
-          <Input
-            id="partner-attachment"
-            value={formState.attachmentUrl}
-            onChange={(event) => updateField('attachmentUrl')(event.target.value)}
-            placeholder={t('partnership.fields.attachmentPlaceholder')}
-          />
-        </div>
+        {!isSellerMode ? (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="partner-budget">{t('partnership.fields.budget')}</Label>
+              <Input
+                id="partner-budget"
+                value={formState.budgetRange}
+                onChange={(event) => updateField('budgetRange')(event.target.value)}
+                placeholder={t('partnership.fields.budgetPlaceholder')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="partner-country">{t('partnership.fields.country')}</Label>
+              <Input
+                id="partner-country"
+                value={formState.country}
+                onChange={(event) => updateField('country')(event.target.value)}
+                placeholder={t('partnership.fields.countryPlaceholder')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="partner-attachment">{t('partnership.fields.attachment')}</Label>
+              <Input
+                id="partner-attachment"
+                value={formState.attachmentUrl}
+                onChange={(event) => updateField('attachmentUrl')(event.target.value)}
+                placeholder={t('partnership.fields.attachmentPlaceholder')}
+              />
+            </div>
+          </>
+        ) : null}
         <div className="space-y-2 md:col-span-2">
           <Label htmlFor="partner-message">{t('partnership.fields.message')}</Label>
           <Textarea
