@@ -48,6 +48,16 @@ export const GET = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ ok: false, error: 'Forbidden origin' }, { status: 403 });
   }
 
+  const clientIdentifier = getClientIdentifier(request.headers);
+  if (clientIdentifier !== 'unknown') {
+    const ipRate = checkRateLimit(`admin-app-contacts:get:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    if (!ipRate.success) {
+      const res = NextResponse.json({ ok: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 });
+      res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
+      return res;
+    }
+  }
+
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
   const {
@@ -57,6 +67,13 @@ export const GET = withSentryRoute(async (request: Request) => {
 
   if (authError || !user || !isModerator(user)) {
     return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
+  }
+
+  const userRate = checkRateLimit(`admin-app-contacts:get:user:${user.id}`, RATE_LIMIT_PER_USER);
+  if (!userRate.success) {
+    const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
+    res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));
+    return res;
   }
 
   const contacts = await getAppContacts();
@@ -129,4 +146,3 @@ export const PATCH = withSentryRoute(async (request: Request) => {
   const contacts = await getAppContacts();
   return NextResponse.json({ ok: true, contacts });
 }, 'admin-app-contacts-update');
-

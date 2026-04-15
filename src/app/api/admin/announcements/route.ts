@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 
 import { getEnv } from '@/lib/env';
@@ -18,13 +18,15 @@ const { ADMIN_REVALIDATE_TOKEN, NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_SUPABASE_URL, 
 
 const supabaseAdmin = createSupabaseAdmin(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-const ANNOUNCEMENTS_RATE_LIMIT = { windowMs: 60_000, max: 3 } as const;
+const ANNOUNCEMENTS_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 3 } as const;
+const ANNOUNCEMENTS_RATE_LIMIT_PER_TOKEN = { windowMs: 60_000, max: 10 } as const;
 
 const adminOriginAllowList = buildOriginAllowList([
   NEXT_PUBLIC_SITE_URL ?? null,
   process.env.SITE_URL ?? null,
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
   'https://ku-online.vercel.app',
+  'https://ku-online-dev.vercel.app',
   'http://localhost:5000',
 ]);
 
@@ -40,6 +42,11 @@ function isAuthorized(req: Request): boolean {
   return Boolean(expected) && token === expected;
 }
 
+function isValidDateString(value: string): boolean {
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp);
+}
+
 type Body = {
   title?: string;
   body?: string;
@@ -48,7 +55,7 @@ type Body = {
   endsAt?: string | null;
 };
 
-export const POST = withSentryRoute(async (req: Request) => {
+export const POST = withSentryRoute(async (req: NextRequest) => {
   const originHeader = req.headers.get('origin');
   if (originHeader && !isOriginAllowed(originHeader, adminOriginAllowList) && !isSameOriginRequest(req)) {
     return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
@@ -56,7 +63,7 @@ export const POST = withSentryRoute(async (req: Request) => {
 
   const clientIdentifier = getClientIdentifier(req.headers);
   if (clientIdentifier !== 'unknown') {
-    const rate = checkRateLimit(`announcements:${clientIdentifier}`, ANNOUNCEMENTS_RATE_LIMIT);
+    const rate = checkRateLimit(`admin-announcements:ip:${clientIdentifier}`, ANNOUNCEMENTS_RATE_LIMIT_PER_IP);
     if (!rate.success) {
       return tooManyRequestsResponse(rate.retryAfter);
     }
@@ -64,6 +71,11 @@ export const POST = withSentryRoute(async (req: Request) => {
 
   if (!isAuthorized(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const tokenRate = checkRateLimit('admin-announcements:token', ANNOUNCEMENTS_RATE_LIMIT_PER_TOKEN);
+  if (!tokenRate.success) {
+    return tooManyRequestsResponse(tokenRate.retryAfter);
   }
 
   const payload = (await req.json().catch(() => ({}))) as Body;
@@ -83,6 +95,16 @@ export const POST = withSentryRoute(async (req: Request) => {
 
   const startsAt = typeof payload.startsAt === 'string' ? payload.startsAt : null;
   const endsAt = typeof payload.endsAt === 'string' ? payload.endsAt : null;
+
+  if (startsAt && !isValidDateString(startsAt)) {
+    return NextResponse.json({ error: 'Invalid startsAt' }, { status: 400 });
+  }
+  if (endsAt && !isValidDateString(endsAt)) {
+    return NextResponse.json({ error: 'Invalid endsAt' }, { status: 400 });
+  }
+  if (startsAt && endsAt && new Date(endsAt).getTime() <= new Date(startsAt).getTime()) {
+    return NextResponse.json({ error: 'endsAt must be after startsAt' }, { status: 400 });
+  }
 
   const { data, error } = await supabaseAdmin.rpc('publish_announcement', {
     p_title: title,

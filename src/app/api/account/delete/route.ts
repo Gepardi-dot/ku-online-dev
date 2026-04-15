@@ -13,18 +13,28 @@ import {
 import { withSentryRoute } from '@/utils/sentry-route';
 
 const { NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, NEXT_PUBLIC_SITE_URL } = getEnv();
-const supabaseAdmin = createAdminClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createAdminClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 export const runtime = 'nodejs';
 
-const DELETE_RATE_LIMIT = { windowMs: 60_000, max: 3 } as const; // at most 3 attempts per minute per IP
+const DELETE_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 3 } as const;
+const DELETE_RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 3 } as const;
 const originAllowList = buildOriginAllowList([
   NEXT_PUBLIC_SITE_URL ?? null,
   process.env.SITE_URL ?? null,
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null,
   'https://ku-online.vercel.app',
+  'https://ku-online-dev.vercel.app',
   'http://localhost:5000',
 ]);
+
+function tooManyRequestsResponse(message: string, retryAfter: number) {
+  const response = NextResponse.json({ error: message }, { status: 429 });
+  response.headers.set('Retry-After', String(Math.max(1, retryAfter)));
+  return response;
+}
 
 export const POST = withSentryRoute(async (request: Request) => {
   const origin = request.headers.get('origin');
@@ -34,11 +44,9 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const rate = checkRateLimit(`account:delete:${clientIdentifier}`, DELETE_RATE_LIMIT);
+    const rate = checkRateLimit(`account-delete:ip:${clientIdentifier}`, DELETE_RATE_LIMIT_PER_IP);
     if (!rate.success) {
-      const res = NextResponse.json({ error: 'Too many delete attempts. Please try again shortly.' }, { status: 429 });
-      res.headers.set('Retry-After', String(Math.max(1, rate.retryAfter)));
-      return res;
+      return tooManyRequestsResponse('Too many delete attempts. Please try again shortly.', rate.retryAfter);
     }
   }
 
@@ -70,6 +78,11 @@ export const POST = withSentryRoute(async (request: Request) => {
   }
   if (!user) {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
+  const userRate = checkRateLimit(`account-delete:user:${user.id}`, DELETE_RATE_LIMIT_PER_USER);
+  if (!userRate.success) {
+    return tooManyRequestsResponse('Too many delete attempts. Please try again later.', userRate.retryAfter);
   }
 
   const { error: delError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
