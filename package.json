@@ -127,6 +127,6 @@
     "postcss": "^8",
     "tailwindcss": "^4.1.18",
     "typescript": "^5",
-    "vercel": "^50.44.0"
+    "vercel": "^51.8.0"
   }
 }
