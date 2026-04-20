@@ -120,7 +120,7 @@
     "autoprefixer": "^10.4.27",
     "baseline-browser-mapping": "2.10.18",
     "drizzle-kit": "^0.31.10",
-    "eslint": "^9.39.4",
+    "eslint": "^10.2.1",
     "eslint-config-next": "^16.2.3",
     "kill-port": "^2.0.1",
     "msw": "^2.13.2",
