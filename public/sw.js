@@ -1,14 +1,11 @@
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const OFFLINE_CACHE = `offline-${CACHE_VERSION}`;
-const ASSET_CACHE = `asset-${CACHE_VERSION}`;
 const IMAGE_CACHE = `image-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const PRECACHE_URLS = [OFFLINE_URL, '/icon-192.png', '/icon-512.png'];
 const SW_CACHE_TIME_HEADER = 'x-sw-cache-time';
 const NAVIGATION_NETWORK_TIMEOUT_MS = 4500;
-const ASSET_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const IMAGE_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;
-const ASSET_MAX_ENTRIES = 120;
 const IMAGE_MAX_ENTRIES = 120;
 const SENSITIVE_QUERY_KEYS = new Set([
   'token',
@@ -32,25 +29,28 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
-      const expectedCaches = new Set([OFFLINE_CACHE, ASSET_CACHE, IMAGE_CACHE]);
+      const expectedCaches = new Set([OFFLINE_CACHE, IMAGE_CACHE]);
       const cacheNames = await caches.keys();
       await Promise.all(
         cacheNames
+          .filter((name) => name.startsWith('offline-') || name.startsWith('asset-') || name.startsWith('image-'))
           .filter((name) => !expectedCaches.has(name))
           .map((name) => caches.delete(name)),
       );
-      await pruneCacheByPolicy(await caches.open(ASSET_CACHE), {
-        maxEntries: ASSET_MAX_ENTRIES,
-        maxAgeMs: ASSET_MAX_AGE_MS,
-      });
       await pruneCacheByPolicy(await caches.open(IMAGE_CACHE), {
         maxEntries: IMAGE_MAX_ENTRIES,
         maxAgeMs: IMAGE_MAX_AGE_MS,
       });
       await self.clients.claim();
+      await notifyClients('ku-pwa-sw-activated');
     })(),
   );
 });
+
+async function notifyClients(type) {
+  const windowClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+  await Promise.all(windowClients.map((client) => client.postMessage({ type })));
+}
 
 function isSensitiveRequest(request, requestUrl, isSameOrigin) {
   if (!isSameOrigin) {
@@ -64,7 +64,7 @@ function isSensitiveRequest(request, requestUrl, isSameOrigin) {
   if (
     requestUrl.pathname.startsWith('/api/') ||
     requestUrl.pathname.startsWith('/auth/') ||
-    requestUrl.pathname.startsWith('/_next/data/')
+    requestUrl.pathname.startsWith('/_next/')
   ) {
     return true;
   }
@@ -139,34 +139,6 @@ async function putWithPolicy(cache, request, response, policy) {
   await pruneCacheByPolicy(cache, policy);
 }
 
-async function staleWhileRevalidate(request, cacheName, policy) {
-  const cache = await caches.open(cacheName);
-  const cachedResponseRaw = await cache.match(request);
-  const cachedResponse =
-    cachedResponseRaw && !isExpired(cachedResponseRaw, policy.maxAgeMs)
-      ? cachedResponseRaw
-      : null;
-
-  const networkPromise = fetch(request).then(async (response) => {
-      await putWithPolicy(cache, request, response, policy);
-      return response;
-    })
-    .catch(() => null);
-
-  if (cachedResponse) {
-    // Allow background refresh without blocking current render.
-    void networkPromise;
-    return cachedResponse;
-  }
-
-  const networkResponse = await networkPromise;
-  if (networkResponse) {
-    return networkResponse;
-  }
-
-  return cachedResponseRaw || Response.error();
-}
-
 async function cacheFirst(request, cacheName, policy) {
   const cache = await caches.open(cacheName);
   const cachedResponseRaw = await cache.match(request);
@@ -229,25 +201,6 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (isSensitiveRequest(request, requestUrl, isSameOrigin)) {
-    return;
-  }
-
-  const isStaticAsset =
-    isSameOrigin &&
-    (requestUrl.pathname.startsWith('/_next/static/') ||
-      requestUrl.pathname.startsWith('/_next/image') ||
-      request.destination === 'script' ||
-      request.destination === 'style' ||
-      request.destination === 'font' ||
-      request.destination === 'worker');
-
-  if (isStaticAsset) {
-    event.respondWith(
-      staleWhileRevalidate(request, ASSET_CACHE, {
-        maxEntries: ASSET_MAX_ENTRIES,
-        maxAgeMs: ASSET_MAX_AGE_MS,
-      }),
-    );
     return;
   }
 

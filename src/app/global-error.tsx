@@ -4,6 +4,45 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import * as Sentry from '@sentry/nextjs';
 
+const PWA_ERROR_RECOVERY_KEY = 'ku_pwa_error_recovery_v1';
+
+async function recoverFromStaleServiceWorkerState() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    if (window.sessionStorage.getItem(PWA_ERROR_RECOVERY_KEY) === '1') {
+      return;
+    }
+    window.sessionStorage.setItem(PWA_ERROR_RECOVERY_KEY, '1');
+  } catch {
+    const marker = `[${PWA_ERROR_RECOVERY_KEY}]`;
+    if (window.name.includes(marker)) {
+      return;
+    }
+    window.name = `${window.name}${marker}`;
+  }
+
+  try {
+    if ('caches' in window) {
+      const cacheNames = await window.caches.keys();
+      await Promise.all(
+        cacheNames
+          .filter((name) => name.startsWith('offline-') || name.startsWith('asset-') || name.startsWith('image-'))
+          .map((name) => window.caches.delete(name)),
+      );
+    }
+
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(registrations.map((registration) => registration.unregister()));
+    }
+  } finally {
+    window.location.reload();
+  }
+}
+
 export default function GlobalError({
   error,
   reset,
@@ -13,6 +52,7 @@ export default function GlobalError({
 }) {
   useEffect(() => {
     Sentry.captureException(error);
+    void recoverFromStaleServiceWorkerState();
   }, [error]);
 
   return (

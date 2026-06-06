@@ -26,6 +26,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const PWA_ENABLED = process.env.NEXT_PUBLIC_PWA_ENABLED === 'true';
+const SW_RECOVERY_RELOAD_KEY = 'ku_pwa_sw_recovery_reload_v1';
 
 function isStandaloneMode() {
   if (typeof window === 'undefined') {
@@ -51,6 +52,23 @@ function isBeforeInstallPromptEvent(event: Event): event is BeforeInstallPromptE
 
 function canRegisterServiceWorker() {
   return typeof window !== 'undefined' && window.isSecureContext && 'serviceWorker' in navigator;
+}
+
+function reloadOnceAfterServiceWorkerUpdate() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    if (window.sessionStorage.getItem(SW_RECOVERY_RELOAD_KEY) === '1') {
+      return;
+    }
+    window.sessionStorage.setItem(SW_RECOVERY_RELOAD_KEY, '1');
+  } catch {
+    // If storage is unavailable, still reload once for this update event.
+  }
+
+  window.location.reload();
 }
 
 export default function PwaBootstrap() {
@@ -118,6 +136,12 @@ export default function PwaBootstrap() {
       window.dispatchEvent(new CustomEvent('ku-pwa-installed'));
     };
 
+    const onServiceWorkerMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'ku-pwa-sw-activated') {
+        reloadOnceAfterServiceWorkerUpdate();
+      }
+    };
+
     window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt as EventListener);
     window.addEventListener('appinstalled', onAppInstalled);
 
@@ -127,7 +151,11 @@ export default function PwaBootstrap() {
       }
 
       try {
+        navigator.serviceWorker.addEventListener('controllerchange', reloadOnceAfterServiceWorkerUpdate);
+        navigator.serviceWorker.addEventListener('message', onServiceWorkerMessage);
+
         const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        void registration.update();
         window.dispatchEvent(
           new CustomEvent('ku-pwa-sw-registered', {
             detail: { scope: registration.scope },
@@ -144,6 +172,10 @@ export default function PwaBootstrap() {
     void registerServiceWorker();
 
     return () => {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.removeEventListener('controllerchange', reloadOnceAfterServiceWorkerUpdate);
+        navigator.serviceWorker.removeEventListener('message', onServiceWorkerMessage);
+      }
       if (mediaQuery) {
         if (typeof mediaQuery.removeEventListener === 'function') {
           mediaQuery.removeEventListener('change', handleMediaQueryChange);
