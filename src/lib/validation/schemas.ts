@@ -41,7 +41,7 @@ export const createProductSchema = z
     categoryId: z.string().trim().min(1, { message: 'Select a valid category.' }),
     listingType: productListingTypeEnum.default('sale'),
     rentalTerm: z
-      .union([propertyRentalTermEnum, z.literal('')])
+      .union([propertyRentalTermEnum, z.literal(''), z.null()])
       .optional()
       .transform((value) => {
         if (!value) return null;

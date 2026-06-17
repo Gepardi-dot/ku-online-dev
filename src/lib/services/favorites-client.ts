@@ -3,6 +3,7 @@
 import { createClient } from '@/utils/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+import { createRealtimeTopic } from '@/lib/services/realtime-topic';
 import { signStoragePaths } from '@/lib/services/storage-sign-client';
 
 const supabase = createClient();
@@ -369,7 +370,7 @@ export function subscribeToFavorites(
   handler: (payload: { type: 'INSERT' | 'DELETE' | 'UPDATE'; favoriteId: string; productId: string }) => void,
 ): RealtimeChannel {
   return supabase
-    .channel(`favorites-${userId}`)
+    .channel(createRealtimeTopic('favorites', userId))
     .on(
       'postgres_changes',
       {

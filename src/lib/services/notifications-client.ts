@@ -3,6 +3,8 @@
 import { createClient } from '@/utils/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
+import { createRealtimeTopic } from '@/lib/services/realtime-topic';
+
 const supabase = createClient();
 
 export interface NotificationRecord {
@@ -93,7 +95,7 @@ export function subscribeToNotifications(
   handler: (notification: NotificationRecord, eventType: 'INSERT' | 'UPDATE' | 'DELETE') => void,
 ): RealtimeChannel {
   return supabase
-    .channel(`notifications-${userId}`)
+    .channel(createRealtimeTopic('notifications', userId))
     .on(
       'postgres_changes',
       {

@@ -17,9 +17,15 @@ export async function resolve(specifier, context, nextResolve) {
 
   if (specifier.startsWith('@/')) {
     const relativePath = specifier.slice(2);
+    const hasJsExtension = relativePath.endsWith('.js') || relativePath.endsWith('.mjs');
     const candidates = [
-      path.join(rootDir, 'dist-tests', `${relativePath}.js`),
-      path.join(rootDir, 'dist-tests', `${relativePath}.mjs`),
+      path.join(rootDir, 'dist-tests', relativePath),
+      ...(hasJsExtension
+        ? []
+        : [
+            path.join(rootDir, 'dist-tests', `${relativePath}.js`),
+            path.join(rootDir, 'dist-tests', `${relativePath}.mjs`),
+          ]),
       path.join(rootDir, 'dist-tests', relativePath, 'index.js'),
       path.join(rootDir, 'dist-tests', relativePath, 'index.mjs'),
     ];

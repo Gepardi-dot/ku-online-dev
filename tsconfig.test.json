@@ -9,9 +9,11 @@
                         },
     "include":  [
                     "src/lib/services/products.ts",
+                    "src/data/category-ui-config.ts",
                     "src/lib/services/__tests__/**/*.ts",
                     "src/lib/products/__tests__/**/*.ts",
                     "src/lib/products/filter-params.ts",
-                    "src/lib/auth/**/*.ts"
+                    "src/lib/auth/**/*.ts",
+                    "src/lib/validation/**/*.ts"
                 ]
 }

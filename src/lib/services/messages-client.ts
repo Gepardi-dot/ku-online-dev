@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 import { getPublicEnv } from '@/lib/env-public';
+import { createRealtimeTopic } from '@/lib/services/realtime-topic';
 import { chatTimingNow, isChatTimingEnabled, logChatTiming } from '@/lib/services/chat-timing';
 import { signStoragePaths } from '@/lib/services/storage-sign-client';
 
@@ -541,7 +542,7 @@ export function subscribeToConversation(
   handler: (message: MessageRecord) => void,
 ): RealtimeChannel {
   return supabase
-    .channel(`conversation-${conversationId}`)
+    .channel(createRealtimeTopic('conversation', conversationId))
     .on(
       'postgres_changes',
       {
@@ -562,7 +563,7 @@ export function subscribeToIncomingMessages(
   handler: (message: MessageRecord) => void,
 ): RealtimeChannel {
   return supabase
-    .channel(`inbox-${userId}`)
+    .channel(createRealtimeTopic('inbox', userId))
     .on(
       'postgres_changes',
       {
