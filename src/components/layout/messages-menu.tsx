@@ -152,7 +152,7 @@ export default function MessagesMenu({
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [draft, setDraft] = useState("");
-  const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth < 768 : false));
+  const [isMobile, setIsMobile] = useState(false);
   const [mobileView, setMobileView] = useState<"list" | "thread">("list");
   const [cardHeight, setCardHeight] = useState<number>(420);
   const [cardOffsetTop, setCardOffsetTop] = useState<number>(56);
