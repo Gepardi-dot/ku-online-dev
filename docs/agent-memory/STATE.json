@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-18T20:48:17.834Z",
+  "last_updated_utc": "2026-06-18T21:18:00.000Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -29,12 +29,12 @@
     "current_task": {
       "id": "candidate-e-homepage-sell-performance",
       "title": "Homepage and sell-page first-paint hardening",
-      "status": "validated_local",
+      "status": "deployed_with_slo_failure",
       "phase": "post-pwa-performance"
     },
     "next_task": {
-      "id": "candidate-e-review-push",
-      "title": "Review final diff and wait for user approval before push"
+      "id": "candidate-f-homepage-slo-followup",
+      "title": "Resolve or burn in homepage poor-vitals governance failure"
     },
     "latest_user_request": "proceed"
   },
@@ -42,7 +42,8 @@
     "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
     "This repository currently has no first-class PWA implementation.",
     "Current proxy matcher may need exclusions for service worker and manifest routes during PWA rollout.",
-    "Candidate E improves homepage/sell paint: brand logo now uses optimized Next/Image asset, category icons use optimized WebP assets, homepage category/filter shell streams separately from product grid, and /sell receives server-provided categories with client fallback only."
+    "Candidate E improves homepage/sell paint: brand logo now uses optimized Next/Image asset, category icons use optimized WebP assets, homepage category/filter shell streams separately from product grid, and /sell receives server-provided categories with client fallback only.",
+    "Candidate E deployed to production as commit 42e436f / Vercel dpl_7WHHzv7L6B3cp8u3tzRDqYKjcAgM. CI, Vercel, production HTTP smoke, browser smoke, and incident rehearsal passed, but strict PWA governance failed on poor-vitals rate 25.00% > 15.00%."
   ],
   "decisions": [
     {
@@ -57,7 +58,8 @@
   "open_risks": [
     "Service worker caching can cause stale authenticated behavior if API routes are cached incorrectly.",
     "Proxy matcher may interfere with service worker delivery if not explicitly excluded.",
-    "Local browser validation still shows 400s for two local Supabase product image resources on /; this appears tied to local storage/test data, not the Candidate E image asset changes."
+    "Local browser validation still shows 400s for two local Supabase product image resources on /; this appears tied to local storage/test data, not the Candidate E image asset changes.",
+    "Production read-only telemetry after Candidate E showed one / FCP poor sample at 3740ms and one / LCP needs-improvement sample at 3792ms with good TTFB. The strict launch gate remains red until burn-in or further homepage optimization clears it."
   ],
   "verification_log": [
     {
@@ -169,6 +171,11 @@
       "timestamp_utc": "2026-06-18T20:48:17.834Z",
       "check": "Candidate E homepage/sell performance hardening validated locally",
       "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-18T21:18:00.000Z",
+      "check": "Candidate E production deploy, smoke, and SLO governance",
+      "status": "mixed"
     }
   ]
 }

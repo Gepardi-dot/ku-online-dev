@@ -434,3 +434,12 @@
 - details: Added optimized WebP logo/category assets, moved BrandLogo to Next/Image, made known homepage categories prefer optimized icons over DB icon paths, reduced category icon eager priority to the first icon, split homepage category/filter controls from product grid under separate Suspense boundaries, and server-seeded sell categories with client fallback only.
 - verification: `npm exec eslint -- changed files` passed; `npm run lint` passed; `npm run typecheck` passed; `npm run build` passed with command-scoped env and placeholder `ADMIN_REVALIDATE_TOKEN`; local production server health returned 200; Playwright timing checks showed `/` FCP about 1732ms and `/sell` FCP about 536ms, with `/sell` no longer issuing the client categories request.
 - risks: Local `/` validation still showed two 400s for local Supabase product image resources, consistent with local storage/test data rather than this candidate's static asset changes. Production deployment and SLO governance still need a separate approval step.
+
+## 2026-06-18T21:18:00.000Z
+- type: verification
+- task_id: candidate-e-homepage-sell-performance
+- task_title: Candidate E production deployment and burn-in check
+- summary: Pushed Candidate E to `main`, verified CI and Vercel production deployment, and ran live smoke/SLO checks.
+- details: Commit `42e436f` deployed as Vercel `dpl_7WHHzv7L6B3cp8u3tzRDqYKjcAgM` and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`. Production HTTP and Playwright smoke passed for `/`, `/sell`, and `/api/health`; optimized static assets were used and `/sell` avoided the client categories request. PWA incident rehearsal passed. Strict PWA governance failed because poor-vitals rate was 25.00% over the 15.00% launch gate.
+- verification: GitHub CI `27789147319` passed; production smoke passed; incident rehearsal passed; read-only Supabase aggregate telemetry showed one `/` FCP poor sample at 3740ms, one `/` LCP needs-improvement sample at 3792ms, and TTFB good at 68.2ms in the 60-minute window.
+- risks: Candidate E is deployed and operational, but the strict production launch gate is not green. Next phase should either burn in until the low-volume poor sample ages out or continue homepage render/resource optimization before broader launch confidence claims.
