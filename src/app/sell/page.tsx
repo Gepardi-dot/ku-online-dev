@@ -4,6 +4,9 @@ import { isModerator } from '@/lib/auth/roles';
 import { getEnv } from '@/lib/env';
 import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
+import { SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
+import { mapCategoriesForUi, type CategoryOption } from '@/data/category-labels';
+import { getCachedCategories } from '@/lib/services/products-cache';
 import SellForm from './sell-form';
 
 export const runtime = 'nodejs';
@@ -85,11 +88,19 @@ export default async function SellPage({
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
-  const storeContext = await resolveSellStoreContext(storeParam, user);
+  const [storeContext, categoriesRaw] = await Promise.all([
+    resolveSellStoreContext(storeParam, user),
+    getCachedCategories(),
+  ]);
+  const initialCategories: CategoryOption[] = mapCategoriesForUi(
+    categoriesRaw
+      .filter((category) => category.id !== SPONSORS_CATEGORY_ID)
+      .map((category) => ({ id: category.id, name: category.name })),
+  );
 
   return (
     <AppLayout user={user}>
-      <SellForm user={user} storeContext={storeContext} />
+      <SellForm user={user} storeContext={storeContext} initialCategories={initialCategories} />
     </AppLayout>
   );
 }

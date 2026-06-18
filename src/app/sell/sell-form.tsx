@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { getPublicEnv } from '@/lib/env-public';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
-import { mapCategoriesForUi, type RawCategoryRow } from '@/data/category-labels';
+import { mapCategoriesForUi, type CategoryOption, type RawCategoryRow } from '@/data/category-labels';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -123,6 +123,7 @@ interface SellFormData {
 
 interface SellFormProps {
   user: User | null;
+  initialCategories?: CategoryOption[];
   storeContext?: {
     id: string;
     name: string;
@@ -131,9 +132,11 @@ interface SellFormProps {
   } | null;
 }
 
-export default function SellForm({ user, storeContext = null }: SellFormProps) {
+export default function SellForm({ user, initialCategories = [], storeContext = null }: SellFormProps) {
   const [loading, setLoading] = useState(false);
   const [storageBusy, setStorageBusy] = useState(false);
+  const initialCategoryOptions = useMemo(() => mapCategoriesForUi(initialCategories), [initialCategories]);
+  const hasInitialCategories = initialCategoryOptions.length > 0;
   const [formData, setFormData] = useState<SellFormData>({
     title: '',
     description: '',
@@ -147,8 +150,8 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
     color: '',
     images: [] as string[],
   });
-  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
-  const [isCategoriesLoading, setIsCategoriesLoading] = useState(true);
+  const [categories, setCategories] = useState<CategoryOption[]>(initialCategoryOptions);
+  const [isCategoriesLoading, setIsCategoriesLoading] = useState(!hasInitialCategories);
   const [currentUser, setCurrentUser] = useState<User | null>(user);
   const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
   const [isDragActive, setIsDragActive] = useState(false);
@@ -552,6 +555,16 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
   ].join(' ');
 
   useEffect(() => {
+    if (!hasInitialCategories) return;
+    setCategories(initialCategoryOptions);
+    setIsCategoriesLoading(false);
+  }, [hasInitialCategories, initialCategoryOptions]);
+
+  useEffect(() => {
+    if (hasInitialCategories) {
+      return;
+    }
+
     let isMounted = true;
 
     const loadCategories = async () => {
@@ -591,7 +604,7 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
     return () => {
       isMounted = false;
     };
-  }, [supabase, t]);
+  }, [hasInitialCategories, supabase, t]);
 
   useEffect(() => {
     if (currentUser) {

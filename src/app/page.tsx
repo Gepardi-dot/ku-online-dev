@@ -17,10 +17,8 @@ import { createClient } from '@/utils/supabase/server';
 import { getProducts, searchProducts } from '@/lib/services/products';
 import { getCachedCategories, getCachedLocations } from '@/lib/services/products-cache';
 import {
-  DEFAULT_FILTER_VALUES,
   parseProductQueryParams,
   postedWithinToDate,
-  type ProductsFilterValues,
   createProductsSearchParams,
 } from '@/lib/products/filter-params';
 import ProductGridSkeleton from '@/components/products/ProductGridSkeleton';
@@ -37,7 +35,7 @@ import {
   SPONSORS_CATEGORY_ID,
 } from '@/data/category-ui-config';
 import { getServerLocale } from '@/lib/locale/server';
-import { LocaleMessages, rtlLocales, translations } from '@/lib/locale/dictionary';
+import { LocaleMessages, rtlLocales, translations, type Locale } from '@/lib/locale/dictionary';
 import type { MarketplaceCategory } from '@/lib/services/products';
 
 interface SearchPageParams {
@@ -57,69 +55,20 @@ interface SearchPageProps {
   searchParams: Promise<SearchPageParams>;
 }
 
-interface ProductsListProps {
+interface HomepageDataProps {
+  searchParams: Promise<SearchPageParams>;
+  messages: LocaleMessages;
+  locale: Locale;
+}
+
+interface HomepageProductsProps {
   searchParams: Promise<SearchPageParams>;
   messages: LocaleMessages;
   viewerId?: string | null;
   viewerIsAdmin?: boolean;
 }
 
-function buildHomepageQuery(values: ProductsFilterValues) {
-  const params = new URLSearchParams();
-
-  const entries: Record<string, string> = {
-    category: values.category,
-    condition: values.condition,
-    listingType: values.listingType,
-    rentalTerm: values.rentalTerm,
-    location: values.location,
-    minPrice: values.minPrice.trim(),
-    maxPrice: values.maxPrice.trim(),
-    sort: values.sort !== 'newest' ? values.sort : '',
-    postedWithin: values.postedWithin !== 'any' ? values.postedWithin : '',
-  };
-
-  const searchValue = values.search.trim();
-  if (searchValue) {
-    params.set('search', searchValue);
-  }
-
-  for (const [key, value] of Object.entries(entries)) {
-    if (value) {
-      params.set(key, value);
-    }
-  }
-
-  const query = params.toString();
-  return query ? `/?${query}` : '/';
-}
-
-async function ProductsList({ searchParams, messages, viewerId, viewerIsAdmin = false }: ProductsListProps) {
-  const params = await searchParams;
-  const { initialValues, filters, sort, postedWithin } = parseProductQueryParams(
-    params as unknown as Record<string, string | undefined>,
-  );
-  const locale = await getServerLocale();
-  const categoriesDirection = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
-  const createdAfter = postedWithinToDate(postedWithin);
-
-  const filtersWithDate = {
-    ...filters,
-    createdAfter,
-  };
-
-  const shouldUseEdgeSearch = Boolean(filters.search) && postedWithin === 'any';
-
-  const productPromise = shouldUseEdgeSearch
-    ? searchProducts(filtersWithDate, 30, 0, sort).then((result) => result.items)
-    : getProducts(filtersWithDate, 30, 0, sort);
-
-  const [products, categoriesRaw, locations] = await Promise.all([
-    productPromise,
-    getCachedCategories(),
-    getCachedLocations(),
-  ]);
-
+function getOrderedCategories(categoriesRaw: MarketplaceCategory[]) {
   // Map backend categories to a unique, ordered set based on CATEGORY_UI_CONFIG.
   // This guarantees we only show each logical category (e.g. Cars) once even if
   // multiple backend rows (Cars, Motors, Vehicles) map to the same concept.
@@ -144,17 +93,27 @@ async function ProductsList({ searchParams, messages, viewerId, viewerIsAdmin = 
       return fallback;
     }
     return null;
-  }).filter((category): category is (typeof categoriesRaw)[number] => Boolean(category));
+  }).filter((category): category is MarketplaceCategory => Boolean(category));
 
-  const orderedCategories = [...categories].sort((a, b) => {
+  return [...categories].sort((a, b) => {
     const aIsSponsors = a.id === SPONSORS_CATEGORY_ID;
     const bIsSponsors = b.id === SPONSORS_CATEGORY_ID;
     if (aIsSponsors === bIsSponsors) return 0;
     return aIsSponsors ? -1 : 1;
   });
+}
 
-  const viewParams = createProductsSearchParams(initialValues);
-  const viewAllHref = viewParams.toString() ? `/products?${viewParams.toString()}` : '/products';
+async function HomepageCategoryControls({ searchParams, messages, locale }: HomepageDataProps) {
+  const params = await searchParams;
+  const { initialValues } = parseProductQueryParams(
+    params as unknown as Record<string, string | undefined>,
+  );
+  const categoriesDirection = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
+  const [categoriesRaw, locations] = await Promise.all([
+    getCachedCategories(),
+    getCachedLocations(),
+  ]);
+  const orderedCategories = getOrderedCategories(categoriesRaw);
 
   return (
     <>
@@ -184,7 +143,7 @@ async function ProductsList({ searchParams, messages, viewerId, viewerIsAdmin = 
                 const label = localizedLabel;
                 const labelLc = (label ?? '').toLowerCase();
                 const isFree = ['free', 'مجاني', 'مجانا', 'فري', 'بلاش'].some((kw) => labelLc.includes(kw));
-                const params = isFree
+                const categoryParams = isFree
                   ? createProductsSearchParams({
                       ...initialValues,
                       category: '',
@@ -199,7 +158,7 @@ async function ProductsList({ searchParams, messages, viewerId, viewerIsAdmin = 
                       rentalTerm: '',
                       freeOnly: false,
                     });
-                const qs = params.toString();
+                const qs = categoryParams.toString();
                 const categoryHref = isSponsors ? '/sponsors' : qs ? `/products?${qs}` : '/products';
 
                 const swatches = [
@@ -221,16 +180,16 @@ async function ProductsList({ searchParams, messages, viewerId, viewerIsAdmin = 
                 const isCarsOrFashion = isCars || isFashion;
                 const needsExtraZoom = isFashion || isSports;
 
-                // Decide how to render the icon: PNG from public/ or emoji fallback
                 const mapped = CATEGORY_ICON_MAP[(category.name || '').toLowerCase()] ?? '';
                 const rawIcon = typeof category.icon === 'string' ? category.icon.trim() : '';
                 const isDbImage = rawIcon && /\.(png|webp|jpg|jpeg|gif|svg)$/i.test(rawIcon);
-                const iconPath = isDbImage ? rawIcon : mapped;
+                const iconPath = mapped || (isDbImage ? rawIcon : '');
                 const isLocalImage =
                   iconPath &&
                   !/^https?:\/\//i.test(iconPath) &&
                   /\.(png|webp|jpg|jpeg|gif|svg)$/i.test(iconPath);
                 const normalizedSrc = isLocalImage ? (iconPath.startsWith('/') ? iconPath : `/${iconPath}`) : '';
+                const shouldPrioritizeCategoryIcon = idx === 0;
 
                 const iconWrapperClass = isSponsors
                   ? 'relative inline-flex h-[3.9rem] w-[3.9rem] sm:h-[3.9rem] sm:w-[3.9rem] md:h-[4.1rem] md:w-[4.1rem] items-center justify-center overflow-hidden rounded-[20px] bg-white ring-2 ring-rose-300/70 shadow-[0_10px_22px_rgba(244,63,94,0.32),0_0_18px_rgba(59,130,246,0.2)]'
@@ -275,9 +234,9 @@ async function ProductsList({ searchParams, messages, viewerId, viewerIsAdmin = 
                               ? 'object-cover scale-[1.9]'
                               : 'object-cover scale-[1.8]'
                           }
-                          priority={idx < 4}
-                          loading={idx < 4 ? 'eager' : 'lazy'}
-                          quality={75}
+                          priority={shouldPrioritizeCategoryIcon}
+                          loading={shouldPrioritizeCategoryIcon ? undefined : 'lazy'}
+                          quality={70}
                           placeholder="blur"
                           blurDataURL={CATEGORY_BLUR_PLACEHOLDER}
                           unoptimized={false}
@@ -295,8 +254,8 @@ async function ProductsList({ searchParams, messages, viewerId, viewerIsAdmin = 
         </div>
       </section>
 
-      <section id="products" className="pt-2 pb-10 bg-accent">
-        <div className="container mx-auto px-4 space-y-3">
+      <section className="pt-2 bg-accent">
+        <div className="container mx-auto px-4">
           <ProductsFilterBar
             categories={orderedCategories}
             locations={locations}
@@ -305,7 +264,37 @@ async function ProductsList({ searchParams, messages, viewerId, viewerIsAdmin = 
             showCategorySelect={false}
             priceInputMode="select"
           />
+        </div>
+      </section>
+    </>
+  );
+}
 
+async function HomepageProducts({ searchParams, messages, viewerId, viewerIsAdmin = false }: HomepageProductsProps) {
+  const params = await searchParams;
+  const { initialValues, filters, sort, postedWithin } = parseProductQueryParams(
+    params as unknown as Record<string, string | undefined>,
+  );
+  const createdAfter = postedWithinToDate(postedWithin);
+
+  const filtersWithDate = {
+    ...filters,
+    createdAfter,
+  };
+
+  const shouldUseEdgeSearch = Boolean(filters.search) && postedWithin === 'any';
+
+  const productPromise = shouldUseEdgeSearch
+    ? searchProducts(filtersWithDate, 30, 0, sort).then((result) => result.items)
+    : getProducts(filtersWithDate, 30, 0, sort);
+
+  const viewParams = createProductsSearchParams(initialValues);
+  const viewAllHref = viewParams.toString() ? `/products?${viewParams.toString()}` : '/products';
+  const products = await productPromise;
+
+  return (
+      <section id="products" className="pt-3 pb-10 bg-accent">
+        <div className="container mx-auto px-4 space-y-3">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-2xl md:text-3xl font-bold">
               {messages.homepage.latest}
@@ -342,7 +331,6 @@ async function ProductsList({ searchParams, messages, viewerId, viewerIsAdmin = 
           )}
         </div>
       </section>
-    </>
   );
 }
 
@@ -361,12 +349,39 @@ export default async function MarketplacePage({ searchParams }: SearchPageProps)
       <div className="flex flex-col">
         <Suspense
           fallback={
-            <div className="container mx-auto px-4 py-6">
-              <ProductGridSkeleton count={12} />
-            </div>
+            <>
+              <section className="py-1 bg-linear-to-b from-white to-[#fff4e5]">
+                <div className="container mx-auto flex gap-2 overflow-hidden px-4 py-2">
+                  {Array.from({ length: 8 }).map((_, index) => (
+                    <div key={index} className="h-20 w-24 shrink-0 animate-pulse rounded-lg bg-orange-100/70" />
+                  ))}
+                </div>
+              </section>
+              <section className="pt-2 bg-accent">
+                <div className="container mx-auto px-4">
+                  <div className="h-14 animate-pulse rounded-2xl bg-white/80" />
+                </div>
+              </section>
+            </>
           }
         >
-          <ProductsList
+          <HomepageCategoryControls
+            searchParams={searchParams}
+            messages={messages}
+            locale={locale}
+          />
+        </Suspense>
+
+        <Suspense
+          fallback={
+            <section id="products" className="pt-3 pb-10 bg-accent">
+              <div className="container mx-auto px-4 py-6">
+                <ProductGridSkeleton count={12} />
+              </div>
+            </section>
+          }
+        >
+          <HomepageProducts
             searchParams={searchParams}
             messages={messages}
             viewerId={user?.id ?? null}

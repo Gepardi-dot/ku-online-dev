@@ -425,3 +425,12 @@
 - summary: Validated A/B install variant report command against production after deploy.
 - details: Executed pwa:install-variant-report against https://www.kubazar.net with 60-minute window. Command executed successfully and returned zero counts for both variants (expected immediately post-deploy before user exposure).
 - verification: npm run pwa:install-variant-report -- --base-url <prod_url> --alert-secret <secret> --window-minutes 60
+
+## 2026-06-18T20:48:17.834Z
+- type: implementation
+- task_id: candidate-e-homepage-sell-performance
+- task_title: Homepage and sell-page first-paint hardening
+- summary: Implemented Candidate E in an isolated worktree to improve first paint on `/` and `/sell` without changing auth, listing creation, PWA rollout, or telemetry thresholds.
+- details: Added optimized WebP logo/category assets, moved BrandLogo to Next/Image, made known homepage categories prefer optimized icons over DB icon paths, reduced category icon eager priority to the first icon, split homepage category/filter controls from product grid under separate Suspense boundaries, and server-seeded sell categories with client fallback only.
+- verification: `npm exec eslint -- changed files` passed; `npm run lint` passed; `npm run typecheck` passed; `npm run build` passed with command-scoped env and placeholder `ADMIN_REVALIDATE_TOKEN`; local production server health returned 200; Playwright timing checks showed `/` FCP about 1732ms and `/sell` FCP about 536ms, with `/sell` no longer issuing the client categories request.
+- risks: Local `/` validation still showed two 400s for local Supabase product image resources, consistent with local storage/test data rather than this candidate's static asset changes. Production deployment and SLO governance still need a separate approval step.

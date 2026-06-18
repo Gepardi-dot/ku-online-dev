@@ -16,7 +16,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Smartphones and iPads',
     labelAr: 'الهواتف والأيباد',
     labelKu: 'مۆبایل و ئایپاد',
-    icon: '/Smartphones and ipads.png',
+    icon: '/optimized/category-icons/smartphones-ipads.webp',
     matchNames: ['smartphones and ipads', 'smartphones', 'smartphone'],
   },
   {
@@ -24,7 +24,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Stores and Sponsors',
     labelAr: 'المحلات والرعاة',
     labelKu: 'فرۆشگاکان و سپۆنسەرەکان',
-    icon: '/Sponsor.png.png',
+    icon: '/optimized/category-icons/sponsors.webp',
     matchNames: [
       'stores and sponsors',
       'stores & sponsors',
@@ -39,7 +39,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Fashion',
     labelAr: 'أزياء',
     labelKu: 'فەشن',
-    icon: '/Fashion (2) (1).png',
+    icon: '/optimized/category-icons/fashion.webp',
     matchNames: ['fashion'],
   },
   {
@@ -47,7 +47,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Electronics',
     labelAr: 'إلكترونيات',
     labelKu: 'ئێلێکترۆنیات',
-    icon: '/Electronics (1).png',
+    icon: '/optimized/category-icons/electronics.webp',
     matchNames: ['electronics'],
   },
   {
@@ -55,7 +55,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Sports',
     labelAr: 'رياضة',
     labelKu: 'وەرزشی',
-    icon: '/Sports (2) (1).png',
+    icon: '/optimized/category-icons/sports.webp',
     matchNames: ['sports'],
   },
   {
@@ -63,7 +63,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Home Appliance',
     labelAr: 'أجهزة منزلية',
     labelKu: 'کەرەساتی ناو ماڵ',
-    icon: '/Home appliance.png',
+    icon: '/optimized/category-icons/home-appliance.webp',
     matchNames: ['home appliance', 'home & garden', 'home and garden'],
   },
   {
@@ -71,7 +71,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Kids & Toys',
     labelAr: 'ألعاب الأطفال',
     labelKu: 'منداڵ و یاریەکان',
-    icon: '/Kids & Toys (1).png',
+    icon: '/optimized/category-icons/kids-toys.webp',
     matchNames: ['kids & toys', 'kids and toys', 'toys'],
   },
   {
@@ -79,7 +79,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Furniture',
     labelAr: 'أثاث',
     labelKu: 'کەلوپەلی ناو ماڵ',
-    icon: '/Furniture (1).png',
+    icon: '/optimized/category-icons/furniture.webp',
     matchNames: ['furniture'],
   },
   {
@@ -87,7 +87,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Services',
     labelAr: 'خدمات',
     labelKu: 'خزمەتگوزاری',
-    icon: '/Services (1).png',
+    icon: '/optimized/category-icons/services.webp',
     matchNames: ['services'],
   },
   {
@@ -95,7 +95,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Cars',
     labelAr: 'سيارات',
     labelKu: 'ئۆتۆمبێل',
-    icon: '/Cars (2) (1).png',
+    icon: '/optimized/category-icons/cars.webp',
     matchNames: ['cars', 'motors', 'vehicles'],
   },
   {
@@ -103,7 +103,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Property',
     labelAr: 'عقارات',
     labelKu: 'خانوو',
-    icon: '/Property.png',
+    icon: '/optimized/category-icons/property.webp',
     matchNames: ['property', 'real estate'],
   },
   {
@@ -111,7 +111,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Free',
     labelAr: 'مجاني',
     labelKu: 'بێبەرامبەر',
-    icon: '/Free (2) (1).png',
+    icon: '/optimized/category-icons/free.webp',
     matchNames: ['free'],
   },
   {
@@ -119,7 +119,7 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Others',
     labelAr: 'أخرى',
     labelKu: 'هیتر',
-    icon: '/Others (2) (1).png',
+    icon: '/optimized/category-icons/others.webp',
     matchNames: ['others'],
   },
 ];
