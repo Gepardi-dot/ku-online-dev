@@ -56,6 +56,14 @@ const ACCEPTED_FILE_LABELS = ['JPG', 'PNG', 'WebP', 'AVIF'];
 const ACCEPTED_FILES_DESCRIPTION = ACCEPTED_FILE_LABELS.join(', ');
 const { NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET } = getPublicEnv();
 const STORAGE_BUCKET = NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'product-images';
+const isAuthSessionMissingError = (error: unknown) => {
+  if (!error || typeof error !== 'object') return false;
+  const maybeError = error as { name?: unknown; message?: unknown };
+  return (
+    maybeError.name === 'AuthSessionMissingError' ||
+    (typeof maybeError.message === 'string' && maybeError.message.includes('Auth session missing'))
+  );
+};
 const SELL_COLOR_TOKENS = [
   'orange',
   'black',
@@ -593,7 +601,9 @@ export default function SellForm({ user, storeContext = null }: SellFormProps) {
     const resolveUser = async () => {
       const { data, error } = await supabase.auth.getUser();
       if (error) {
-        console.error('Error resolving current user', error);
+        if (!isAuthSessionMissingError(error)) {
+          console.error('Error resolving current user', error);
+        }
         return;
       }
 
