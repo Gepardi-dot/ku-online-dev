@@ -67,6 +67,7 @@ function usage() {
 }
 
 function toInteger(value, fallback, options = {}) {
+  if (typeof value === 'string' && value.trim().length === 0) return fallback;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   const floored = Math.floor(parsed);
@@ -76,6 +77,7 @@ function toInteger(value, fallback, options = {}) {
 }
 
 function toFloat(value, fallback, options = {}) {
+  if (typeof value === 'string' && value.trim().length === 0) return fallback;
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
   if (typeof options.min === 'number' && parsed < options.min) return fallback;
