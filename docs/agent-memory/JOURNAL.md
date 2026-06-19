@@ -461,3 +461,12 @@
 - details: Added `src/lib/security/rate-limit-store.ts` with memory fallback, safe key normalization, atomic Upstash REST `EVAL` support, and fail-open fallback logging. Migrated existing API rate-limit call sites to await the shared limiter. Added focused limiter tests and updated the Node test alias loader for `server-only`. Normalized optional env values in `src/lib/env.ts` and `scripts/check-env.mjs` so empty optional provider strings do not break production build collection. Added optional validation for `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
 - verification: `npm run typecheck` pass; `npm test` pass; `npm run lint` pass; `npm run build` pass with Vercel production env loaded through a temp file; `npm run check:env` pass with Vercel production env loaded through a temp file.
 - risks: Production remains on in-memory fallback until Upstash Redis REST env vars are configured and deployed. No Supabase schema, RLS, storage, bucket, auth-provider, or migration changes were made.
+
+## 2026-06-19T11:22:08.049Z
+- type: deployment
+- task_id: candidate-g-durable-rate-limit-backend
+- task_title: Candidate G production promotion
+- summary: Pushed Candidate G to `main`; CI and Vercel production deployment passed; live production smoke passed.
+- details: Commit `5736b21` deployed as Vercel `dpl_2ZHSbR5dzBJCYAeuF6Tjh2CggrgU` and is aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`. GitHub direct push produced the known protected-branch bypass warning. A read-only Vercel env name check found no `UPSTASH`/`REDIS` env vars, so deployed rate limiting currently uses memory fallback.
+- verification: GitHub CI `27822555115` pass; Vercel deployment ready; live HTTP smoke passed for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`.
+- risks: Distributed Redis-backed enforcement is still pending provider setup. Next phase should configure `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, redeploy, and verify live behavior.

@@ -28,7 +28,9 @@ Validation:
 
 Known notes:
 - No Supabase schema, table, bucket, RLS, storage, or auth-provider changes were made.
-- Production will continue using the in-memory fallback until `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are configured in Vercel.
+- Candidate G is deployed to production as commit `5736b21` / Vercel `dpl_2ZHSbR5dzBJCYAeuF6Tjh2CggrgU`.
+- Live smoke passed for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`.
+- Production will continue using the in-memory fallback until `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are configured in Vercel. A read-only Vercel env name check found no `UPSTASH`/`REDIS` env vars after the Candidate G deploy.
 - If Upstash is configured but unavailable, the app logs a server warning and falls back to in-memory throttling to avoid taking down legitimate user flows.
 
 ## Previous Candidate

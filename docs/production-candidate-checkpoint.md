@@ -96,13 +96,17 @@ Validation performed:
 - `npm run lint`
 - `npm run build` with Vercel production env loaded through a temp file
 - `npm run check:env` with Vercel production env loaded through a temp file
+- GitHub CI run `27822555115` on commit `5736b21`: pass
+- Vercel production deployment `dpl_2ZHSbR5dzBJCYAeuF6Tjh2CggrgU`: ready and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`
+- Live HTTP smoke for `/api/health`, `/`, and `/sell`: pass
 
 Production interpretation:
 - The code now supports distributed fixed-window rate limiting through Upstash Redis REST using `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
 - Without those Vercel env vars, production intentionally falls back to the prior in-memory behavior.
+- A read-only Vercel env name check after deployment found no `UPSTASH`/`REDIS` env vars, so distributed Redis enforcement is not active yet.
 - If Upstash is configured but unavailable, the app fails open to in-memory limits and logs a server warning rather than breaking user flows.
 
 Risks and rollout notes:
 - This is a broad API-surface change because existing rate-limit calls are now async, but return shapes and route response behavior were preserved.
-- Actual production abuse resistance is not improved until the Upstash env vars are configured and a deployment containing Candidate G is promoted.
+- Actual distributed abuse resistance is not improved until the Upstash env vars are configured and redeployed.
 - Rollback is a normal git revert of Candidate G; no database rollback is required.
