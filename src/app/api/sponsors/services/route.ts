@@ -122,7 +122,7 @@ export const GET = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`sponsor-services:list:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`sponsor-services:list:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const res = NextResponse.json({ ok: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 });
       res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
@@ -141,7 +141,7 @@ export const GET = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`sponsor-services:list:user:${user.id}`, RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`sponsor-services:list:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
     res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));
@@ -199,7 +199,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`sponsor-services:create:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`sponsor-services:create:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const res = NextResponse.json({ ok: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 });
       res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
@@ -227,7 +227,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     }
   }
 
-  const userRate = checkRateLimit(`sponsor-services:create:user:${user.id}`, RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`sponsor-services:create:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
     res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));

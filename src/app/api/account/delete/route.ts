@@ -44,7 +44,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const rate = checkRateLimit(`account-delete:ip:${clientIdentifier}`, DELETE_RATE_LIMIT_PER_IP);
+    const rate = await checkRateLimit(`account-delete:ip:${clientIdentifier}`, DELETE_RATE_LIMIT_PER_IP);
     if (!rate.success) {
       return tooManyRequestsResponse('Too many delete attempts. Please try again shortly.', rate.retryAfter);
     }
@@ -80,7 +80,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`account-delete:user:${user.id}`, DELETE_RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`account-delete:user:${user.id}`, DELETE_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     return tooManyRequestsResponse('Too many delete attempts. Please try again later.', userRate.retryAfter);
   }

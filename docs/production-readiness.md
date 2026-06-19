@@ -1,6 +1,6 @@
 # KU BAZAR Production Readiness
 
-Last updated: 2026-06-18
+Last updated: 2026-06-19
 
 ## Current Status
 
@@ -9,6 +9,29 @@ KU BAZAR should still be treated as a production-capable beta until abuse resist
 The current hardening focus is to preserve the intended C2C marketplace behavior while improving production confidence. Intentional product decisions remain in place: public product browsing for signed-out users, contact/actions gated by sign-in, no marketplace payments for now, and automatic product lifecycle cleanup after roughly three months.
 
 ## Latest Candidate
+
+Candidate G: durable rate-limit backend preparation.
+
+Changes:
+- Added a shared fixed-window rate-limit backend with optional Upstash Redis REST enforcement.
+- Migrated existing API rate-limit call sites to await the shared async limiter while preserving current response shapes and retry headers.
+- Kept in-memory fallback for local development and for production fail-open behavior if Redis is unavailable.
+- Added focused unit tests for memory enforcement, Upstash REST command behavior, fallback behavior, and safe key normalization.
+- Normalized optional environment values so empty optional provider strings are treated as absent instead of breaking production build collection.
+
+Validation:
+- `npm run typecheck`: pass
+- `npm test`: pass
+- `npm run lint`: pass
+- `npm run build`: pass with Vercel production env loaded through a temp file
+- `npm run check:env`: pass with Vercel production env loaded through a temp file
+
+Known notes:
+- No Supabase schema, table, bucket, RLS, storage, or auth-provider changes were made.
+- Production will continue using the in-memory fallback until `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are configured in Vercel.
+- If Upstash is configured but unavailable, the app logs a server warning and falls back to in-memory throttling to avoid taking down legitimate user flows.
+
+## Previous Candidate
 
 Candidate E: homepage and sell-page first-paint hardening.
 
@@ -41,6 +64,7 @@ Known notes:
 ## Active Production Risks
 
 - Real-user homepage performance needs more evidence: the previous poor-vitals sample aged out, but the latest manual window had zero events, so there is not enough fresh real-user telemetry to claim the homepage is fully cleared.
+- Distributed rate limiting is now code-ready but not production-active until Upstash Redis REST env vars are configured and deployed.
 - C2C abuse workflows still need continuous hardening: reporting, blocking, moderation queues, repeat-offender detection, and auditability.
 - Server-side service-role paths should continue to receive ownership checks, tests, and audit logging.
 - Local and production environment parity should be checked before DB, auth, provider, storage, or deploy mutations.

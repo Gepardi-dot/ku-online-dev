@@ -27,7 +27,7 @@ function toSafeErrorLabel(error: unknown): string {
 export const GET = withSentryRoute(async (request: NextRequest) => {
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`health:ip:${clientIdentifier}`, HEALTH_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`health:ip:${clientIdentifier}`, HEALTH_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const response = NextResponse.json(
         { error: 'Too many health requests. Please try again later.' },

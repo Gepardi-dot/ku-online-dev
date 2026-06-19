@@ -47,7 +47,7 @@ export const GET = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`admin-sponsor-live-stats-visibility:get:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`admin-sponsor-live-stats-visibility:get:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const res = NextResponse.json({ ok: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 });
       res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
@@ -66,7 +66,7 @@ export const GET = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`admin-sponsor-live-stats-visibility:get:user:${user.id}`, RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`admin-sponsor-live-stats-visibility:get:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
     res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));
@@ -85,7 +85,7 @@ export const PATCH = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`admin-sponsor-live-stats-visibility:update:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`admin-sponsor-live-stats-visibility:update:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const res = NextResponse.json({ ok: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 });
       res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
@@ -104,7 +104,7 @@ export const PATCH = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`admin-sponsor-live-stats-visibility:update:user:${user.id}`, RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`admin-sponsor-live-stats-visibility:update:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
     res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));

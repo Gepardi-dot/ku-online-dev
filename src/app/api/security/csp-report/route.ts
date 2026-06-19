@@ -68,7 +68,7 @@ function summarizeReport(report: Record<string, unknown>): CspReportSummary {
 export const POST = withSentryRoute(async (request: Request) => {
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`csp-report:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`csp-report:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const response = new NextResponse(null, { status: 429 });
       response.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));

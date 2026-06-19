@@ -45,7 +45,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`sponsor-store-like:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`sponsor-store-like:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter);
     }
@@ -62,7 +62,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`sponsor-store-like:user:${user.id}`, RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`sponsor-store-like:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     return tooManyRequestsResponse(userRate.retryAfter);
   }

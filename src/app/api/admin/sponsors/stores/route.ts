@@ -248,7 +248,7 @@ export const GET = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`admin-sponsor-store:list:ip:${clientIdentifier}`, LIST_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`admin-sponsor-store:list:ip:${clientIdentifier}`, LIST_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       logSponsorError({
         requestId,
@@ -273,7 +273,7 @@ export const GET = withSentryRoute(async (request: Request) => {
   }
   const user = adminCheck.user;
 
-  const userRate = checkRateLimit(`admin-sponsor-store:list:user:${user.id}`, LIST_RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`admin-sponsor-store:list:user:${user.id}`, LIST_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     logSponsorError({
       requestId,
@@ -408,7 +408,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`admin-sponsor-store:create:ip:${clientIdentifier}`, CREATE_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`admin-sponsor-store:create:ip:${clientIdentifier}`, CREATE_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       logSponsorError({
         requestId,
@@ -433,7 +433,7 @@ export const POST = withSentryRoute(async (request: Request) => {
   }
   const user = adminCheck.user;
 
-  const userRate = checkRateLimit(`admin-sponsor-store:create:user:${user.id}`, CREATE_RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`admin-sponsor-store:create:user:${user.id}`, CREATE_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     logSponsorError({
       requestId,
@@ -493,7 +493,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     });
   }
 
-  const slugRate = checkRateLimit(`admin-sponsor-store:create:slug:${normalizedSlug}`, CREATE_RATE_LIMIT_PER_SLUG);
+  const slugRate = await checkRateLimit(`admin-sponsor-store:create:slug:${normalizedSlug}`, CREATE_RATE_LIMIT_PER_SLUG);
   if (!slugRate.success) {
     logSponsorError({
       requestId,

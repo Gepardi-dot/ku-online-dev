@@ -51,7 +51,7 @@ export const POST = withSentryRoute(async (req: NextRequest) => {
 
   const clientIdentifier = getClientIdentifier(req.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`admin-moderate:ip:${clientIdentifier}`, MODERATE_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`admin-moderate:ip:${clientIdentifier}`, MODERATE_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter);
     }
@@ -62,7 +62,7 @@ export const POST = withSentryRoute(async (req: NextRequest) => {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const tokenRate = checkRateLimit('admin-moderate:token', MODERATE_RATE_LIMIT_PER_TOKEN);
+  const tokenRate = await checkRateLimit('admin-moderate:token', MODERATE_RATE_LIMIT_PER_TOKEN);
   if (!tokenRate.success) {
     return tooManyRequestsResponse(tokenRate.retryAfter);
   }

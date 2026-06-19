@@ -40,7 +40,7 @@ const postHandler: (request: Request) => Promise<Response> = async (request: Req
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`block-user:ip:${clientIdentifier}`, BLOCK_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`block-user:ip:${clientIdentifier}`, BLOCK_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const res = NextResponse.json(
         { error: 'Too many block actions from this network. Please wait a moment.' },
@@ -74,7 +74,7 @@ const postHandler: (request: Request) => Promise<Response> = async (request: Req
     return NextResponse.json({ error: 'You cannot block yourself.' }, { status: 400 });
   }
 
-  const userRate = checkRateLimit(`block-user:user:${user.id}`, BLOCK_RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`block-user:user:${user.id}`, BLOCK_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json(
       { error: 'You have reached the block/unblock rate limit. Please try again later.' },
@@ -111,7 +111,7 @@ const deleteHandler: (request: Request) => Promise<Response> = async (request: R
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`block-user:ip:${clientIdentifier}`, BLOCK_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`block-user:ip:${clientIdentifier}`, BLOCK_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const res = NextResponse.json(
         { error: 'Too many block actions from this network. Please wait a moment.' },
@@ -139,7 +139,7 @@ const deleteHandler: (request: Request) => Promise<Response> = async (request: R
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`block-user:user:${user.id}`, BLOCK_RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`block-user:user:${user.id}`, BLOCK_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json(
       { error: 'You have reached the block/unblock rate limit. Please try again later.' },

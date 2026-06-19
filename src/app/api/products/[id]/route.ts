@@ -53,7 +53,7 @@ export const DELETE = withSentryRoute(async (request: Request, context: { params
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`product-delete:ip:${clientIdentifier}`, DELETE_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`product-delete:ip:${clientIdentifier}`, DELETE_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter, 'Too many requests from this network. Please try again later.');
     }
@@ -69,7 +69,7 @@ export const DELETE = withSentryRoute(async (request: Request, context: { params
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 403 });
   }
 
-  const userRate = checkRateLimit(`product-delete:user:${user.id}`, DELETE_RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`product-delete:user:${user.id}`, DELETE_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     return tooManyRequestsResponse(userRate.retryAfter, 'Delete rate limit reached. Please wait and retry.');
   }

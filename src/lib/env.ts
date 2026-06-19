@@ -44,6 +44,18 @@ const optionalSecretFromEnv = z.preprocess(
   z.string().min(1).optional(),
 );
 
+const optionalEmailFromEnv = z.preprocess(
+  (value) => normalizeOptionalString(value),
+  z.string().email().optional(),
+);
+
+function optionalStringMinFromEnv(min: number) {
+  return z.preprocess(
+    (value) => normalizeOptionalString(value),
+    z.string().min(min).optional(),
+  );
+}
+
 const baseSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.string().url({ message: 'NEXT_PUBLIC_SUPABASE_URL must be a valid URL' }),
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1, 'NEXT_PUBLIC_SUPABASE_ANON_KEY is required'),
@@ -51,7 +63,7 @@ const baseSchema = z.object({
     .string()
     .min(1)
     .default('product-images'),
-  NEXT_PUBLIC_SITE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SITE_URL: optionalUrlFromEnv,
   NEXT_PUBLIC_PWA_ENABLED: booleanFromEnv,
   NEXT_PUBLIC_PWA_INSTALL_UI_ENABLED: z
     .enum(['true', 'false'])
@@ -65,33 +77,33 @@ const baseSchema = z.object({
     .default('true')
     .transform((value) => value === 'true'),
   NEXT_PUBLIC_PWA_ROLLOUT_PERCENT: boundedIntegerFromEnv(100, 0, 100),
-  NEXT_PUBLIC_PWA_VAPID_PUBLIC_KEY: z.string().min(1).optional(),
-  NEXT_PUBLIC_SENTRY_DSN: z.string().url().optional(),
-  NEXT_PUBLIC_PARTNERSHIPS_EMAIL: z.string().email().optional(),
-  NEXT_PUBLIC_PARTNERSHIPS_WHATSAPP: z.string().min(3).optional(),
+  NEXT_PUBLIC_PWA_VAPID_PUBLIC_KEY: optionalSecretFromEnv,
+  NEXT_PUBLIC_SENTRY_DSN: optionalUrlFromEnv,
+  NEXT_PUBLIC_PARTNERSHIPS_EMAIL: optionalEmailFromEnv,
+  NEXT_PUBLIC_PARTNERSHIPS_WHATSAPP: optionalStringMinFromEnv(3),
 });
 
 const serverSchema = baseSchema.extend({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1, 'SUPABASE_SERVICE_ROLE_KEY is required'),
-  ADMIN_REVALIDATE_TOKEN: z.string().min(1, 'ADMIN_REVALIDATE_TOKEN is required').optional(),
-  SENTRY_DSN: z.string().url().optional(),
-  SENTRY_ENVIRONMENT: z.string().optional(),
-  ALGOLIA_APP_ID: z.string().min(1).optional(),
-  ALGOLIA_ADMIN_API_KEY: z.string().min(1).optional(),
-  ALGOLIA_SEARCH_API_KEY: z.string().min(1).optional(),
-  ALGOLIA_INDEX_NAME: z.string().min(1).optional(),
-  RESEND_API_KEY: z.string().min(1).optional(),
-  VONAGE_API_KEY: z.string().min(1).optional(),
-  VONAGE_API_SECRET: z.string().min(1).optional(),
-  VONAGE_APPLICATION_ID: z.string().min(1).optional(),
-  VONAGE_PRIVATE_KEY64: z.string().min(1).optional(),
-  VONAGE_VIRTUAL_NUMBER: z.string().min(1).optional(),
-  VONAGE_SMS_SENDER_ID: z.string().min(1).optional(),
-  VONAGE_SMS_TEMPLATE: z.string().min(1).optional(),
-  SUPABASE_SMS_HOOK_SECRET: z.string().min(1).optional(),
-  PARTNERSHIPS_NOTIFY_EMAIL: z.string().email().optional(),
-  PARTNERSHIPS_FROM_EMAIL: z.string().email().optional(),
-  PWA_VAPID_PRIVATE_KEY: z.string().min(1).optional(),
+  ADMIN_REVALIDATE_TOKEN: optionalSecretFromEnv,
+  SENTRY_DSN: optionalUrlFromEnv,
+  SENTRY_ENVIRONMENT: optionalSecretFromEnv,
+  ALGOLIA_APP_ID: optionalSecretFromEnv,
+  ALGOLIA_ADMIN_API_KEY: optionalSecretFromEnv,
+  ALGOLIA_SEARCH_API_KEY: optionalSecretFromEnv,
+  ALGOLIA_INDEX_NAME: optionalSecretFromEnv,
+  RESEND_API_KEY: optionalSecretFromEnv,
+  VONAGE_API_KEY: optionalSecretFromEnv,
+  VONAGE_API_SECRET: optionalSecretFromEnv,
+  VONAGE_APPLICATION_ID: optionalSecretFromEnv,
+  VONAGE_PRIVATE_KEY64: optionalSecretFromEnv,
+  VONAGE_VIRTUAL_NUMBER: optionalSecretFromEnv,
+  VONAGE_SMS_SENDER_ID: optionalSecretFromEnv,
+  VONAGE_SMS_TEMPLATE: optionalSecretFromEnv,
+  SUPABASE_SMS_HOOK_SECRET: optionalSecretFromEnv,
+  PARTNERSHIPS_NOTIFY_EMAIL: optionalEmailFromEnv,
+  PARTNERSHIPS_FROM_EMAIL: optionalEmailFromEnv,
+  PWA_VAPID_PRIVATE_KEY: optionalSecretFromEnv,
   PWA_TELEMETRY_DURABLE_ENABLED: booleanTrueDefaultFromEnv,
   PWA_TELEMETRY_SUMMARY_MAX_ROWS: boundedIntegerFromEnv(15_000, 1_000, 50_000),
   PWA_TELEMETRY_RETENTION_DAYS: boundedIntegerFromEnv(14, 1, 90),
@@ -99,6 +111,8 @@ const serverSchema = baseSchema.extend({
   PWA_SLO_ALERT_SECRET: optionalSecretFromEnv,
   PWA_SLO_ALERT_COOLDOWN_MINUTES: boundedIntegerFromEnv(30, 1, 24 * 60),
   PWA_SLO_ALERT_TIMEOUT_MS: boundedIntegerFromEnv(8_000, 1_000, 30_000),
+  UPSTASH_REDIS_REST_URL: optionalUrlFromEnv,
+  UPSTASH_REDIS_REST_TOKEN: optionalSecretFromEnv,
 });
 
 type ServerEnv = z.infer<typeof serverSchema>;

@@ -1,3 +1,5 @@
+import { checkFixedWindowRateLimit } from './rate-limit-store';
+
 type RateLimitOptions = {
   windowMs: number;
   max: number;
@@ -10,8 +12,6 @@ type RateLimitResult = {
   success: false;
   retryAfter: number;
 };
-
-const rateLimitStore = new Map<string, { count: number; expiresAt: number }>();
 
 export function getClientIdentifier(headers: Headers): string {
   const forwarded = headers.get('x-forwarded-for');
@@ -32,29 +32,23 @@ export function getClientIdentifier(headers: Headers): string {
   return 'unknown';
 }
 
-export function checkRateLimit(identifier: string, options: RateLimitOptions): RateLimitResult {
-  const now = Date.now();
-  const entry = rateLimitStore.get(identifier);
+export async function checkRateLimit(identifier: string, options: RateLimitOptions): Promise<RateLimitResult> {
+  const result = await checkFixedWindowRateLimit({
+    key: identifier,
+    windowMs: options.windowMs,
+    limit: options.max,
+  });
 
-  if (!entry || entry.expiresAt <= now) {
-    rateLimitStore.set(identifier, {
-      count: 1,
-      expiresAt: now + options.windowMs,
-    });
-    return { success: true, remaining: options.max - 1 };
-  }
-
-  if (entry.count >= options.max) {
+  if (!result.allowed) {
     return {
       success: false,
-      retryAfter: Math.ceil((entry.expiresAt - now) / 1000),
+      retryAfter: result.retryAfterSeconds,
     };
   }
 
-  entry.count += 1;
   return {
     success: true,
-    remaining: options.max - entry.count,
+    remaining: result.remaining,
   };
 }
 

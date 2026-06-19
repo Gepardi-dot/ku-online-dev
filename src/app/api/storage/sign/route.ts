@@ -48,7 +48,7 @@ export const POST = withSentryRoute(async (request: Request) => {
   const rawPaths = Array.isArray(body.paths) ? body.paths : [];
   const expiresInSeconds = 60 * 60;
 
-  const rate = checkRateLimit({
+  const rate = await checkRateLimit({
     key: `storage-sign:${user.id}`,
     windowMs: 60_000,
     limit: 60,

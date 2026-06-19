@@ -102,7 +102,7 @@ export const POST = withSentryRoute(async (req: Request) => {
 
   const clientIdentifier = getClientIdentifier(req.headers);
   if (clientIdentifier !== 'unknown') {
-    const rate = checkRateLimit(`revalidate:${clientIdentifier}`, REVALIDATE_RATE_LIMIT);
+    const rate = await checkRateLimit(`revalidate:${clientIdentifier}`, REVALIDATE_RATE_LIMIT);
     if (!rate.success) {
       return tooManyRequestsResponse(rate.retryAfter);
     }

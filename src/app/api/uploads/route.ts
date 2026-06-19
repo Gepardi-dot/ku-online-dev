@@ -275,7 +275,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`upload:ip:${clientIdentifier}`, UPLOAD_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`upload:ip:${clientIdentifier}`, UPLOAD_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter, 'Too many upload attempts from this network. Please try again later.');
     }
@@ -287,7 +287,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`upload:user:${user.id}`, UPLOAD_RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`upload:user:${user.id}`, UPLOAD_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     return tooManyRequestsResponse(userRate.retryAfter, 'Upload rate limit reached. Please wait and retry.');
   }
@@ -480,7 +480,7 @@ export const DELETE = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`upload-delete:ip:${clientIdentifier}`, UPLOAD_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`upload-delete:ip:${clientIdentifier}`, UPLOAD_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter, 'Too many delete attempts from this network. Please try again later.');
     }
@@ -492,7 +492,7 @@ export const DELETE = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`upload-delete:user:${user.id}`, DELETE_RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`upload-delete:user:${user.id}`, DELETE_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     return tooManyRequestsResponse(userRate.retryAfter, 'Delete rate limit reached. Please wait and retry.');
   }

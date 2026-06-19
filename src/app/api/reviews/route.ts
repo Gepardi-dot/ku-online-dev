@@ -114,7 +114,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`reviews:ip:${clientIdentifier}`, POST_RATE_IP);
+    const ipRate = await checkRateLimit(`reviews:ip:${clientIdentifier}`, POST_RATE_IP);
     if (!ipRate.success) {
       const res = NextResponse.json({ error: 'Too many submissions. Please wait a moment.' }, { status: 429 });
       res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
@@ -145,7 +145,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'You cannot review yourself.' }, { status: 403 });
   }
 
-  const userRate = checkRateLimit(`reviews:user:${user.id}`, POST_RATE_USER);
+  const userRate = await checkRateLimit(`reviews:user:${user.id}`, POST_RATE_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ error: 'You have reached the review rate limit.' }, { status: 429 });
     res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));

@@ -91,7 +91,7 @@ async function handler(request: Request) {
     return NextResponse.json({ ok: false, error: 'Unauthorized.' }, { status: 401 });
   }
 
-  const secretRate = checkRateLimit('pwa-rollout-status:secret', RATE_LIMIT_PER_SECRET);
+  const secretRate = await checkRateLimit('pwa-rollout-status:secret', RATE_LIMIT_PER_SECRET);
   if (!secretRate.success) {
     const response = NextResponse.json(
       { ok: false, error: 'Too many requests. Please try again later.' },
@@ -103,7 +103,7 @@ async function handler(request: Request) {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`pwa-rollout-status:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`pwa-rollout-status:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const response = NextResponse.json(
         { ok: false, error: 'Too many requests. Please wait a moment.' },

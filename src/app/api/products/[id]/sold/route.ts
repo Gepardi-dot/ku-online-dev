@@ -66,7 +66,7 @@ export const POST = withSentryRoute(async (request: NextRequest, context: { para
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`sold:ip:${clientIdentifier}`, SOLD_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`sold:ip:${clientIdentifier}`, SOLD_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter, 'Too many requests from this network. Please try again later.');
     }
@@ -77,7 +77,7 @@ export const POST = withSentryRoute(async (request: NextRequest, context: { para
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`sold:user:${userId}`, SOLD_RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`sold:user:${userId}`, SOLD_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     return tooManyRequestsResponse(userRate.retryAfter, 'Rate limit reached. Please wait before trying again.');
   }

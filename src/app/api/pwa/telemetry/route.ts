@@ -93,13 +93,13 @@ function validateOrigin(request: Request) {
   return null;
 }
 
-function validateIpRateLimit(headers: Headers) {
+async function validateIpRateLimit(headers: Headers) {
   const clientIdentifier = getClientIdentifier(headers);
   if (clientIdentifier === 'unknown') {
     return null;
   }
 
-  const result = checkRateLimit(`pwa-telemetry:ip:${clientIdentifier}`, RATE_IP);
+  const result = await checkRateLimit(`pwa-telemetry:ip:${clientIdentifier}`, RATE_IP);
   if (!result.success) {
     return tooManyRequestsResponse(result.retryAfter, 'Too many telemetry requests. Try again later.');
   }
@@ -133,7 +133,7 @@ export const POST = withSentryRoute(async (request: Request) => {
   const originError = validateOrigin(request);
   if (originError) return originError;
 
-  const rateError = validateIpRateLimit(request.headers);
+  const rateError = await validateIpRateLimit(request.headers);
   if (rateError) return rateError;
 
   const payload = await request.json().catch(() => null);

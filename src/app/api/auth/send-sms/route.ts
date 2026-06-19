@@ -260,7 +260,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`send-sms-hook:ip:${clientIdentifier}`, HOOK_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`send-sms-hook:ip:${clientIdentifier}`, HOOK_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return hookError('Too many requests. Please wait a moment.', 429, ipRate.retryAfter);
     }
@@ -272,7 +272,7 @@ export const POST = withSentryRoute(async (request: Request) => {
   }
 
   if (SUPABASE_SMS_HOOK_SECRET) {
-    const secretRate = checkRateLimit('send-sms-hook:secret', HOOK_RATE_LIMIT_PER_SECRET);
+    const secretRate = await checkRateLimit('send-sms-hook:secret', HOOK_RATE_LIMIT_PER_SECRET);
     if (!secretRate.success) {
       return hookError('Too many requests. Please try again later.', 429, secretRate.retryAfter);
     }
@@ -306,7 +306,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     typeof payload.user.id === 'string' && payload.user.id.trim().length > 0
       ? payload.user.id.trim()
       : to;
-  const principalRate = checkRateLimit(
+  const principalRate = await checkRateLimit(
     `send-sms-hook:principal:${principalIdentifier}`,
     HOOK_RATE_LIMIT_PER_PRINCIPAL,
   );

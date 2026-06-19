@@ -122,7 +122,7 @@ const handler = async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const rate = checkRateLimit(`partnerships:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const rate = await checkRateLimit(`partnerships:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!rate.success) {
       const res = NextResponse.json(
         { error: 'Too many requests. Please wait a few minutes and try again.' },

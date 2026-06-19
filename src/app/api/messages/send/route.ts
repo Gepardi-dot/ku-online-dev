@@ -42,7 +42,7 @@ const handler: (request: Request) => Promise<Response> = async (request: Request
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const rate = checkRateLimit(`messages:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const rate = await checkRateLimit(`messages:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!rate.success) {
       const res = NextResponse.json({ error: 'Too many requests from this network. Please wait a moment.' }, { status: 429 });
       res.headers.set('Retry-After', String(Math.max(1, rate.retryAfter)));
@@ -64,7 +64,7 @@ const handler: (request: Request) => Promise<Response> = async (request: Request
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`messages:user:${user.id}`, RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`messages:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ error: 'Message rate limit reached. Please try again shortly.' }, { status: 429 });
     res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));

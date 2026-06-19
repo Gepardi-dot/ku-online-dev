@@ -34,7 +34,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`avatar:ip:${clientIdentifier}`, RATE_LIMIT_IP);
+    const ipRate = await checkRateLimit(`avatar:ip:${clientIdentifier}`, RATE_LIMIT_IP);
     if (!ipRate.success) {
       const res = NextResponse.json({ error: 'Too many avatar updates. Please wait a moment.' }, { status: 429 });
       res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
@@ -55,7 +55,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`avatar:user:${user.id}`, RATE_LIMIT_USER);
+  const userRate = await checkRateLimit(`avatar:user:${user.id}`, RATE_LIMIT_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ error: 'Avatar update limit reached. Please try again shortly.' }, { status: 429 });
     res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));

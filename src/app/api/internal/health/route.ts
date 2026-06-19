@@ -92,14 +92,14 @@ export const GET = withSentryRoute(async (request: NextRequest) => {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 
-  const tokenRate = checkRateLimit('internal-health:token', RATE_LIMIT_PER_TOKEN);
+  const tokenRate = await checkRateLimit('internal-health:token', RATE_LIMIT_PER_TOKEN);
   if (!tokenRate.success) {
     return tooManyRequestsResponse(tokenRate.retryAfter);
   }
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`internal-health:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`internal-health:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter);
     }

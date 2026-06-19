@@ -42,7 +42,7 @@ const handler: (request: Request) => Promise<Response> = async (request: Request
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`abuse-report:ip:${clientIdentifier}`, REPORT_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`abuse-report:ip:${clientIdentifier}`, REPORT_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const res = NextResponse.json(
         { error: 'Too many reports from this network. Please wait a moment.' },
@@ -74,7 +74,7 @@ const handler: (request: Request) => Promise<Response> = async (request: Request
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`abuse-report:user:${user.id}`, REPORT_RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`abuse-report:user:${user.id}`, REPORT_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json(
       { error: 'You have reached the report rate limit. Please try again later.' },

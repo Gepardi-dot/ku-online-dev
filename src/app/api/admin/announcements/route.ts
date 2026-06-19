@@ -63,7 +63,7 @@ export const POST = withSentryRoute(async (req: NextRequest) => {
 
   const clientIdentifier = getClientIdentifier(req.headers);
   if (clientIdentifier !== 'unknown') {
-    const rate = checkRateLimit(`admin-announcements:ip:${clientIdentifier}`, ANNOUNCEMENTS_RATE_LIMIT_PER_IP);
+    const rate = await checkRateLimit(`admin-announcements:ip:${clientIdentifier}`, ANNOUNCEMENTS_RATE_LIMIT_PER_IP);
     if (!rate.success) {
       return tooManyRequestsResponse(rate.retryAfter);
     }
@@ -73,7 +73,7 @@ export const POST = withSentryRoute(async (req: NextRequest) => {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const tokenRate = checkRateLimit('admin-announcements:token', ANNOUNCEMENTS_RATE_LIMIT_PER_TOKEN);
+  const tokenRate = await checkRateLimit('admin-announcements:token', ANNOUNCEMENTS_RATE_LIMIT_PER_TOKEN);
   if (!tokenRate.success) {
     return tooManyRequestsResponse(tokenRate.retryAfter);
   }

@@ -251,7 +251,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`vonage-webhook:post:ip:${clientIdentifier}`, WEBHOOK_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`vonage-webhook:post:ip:${clientIdentifier}`, WEBHOOK_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse('Too many requests. Please wait a moment.', ipRate.retryAfter);
     }
@@ -282,7 +282,7 @@ export const POST = withSentryRoute(async (request: Request) => {
   const body = parsed.data;
 
   const principalKey = getPrincipalKey(body);
-  const principalRate = checkRateLimit(`vonage-webhook:post:principal:${principalKey}`, WEBHOOK_RATE_LIMIT_PER_PRINCIPAL);
+  const principalRate = await checkRateLimit(`vonage-webhook:post:principal:${principalKey}`, WEBHOOK_RATE_LIMIT_PER_PRINCIPAL);
   if (!principalRate.success) {
     return tooManyRequestsResponse('Too many requests. Please try again later.', principalRate.retryAfter);
   }
@@ -325,7 +325,7 @@ export const GET = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`vonage-webhook:health:ip:${clientIdentifier}`, HEALTH_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`vonage-webhook:health:ip:${clientIdentifier}`, HEALTH_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse('Too many requests. Please wait a moment.', ipRate.retryAfter);
     }

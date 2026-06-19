@@ -142,7 +142,7 @@ export const PATCH = withSentryRoute(async (request: Request, ctx: { params: Pro
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`sponsor-services:update:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`sponsor-services:update:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const res = NextResponse.json({ ok: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 });
       res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
@@ -175,7 +175,7 @@ export const PATCH = withSentryRoute(async (request: Request, ctx: { params: Pro
     }
   }
 
-  const userRate = checkRateLimit(`sponsor-services:update:user:${user.id}`, RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`sponsor-services:update:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
     res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));
@@ -242,7 +242,7 @@ export const DELETE = withSentryRoute(async (request: Request, ctx: { params: Pr
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`sponsor-services:delete:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`sponsor-services:delete:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const res = NextResponse.json({ ok: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 });
       res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
@@ -275,7 +275,7 @@ export const DELETE = withSentryRoute(async (request: Request, ctx: { params: Pr
     }
   }
 
-  const userRate = checkRateLimit(`sponsor-services:delete:user:${user.id}`, RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`sponsor-services:delete:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
     res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));

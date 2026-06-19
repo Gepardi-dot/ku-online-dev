@@ -55,7 +55,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`admin-pwa-slo-alert-trigger:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`admin-pwa-slo-alert-trigger:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const res = NextResponse.json(
         { ok: false, error: 'Too many requests. Please wait a moment.' },
@@ -77,7 +77,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`admin-pwa-slo-alert-trigger:user:${user.id}`, RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`admin-pwa-slo-alert-trigger:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json(
       { ok: false, error: 'Too many requests. Please try again later.' },

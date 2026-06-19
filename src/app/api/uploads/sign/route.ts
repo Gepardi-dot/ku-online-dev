@@ -54,7 +54,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`upload-sign:ip:${clientIdentifier}`, SIGN_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`upload-sign:ip:${clientIdentifier}`, SIGN_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter, 'Too many requests from this network. Please try again later.');
     }
@@ -71,7 +71,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`upload-sign:user:${user.id}`, SIGN_RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`upload-sign:user:${user.id}`, SIGN_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     return tooManyRequestsResponse(userRate.retryAfter, 'Rate limit reached. Please wait before trying again.');
   }

@@ -53,7 +53,7 @@ async function handler(request: Request) {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`pwa-slo-alert-run:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`pwa-slo-alert-run:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const response = NextResponse.json(
         { ok: false, error: 'Too many requests. Please wait a moment.' },

@@ -73,7 +73,7 @@ export const POST = withSentryRoute(async (request: Request) => {
 
     const clientIdentifier = getClientIdentifier(request.headers);
     if (clientIdentifier !== 'unknown') {
-      const ipRate = checkRateLimit(`favorites:ip:${clientIdentifier}`, FAVORITES_RATE_LIMIT_PER_IP);
+      const ipRate = await checkRateLimit(`favorites:ip:${clientIdentifier}`, FAVORITES_RATE_LIMIT_PER_IP);
       if (!ipRate.success) {
         return tooManyRequestsResponse(ipRate.retryAfter, 'Too many favorite operations from this network. Please try again later.');
       }
@@ -84,7 +84,7 @@ export const POST = withSentryRoute(async (request: Request) => {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const userRate = checkRateLimit(`favorites:user:${userId}`, FAVORITES_RATE_LIMIT_PER_USER);
+    const userRate = await checkRateLimit(`favorites:user:${userId}`, FAVORITES_RATE_LIMIT_PER_USER);
     if (!userRate.success) {
       return tooManyRequestsResponse(userRate.retryAfter, 'Favorite rate limit reached. Please wait before trying again.');
     }
@@ -123,7 +123,7 @@ export const DELETE = withSentryRoute(async (request: Request) => {
 
     const clientIdentifier = getClientIdentifier(request.headers);
     if (clientIdentifier !== 'unknown') {
-      const ipRate = checkRateLimit(`favorites:ip:${clientIdentifier}`, FAVORITES_RATE_LIMIT_PER_IP);
+      const ipRate = await checkRateLimit(`favorites:ip:${clientIdentifier}`, FAVORITES_RATE_LIMIT_PER_IP);
       if (!ipRate.success) {
         return tooManyRequestsResponse(ipRate.retryAfter, 'Too many favorite operations from this network. Please try again later.');
       }
@@ -134,7 +134,7 @@ export const DELETE = withSentryRoute(async (request: Request) => {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const userRate = checkRateLimit(`favorites:user:${userId}`, FAVORITES_RATE_LIMIT_PER_USER);
+    const userRate = await checkRateLimit(`favorites:user:${userId}`, FAVORITES_RATE_LIMIT_PER_USER);
     if (!userRate.success) {
       return tooManyRequestsResponse(userRate.retryAfter, 'Favorite rate limit reached. Please wait before trying again.');
     }

@@ -54,7 +54,7 @@ export const PATCH = withSentryRoute(async (request: Request, ctx: { params: Pro
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`admin-partnerships:status:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`admin-partnerships:status:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       const res = NextResponse.json({ ok: false, error: 'Too many requests. Please wait a moment.' }, { status: 429 });
       res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
@@ -73,7 +73,7 @@ export const PATCH = withSentryRoute(async (request: Request, ctx: { params: Pro
     return NextResponse.json({ ok: false, error: 'Not authorized' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`admin-partnerships:status:user:${user.id}`, RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`admin-partnerships:status:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ ok: false, error: 'Too many requests. Please try again later.' }, { status: 429 });
     res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));

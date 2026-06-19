@@ -74,20 +74,20 @@ function validateOrigin(request: Request) {
   return null;
 }
 
-function checkIpRateLimit(headers: Headers) {
+async function checkIpRateLimit(headers: Headers) {
   const clientIdentifier = getClientIdentifier(headers);
   if (clientIdentifier === 'unknown') {
     return null;
   }
-  const result = checkRateLimit(`push-subscription:ip:${clientIdentifier}`, RATE_IP);
+  const result = await checkRateLimit(`push-subscription:ip:${clientIdentifier}`, RATE_IP);
   if (!result.success) {
     return tooManyRequestsResponse(result.retryAfter, 'Too many push subscription requests. Try again later.');
   }
   return null;
 }
 
-function checkUserRateLimit(userId: string) {
-  const result = checkRateLimit(`push-subscription:user:${userId}`, RATE_USER);
+async function checkUserRateLimit(userId: string) {
+  const result = await checkRateLimit(`push-subscription:user:${userId}`, RATE_USER);
   if (!result.success) {
     return tooManyRequestsResponse(result.retryAfter, 'Push subscription rate limit reached. Try again later.');
   }
@@ -101,7 +101,7 @@ export const GET = withSentryRoute(async (request: Request) => {
   const originError = validateOrigin(request);
   if (originError) return originError;
 
-  const rateError = checkIpRateLimit(request.headers);
+  const rateError = await checkIpRateLimit(request.headers);
   if (rateError) return rateError;
 
   const { supabase, user } = await authenticate();
@@ -109,7 +109,7 @@ export const GET = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const userRateError = checkUserRateLimit(user.id);
+  const userRateError = await checkUserRateLimit(user.id);
   if (userRateError) return userRateError;
 
   const { data, error } = await supabase
@@ -133,7 +133,7 @@ export const POST = withSentryRoute(async (request: Request) => {
   const originError = validateOrigin(request);
   if (originError) return originError;
 
-  const rateError = checkIpRateLimit(request.headers);
+  const rateError = await checkIpRateLimit(request.headers);
   if (rateError) return rateError;
 
   const payload = await request.json().catch(() => null);
@@ -147,7 +147,7 @@ export const POST = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const userRateError = checkUserRateLimit(user.id);
+  const userRateError = await checkUserRateLimit(user.id);
   if (userRateError) return userRateError;
 
   const subscription = parsed.data.subscription;
@@ -183,7 +183,7 @@ export const DELETE = withSentryRoute(async (request: Request) => {
   const originError = validateOrigin(request);
   if (originError) return originError;
 
-  const rateError = checkIpRateLimit(request.headers);
+  const rateError = await checkIpRateLimit(request.headers);
   if (rateError) return rateError;
 
   const payload = await request.json().catch(() => null);
@@ -197,7 +197,7 @@ export const DELETE = withSentryRoute(async (request: Request) => {
     return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
   }
 
-  const userRateError = checkUserRateLimit(user.id);
+  const userRateError = await checkUserRateLimit(user.id);
   if (userRateError) return userRateError;
 
   const { error } = await supabase

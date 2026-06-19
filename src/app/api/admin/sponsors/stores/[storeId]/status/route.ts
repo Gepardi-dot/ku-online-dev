@@ -150,7 +150,7 @@ export const PATCH = withSentryRoute(async (request: Request, ctx: { params: Pro
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`admin-sponsor-store:status:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`admin-sponsor-store:status:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       logSponsorError({
         requestId,
@@ -196,7 +196,7 @@ export const PATCH = withSentryRoute(async (request: Request, ctx: { params: Pro
     });
   }
 
-  const userRate = checkRateLimit(`admin-sponsor-store:status:user:${user.id}`, RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`admin-sponsor-store:status:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     logSponsorError({
       requestId,
@@ -215,7 +215,7 @@ export const PATCH = withSentryRoute(async (request: Request, ctx: { params: Pro
     });
   }
 
-  const storeRate = checkRateLimit(`admin-sponsor-store:status:store:${parsedStoreId.data}`, RATE_LIMIT_PER_STORE);
+  const storeRate = await checkRateLimit(`admin-sponsor-store:status:store:${parsedStoreId.data}`, RATE_LIMIT_PER_STORE);
   if (!storeRate.success) {
     logSponsorError({
       requestId,

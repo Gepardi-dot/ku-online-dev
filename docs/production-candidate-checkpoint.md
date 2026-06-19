@@ -1,6 +1,6 @@
 # Production Candidate Checkpoint
 
-Last updated: 2026-06-18
+Last updated: 2026-06-19
 
 ## Candidate E
 
@@ -66,3 +66,43 @@ Production interpretation:
 - The immediate bad `/` FCP sample from Candidate E is no longer active in the 60-minute window.
 - This is better than the previous red poor-vitals gate, but it is not a full performance proof because there was no recent real-user sample volume.
 - Next launch-readiness step is to collect enough real-user telemetry or continue homepage optimization if future samples regress.
+
+## Candidate G Durable Rate-Limit Backend
+
+Date: 2026-06-19
+
+Goal: replace process-local API rate-limit storage with a production-capable backend path while preserving existing C2C marketplace behavior.
+
+Important files changed:
+- `src/lib/security/rate-limit-store.ts`
+- `src/lib/security/request.ts`
+- `src/lib/rate-limit.ts`
+- `src/app/api/**/route.ts` rate-limit call sites
+- `src/lib/security/__tests__/rate-limit-store.test.ts`
+- `src/lib/env.ts`
+- `scripts/check-env.mjs`
+- `tools/test-stubs/*`
+- `tsconfig.test.json`
+
+Supabase impact:
+- Tables touched: none
+- Buckets touched: none
+- RLS/policies touched: none
+- Migrations added: none
+
+Validation performed:
+- `npm run typecheck`
+- `npm test`
+- `npm run lint`
+- `npm run build` with Vercel production env loaded through a temp file
+- `npm run check:env` with Vercel production env loaded through a temp file
+
+Production interpretation:
+- The code now supports distributed fixed-window rate limiting through Upstash Redis REST using `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+- Without those Vercel env vars, production intentionally falls back to the prior in-memory behavior.
+- If Upstash is configured but unavailable, the app fails open to in-memory limits and logs a server warning rather than breaking user flows.
+
+Risks and rollout notes:
+- This is a broad API-surface change because existing rate-limit calls are now async, but return shapes and route response behavior were preserved.
+- Actual production abuse resistance is not improved until the Upstash env vars are configured and a deployment containing Candidate G is promoted.
+- Rollback is a normal git revert of Candidate G; no database rollback is required.

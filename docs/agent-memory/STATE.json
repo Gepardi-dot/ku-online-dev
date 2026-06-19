@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-19T10:26:38.143Z",
+  "last_updated_utc": "2026-06-19T11:06:36.203Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,14 +27,14 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-f-homepage-slo-followup",
-      "title": "Homepage SLO burn-in follow-up",
-      "status": "burn_in_warn_low_sample",
-      "phase": "post-pwa-performance"
+      "id": "candidate-g-durable-rate-limit-backend",
+      "title": "Durable rate-limit backend preparation",
+      "status": "implemented_validated_pending_provider_env",
+      "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-g-production-readiness-next-risk",
-      "title": "Continue production hardening from the next highest-risk gap"
+      "id": "candidate-h-rate-limit-provider-rollout",
+      "title": "Configure and validate production Upstash Redis rate-limit backend"
     },
     "latest_user_request": "proceed"
   },
@@ -44,7 +44,8 @@
     "Current proxy matcher may need exclusions for service worker and manifest routes during PWA rollout.",
     "Candidate E improves homepage/sell paint: brand logo now uses optimized Next/Image asset, category icons use optimized WebP assets, homepage category/filter shell streams separately from product grid, and /sell receives server-provided categories with client fallback only.",
     "Candidate E deployed to production as commit 42e436f / Vercel dpl_7WHHzv7L6B3cp8u3tzRDqYKjcAgM. CI, Vercel, production HTTP smoke, browser smoke, and incident rehearsal passed, but strict PWA governance failed on poor-vitals rate 25.00% > 15.00%.",
-    "Candidate F burn-in follow-up on 2026-06-19 found the poor homepage sample aged out. Scheduled PWA Ramp Governance passed on 6ccde1e; manual normal governance warns only because the last 60 minutes had zero events, so rates are unavailable."
+    "Candidate F burn-in follow-up on 2026-06-19 found the poor homepage sample aged out. Scheduled PWA Ramp Governance passed on 6ccde1e; manual normal governance warns only because the last 60 minutes had zero events, so rates are unavailable.",
+    "Candidate G adds a shared async fixed-window rate-limit backend with optional Upstash Redis REST enforcement, memory fallback, safe key normalization, and tests. Production remains on memory fallback until UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are configured in Vercel."
   ],
   "decisions": [
     {
@@ -60,7 +61,8 @@
     "Service worker caching can cause stale authenticated behavior if API routes are cached incorrectly.",
     "Proxy matcher may interfere with service worker delivery if not explicitly excluded.",
     "Local browser validation still shows 400s for two local Supabase product image resources on /; this appears tied to local storage/test data, not the Candidate E image asset changes.",
-    "Production read-only telemetry after Candidate E showed one / FCP poor sample at 3740ms and one / LCP needs-improvement sample at 3792ms with good TTFB. That sample aged out by 2026-06-19, but current RUM volume is too low to claim full homepage performance clearance."
+    "Production read-only telemetry after Candidate E showed one / FCP poor sample at 3740ms and one / LCP needs-improvement sample at 3792ms with good TTFB. That sample aged out by 2026-06-19, but current RUM volume is too low to claim full homepage performance clearance.",
+    "Distributed rate limiting is code-ready but not production-active until Upstash Redis REST env vars are configured and a deployment containing Candidate G is promoted."
   ],
   "verification_log": [
     {
@@ -182,6 +184,11 @@
       "timestamp_utc": "2026-06-19T10:26:38.143Z",
       "check": "Candidate F homepage SLO burn-in follow-up",
       "status": "warn_low_sample"
+    },
+    {
+      "timestamp_utc": "2026-06-19T11:06:36.203Z",
+      "check": "Candidate G durable rate-limit backend validation",
+      "status": "pass"
     }
   ]
 }

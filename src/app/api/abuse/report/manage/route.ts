@@ -54,7 +54,7 @@ const handler: (request: NextRequest) => Promise<Response> = async (request: Nex
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`abuse-report-manage:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`abuse-report-manage:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter, 'Too many requests. Please wait a moment.');
     }
@@ -70,7 +70,7 @@ const handler: (request: NextRequest) => Promise<Response> = async (request: Nex
     return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
   }
 
-  const userRate = checkRateLimit(`abuse-report-manage:user:${user.id}`, RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`abuse-report-manage:user:${user.id}`, RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     return tooManyRequestsResponse(userRate.retryAfter, 'Too many requests. Please try again later.');
   }

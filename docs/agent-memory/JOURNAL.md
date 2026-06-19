@@ -452,3 +452,12 @@
 - details: Live HTTP smoke passed for `/api/health`, `/`, and `/sell`. GitHub scheduled workflows on `6ccde1e` showed PWA Ramp Governance pass and PWA SLO Alerts pass. Manual normal PWA governance returned WARN only because there were zero events in the last 60 minutes, making poor-vitals and service-worker failure rates unavailable. Manual strict `--fail-on-warn true` failed for those missing-rate warnings, not for active alerts or poor-vitals samples. PWA incident rehearsal passed.
 - verification: `npm run pwa:ramp-governance -- --window-minutes 60 --dispatch-limit 10 --timeout-ms 20000` => WARN with events=0, active alerts=0; `npm run pwa:incident-rehearsal -- --window-minutes 60 --dispatch-limit 10 --timeout-ms 20000` => PASS; production HTTP smoke => PASS.
 - risks: This reduces the immediate performance concern, but it is not enough sample volume to claim full launch-grade RUM confidence. Continue monitoring or generate enough legitimate user traffic before declaring performance fully production-cleared.
+
+## 2026-06-19T11:06:36.203Z
+- type: implementation
+- task_id: candidate-g-durable-rate-limit-backend
+- task_title: Durable rate-limit backend preparation
+- summary: Replaced process-local-only API throttling with a shared async fixed-window limiter that can use Upstash Redis REST when configured, while preserving existing route response behavior.
+- details: Added `src/lib/security/rate-limit-store.ts` with memory fallback, safe key normalization, atomic Upstash REST `EVAL` support, and fail-open fallback logging. Migrated existing API rate-limit call sites to await the shared limiter. Added focused limiter tests and updated the Node test alias loader for `server-only`. Normalized optional env values in `src/lib/env.ts` and `scripts/check-env.mjs` so empty optional provider strings do not break production build collection. Added optional validation for `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
+- verification: `npm run typecheck` pass; `npm test` pass; `npm run lint` pass; `npm run build` pass with Vercel production env loaded through a temp file; `npm run check:env` pass with Vercel production env loaded through a temp file.
+- risks: Production remains on in-memory fallback until Upstash Redis REST env vars are configured and deployed. No Supabase schema, RLS, storage, bucket, auth-provider, or migration changes were made.

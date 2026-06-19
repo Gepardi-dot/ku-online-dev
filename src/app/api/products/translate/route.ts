@@ -79,7 +79,7 @@ export const POST = withSentryRoute(async (request: NextRequest) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`product-translate:ip:${clientIdentifier}`, TRANSLATE_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`product-translate:ip:${clientIdentifier}`, TRANSLATE_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter, 'Too many requests from this network. Please try again later.');
     }
@@ -90,7 +90,7 @@ export const POST = withSentryRoute(async (request: NextRequest) => {
     return NextResponse.json({ ok: false, error: 'Not authenticated' }, { status: 401 });
   }
 
-  const userRate = checkRateLimit(`product-translate:user:${user.id}`, TRANSLATE_RATE_LIMIT_PER_USER);
+  const userRate = await checkRateLimit(`product-translate:user:${user.id}`, TRANSLATE_RATE_LIMIT_PER_USER);
   if (!userRate.success) {
     return tooManyRequestsResponse(userRate.retryAfter, 'Rate limit reached. Please wait before trying again.');
   }

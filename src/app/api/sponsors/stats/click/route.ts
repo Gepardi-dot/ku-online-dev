@@ -61,7 +61,7 @@ export const POST = withSentryRoute(async (request: NextRequest) => {
 
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`sponsor-store-click:ip:${clientIdentifier}`, CLICK_RATE_LIMIT_PER_IP);
+    const ipRate = await checkRateLimit(`sponsor-store-click:ip:${clientIdentifier}`, CLICK_RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
       return tooManyRequestsResponse(ipRate.retryAfter);
     }

@@ -33,7 +33,7 @@ export const POST = withSentryRoute(async (request: Request) => {
   }
   const clientIdentifier = getClientIdentifier(request.headers);
   if (clientIdentifier !== 'unknown') {
-    const ipRate = checkRateLimit(`helpful:ip:${clientIdentifier}`, RATE_IP);
+    const ipRate = await checkRateLimit(`helpful:ip:${clientIdentifier}`, RATE_IP);
     if (!ipRate.success) {
       const res = NextResponse.json({ error: 'Too many actions. Try later.' }, { status: 429 });
       res.headers.set('Retry-After', String(Math.max(1, ipRate.retryAfter)));
@@ -50,7 +50,7 @@ export const POST = withSentryRoute(async (request: Request) => {
   const supabase = await createClient(cookieStore);
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  const userRate = checkRateLimit(`helpful:user:${user.id}`, RATE_USER);
+  const userRate = await checkRateLimit(`helpful:user:${user.id}`, RATE_USER);
   if (!userRate.success) {
     const res = NextResponse.json({ error: 'Rate limited' }, { status: 429 });
     res.headers.set('Retry-After', String(Math.max(1, userRate.retryAfter)));
