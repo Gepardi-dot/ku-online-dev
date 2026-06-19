@@ -36,10 +36,11 @@ Known notes:
 - Local homepage smoke still shows two 400s for local Supabase product image resources. This appears tied to local storage/test data, not the optimized static asset changes.
 - Candidate E does not change DB schema, RLS, storage buckets, auth providers, PWA rollout flags, or SLO thresholds.
 - Read-only production telemetry for the failing 60-minute window showed one `/` FCP poor sample at 3740ms and one `/` LCP needs-improvement sample at 3792ms, with TTFB good at 68.2ms. This means the release improved synthetic smoke behavior, but the strict real-user launch gate still needs more burn-in data or another homepage render/resource optimization pass.
+- 2026-06-19 burn-in check: the poor homepage sample aged out. Scheduled PWA Ramp Governance passed on `6ccde1e`; manual normal governance is WARN because there were zero recent events, not because poor vitals remain. Manual strict `--fail-on-warn true` still fails on missing-rate warnings when event volume is zero.
 
 ## Active Production Risks
 
-- Real-user homepage performance is not fully green: strict PWA governance failed after Candidate E deploy on poor-vitals rate with low sample volume.
+- Real-user homepage performance needs more evidence: the previous poor-vitals sample aged out, but the latest manual window had zero events, so there is not enough fresh real-user telemetry to claim the homepage is fully cleared.
 - C2C abuse workflows still need continuous hardening: reporting, blocking, moderation queues, repeat-offender detection, and auditability.
 - Server-side service-role paths should continue to receive ownership checks, tests, and audit logging.
 - Local and production environment parity should be checked before DB, auth, provider, storage, or deploy mutations.

@@ -443,3 +443,12 @@
 - details: Commit `42e436f` deployed as Vercel `dpl_7WHHzv7L6B3cp8u3tzRDqYKjcAgM` and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`. Production HTTP and Playwright smoke passed for `/`, `/sell`, and `/api/health`; optimized static assets were used and `/sell` avoided the client categories request. PWA incident rehearsal passed. Strict PWA governance failed because poor-vitals rate was 25.00% over the 15.00% launch gate.
 - verification: GitHub CI `27789147319` passed; production smoke passed; incident rehearsal passed; read-only Supabase aggregate telemetry showed one `/` FCP poor sample at 3740ms, one `/` LCP needs-improvement sample at 3792ms, and TTFB good at 68.2ms in the 60-minute window.
 - risks: Candidate E is deployed and operational, but the strict production launch gate is not green. Next phase should either burn in until the low-volume poor sample ages out or continue homepage render/resource optimization before broader launch confidence claims.
+
+## 2026-06-19T10:26:38.143Z
+- type: verification
+- task_id: candidate-f-homepage-slo-followup
+- task_title: Homepage SLO burn-in follow-up
+- summary: Rechecked production after Candidate E burn-in. The prior poor homepage sample aged out; current governance has no active poor-vitals data.
+- details: Live HTTP smoke passed for `/api/health`, `/`, and `/sell`. GitHub scheduled workflows on `6ccde1e` showed PWA Ramp Governance pass and PWA SLO Alerts pass. Manual normal PWA governance returned WARN only because there were zero events in the last 60 minutes, making poor-vitals and service-worker failure rates unavailable. Manual strict `--fail-on-warn true` failed for those missing-rate warnings, not for active alerts or poor-vitals samples. PWA incident rehearsal passed.
+- verification: `npm run pwa:ramp-governance -- --window-minutes 60 --dispatch-limit 10 --timeout-ms 20000` => WARN with events=0, active alerts=0; `npm run pwa:incident-rehearsal -- --window-minutes 60 --dispatch-limit 10 --timeout-ms 20000` => PASS; production HTTP smoke => PASS.
+- risks: This reduces the immediate performance concern, but it is not enough sample volume to claim full launch-grade RUM confidence. Continue monitoring or generate enough legitimate user traffic before declaring performance fully production-cleared.
