@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-19T11:22:08.049Z",
+  "last_updated_utc": "2026-06-20T13:59:13.796Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,16 +27,16 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-g-durable-rate-limit-backend",
-      "title": "Durable rate-limit backend preparation",
-      "status": "deployed_validated_pending_provider_env",
+      "id": "candidate-h-rate-limit-provider-rollout",
+      "title": "Configure and validate production Upstash Redis rate-limit backend",
+      "status": "deployed_validated_active",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-h-rate-limit-provider-rollout",
-      "title": "Configure and validate production Upstash Redis rate-limit backend"
+      "id": "candidate-i-privileged-path-audit",
+      "title": "Audit admin and service-role privileged paths"
     },
-    "latest_user_request": "proceed"
+    "latest_user_request": "done"
   },
   "technical_findings": [
     "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
@@ -45,7 +45,8 @@
     "Candidate E improves homepage/sell paint: brand logo now uses optimized Next/Image asset, category icons use optimized WebP assets, homepage category/filter shell streams separately from product grid, and /sell receives server-provided categories with client fallback only.",
     "Candidate E deployed to production as commit 42e436f / Vercel dpl_7WHHzv7L6B3cp8u3tzRDqYKjcAgM. CI, Vercel, production HTTP smoke, browser smoke, and incident rehearsal passed, but strict PWA governance failed on poor-vitals rate 25.00% > 15.00%.",
     "Candidate F burn-in follow-up on 2026-06-19 found the poor homepage sample aged out. Scheduled PWA Ramp Governance passed on 6ccde1e; manual normal governance warns only because the last 60 minutes had zero events, so rates are unavailable.",
-    "Candidate G adds a shared async fixed-window rate-limit backend with optional Upstash Redis REST enforcement, memory fallback, safe key normalization, and tests. Candidate G is deployed to production as commit 5736b21 / Vercel dpl_2ZHSbR5dzBJCYAeuF6Tjh2CggrgU. Production remains on memory fallback until UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are configured in Vercel."
+    "Candidate G adds a shared async fixed-window rate-limit backend with optional Upstash Redis REST enforcement, memory fallback, safe key normalization, and tests. Candidate G was initially deployed to production as commit 5736b21 / Vercel dpl_2ZHSbR5dzBJCYAeuF6Tjh2CggrgU.",
+    "Candidate H connected Vercel ku-online-dev to Upstash resource ku-bazar-rate-limit and proved production rate limiting is active through Vercel KV env names: rateLimit.configured=true, source=vercel-kv, backend=upstash, status=ok on the protected production health endpoint."
   ],
   "decisions": [
     {
@@ -62,7 +63,8 @@
     "Proxy matcher may interfere with service worker delivery if not explicitly excluded.",
     "Local browser validation still shows 400s for two local Supabase product image resources on /; this appears tied to local storage/test data, not the Candidate E image asset changes.",
     "Production read-only telemetry after Candidate E showed one / FCP poor sample at 3740ms and one / LCP needs-improvement sample at 3792ms with good TTFB. That sample aged out by 2026-06-19, but current RUM volume is too low to claim full homepage performance clearance.",
-    "Distributed rate limiting is code-deployed but not production-active until Upstash Redis REST env vars are configured and redeployed."
+    "Distributed rate limiting is now active through Vercel KV/Upstash, but the current provider resource is free tier with eviction enabled and should be revisited before broad public launch.",
+    "Privileged admin and service-role server paths still need a focused audit for ownership checks, authorization boundaries, tests, and audit logging."
   ],
   "verification_log": [
     {
@@ -193,6 +195,11 @@
     {
       "timestamp_utc": "2026-06-19T11:22:08.049Z",
       "check": "Candidate G production promotion and smoke",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-20T13:59:13.796Z",
+      "check": "Candidate H production Upstash provider rollout and protected health verification",
       "status": "pass"
     }
   ]

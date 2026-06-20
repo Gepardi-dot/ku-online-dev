@@ -1,6 +1,6 @@
 # Production Candidate Checkpoint
 
-Last updated: 2026-06-19
+Last updated: 2026-06-20
 
 ## Candidate E
 
@@ -110,3 +110,52 @@ Risks and rollout notes:
 - This is a broad API-surface change because existing rate-limit calls are now async, but return shapes and route response behavior were preserved.
 - Actual distributed abuse resistance is not improved until the Upstash env vars are configured and redeployed.
 - Rollback is a normal git revert of Candidate G; no database rollback is required.
+
+## Candidate H Rate-Limit Provider Rollout
+
+Date: 2026-06-20
+
+Goal: activate the durable rate-limit backend in production and prove the live app is using Upstash-backed counters rather than process-local memory.
+
+Important files changed:
+- `src/lib/security/rate-limit-store.ts`
+- `src/lib/security/__tests__/rate-limit-store.test.ts`
+- `src/app/api/internal/health/route.ts`
+- `src/lib/env.ts`
+- `scripts/check-env.mjs`
+
+Provider impact:
+- Vercel project touched: `ku-online-dev`
+- Upstash resource added: `ku-bazar-rate-limit`
+- Resource settings: free plan, `iad1`, production environment only, `eviction=true`, `prodPack=false`, `autoUpgrade=false`
+
+Supabase impact:
+- Tables touched: none
+- Buckets touched: none
+- RLS/policies touched: none
+- Migrations added: none
+
+Validation performed:
+- Deploy MCP gate: `npm run mcp:auto -- --task deploy --doctor-only --keep-profile`
+- `vercel integration add upstash/upstash-kv --name ku-bazar-rate-limit --plan free -m primaryRegion=iad1 -m eviction=true -m prodPack=false -m autoUpgrade=false -e production --no-env-pull --scope ku-onlines-projects`
+- `vercel integration list ku-online-dev --scope ku-onlines-projects`
+- `npm run typecheck`
+- `npm test`
+- `npm run lint`
+- `npm run build` with Vercel production env loaded through a temp file
+- `npm run check:env` with Vercel production env loaded through a temp file
+- GitHub CI run `27873231575` on commit `e58b60f`: pass
+- Vercel production deployment `dpl_EH2x1nXMub1jvh2PV97oDUJ7ExaQ`: ready and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`
+- Protected production health check: HTTP 200, `database=ok`, `storage=ok`, `rateLimit.status=ok`, `rateLimit.configured=true`, `rateLimit.source=vercel-kv`, `rateLimit.backend=upstash`
+- Live HTTP smoke for `/api/health`, `/`, and `/sell`: pass
+
+Production interpretation:
+- The live production app is now using Upstash-backed durable counters through Vercel KV integration env vars.
+- The code still supports explicit `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, but the Vercel marketplace integration currently provides `KV_REST_API_URL` and `KV_REST_API_TOKEN`.
+- If Redis is temporarily unavailable, the limiter fails open to in-memory throttling and logs a warning instead of blocking legitimate marketplace flows.
+
+Risks and rollout notes:
+- Upstash free plan is acceptable for controlled beta hardening, but not the final broad-launch posture if traffic grows.
+- Eviction is enabled on the current resource, which is acceptable for rate-limit counters but should not be reused for durable product, user, payment, or moderation state.
+- One wrong-project Vercel deploy attempt happened from the candidate worktree during setup. It failed before affecting `ku-online-dev`; the local `.vercel` link was removed, and the correct linked project was used for the production redeploy.
+- Rollback is to disconnect/remove the Upstash integration or unset the KV/Upstash env vars, then redeploy. The application will fall back to in-memory rate limiting. No database rollback is required.

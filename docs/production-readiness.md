@@ -1,6 +1,6 @@
 # KU BAZAR Production Readiness
 
-Last updated: 2026-06-19
+Last updated: 2026-06-20
 
 ## Current Status
 
@@ -10,10 +10,38 @@ The current hardening focus is to preserve the intended C2C marketplace behavior
 
 ## Latest Candidate
 
+Candidate H: production Upstash rate-limit rollout.
+
+Changes:
+- Connected Vercel project `ku-online-dev` to Upstash for Redis resource `ku-bazar-rate-limit`.
+- Used the Vercel marketplace-provided `KV_REST_API_URL` and `KV_REST_API_TOKEN` names as supported Redis credentials for the existing rate-limit backend.
+- Added token-protected internal health diagnostics for the active rate-limit backend without exposing secrets.
+- Kept fail-open memory fallback behavior if Redis is missing or temporarily unavailable.
+
+Validation:
+- `npm run typecheck`: pass
+- `npm test`: pass
+- `npm run lint`: pass
+- `npm run build`: pass with Vercel production env loaded through a temp file
+- `npm run check:env`: pass with Vercel production env loaded through a temp file
+- GitHub CI for commit `e58b60f`: pass
+- Vercel production deployment `dpl_EH2x1nXMub1jvh2PV97oDUJ7ExaQ`: ready and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`
+- Protected production health check: `database=ok`, `storage=ok`, `rateLimit.status=ok`, `rateLimit.configured=true`, `rateLimit.source=vercel-kv`, `rateLimit.backend=upstash`
+- Live smoke passed for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`
+
+Known notes:
+- No Supabase schema, table, bucket, RLS, storage, auth-provider, or migration changes were made.
+- Upstash resource settings at rollout: free plan, `iad1`, production environment only, `eviction=true`, `prodPack=false`, `autoUpgrade=false`.
+- Upstash free tier is acceptable for controlled beta hardening, but paid capacity/SLA should be revisited before broad public launch or heavy traffic.
+- During provider setup, one manual Vercel deploy was accidentally attempted from the candidate worktree and created a temporary local link to a wrong Vercel project name. That failed deployment did not replace `ku-online-dev`; the local `.vercel` link was removed and the correct `ku-online-dev` production redeploy was used.
+
+## Previous Candidate
+
 Candidate G: durable rate-limit backend preparation.
 
 Changes:
 - Added a shared fixed-window rate-limit backend with optional Upstash Redis REST enforcement.
+- Added support for Vercel marketplace KV env names, so either `UPSTASH_REDIS_REST_*` or `KV_REST_API_*` can activate the durable backend.
 - Migrated existing API rate-limit call sites to await the shared async limiter while preserving current response shapes and retry headers.
 - Kept in-memory fallback for local development and for production fail-open behavior if Redis is unavailable.
 - Added focused unit tests for memory enforcement, Upstash REST command behavior, fallback behavior, and safe key normalization.
@@ -28,12 +56,14 @@ Validation:
 
 Known notes:
 - No Supabase schema, table, bucket, RLS, storage, or auth-provider changes were made.
-- Candidate G is deployed to production as commit `5736b21` / Vercel `dpl_2ZHSbR5dzBJCYAeuF6Tjh2CggrgU`.
+- Candidate G was initially deployed to production as commit `5736b21` / Vercel `dpl_2ZHSbR5dzBJCYAeuF6Tjh2CggrgU`.
+- Vercel KV env compatibility was deployed as commit `9b7a923`; compatibility deployment evidence includes `dpl_AAn5ps7xKpTTTrgqDZFGwTU1GCH8`.
+- After the Upstash resource was connected, production was redeployed as `dpl_7ttK4suGvWAsWDfrRqHJDnYmDFgZ` before the final health-diagnostic deployment.
 - Live smoke passed for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`.
-- Production will continue using the in-memory fallback until `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are configured in Vercel. A read-only Vercel env name check found no `UPSTASH`/`REDIS` env vars after the Candidate G deploy.
-- If Upstash is configured but unavailable, the app logs a server warning and falls back to in-memory throttling to avoid taking down legitimate user flows.
+- Production now uses the Vercel KV/Upstash backend after Candidate H.
+- If Upstash is unavailable, the app logs a server warning and falls back to in-memory throttling to avoid taking down legitimate user flows.
 
-## Previous Candidate
+## Earlier Candidate
 
 Candidate E: homepage and sell-page first-paint hardening.
 
@@ -66,7 +96,7 @@ Known notes:
 ## Active Production Risks
 
 - Real-user homepage performance needs more evidence: the previous poor-vitals sample aged out, but the latest manual window had zero events, so there is not enough fresh real-user telemetry to claim the homepage is fully cleared.
-- Distributed rate limiting is now code-ready but not production-active until Upstash Redis REST env vars are configured and deployed.
+- Distributed rate limiting is active through Vercel KV/Upstash, but the current provider resource is on the free plan. Revisit plan limits, eviction behavior, and SLA before broad public launch.
 - C2C abuse workflows still need continuous hardening: reporting, blocking, moderation queues, repeat-offender detection, and auditability.
 - Server-side service-role paths should continue to receive ownership checks, tests, and audit logging.
 - Local and production environment parity should be checked before DB, auth, provider, storage, or deploy mutations.

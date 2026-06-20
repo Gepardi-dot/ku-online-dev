@@ -470,3 +470,12 @@
 - details: Commit `5736b21` deployed as Vercel `dpl_2ZHSbR5dzBJCYAeuF6Tjh2CggrgU` and is aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`. GitHub direct push produced the known protected-branch bypass warning. A read-only Vercel env name check found no `UPSTASH`/`REDIS` env vars, so deployed rate limiting currently uses memory fallback.
 - verification: GitHub CI `27822555115` pass; Vercel deployment ready; live HTTP smoke passed for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`.
 - risks: Distributed Redis-backed enforcement is still pending provider setup. Next phase should configure `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`, redeploy, and verify live behavior.
+
+## 2026-06-20T13:59:13.796Z
+- type: deployment
+- task_id: candidate-h-rate-limit-provider-rollout
+- task_title: Production Upstash rate-limit provider rollout
+- summary: Connected Vercel `ku-online-dev` to Upstash resource `ku-bazar-rate-limit`, deployed the Vercel KV compatibility path, and proved production is using the Upstash backend.
+- details: Upstash resource settings: free plan, `iad1`, production environment only, `eviction=true`, `prodPack=false`, `autoUpgrade=false`. The app now accepts Vercel integration env names `KV_REST_API_URL` and `KV_REST_API_TOKEN` in addition to explicit `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`. Added token-protected internal health fields for the active rate-limit backend. Correct production deployment after the diagnostic commit is Vercel `dpl_EH2x1nXMub1jvh2PV97oDUJ7ExaQ` for commit `e58b60f`.
+- verification: Deploy MCP gate passed for Vercel readiness; GitHub CI `27873231575` passed; `npm run typecheck`, `npm test`, `npm run lint`, `npm run build`, and `npm run check:env` passed before promotion. Protected production health returned HTTP 200 with `database=ok`, `storage=ok`, `rateLimit.status=ok`, `rateLimit.configured=true`, `rateLimit.source=vercel-kv`, and `rateLimit.backend=upstash`. Live smoke passed for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`.
+- risks: Current Upstash resource is free tier and should be revisited before broad public launch. Redis failure falls back to memory throttling to protect user flows but reduces distributed abuse resistance during provider outages. No Supabase schema, table, bucket, RLS, storage, auth-provider, or migration changes were made.
