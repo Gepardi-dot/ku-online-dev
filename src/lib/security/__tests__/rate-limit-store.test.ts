@@ -10,11 +10,15 @@ import {
 const originalFetch = globalThis.fetch;
 const originalUrl = process.env.UPSTASH_REDIS_REST_URL;
 const originalToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+const originalKvUrl = process.env.KV_REST_API_URL;
+const originalKvToken = process.env.KV_REST_API_TOKEN;
 const originalWarn = console.warn;
 
 beforeEach(() => {
   delete process.env.UPSTASH_REDIS_REST_URL;
   delete process.env.UPSTASH_REDIS_REST_TOKEN;
+  delete process.env.KV_REST_API_URL;
+  delete process.env.KV_REST_API_TOKEN;
   console.warn = () => undefined;
   globalThis.fetch = originalFetch;
   resetRateLimitMemoryForTests();
@@ -31,6 +35,18 @@ afterEach(() => {
     delete process.env.UPSTASH_REDIS_REST_TOKEN;
   } else {
     process.env.UPSTASH_REDIS_REST_TOKEN = originalToken;
+  }
+
+  if (originalKvUrl === undefined) {
+    delete process.env.KV_REST_API_URL;
+  } else {
+    process.env.KV_REST_API_URL = originalKvUrl;
+  }
+
+  if (originalKvToken === undefined) {
+    delete process.env.KV_REST_API_TOKEN;
+  } else {
+    process.env.KV_REST_API_TOKEN = originalKvToken;
   }
 
   console.warn = originalWarn;
@@ -123,6 +139,35 @@ test('uses Upstash REST when configured', async () => {
   assert.equal(Array.isArray(requests[0]?.body), true);
   assert.equal((requests[0]?.body as unknown[])[0], 'EVAL');
   assert.match(String((requests[0]?.body as unknown[])[3]), /^ku-bazar:rate-limit:v1:/);
+});
+
+test('uses Vercel KV REST env names when explicit Upstash env is absent', async () => {
+  const requests: Array<{ url: string; authorization: string | null }> = [];
+  process.env.KV_REST_API_URL = 'https://kv.example.com/';
+  process.env.KV_REST_API_TOKEN = 'kv-token';
+  globalThis.fetch = (async (url, init) => {
+    const headers = new Headers(init?.headers);
+    requests.push({
+      url: String(url),
+      authorization: headers.get('authorization'),
+    });
+    return new Response(JSON.stringify({ result: [1, 1_500] }), { status: 200 });
+  }) as typeof fetch;
+
+  const result = await checkFixedWindowRateLimit({
+    key: 'favorites:user:user-2',
+    windowMs: 5_000,
+    limit: 2,
+    now: 1_000,
+  });
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.backend, 'upstash');
+  assert.equal(result.remaining, 1);
+  assert.equal(result.resetAt, 2_500);
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0]?.url, 'https://kv.example.com');
+  assert.equal(requests[0]?.authorization, 'Bearer kv-token');
 });
 
 test('falls back to memory when Upstash is unavailable', async () => {

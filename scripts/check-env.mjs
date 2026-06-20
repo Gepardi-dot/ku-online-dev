@@ -111,6 +111,8 @@ const serverSchema = baseSchema.extend({
   PWA_SLO_ALERT_TIMEOUT_MS: boundedIntegerFromEnv(8000, 1000, 30000),
   UPSTASH_REDIS_REST_URL: optionalUrlFromEnv,
   UPSTASH_REDIS_REST_TOKEN: optionalSecretFromEnv,
+  KV_REST_API_URL: optionalUrlFromEnv,
+  KV_REST_API_TOKEN: optionalSecretFromEnv,
 });
 
 const result = serverSchema.safeParse(process.env);

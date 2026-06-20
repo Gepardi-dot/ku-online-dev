@@ -113,6 +113,8 @@ const serverSchema = baseSchema.extend({
   PWA_SLO_ALERT_TIMEOUT_MS: boundedIntegerFromEnv(8_000, 1_000, 30_000),
   UPSTASH_REDIS_REST_URL: optionalUrlFromEnv,
   UPSTASH_REDIS_REST_TOKEN: optionalSecretFromEnv,
+  KV_REST_API_URL: optionalUrlFromEnv,
+  KV_REST_API_TOKEN: optionalSecretFromEnv,
 });
 
 type ServerEnv = z.infer<typeof serverSchema>;
