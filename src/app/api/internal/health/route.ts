@@ -10,6 +10,10 @@ import {
   isOriginAllowed,
   isSameOriginRequest,
 } from '@/lib/security/request';
+import {
+  checkFixedWindowRateLimit,
+  getRateLimitBackendConfigStatus,
+} from '@/lib/security/rate-limit-store';
 import { withSentryRoute } from '@/utils/sentry-route';
 
 export const runtime = 'nodejs';
@@ -108,9 +112,22 @@ export const GET = withSentryRoute(async (request: NextRequest) => {
   const checks: {
     database: { status: CheckStatus; latencyMs?: number; error?: string };
     storage: { status: CheckStatus; bucket: string; error?: string };
+    rateLimit: {
+      status: CheckStatus;
+      configured: boolean;
+      source: 'memory' | 'upstash' | 'vercel-kv';
+      backend: 'memory' | 'upstash';
+      error?: string;
+    };
   } = {
     database: { status: 'ok' },
     storage: { status: 'ok', bucket: STORAGE_BUCKET },
+    rateLimit: {
+      status: 'ok',
+      configured: false,
+      source: 'memory',
+      backend: 'memory',
+    },
   };
 
   try {
@@ -135,7 +152,30 @@ export const GET = withSentryRoute(async (request: NextRequest) => {
     console.error('Internal health storage check failed', error);
   }
 
-  const healthy = checks.database.status === 'ok' && checks.storage.status === 'ok';
+  try {
+    const configStatus = getRateLimitBackendConfigStatus();
+    const probe = await checkFixedWindowRateLimit({
+      key: 'internal-health:rate-limit-backend-probe',
+      windowMs: 60_000,
+      limit: 1_000,
+    });
+    checks.rateLimit = {
+      status: configStatus.configured && probe.backend === 'memory' ? 'error' : 'ok',
+      configured: configStatus.configured,
+      source: configStatus.source,
+      backend: probe.backend,
+      ...(configStatus.configured && probe.backend === 'memory' ? { error: 'backend_fallback' } : {}),
+    };
+  } catch (error) {
+    checks.rateLimit.status = 'error';
+    checks.rateLimit.error = 'unavailable';
+    console.error('Internal health rate-limit backend check failed', error);
+  }
+
+  const healthy =
+    checks.database.status === 'ok' &&
+    checks.storage.status === 'ok' &&
+    checks.rateLimit.status === 'ok';
 
   return NextResponse.json(
     {

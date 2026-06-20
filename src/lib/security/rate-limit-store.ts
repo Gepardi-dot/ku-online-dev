@@ -29,6 +29,9 @@ export type FixedWindowRateLimitResult =
 type WindowCounter = { count: number; resetAt: number };
 type UpstashConfig = { url: string; token: string };
 type UpstashCommandResponse = { result?: unknown; error?: string };
+export type RateLimitBackendConfigStatus =
+  | { configured: false; source: 'memory' }
+  | { configured: true; source: 'upstash' | 'vercel-kv' };
 
 const KEY_PREFIX = 'ku-bazar:rate-limit:v1:';
 const memoryCounters = new Map<string, WindowCounter>();
@@ -72,6 +75,18 @@ function getUpstashConfig(): UpstashConfig | null {
     url: url.replace(/\/+$/, ''),
     token,
   };
+}
+
+export function getRateLimitBackendConfigStatus(): RateLimitBackendConfigStatus {
+  if (process.env.UPSTASH_REDIS_REST_URL?.trim() && process.env.UPSTASH_REDIS_REST_TOKEN?.trim()) {
+    return { configured: true, source: 'upstash' };
+  }
+
+  if (process.env.KV_REST_API_URL?.trim() && process.env.KV_REST_API_TOKEN?.trim()) {
+    return { configured: true, source: 'vercel-kv' };
+  }
+
+  return { configured: false, source: 'memory' };
 }
 
 function buildResult(input: {

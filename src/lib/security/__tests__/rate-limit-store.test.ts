@@ -3,6 +3,7 @@ import { afterEach, beforeEach, test } from 'node:test';
 
 import {
   checkFixedWindowRateLimit,
+  getRateLimitBackendConfigStatus,
   normalizeRateLimitKey,
   resetRateLimitMemoryForTests,
 } from '../rate-limit-store.js';
@@ -106,6 +107,26 @@ test('normalizes rate-limit keys without leaking raw identifiers', () => {
   assert.equal(normalized.includes('@'), false);
   assert.equal(normalized.includes('/'), false);
   assert.equal(normalized.length < 140, true);
+});
+
+test('reports memory backend config when Redis env is absent', () => {
+  assert.deepEqual(getRateLimitBackendConfigStatus(), { configured: false, source: 'memory' });
+});
+
+test('prefers explicit Upstash env over Vercel KV env', () => {
+  process.env.UPSTASH_REDIS_REST_URL = 'https://redis.example.com';
+  process.env.UPSTASH_REDIS_REST_TOKEN = 'test-token';
+  process.env.KV_REST_API_URL = 'https://kv.example.com';
+  process.env.KV_REST_API_TOKEN = 'kv-token';
+
+  assert.deepEqual(getRateLimitBackendConfigStatus(), { configured: true, source: 'upstash' });
+});
+
+test('reports Vercel KV backend config when only KV env is present', () => {
+  process.env.KV_REST_API_URL = 'https://kv.example.com';
+  process.env.KV_REST_API_TOKEN = 'kv-token';
+
+  assert.deepEqual(getRateLimitBackendConfigStatus(), { configured: true, source: 'vercel-kv' });
 });
 
 test('uses Upstash REST when configured', async () => {
