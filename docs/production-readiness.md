@@ -10,6 +10,35 @@ The current hardening focus is to preserve the intended C2C marketplace behavior
 
 ## Latest Candidate
 
+Candidate I: Phase 5 security-operations baseline and dependency remediation.
+
+Changes:
+- Created Phase 5 dependency/secret-rotation/monitoring baseline documentation.
+- Captured `npm audit --omit=dev` and full `npm audit` JSON artifacts under `recovery_from_session/security/`.
+- Applied a narrow dependency remediation batch for direct runtime/tooling packages within current major lines.
+- Added npm overrides for patched transitive versions of `fast-uri`, `picomatch`, and `ws`.
+
+Validation:
+- Audit JSON parse checks: pass
+- `npm run check:node`: pass
+- `npm run typecheck`: pass
+- `npm test`: pass
+- `npm run lint`: pass
+- `npm run check:env`: pass with Vercel production env loaded through a temp file
+- `npm run build`: pass with Vercel production env loaded through a temp file
+- `npm audit --omit=dev --audit-level=high`: pass
+- `npm audit --audit-level=high`: expected fail from deferred dev/deploy tooling advisories
+- `npm run perf:budget`: pass
+- GitHub CI, Vercel deployment, and production smoke: pending until this candidate is pushed
+
+Known notes:
+- No Supabase schema, table, bucket, RLS, storage, auth-provider, provider, or migration changes were made.
+- Production high advisories dropped from 4 to 0 in `npm audit --omit=dev`.
+- Remaining high advisories are in full-audit/dev-tooling paths, primarily the Vercel CLI transitive tree. The `vercel` CLI major upgrade is intentionally deferred to a separate tooling slice.
+- `npm run check:node` passed on Node `22.21.1`; an earlier install step emitted a transient engine warning from a different local tool runtime.
+
+## Previous Candidate
+
 Candidate H: production Upstash rate-limit rollout.
 
 Changes:
@@ -35,7 +64,7 @@ Known notes:
 - Upstash free tier is acceptable for controlled beta hardening, but paid capacity/SLA should be revisited before broad public launch or heavy traffic.
 - During provider setup, one manual Vercel deploy was accidentally attempted from the candidate worktree and created a temporary local link to a wrong Vercel project name. That failed deployment did not replace `ku-online-dev`; the local `.vercel` link was removed and the correct `ku-online-dev` production redeploy was used.
 
-## Previous Candidate
+## Earlier Candidate
 
 Candidate G: durable rate-limit backend preparation.
 
@@ -63,7 +92,7 @@ Known notes:
 - Production now uses the Vercel KV/Upstash backend after Candidate H.
 - If Upstash is unavailable, the app logs a server warning and falls back to in-memory throttling to avoid taking down legitimate user flows.
 
-## Earlier Candidate
+## Older Candidate
 
 Candidate E: homepage and sell-page first-paint hardening.
 
@@ -96,6 +125,7 @@ Known notes:
 ## Active Production Risks
 
 - Real-user homepage performance needs more evidence: the previous poor-vitals sample aged out, but the latest manual window had zero events, so there is not enough fresh real-user telemetry to claim the homepage is fully cleared.
+- Full dependency audit still has high advisories in dev/deploy tooling paths, mainly Vercel CLI transitive dependencies. The production audit has no high/critical advisories after Candidate I.
 - Distributed rate limiting is active through Vercel KV/Upstash, but the current provider resource is on the free plan. Revisit plan limits, eviction behavior, and SLA before broad public launch.
 - C2C abuse workflows still need continuous hardening: reporting, blocking, moderation queues, repeat-offender detection, and auditability.
 - Server-side service-role paths should continue to receive ownership checks, tests, and audit logging.

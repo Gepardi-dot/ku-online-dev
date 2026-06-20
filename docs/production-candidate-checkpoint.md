@@ -159,3 +159,60 @@ Risks and rollout notes:
 - Eviction is enabled on the current resource, which is acceptable for rate-limit counters but should not be reused for durable product, user, payment, or moderation state.
 - One wrong-project Vercel deploy attempt happened from the candidate worktree during setup. It failed before affecting `ku-online-dev`; the local `.vercel` link was removed, and the correct linked project was used for the production redeploy.
 - Rollback is to disconnect/remove the Upstash integration or unset the KV/Upstash env vars, then redeploy. The application will fall back to in-memory rate limiting. No database rollback is required.
+
+## Candidate I Security Operations Baseline
+
+Date: 2026-06-20
+
+Goal: execute the next documented Phase 5 security step by reducing dependency risk, creating a secret-rotation runbook draft, and defining privileged-route monitoring thresholds.
+
+Important files changed:
+- `package.json`
+- `package-lock.json`
+- `docs/security/PHASE5_SLICE_A_PART1_BASELINE.md`
+- `docs/security/PHASE5_SLICE_A_PART1_CHECKLIST.md`
+- `recovery_from_session/security/npm-audit-prod.json`
+- `recovery_from_session/security/npm-audit-all.json`
+
+Dependency changes:
+- Updated direct packages:
+  - `next` to `^16.2.9`
+  - `eslint-config-next` to `^16.2.9`
+  - `@sentry/nextjs` to `^10.59.0`
+  - `next-intl` to `^4.13.0`
+  - `postcss` to `^8.5.15`
+  - `@supabase/supabase-js` to `^2.108.2`
+  - `@supabase/ssr` to `^0.10.3`
+- Added npm overrides:
+  - `fast-uri`: `3.1.2`
+  - `picomatch`: `4.0.4`
+  - `ws`: `8.21.0`
+
+Supabase impact:
+- Tables touched: none
+- Buckets touched: none
+- RLS/policies touched: none
+- Migrations added: none
+
+Validation performed:
+- Audit JSON parse checks: pass
+- `npm run check:node`: pass
+- `npm run typecheck`: pass
+- `npm test`: pass
+- `npm run lint`: pass
+- `npm run check:env` with Vercel production env loaded through a temp file: pass
+- `npm run build` with Vercel production env loaded through a temp file: pass
+- `npm audit --omit=dev --audit-level=high`: pass
+- `npm audit --audit-level=high`: expected fail from deferred dev/deploy tooling advisories
+- `npm run perf:budget`: pass
+- Pending after push: GitHub CI, Vercel deployment, production smoke.
+
+Production interpretation:
+- Production audit high advisories dropped from 4 to 0.
+- Full audit still reports high advisories through dev/deploy tooling paths, mostly the Vercel CLI transitive dependency tree.
+- The Vercel CLI fix is a major upgrade from the current repository line and should be handled in a separate tooling slice with CI/deploy validation.
+
+Risks and rollout notes:
+- Next/Sentry/Supabase/runtime package updates can affect build and runtime behavior; this candidate must not be considered done until full validation and production smoke pass.
+- `npm run check:node` passed on Node `22.21.1`; an earlier install step emitted a transient engine warning from a different local tool runtime.
+- Rollback is a normal git revert of Candidate I. No database rollback is required.

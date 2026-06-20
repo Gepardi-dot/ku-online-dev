@@ -1,7 +1,7 @@
 # Phase 5 Slice A Part 1 Checklist
 
-Last updated: `2026-02-23`  
-Status: `Ready to execute`
+Last updated: `2026-06-20`
+Status: `Executed; see docs/security/PHASE5_SLICE_A_PART1_BASELINE.md`
 
 ## Goal
 Create a practical security-operations baseline for dependencies, secrets, and monitoring.
@@ -69,3 +69,12 @@ In practice:
 2. Secret rotation runbook draft exists with verification + rollback.
 3. Monitoring checklist exists with clear owner and trigger rules.
 4. `npm run typecheck` remains green for any touched code/docs workflow.
+
+## Execution Result
+- Dependency artifacts:
+  - `recovery_from_session/security/npm-audit-prod.json`
+  - `recovery_from_session/security/npm-audit-all.json`
+- Baseline/runbook/monitoring document:
+  - `docs/security/PHASE5_SLICE_A_PART1_BASELINE.md`
+- Production high advisories were reduced from 4 to 0 in `npm audit --omit=dev`.
+- Remaining full-audit high advisories are currently isolated to dev/deploy tooling paths, primarily the Vercel CLI transitive tree. The Vercel CLI major upgrade is intentionally deferred to a separate tooling slice.
