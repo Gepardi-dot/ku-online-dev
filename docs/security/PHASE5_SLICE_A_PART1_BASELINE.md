@@ -31,9 +31,9 @@ Remediation applied in this slice:
   - `picomatch`: `4.0.4`
   - `ws`: `8.21.0`
 
-Final audit after remediation:
-- Production audit: 4 advisories, 0 critical, 0 high, 3 moderate, 1 low.
-- Full audit: 62 advisories, 0 critical, 26 high, 34 moderate, 2 low.
+Final audit after remediation and npm 10 lockfile normalization:
+- Production audit: 6 advisories, 0 critical, 0 high, 5 moderate, 1 low.
+- Full audit: 64 advisories, 0 critical, 26 high, 36 moderate, 2 low.
 
 Triage decisions:
 
@@ -120,5 +120,6 @@ Owner and response:
 - Dependency audit artifacts exist and parse as JSON.
 - Production high advisories are removed from `npm audit --omit=dev`.
 - Remaining high advisories are confined to full-audit/dev-tooling paths, mainly Vercel CLI transitive dependencies.
+- The GitHub Actions installer path is reproducible with `npx npm@10.9.4 ci --ignore-scripts`.
 - Secret rotation and monitoring baselines are documented without exposing secrets.
 - Runtime dependency changes require full typecheck, lint, tests, build, and production smoke after deployment.

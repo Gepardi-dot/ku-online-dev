@@ -21,6 +21,8 @@ Changes:
 Validation:
 - Audit JSON parse checks: pass
 - `npm run check:node`: pass
+- `npm ci --ignore-scripts`: pass
+- `npx npm@10.9.4 ci --ignore-scripts`: pass
 - `npm run typecheck`: pass
 - `npm test`: pass
 - `npm run lint`: pass
@@ -29,13 +31,15 @@ Validation:
 - `npm audit --omit=dev --audit-level=high`: pass
 - `npm audit --audit-level=high`: expected fail from deferred dev/deploy tooling advisories
 - `npm run perf:budget`: pass
-- GitHub CI, Vercel deployment, and production smoke: pending until this candidate is pushed
+- Vercel deployment and production smoke for commit `4a2b992`: pass
+- GitHub CI: pending after npm 10 lockfile normalization follow-up
 
 Known notes:
 - No Supabase schema, table, bucket, RLS, storage, auth-provider, provider, or migration changes were made.
 - Production high advisories dropped from 4 to 0 in `npm audit --omit=dev`.
 - Remaining high advisories are in full-audit/dev-tooling paths, primarily the Vercel CLI transitive tree. The `vercel` CLI major upgrade is intentionally deferred to a separate tooling slice.
 - `npm run check:node` passed on Node `22.21.1`; an earlier install step emitted a transient engine warning from a different local tool runtime.
+- The first GitHub CI run for `4a2b992` failed at `npm ci` because npm 10 expected a nested optional `@swc/helpers@0.5.23` lockfile entry. The lockfile has now been normalized with npm 10 and local `npx npm@10.9.4 ci --ignore-scripts` passes.
 
 ## Previous Candidate
 

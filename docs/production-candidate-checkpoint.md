@@ -197,6 +197,8 @@ Supabase impact:
 Validation performed:
 - Audit JSON parse checks: pass
 - `npm run check:node`: pass
+- `npm ci --ignore-scripts`: pass
+- `npx npm@10.9.4 ci --ignore-scripts`: pass
 - `npm run typecheck`: pass
 - `npm test`: pass
 - `npm run lint`: pass
@@ -205,12 +207,14 @@ Validation performed:
 - `npm audit --omit=dev --audit-level=high`: pass
 - `npm audit --audit-level=high`: expected fail from deferred dev/deploy tooling advisories
 - `npm run perf:budget`: pass
-- Pending after push: GitHub CI, Vercel deployment, production smoke.
+- Vercel deployment and production smoke for commit `4a2b992`: pass
+- Pending after npm 10 lockfile normalization follow-up: GitHub CI, Vercel deployment, production smoke.
 
 Production interpretation:
 - Production audit high advisories dropped from 4 to 0.
 - Full audit still reports high advisories through dev/deploy tooling paths, mostly the Vercel CLI transitive dependency tree.
 - The Vercel CLI fix is a major upgrade from the current repository line and should be handled in a separate tooling slice with CI/deploy validation.
+- The first GitHub CI run for `4a2b992` failed before CI scripts because npm 10 required a nested optional `@swc/helpers@0.5.23` lockfile entry. The follow-up lockfile normalization reproduces the GitHub Actions installer path locally.
 
 Risks and rollout notes:
 - Next/Sentry/Supabase/runtime package updates can affect build and runtime behavior; this candidate must not be considered done until full validation and production smoke pass.

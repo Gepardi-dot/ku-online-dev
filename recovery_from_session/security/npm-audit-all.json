@@ -60,6 +60,24 @@
       ],
       "fixAvailable": true
     },
+    "@sentry/nextjs": {
+      "name": "@sentry/nextjs",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "next"
+      ],
+      "effects": [],
+      "range": ">=6.3.6",
+      "nodes": [
+        "node_modules/@sentry/nextjs"
+      ],
+      "fixAvailable": {
+        "name": "@sentry/nextjs",
+        "version": "6.3.5",
+        "isSemVerMajor": true
+      }
+    },
     "@tootallnate/once": {
       "name": "@tootallnate/once",
       "severity": "low",
@@ -91,7 +109,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -114,7 +132,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -137,7 +155,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -157,7 +175,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -178,7 +196,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -201,7 +219,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -222,7 +240,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -244,7 +262,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -264,7 +282,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -285,7 +303,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -307,7 +325,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -327,7 +345,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -348,7 +366,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -369,7 +387,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -392,7 +410,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -412,7 +430,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -435,7 +453,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -455,7 +473,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -476,7 +494,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -496,7 +514,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -517,7 +535,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -548,7 +566,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -885,7 +903,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -1595,7 +1613,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -1606,7 +1624,10 @@
       "via": [
         "postcss"
       ],
-      "effects": [],
+      "effects": [
+        "@sentry/nextjs",
+        "next-intl"
+      ],
       "range": "9.3.4-canary.0 - 16.3.0-canary.5",
       "nodes": [
         "node_modules/next"
@@ -1614,6 +1635,24 @@
       "fixAvailable": {
         "name": "next",
         "version": "9.3.3",
+        "isSemVerMajor": true
+      }
+    },
+    "next-intl": {
+      "name": "next-intl",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "next"
+      ],
+      "effects": [],
+      "range": "<=0.0.0-package-boundaries-1 || >=0.0.2",
+      "nodes": [
+        "node_modules/next-intl"
+      ],
+      "fixAvailable": {
+        "name": "next-intl",
+        "version": "0.0.1",
         "isSemVerMajor": true
       }
     },
@@ -1692,7 +1731,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -1792,7 +1831,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -1827,7 +1866,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -2233,7 +2272,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     },
@@ -2317,7 +2356,7 @@
       ],
       "fixAvailable": {
         "name": "vercel",
-        "version": "54.14.2",
+        "version": "54.14.5",
         "isSemVerMajor": true
       }
     }
@@ -2326,18 +2365,18 @@
     "vulnerabilities": {
       "info": 0,
       "low": 2,
-      "moderate": 34,
+      "moderate": 36,
       "high": 26,
       "critical": 0,
-      "total": 62
+      "total": 64
     },
     "dependencies": {
       "prod": 332,
       "dev": 759,
-      "optional": 204,
-      "peer": 41,
+      "optional": 205,
+      "peer": 42,
       "peerOptional": 0,
-      "total": 1222
+      "total": 1223
     }
   }
 }
