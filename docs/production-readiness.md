@@ -26,7 +26,10 @@ Validation:
 - `npm run lint`: pass after restoring dependencies with npm 10
 - `npm test`: pass
 - `git diff --check`: pass
-- GitHub CI / Vercel deploy: pending until this slice is pushed.
+- GitHub CI for commit `10ba092`: pass (`27898810418`)
+- Vercel production deployment for commit `10ba092`: ready (`dpl_Aa8vqtoQjfxz82w5R2w7raN8u7h7`) and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`
+- Production smoke for `10ba092`: pass for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`
+- Protected production health check: `database=ok`, `storage=ok`, `rateLimit.status=ok`, `rateLimit.configured=true`, `rateLimit.source=vercel-kv`, `rateLimit.backend=upstash`
 
 Known notes:
 - No Supabase schema, table, bucket, RLS, storage, auth-provider, provider, or migration changes were made.
@@ -158,7 +161,7 @@ Known notes:
 - Real-user homepage performance needs more evidence: the previous poor-vitals sample aged out, but the latest manual window had zero events, so there is not enough fresh real-user telemetry to claim the homepage is fully cleared.
 - Full dependency audit still has high advisories in dev/deploy tooling paths, mainly Vercel CLI transitive dependencies. The production audit has no high/critical advisories after Candidate I.
 - Distributed rate limiting is active through Vercel KV/Upstash, but the current provider resource is on the free plan. Revisit plan limits, eviction behavior, and SLA before broad public launch.
-- Production maintenance workflows should be observed after the Node 22 alignment lands; manual dispatch is intentionally avoided unless approved because these jobs can mutate production listings, translations, embeddings, Algolia indexes, and storage.
+- Production maintenance workflows should be observed on their next schedules; manual dispatch is intentionally avoided unless approved because these jobs can mutate production listings, translations, embeddings, Algolia indexes, and storage.
 - C2C abuse workflows still need continuous hardening: reporting, blocking, moderation queues, repeat-offender detection, and auditability.
 - Server-side service-role paths should continue to receive ownership checks, tests, and audit logging.
 - Local and production environment parity should be checked before DB, auth, provider, storage, or deploy mutations.

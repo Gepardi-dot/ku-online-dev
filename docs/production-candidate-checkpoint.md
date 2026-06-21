@@ -260,7 +260,10 @@ Validation performed:
 - `npm run lint`: pass after restoring dependencies with npm 10
 - `npm test`: pass
 - `git diff --check`: pass
-- GitHub CI / Vercel deployment: pending until this slice is pushed.
+- GitHub CI for commit `10ba092`: pass (`27898810418`)
+- Vercel production deployment for commit `10ba092`: ready (`dpl_Aa8vqtoQjfxz82w5R2w7raN8u7h7`) and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`
+- Production smoke for `10ba092`: pass for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`
+- Protected production health check: `database=ok`, `storage=ok`, `rateLimit.status=ok`, `rateLimit.configured=true`, `rateLimit.source=vercel-kv`, `rateLimit.backend=upstash`
 
 Production interpretation:
 - The 3-month listing lifecycle cleanup path was failing because of workflow runtime drift, not because the cleanup script reached product data and failed mid-mutation.
