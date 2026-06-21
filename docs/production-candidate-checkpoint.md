@@ -339,3 +339,47 @@ Risks and rollout notes:
 - A failed `npm run check:env` attempt happened in the older linked local repo at `C:\Users\miroa\Downloads\kubazar-dev`; the candidate worktree passed with the same pulled production env.
 - The production env temp file used for protected-health verification was deleted after reading the token.
 - Rollback is a normal git revert of Candidate K. No database rollback is required.
+
+## Candidate L Scheduled Maintenance Workflow Observation
+
+Date: 2026-06-22
+
+Goal: observe scheduled production maintenance workflows after the Node 22 alignment without manually dispatching jobs that can mutate production data.
+
+Important files changed:
+- `docs/production-readiness.md`
+- `docs/production-candidate-checkpoint.md`
+- `docs/agent-memory/JOURNAL.md`
+- `docs/agent-memory/STATE.json`
+
+Implementation:
+- Performed read-only GitHub Actions inspection.
+- Did not edit workflow definitions or app code.
+- Did not manually dispatch cleanup, i18n, embedding, synonym, storage, Supabase, or Algolia maintenance jobs.
+
+Supabase impact:
+- Tables touched: none
+- Buckets touched: none
+- RLS/policies touched: none
+- Migrations added: none
+- Production jobs manually dispatched: none
+
+Validation performed:
+- `gh auth status`: pass with repo/workflow scope.
+- `git status -sb`: clean before observation.
+- Workflow definitions inspected: `cleanup-expired-listings.yml`, `product-i18n.yml`, and `algolia-synonyms.yml` are active and configured for Node 22.
+- `Product translations & embeddings` run `27918545148`: success on commit `68130fe`; all steps passed.
+- Additional post-Candidate-J product maintenance scheduled successes observed: `27901389780`, `27904202989`, `27907664311`, `27910406643`, `27912878415`, and `27916057862`.
+- Earlier product/i18n failures on commit `4a2b992`: confirmed as `npm ci` lockfile drift (`@swc/helpers@0.5.23` missing before `0b7c06f`).
+- Latest cleanup run `27898184065`: confirmed as the pre-Candidate-J Node 20 WebSocket failure before product mutation.
+- Latest Algolia Synonyms run `27896749972`: confirmed as the pre-lockfile-normalization `npm ci` failure before the sync step.
+
+Production interpretation:
+- Product translation/embedding scheduled maintenance is observed healthy after the dependency, lockfile, and Node 22 fixes.
+- Cleanup and Algolia Synonyms are fixed in the current workflow definitions, but they still need their next daily scheduled runs observed before marking those maintenance paths green.
+- GitHub scheduled workflows are best-effort. Observed product workflow timing did not behave like a strict 30-minute SLA, so this is acceptable for non-urgent enrichment work but weak for time-critical production operations.
+
+Risks and rollout notes:
+- Do not manually dispatch cleanup/i18n/synonyms workflows without explicit production approval; they can mutate production listings, storage, translations, embeddings, and Algolia indexes.
+- Next observation should check the next scheduled `Cleanup expired listings` and `Algolia Synonyms` runs.
+- If exact maintenance timing becomes important, add freshness monitoring or move critical maintenance to a scheduler with stronger delivery guarantees.

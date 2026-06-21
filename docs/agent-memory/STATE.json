@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-21T22:36:53.101Z",
+  "last_updated_utc": "2026-06-21T22:46:00.912Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,16 +27,16 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-k-deploy-tooling-audit-hardening",
-      "title": "Deploy-tooling audit hardening",
-      "status": "completed_deployed_validated",
+      "id": "candidate-l-maintenance-workflow-observation",
+      "title": "Scheduled maintenance workflow observation",
+      "status": "partial_observation_pending_daily_cleanup_algolia_runs",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-l-observe-maintenance-workflows",
-      "title": "Observe scheduled maintenance workflows after Node 22 alignment"
+      "id": "candidate-l-follow-up-observe-daily-maintenance-runs",
+      "title": "Observe next scheduled cleanup and Algolia Synonyms runs"
     },
-    "latest_user_request": "continue"
+    "latest_user_request": "proceed"
   },
   "technical_findings": [
     "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
@@ -50,7 +50,8 @@
     "Candidate I executed Phase 5 Slice A Part 1: production npm audit high advisories were reduced from 4 to 0; final production audit has 6 total non-high advisories, and remaining high advisories are full-audit/dev-tooling paths primarily under the Vercel CLI transitive tree.",
     "Candidate I required npm 10 lockfile normalization because GitHub Actions npm ci expected a nested optional @swc/helpers@0.5.23 entry. Follow-up commit 0b7c06f passed local npm 10 install validation, GitHub CI 27898130848, Vercel deployment dpl_WD1vgJdecGtQSdGqpEYzJdH1AzKA, production smoke, and protected health verification.",
     "Candidate J found Cleanup expired listings run 27898184065 failed before querying or mutating listings because Supabase realtime initialization on Node 20 lacks native WebSocket support after the dependency upgrade. Maintenance workflows were aligned to Node 22 and commit 10ba092 passed GitHub CI 27898810418, Vercel deployment dpl_Aa8vqtoQjfxz82w5R2w7raN8u7h7, production smoke, and protected health verification.",
-    "Candidate K removed the repo-pinned Vercel CLI devDependency, kept Vercel CLI as external operator tooling, and added narrow transitive overrides so full npm audit has 0 high/critical advisories. Commit 8224378 passed GitHub CI 27919595935, Vercel deployment dpl_Hh7tiXrxJoMEzgkeccnXq83UnmWr, production smoke, and protected health verification."
+    "Candidate K removed the repo-pinned Vercel CLI devDependency, kept Vercel CLI as external operator tooling, and added narrow transitive overrides so full npm audit has 0 high/critical advisories. Commit 8224378 passed GitHub CI 27919595935, Vercel deployment dpl_Hh7tiXrxJoMEzgkeccnXq83UnmWr, production smoke, and protected health verification.",
+    "Candidate L observed production maintenance workflows without dispatching mutation-capable jobs. Product translations and embeddings are observed healthy after Candidate J, but Cleanup expired listings and Algolia Synonyms still need their next daily scheduled runs observed before those paths can be marked green."
   ],
   "decisions": [
     {
@@ -70,7 +71,9 @@
     "Distributed rate limiting is now active through Vercel KV/Upstash, but the current provider resource is free tier with eviction enabled and should be revisited before broad public launch.",
     "Privileged admin and service-role server paths still need continued ownership-check, authorization-boundary, test, and audit-log hardening.",
     "Supabase CLI currently warns that it does not expose `supabase mcp`; deploy MCP gate still passes because required Vercel checks are ready.",
-    "Production maintenance workflows should be observed on their next schedules after Candidate J. Manual dispatch requires explicit approval because cleanup/i18n/synonyms workflows can mutate production listings, storage, translations, embeddings, and Algolia indexes."
+    "Cleanup expired listings and Algolia Synonyms are fixed in current workflow definitions but still need their next daily scheduled runs observed after Candidate J.",
+    "Manual dispatch requires explicit approval because cleanup/i18n/synonyms workflows can mutate production listings, storage, translations, embeddings, and Algolia indexes.",
+    "GitHub scheduled workflows are best-effort; observed product maintenance cadence was not a strict 30-minute interval, so production-critical maintenance may need freshness alerting or a scheduler with stronger delivery guarantees."
   ],
   "verification_log": [
     {
@@ -222,6 +225,11 @@
       "timestamp_utc": "2026-06-21T22:36:53.101Z",
       "check": "Candidate K deploy-tooling audit hardening",
       "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-21T22:46:00.912Z",
+      "check": "Candidate L maintenance workflow observation",
+      "status": "partial_pass_pending_daily_cleanup_algolia"
     }
   ]
 }

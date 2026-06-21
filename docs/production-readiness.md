@@ -1,6 +1,6 @@
 # KU BAZAR Production Readiness
 
-Last updated: 2026-06-21
+Last updated: 2026-06-22
 
 ## Current Status
 
@@ -9,6 +9,39 @@ KU BAZAR should still be treated as a production-capable beta until abuse resist
 The current hardening focus is to preserve the intended C2C marketplace behavior while improving production confidence. Intentional product decisions remain in place: public product browsing for signed-out users, contact/actions gated by sign-in, no marketplace payments for now, and automatic product lifecycle cleanup after roughly three months.
 
 ## Latest Candidate
+
+Candidate L: scheduled maintenance workflow observation.
+
+Scope:
+- Read-only GitHub Actions inspection only.
+- No workflow dispatches were run.
+- No production listing, storage, translation, embedding, Algolia, Supabase, or provider mutations were triggered by this phase.
+
+Observed workflows:
+- `Cleanup expired listings` (`.github/workflows/cleanup-expired-listings.yml`): active, now configured for Node 22, daily cron.
+- `Product translations & embeddings` (`.github/workflows/product-i18n.yml`): active, now configured for Node 22, scheduled cron.
+- `Algolia Synonyms` (`.github/workflows/algolia-synonyms.yml`): active, now configured for Node 22, daily cron.
+
+Validation:
+- GitHub CLI auth: pass with repo/workflow scope.
+- Worktree before observation: clean.
+- `Product translations & embeddings`: latest inspected scheduled run `27918545148` passed on commit `68130fe`; all job steps passed. Logs showed Algolia settings updated, product translation backfill completed with 0 products updated, and product embeddings already populated.
+- Additional `Product translations & embeddings` scheduled runs after Candidate J also passed: `27901389780`, `27904202989`, `27907664311`, `27910406643`, `27912878415`, and `27916057862`.
+- Earlier `Product translations & embeddings` failures on commit `4a2b992` failed at `npm ci` because the lockfile was missing `@swc/helpers@0.5.23`; this was the Candidate I lockfile issue fixed by `0b7c06f`.
+- Latest `Cleanup expired listings` scheduled run `27898184065` is still the pre-Candidate-J failure on commit `0b7c06f`; logs confirm it failed before product mutation because the workflow used Node 20 and Supabase realtime initialization required native WebSocket support.
+- Latest `Algolia Synonyms` scheduled run `27896749972` is still the pre-lockfile-normalization failure on commit `4a2b992`; logs confirm it failed at `npm ci` before the synonym sync step.
+
+Production interpretation:
+- Product translation/embedding maintenance is now observed healthy after the Node 22 and lockfile fixes.
+- Cleanup and Algolia synonyms are fixed in the current workflow definitions but have not yet had a later daily scheduled run to prove the production path end to end.
+- Manual dispatch remains intentionally avoided because these workflows can mutate production listings, storage, translations, embeddings, and Algolia indexes.
+
+Known notes:
+- GitHub scheduled workflows are best-effort. The observed product workflow cadence was not a strict 30-minute interval, so do not treat GitHub Actions schedule timing as a hard production SLA.
+- Next operational check should re-inspect `Cleanup expired listings` after its next daily scheduled run and `Algolia Synonyms` after its next daily scheduled run.
+- If exact timing becomes production-critical, move the critical maintenance trigger to a scheduler with stronger delivery semantics or add freshness alerting around missed GitHub scheduled runs.
+
+## Previous Candidate
 
 Candidate K: deploy-tooling audit hardening.
 
@@ -45,7 +78,7 @@ Known notes:
 - Global Vercel CLI remains available for deployment operations; it is intentionally no longer part of the app dependency tree.
 - The production env temp file used for protected-health verification was deleted after reading the token.
 
-## Previous Candidate
+## Earlier Candidate
 
 Candidate J: production maintenance workflow Node 22 alignment.
 
