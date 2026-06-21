@@ -34,12 +34,16 @@ Validation:
 - `npm run check:env`: pass with Vercel production env loaded through a temp file
 - `npm run build`: pass with Vercel production env loaded through a temp file
 - `npm run perf:budget`: pass
-- GitHub CI / Vercel deploy: pending until this slice is pushed.
+- GitHub CI `27919595935`: pass for commit `8224378`
+- Vercel production deployment `dpl_Hh7tiXrxJoMEzgkeccnXq83UnmWr`: ready
+- Production smoke: `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, `https://ku-online-dev.vercel.app/api/health`, and the deployment URL `/api/health` returned HTTP 200
+- Protected production health: database `ok`, storage `ok`, rateLimit `ok`, rateLimit configured `true`, source `vercel-kv`, backend `upstash`
 
 Known notes:
 - No Supabase schema, table, bucket, RLS, storage, auth-provider, provider, or migration changes were made.
 - The failed `npm run check:env` attempt in `C:\Users\miroa\Downloads\kubazar-dev` was from the older linked local repo, not this candidate worktree.
 - Global Vercel CLI remains available for deployment operations; it is intentionally no longer part of the app dependency tree.
+- The production env temp file used for protected-health verification was deleted after reading the token.
 
 ## Previous Candidate
 

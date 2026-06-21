@@ -324,7 +324,10 @@ Validation performed:
 - `npm run check:env` with Vercel production env loaded through a temp file: pass
 - `npm run build` with Vercel production env loaded through a temp file: pass
 - `npm run perf:budget`: pass
-- GitHub CI / Vercel deployment: pending until this slice is pushed.
+- GitHub CI `27919595935`: pass for commit `8224378`
+- Vercel production deployment `dpl_Hh7tiXrxJoMEzgkeccnXq83UnmWr`: ready
+- Production smoke: `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, `https://ku-online-dev.vercel.app/api/health`, and the deployment URL `/api/health` returned HTTP 200
+- Protected production health: database `ok`, storage `ok`, rateLimit `ok`, rateLimit configured `true`, source `vercel-kv`, backend `upstash`
 
 Production interpretation:
 - The app build/runtime no longer carries Vercel CLI dependency risk.
@@ -334,4 +337,5 @@ Production interpretation:
 Risks and rollout notes:
 - Removing repo-pinned Vercel CLI means local operators need a global CLI or `npx vercel@latest`.
 - A failed `npm run check:env` attempt happened in the older linked local repo at `C:\Users\miroa\Downloads\kubazar-dev`; the candidate worktree passed with the same pulled production env.
+- The production env temp file used for protected-health verification was deleted after reading the token.
 - Rollback is a normal git revert of Candidate K. No database rollback is required.

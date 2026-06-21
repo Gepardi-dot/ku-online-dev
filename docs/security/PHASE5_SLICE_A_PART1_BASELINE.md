@@ -41,8 +41,8 @@ Triage decisions:
 | --- | --- | --- |
 | Production high advisories | Removed in this slice. | Fixed now. |
 | `next` moderate advisory | Direct runtime dependency remains reported by npm audit after `16.2.9`; npm's suggested fix points backward to `9.3.3`, which is not a valid modern remediation path. | Accept temporarily; monitor Next releases and reassess after the next stable patch/canary guidance. |
-| `vercel` CLI high advisories | Dev/deploy tooling dependency, not bundled into the user-facing app runtime. | Resolved locally in Candidate K by removing the repo-pinned `vercel` devDependency and keeping Vercel CLI as external operator tooling. |
-| Remaining full-audit high advisories under Vercel CLI transitive tree | Local/deploy tooling path. | Resolved locally in Candidate K; full `npm audit --audit-level=high` now passes with 0 high/critical advisories. |
+| `vercel` CLI high advisories | Dev/deploy tooling dependency, not bundled into the user-facing app runtime. | Resolved in Candidate K by removing the repo-pinned `vercel` devDependency and keeping Vercel CLI as external operator tooling. |
+| Remaining full-audit high advisories under Vercel CLI transitive tree | Local/deploy tooling path. | Resolved in Candidate K; full `npm audit --audit-level=high` now passes with 0 high/critical advisories. |
 
 ## Secret Rotation Runbook Draft
 
@@ -119,7 +119,7 @@ Owner and response:
 ## Acceptance
 - Dependency audit artifacts exist and parse as JSON.
 - Production high advisories are removed from `npm audit --omit=dev`.
-- Full-audit high advisories are removed after Candidate K local validation.
+- Full-audit high advisories are removed after Candidate K validation and production deployment.
 - The GitHub Actions installer path is reproducible with `npx npm@10.9.4 ci --ignore-scripts`.
 - Secret rotation and monitoring baselines are documented without exposing secrets.
 - Runtime dependency changes require full typecheck, lint, tests, build, and production smoke after deployment.

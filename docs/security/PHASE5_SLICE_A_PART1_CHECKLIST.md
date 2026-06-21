@@ -77,4 +77,4 @@ In practice:
 - Baseline/runbook/monitoring document:
   - `docs/security/PHASE5_SLICE_A_PART1_BASELINE.md`
 - Production high advisories were reduced from 4 to 0 in `npm audit --omit=dev`.
-- Remaining full-audit high advisories were cleared locally in Candidate K by removing the repo-pinned Vercel CLI package and adding narrow patched transitive overrides.
+- Remaining full-audit high advisories were cleared in Candidate K by removing the repo-pinned Vercel CLI package and adding narrow patched transitive overrides.

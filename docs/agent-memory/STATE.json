@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-21T22:28:32.336Z",
+  "last_updated_utc": "2026-06-21T22:36:53.101Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -29,7 +29,7 @@
     "current_task": {
       "id": "candidate-k-deploy-tooling-audit-hardening",
       "title": "Deploy-tooling audit hardening",
-      "status": "local_validated_pending_ci_deploy",
+      "status": "completed_deployed_validated",
       "phase": "production-hardening"
     },
     "next_task": {
@@ -50,7 +50,7 @@
     "Candidate I executed Phase 5 Slice A Part 1: production npm audit high advisories were reduced from 4 to 0; final production audit has 6 total non-high advisories, and remaining high advisories are full-audit/dev-tooling paths primarily under the Vercel CLI transitive tree.",
     "Candidate I required npm 10 lockfile normalization because GitHub Actions npm ci expected a nested optional @swc/helpers@0.5.23 entry. Follow-up commit 0b7c06f passed local npm 10 install validation, GitHub CI 27898130848, Vercel deployment dpl_WD1vgJdecGtQSdGqpEYzJdH1AzKA, production smoke, and protected health verification.",
     "Candidate J found Cleanup expired listings run 27898184065 failed before querying or mutating listings because Supabase realtime initialization on Node 20 lacks native WebSocket support after the dependency upgrade. Maintenance workflows were aligned to Node 22 and commit 10ba092 passed GitHub CI 27898810418, Vercel deployment dpl_Aa8vqtoQjfxz82w5R2w7raN8u7h7, production smoke, and protected health verification.",
-    "Candidate K removed the repo-pinned Vercel CLI devDependency, kept Vercel CLI as external operator tooling, and added narrow transitive overrides so full npm audit has 0 high/critical advisories locally."
+    "Candidate K removed the repo-pinned Vercel CLI devDependency, kept Vercel CLI as external operator tooling, and added narrow transitive overrides so full npm audit has 0 high/critical advisories. Commit 8224378 passed GitHub CI 27919595935, Vercel deployment dpl_Hh7tiXrxJoMEzgkeccnXq83UnmWr, production smoke, and protected health verification."
   ],
   "decisions": [
     {
@@ -219,9 +219,9 @@
       "status": "pass"
     },
     {
-      "timestamp_utc": "2026-06-21T22:28:32.336Z",
+      "timestamp_utc": "2026-06-21T22:36:53.101Z",
       "check": "Candidate K deploy-tooling audit hardening",
-      "status": "local_pass_pending_ci_deploy"
+      "status": "pass"
     }
   ]
 }
