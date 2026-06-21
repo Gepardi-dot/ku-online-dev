@@ -10,6 +10,39 @@ The current hardening focus is to preserve the intended C2C marketplace behavior
 
 ## Latest Candidate
 
+Candidate K: deploy-tooling audit hardening.
+
+Changes:
+- Removed the repo-pinned `vercel` devDependency because the app does not need Vercel CLI to build or run, and the latest package still carried audit noise through deploy-tooling transitive dependencies.
+- Kept Vercel CLI as external operator tooling through the authenticated global CLI or `npx vercel@latest`.
+- Added narrow npm overrides for patched transitive tooling dependencies: `flatted`, `form-data`, `hono`, and `router > path-to-regexp`.
+- Updated tooling/MCP guidance so future checks do not reintroduce `vercel` as a devDependency.
+- Fixed `scripts/check-tooling-status.mjs` Windows command resolution for global `.cmd` shims.
+
+Validation:
+- `npx npm@10.9.4 ci --ignore-scripts`: pass
+- `npm audit --audit-level=high`: pass; full audit now has 0 high/critical advisories and 30 total non-high advisories
+- `npm audit --omit=dev --audit-level=high`: pass; production audit remains 0 high/critical with 6 total non-high advisories
+- `vercel --version`: pass with global CLI `54.9.1`
+- `vercel whoami`: pass as `gepardi-dot`
+- `npm run check:node`: pass
+- `npm run tooling:status`: pass for Vercel/Supabase required checks; Supabase MCP support remains a warning because the installed Supabase CLI does not expose `supabase mcp`
+- `npm run mcp:auto:deploy`: pass for the required Vercel deploy gate; optional GitHub MCP remains blocked by missing MCP-specific token
+- `npm run typecheck`: pass
+- `npm run lint`: pass
+- `npm test`: pass
+- `npm run check:env`: pass with Vercel production env loaded through a temp file
+- `npm run build`: pass with Vercel production env loaded through a temp file
+- `npm run perf:budget`: pass
+- GitHub CI / Vercel deploy: pending until this slice is pushed.
+
+Known notes:
+- No Supabase schema, table, bucket, RLS, storage, auth-provider, provider, or migration changes were made.
+- The failed `npm run check:env` attempt in `C:\Users\miroa\Downloads\kubazar-dev` was from the older linked local repo, not this candidate worktree.
+- Global Vercel CLI remains available for deployment operations; it is intentionally no longer part of the app dependency tree.
+
+## Previous Candidate
+
 Candidate J: production maintenance workflow Node 22 alignment.
 
 Changes:
@@ -36,7 +69,7 @@ Known notes:
 - The maintenance workflows use production service-role/provider credentials when they run. They were not manually dispatched during local validation to avoid unintended production mutations.
 - Local default `npm` reports an inconsistent Node 24 runtime and can leave `node_modules` incomplete; npm 10 was used for lockfile and install validation because it matches the GitHub Actions path already proven by Candidate I.
 
-## Previous Candidate
+## Earlier Candidate
 
 Candidate I: Phase 5 security-operations baseline and dependency remediation.
 
@@ -57,7 +90,7 @@ Validation:
 - `npm run check:env`: pass with Vercel production env loaded through a temp file
 - `npm run build`: pass with Vercel production env loaded through a temp file
 - `npm audit --omit=dev --audit-level=high`: pass
-- `npm audit --audit-level=high`: expected fail from deferred dev/deploy tooling advisories
+- `npm audit --audit-level=high`: expected fail from deferred dev/deploy tooling advisories at the time of Candidate I; resolved locally by Candidate K
 - `npm run perf:budget`: pass
 - GitHub CI for commit `0b7c06f`: pass (`27898130848`)
 - Vercel production deployment for commit `0b7c06f`: ready (`dpl_WD1vgJdecGtQSdGqpEYzJdH1AzKA`) and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`
@@ -67,11 +100,11 @@ Validation:
 Known notes:
 - No Supabase schema, table, bucket, RLS, storage, auth-provider, provider, or migration changes were made.
 - Production high advisories dropped from 4 to 0 in `npm audit --omit=dev`; the final production audit after npm 10 lockfile normalization has 6 total non-high advisories.
-- Remaining high advisories are in full-audit/dev-tooling paths, primarily the Vercel CLI transitive tree. The `vercel` CLI major upgrade is intentionally deferred to a separate tooling slice.
+- Candidate K later removed the repo-pinned Vercel CLI package and cleared full-audit high advisories locally.
 - `npm run check:node` passed on Node `22.21.1`; an earlier install step emitted a transient engine warning from a different local tool runtime.
 - The first GitHub CI run for `4a2b992` failed at `npm ci` because npm 10 expected a nested optional `@swc/helpers@0.5.23` lockfile entry. Follow-up commit `0b7c06f` normalized the lockfile with npm 10; local `npx npm@10.9.4 ci --ignore-scripts` and GitHub CI now pass.
 
-## Earlier Candidate
+## Older Candidate
 
 Candidate H: production Upstash rate-limit rollout.
 
@@ -159,7 +192,7 @@ Known notes:
 ## Active Production Risks
 
 - Real-user homepage performance needs more evidence: the previous poor-vitals sample aged out, but the latest manual window had zero events, so there is not enough fresh real-user telemetry to claim the homepage is fully cleared.
-- Full dependency audit still has high advisories in dev/deploy tooling paths, mainly Vercel CLI transitive dependencies. The production audit has no high/critical advisories after Candidate I.
+- Full dependency audit has no high/critical advisories after Candidate K local validation; remaining audit findings are non-high.
 - Distributed rate limiting is active through Vercel KV/Upstash, but the current provider resource is on the free plan. Revisit plan limits, eviction behavior, and SLA before broad public launch.
 - Production maintenance workflows should be observed on their next schedules; manual dispatch is intentionally avoided unless approved because these jobs can mutate production listings, translations, embeddings, Algolia indexes, and storage.
 - C2C abuse workflows still need continuous hardening: reporting, blocking, moderation queues, repeat-offender detection, and auditability.

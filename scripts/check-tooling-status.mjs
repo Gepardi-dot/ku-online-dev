@@ -16,8 +16,8 @@ const checks = [
         command: 'vercel',
         args: ['--version'],
         onSuccess: ({ stdout }) => `v${stdout.trim().replace(/^v?/, '')}`,
-        onMissing: 'Install with `npm install -D vercel` or `pnpm add -D vercel`.',
-        onFailure: 'Run `npx vercel --version` manually to inspect the error output.',
+        onMissing: 'Install the Vercel CLI globally with `npm i -g vercel` or use `npx vercel@latest`.',
+        onFailure: 'Run `npx vercel@latest --version` manually to inspect the error output.',
       },
       {
         label: 'authentication',
@@ -29,7 +29,7 @@ const checks = [
           const identity = stdout.trim();
           return identity ? `Logged in as ${identity}` : 'Authenticated but no username returned.';
         },
-        onFailure: 'Not authenticated. Run `npx vercel login` to authorize the CLI.',
+        onFailure: 'Not authenticated. Run `vercel login` or `npx vercel@latest login` to authorize the CLI.',
       },
     ],
   },
@@ -58,7 +58,11 @@ const checks = [
 
 function runProbe({ command, args }) {
   return new Promise((resolve) => {
-    const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(command, args, {
+      shell: process.platform === 'win32',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+    });
     let stdout = '';
     let stderr = '';
     let settled = false;

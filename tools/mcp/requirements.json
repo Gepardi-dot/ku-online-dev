@@ -121,7 +121,7 @@
             "--version"
           ],
           "timeoutMs": 60000,
-          "onFail": "Install Vercel CLI with `npm install -D vercel` or `npm i -g vercel`."
+          "onFail": "Install Vercel CLI globally with `npm i -g vercel` or use `npx vercel@latest`."
         },
         {
           "id": "vercel_auth",
@@ -133,7 +133,7 @@
             "whoami"
           ],
           "timeoutMs": 120000,
-          "onFail": "Run `npx vercel login` (or `vercel login`) and rerun MCP doctor."
+          "onFail": "Run `vercel login` or `npx vercel@latest login` and rerun MCP doctor."
         }
       ],
       "setupChecklist": [

@@ -274,3 +274,64 @@ Risks and rollout notes:
 - Manual dispatch can mutate production listings, storage, translations, embeddings, and Algolia indexes; do not run these workflows casually.
 - Local default `npm` reports an inconsistent Node 24 runtime and left `node_modules` incomplete during validation. npm 10 was used for lockfile/install validation because it matches the GitHub Actions path already proven by Candidate I.
 - Rollback is a normal git revert of Candidate J. No database rollback is required because no production maintenance workflow was manually executed in this slice.
+
+## Candidate K Deploy-Tooling Audit Hardening
+
+Date: 2026-06-21
+
+Goal: clear the remaining full-audit high advisories without carrying Vercel CLI as an app devDependency.
+
+Important files changed:
+- `package.json`
+- `package-lock.json`
+- `scripts/check-tooling-status.mjs`
+- `tools/mcp/requirements.json`
+- `docs/production-readiness.md`
+- `docs/production-candidate-checkpoint.md`
+- `docs/security/PHASE5_SLICE_A_PART1_BASELINE.md`
+- `docs/security/PHASE5_SLICE_A_PART1_CHECKLIST.md`
+- `docs/agent-memory/JOURNAL.md`
+- `docs/agent-memory/STATE.json`
+
+Implementation:
+- Removed `vercel` from `devDependencies`; Vercel CLI is now external operator tooling.
+- Added explicit overrides for patched transitive tooling packages:
+  - `flatted`: `3.4.2`
+  - `form-data`: `4.0.6`
+  - `hono`: `4.12.26`
+  - `router > path-to-regexp`: `8.4.2`
+- Updated tooling guidance to recommend global `vercel` or `npx vercel@latest`.
+- Fixed Windows `.cmd` shim resolution in `scripts/check-tooling-status.mjs`.
+
+Supabase impact:
+- Tables touched: none
+- Buckets touched: none
+- RLS/policies touched: none
+- Migrations added: none
+
+Validation performed:
+- `npx npm@10.9.4 ci --ignore-scripts`: pass
+- `npm audit --audit-level=high`: pass; full audit has 0 high/critical advisories and 30 total non-high advisories
+- `npm audit --omit=dev --audit-level=high`: pass; production audit has 0 high/critical advisories and 6 total non-high advisories
+- `vercel --version`: pass with global CLI `54.9.1`
+- `vercel whoami`: pass as `gepardi-dot`
+- `npm run check:node`: pass
+- `npm run tooling:status`: pass for required Vercel/Supabase checks, with Supabase MCP support warning
+- `npm run mcp:auto:deploy`: pass for required Vercel deploy gate, with optional GitHub MCP blocked by missing MCP-specific token
+- `npm run typecheck`: pass
+- `npm run lint`: pass
+- `npm test`: pass
+- `npm run check:env` with Vercel production env loaded through a temp file: pass
+- `npm run build` with Vercel production env loaded through a temp file: pass
+- `npm run perf:budget`: pass
+- GitHub CI / Vercel deployment: pending until this slice is pushed.
+
+Production interpretation:
+- The app build/runtime no longer carries Vercel CLI dependency risk.
+- Deploy operators can still use the authenticated global Vercel CLI or `npx vercel@latest`.
+- Full-audit high/critical advisories are locally cleared; remaining audit items are non-high.
+
+Risks and rollout notes:
+- Removing repo-pinned Vercel CLI means local operators need a global CLI or `npx vercel@latest`.
+- A failed `npm run check:env` attempt happened in the older linked local repo at `C:\Users\miroa\Downloads\kubazar-dev`; the candidate worktree passed with the same pulled production env.
+- Rollback is a normal git revert of Candidate K. No database rollback is required.
