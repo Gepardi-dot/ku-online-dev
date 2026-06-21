@@ -1,6 +1,6 @@
 # Production Candidate Checkpoint
 
-Last updated: 2026-06-20
+Last updated: 2026-06-21
 
 ## Candidate E
 
@@ -222,3 +222,52 @@ Risks and rollout notes:
 - Next/Sentry/Supabase/runtime package updates can affect build and runtime behavior; Candidate I has passed local validation, GitHub CI, Vercel deployment, and production smoke, but should still be watched through normal Sentry/Vercel runtime monitoring.
 - `npm run check:node` passed on Node `22.21.1`; an earlier install step emitted a transient engine warning from a different local tool runtime.
 - Rollback is a normal git revert of Candidate I. No database rollback is required.
+
+## Candidate J Maintenance Workflow Runtime Alignment
+
+Date: 2026-06-21
+
+Goal: restore scheduled production maintenance workflows after the dependency upgrade exposed stale Node 20 workflow runtimes.
+
+Important files changed:
+- `.github/workflows/cleanup-expired-listings.yml`
+- `.github/workflows/product-i18n.yml`
+- `.github/workflows/algolia-synonyms.yml`
+- `package.json`
+- `package-lock.json`
+- `docs/production-readiness.md`
+- `docs/production-candidate-checkpoint.md`
+- `docs/agent-memory/JOURNAL.md`
+- `docs/agent-memory/STATE.json`
+
+Failure evidence:
+- Cleanup expired listings run `27898184065` failed on `0b7c06f` before querying or mutating listings.
+- Failure cause: `@supabase/realtime-js` initialization on Node 20 threw `Node.js 20 detected without native WebSocket support`.
+- `Product translations & embeddings` and `Algolia Synonyms` were also still pinned to Node 20 and had recent scheduled failures after the dependency/lockfile changes.
+
+Supabase impact:
+- Tables touched: none
+- Buckets touched: none
+- RLS/policies touched: none
+- Migrations added: none
+- Production workflow manual dispatch: not run, because these jobs can mutate production listings, storage, translations, embeddings, and Algolia records.
+
+Validation performed:
+- `npx npm@10.9.4 ci --ignore-scripts`: pass
+- `npm run check:node`: pass
+- Supabase client initialization smoke under Node 22 with dummy credentials: pass
+- `npm run typecheck`: pass
+- `npm run lint`: pass after restoring dependencies with npm 10
+- `npm test`: pass
+- `git diff --check`: pass
+- GitHub CI / Vercel deployment: pending until this slice is pushed.
+
+Production interpretation:
+- The 3-month listing lifecycle cleanup path was failing because of workflow runtime drift, not because the cleanup script reached product data and failed mid-mutation.
+- The safest fix is to align maintenance workflows with the repo's Node 22 runtime instead of adding per-script WebSocket shims for a stale Node version.
+- The workflows should be observed on their next scheduled runs or manually dispatched only after explicit approval.
+
+Risks and rollout notes:
+- Manual dispatch can mutate production listings, storage, translations, embeddings, and Algolia indexes; do not run these workflows casually.
+- Local default `npm` reports an inconsistent Node 24 runtime and left `node_modules` incomplete during validation. npm 10 was used for lockfile/install validation because it matches the GitHub Actions path already proven by Candidate I.
+- Rollback is a normal git revert of Candidate J. No database rollback is required because no production maintenance workflow was manually executed in this slice.

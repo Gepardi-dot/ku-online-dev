@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-21T08:08:40.338Z",
+  "last_updated_utc": "2026-06-21T08:31:36.671Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,13 +27,13 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-i-security-ops-baseline",
-      "title": "Phase 5 dependency, secret-rotation, and monitoring baseline",
-      "status": "completed_deployed_validated",
+      "id": "candidate-j-maintenance-workflow-node22",
+      "title": "Production maintenance workflow Node 22 alignment",
+      "status": "local_validated_pending_ci_deploy",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-j-vercel-cli-tooling-upgrade",
+      "id": "candidate-k-vercel-cli-tooling-upgrade",
       "title": "Plan and validate Vercel CLI major upgrade"
     },
     "latest_user_request": "continue"
@@ -48,7 +48,8 @@
     "Candidate G adds a shared async fixed-window rate-limit backend with optional Upstash Redis REST enforcement, memory fallback, safe key normalization, and tests. Candidate G was initially deployed to production as commit 5736b21 / Vercel dpl_2ZHSbR5dzBJCYAeuF6Tjh2CggrgU.",
     "Candidate H connected Vercel ku-online-dev to Upstash resource ku-bazar-rate-limit and proved production rate limiting is active through Vercel KV env names: rateLimit.configured=true, source=vercel-kv, backend=upstash, status=ok on the protected production health endpoint.",
     "Candidate I executed Phase 5 Slice A Part 1: production npm audit high advisories were reduced from 4 to 0; final production audit has 6 total non-high advisories, and remaining high advisories are full-audit/dev-tooling paths primarily under the Vercel CLI transitive tree.",
-    "Candidate I required npm 10 lockfile normalization because GitHub Actions npm ci expected a nested optional @swc/helpers@0.5.23 entry. Follow-up commit 0b7c06f passed local npm 10 install validation, GitHub CI 27898130848, Vercel deployment dpl_WD1vgJdecGtQSdGqpEYzJdH1AzKA, production smoke, and protected health verification."
+    "Candidate I required npm 10 lockfile normalization because GitHub Actions npm ci expected a nested optional @swc/helpers@0.5.23 entry. Follow-up commit 0b7c06f passed local npm 10 install validation, GitHub CI 27898130848, Vercel deployment dpl_WD1vgJdecGtQSdGqpEYzJdH1AzKA, production smoke, and protected health verification.",
+    "Candidate J found Cleanup expired listings run 27898184065 failed before querying or mutating listings because Supabase realtime initialization on Node 20 lacks native WebSocket support after the dependency upgrade. Maintenance workflows are being aligned to Node 22."
   ],
   "decisions": [
     {
@@ -67,7 +68,8 @@
     "Production read-only telemetry after Candidate E showed one / FCP poor sample at 3740ms and one / LCP needs-improvement sample at 3792ms with good TTFB. That sample aged out by 2026-06-19, but current RUM volume is too low to claim full homepage performance clearance.",
     "Distributed rate limiting is now active through Vercel KV/Upstash, but the current provider resource is free tier with eviction enabled and should be revisited before broad public launch.",
     "Privileged admin and service-role server paths still need continued ownership-check, authorization-boundary, test, and audit-log hardening.",
-    "Vercel CLI remains on ^50.44.0 with high full-audit advisories; npm suggests 54.14.2 as a major upgrade, deferred to a separate tooling slice."
+    "Vercel CLI remains on ^50.44.0 with high full-audit advisories; npm suggests 54.14.2 as a major upgrade, deferred to a separate tooling slice.",
+    "Production maintenance workflows should be observed after Node 22 alignment lands. Manual dispatch requires explicit approval because cleanup/i18n/synonyms workflows can mutate production listings, storage, translations, embeddings, and Algolia indexes."
   ],
   "verification_log": [
     {
@@ -209,6 +211,11 @@
       "timestamp_utc": "2026-06-21T08:08:40.338Z",
       "check": "Candidate I dependency remediation and security-operations baseline",
       "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-21T08:31:36.671Z",
+      "check": "Candidate J maintenance workflow runtime alignment",
+      "status": "local_pass_pending_ci_deploy"
     }
   ]
 }

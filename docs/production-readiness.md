@@ -10,6 +10,31 @@ The current hardening focus is to preserve the intended C2C marketplace behavior
 
 ## Latest Candidate
 
+Candidate J: production maintenance workflow Node 22 alignment.
+
+Changes:
+- Moved the scheduled `Cleanup expired listings`, `Product translations & embeddings`, and `Algolia Synonyms` workflows from Node 20 to Node 22.
+- Aligned `package.json` and `package-lock.json` `engines.node` with the repository's real Node policy: Node 22.
+- Preserved the npm 10 lockfile shape needed by GitHub Actions.
+
+Validation:
+- Failed cleanup run inspected: `27898184065` failed before any listing query/mutation because Supabase client initialization on Node 20 lacks native WebSocket support.
+- `npx npm@10.9.4 ci --ignore-scripts`: pass
+- `npm run check:node`: pass
+- Supabase client initialization smoke under Node 22 with dummy credentials: pass
+- `npm run typecheck`: pass
+- `npm run lint`: pass after restoring dependencies with npm 10
+- `npm test`: pass
+- `git diff --check`: pass
+- GitHub CI / Vercel deploy: pending until this slice is pushed.
+
+Known notes:
+- No Supabase schema, table, bucket, RLS, storage, auth-provider, provider, or migration changes were made.
+- The maintenance workflows use production service-role/provider credentials when they run. They were not manually dispatched during local validation to avoid unintended production mutations.
+- Local default `npm` reports an inconsistent Node 24 runtime and can leave `node_modules` incomplete; npm 10 was used for lockfile and install validation because it matches the GitHub Actions path already proven by Candidate I.
+
+## Previous Candidate
+
 Candidate I: Phase 5 security-operations baseline and dependency remediation.
 
 Changes:
@@ -43,7 +68,7 @@ Known notes:
 - `npm run check:node` passed on Node `22.21.1`; an earlier install step emitted a transient engine warning from a different local tool runtime.
 - The first GitHub CI run for `4a2b992` failed at `npm ci` because npm 10 expected a nested optional `@swc/helpers@0.5.23` lockfile entry. Follow-up commit `0b7c06f` normalized the lockfile with npm 10; local `npx npm@10.9.4 ci --ignore-scripts` and GitHub CI now pass.
 
-## Previous Candidate
+## Earlier Candidate
 
 Candidate H: production Upstash rate-limit rollout.
 
@@ -70,7 +95,7 @@ Known notes:
 - Upstash free tier is acceptable for controlled beta hardening, but paid capacity/SLA should be revisited before broad public launch or heavy traffic.
 - During provider setup, one manual Vercel deploy was accidentally attempted from the candidate worktree and created a temporary local link to a wrong Vercel project name. That failed deployment did not replace `ku-online-dev`; the local `.vercel` link was removed and the correct `ku-online-dev` production redeploy was used.
 
-## Earlier Candidate
+## Older Candidate
 
 Candidate G: durable rate-limit backend preparation.
 
@@ -98,7 +123,7 @@ Known notes:
 - Production now uses the Vercel KV/Upstash backend after Candidate H.
 - If Upstash is unavailable, the app logs a server warning and falls back to in-memory throttling to avoid taking down legitimate user flows.
 
-## Older Candidate
+## Performance Candidate
 
 Candidate E: homepage and sell-page first-paint hardening.
 
@@ -133,6 +158,7 @@ Known notes:
 - Real-user homepage performance needs more evidence: the previous poor-vitals sample aged out, but the latest manual window had zero events, so there is not enough fresh real-user telemetry to claim the homepage is fully cleared.
 - Full dependency audit still has high advisories in dev/deploy tooling paths, mainly Vercel CLI transitive dependencies. The production audit has no high/critical advisories after Candidate I.
 - Distributed rate limiting is active through Vercel KV/Upstash, but the current provider resource is on the free plan. Revisit plan limits, eviction behavior, and SLA before broad public launch.
+- Production maintenance workflows should be observed after the Node 22 alignment lands; manual dispatch is intentionally avoided unless approved because these jobs can mutate production listings, translations, embeddings, Algolia indexes, and storage.
 - C2C abuse workflows still need continuous hardening: reporting, blocking, moderation queues, repeat-offender detection, and auditability.
 - Server-side service-role paths should continue to receive ownership checks, tests, and audit logging.
 - Local and production environment parity should be checked before DB, auth, provider, storage, or deploy mutations.
