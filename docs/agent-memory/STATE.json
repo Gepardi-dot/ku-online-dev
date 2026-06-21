@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-21T07:58:39.780Z",
+  "last_updated_utc": "2026-06-21T08:08:40.338Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -29,14 +29,14 @@
     "current_task": {
       "id": "candidate-i-security-ops-baseline",
       "title": "Phase 5 dependency, secret-rotation, and monitoring baseline",
-      "status": "lockfile_followup_pending_push_ci_deploy_smoke",
+      "status": "completed_deployed_validated",
       "phase": "production-hardening"
     },
     "next_task": {
       "id": "candidate-j-vercel-cli-tooling-upgrade",
       "title": "Plan and validate Vercel CLI major upgrade"
     },
-    "latest_user_request": "proceed"
+    "latest_user_request": "continue"
   },
   "technical_findings": [
     "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
@@ -47,8 +47,8 @@
     "Candidate F burn-in follow-up on 2026-06-19 found the poor homepage sample aged out. Scheduled PWA Ramp Governance passed on 6ccde1e; manual normal governance warns only because the last 60 minutes had zero events, so rates are unavailable.",
     "Candidate G adds a shared async fixed-window rate-limit backend with optional Upstash Redis REST enforcement, memory fallback, safe key normalization, and tests. Candidate G was initially deployed to production as commit 5736b21 / Vercel dpl_2ZHSbR5dzBJCYAeuF6Tjh2CggrgU.",
     "Candidate H connected Vercel ku-online-dev to Upstash resource ku-bazar-rate-limit and proved production rate limiting is active through Vercel KV env names: rateLimit.configured=true, source=vercel-kv, backend=upstash, status=ok on the protected production health endpoint.",
-    "Candidate I executed Phase 5 Slice A Part 1: production npm audit high advisories were reduced from 4 to 0; remaining high advisories are full-audit/dev-tooling paths primarily under the Vercel CLI transitive tree.",
-    "Candidate I required npm 10 lockfile normalization because GitHub Actions npm ci expected a nested optional @swc/helpers@0.5.23 entry. Local npx npm@10.9.4 ci --ignore-scripts now passes."
+    "Candidate I executed Phase 5 Slice A Part 1: production npm audit high advisories were reduced from 4 to 0; final production audit has 6 total non-high advisories, and remaining high advisories are full-audit/dev-tooling paths primarily under the Vercel CLI transitive tree.",
+    "Candidate I required npm 10 lockfile normalization because GitHub Actions npm ci expected a nested optional @swc/helpers@0.5.23 entry. Follow-up commit 0b7c06f passed local npm 10 install validation, GitHub CI 27898130848, Vercel deployment dpl_WD1vgJdecGtQSdGqpEYzJdH1AzKA, production smoke, and protected health verification."
   ],
   "decisions": [
     {
@@ -206,9 +206,9 @@
       "status": "pass"
     },
     {
-      "timestamp_utc": "2026-06-20T18:14:57.095Z",
+      "timestamp_utc": "2026-06-21T08:08:40.338Z",
       "check": "Candidate I dependency remediation and security-operations baseline",
-      "status": "pass_local_pending_lockfile_followup_ci_deploy_smoke"
+      "status": "pass"
     }
   ]
 }

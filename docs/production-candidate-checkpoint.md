@@ -162,7 +162,7 @@ Risks and rollout notes:
 
 ## Candidate I Security Operations Baseline
 
-Date: 2026-06-20
+Date: 2026-06-20 to 2026-06-21
 
 Goal: execute the next documented Phase 5 security step by reducing dependency risk, creating a secret-rotation runbook draft, and defining privileged-route monitoring thresholds.
 
@@ -207,16 +207,18 @@ Validation performed:
 - `npm audit --omit=dev --audit-level=high`: pass
 - `npm audit --audit-level=high`: expected fail from deferred dev/deploy tooling advisories
 - `npm run perf:budget`: pass
-- Vercel deployment and production smoke for commit `4a2b992`: pass
-- Pending after npm 10 lockfile normalization follow-up: GitHub CI, Vercel deployment, production smoke.
+- GitHub CI for commit `0b7c06f`: pass (`27898130848`)
+- Vercel production deployment for commit `0b7c06f`: ready (`dpl_WD1vgJdecGtQSdGqpEYzJdH1AzKA`) and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`
+- Production smoke for `0b7c06f`: pass for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`
+- Protected production health check: `database=ok`, `storage=ok`, `rateLimit.status=ok`, `rateLimit.configured=true`, `rateLimit.source=vercel-kv`, `rateLimit.backend=upstash`
 
 Production interpretation:
-- Production audit high advisories dropped from 4 to 0.
+- Production audit high advisories dropped from 4 to 0; final `npm audit --omit=dev` has 6 total non-high advisories after npm 10 lockfile normalization.
 - Full audit still reports high advisories through dev/deploy tooling paths, mostly the Vercel CLI transitive dependency tree.
 - The Vercel CLI fix is a major upgrade from the current repository line and should be handled in a separate tooling slice with CI/deploy validation.
-- The first GitHub CI run for `4a2b992` failed before CI scripts because npm 10 required a nested optional `@swc/helpers@0.5.23` lockfile entry. The follow-up lockfile normalization reproduces the GitHub Actions installer path locally.
+- The first GitHub CI run for `4a2b992` failed before CI scripts because npm 10 required a nested optional `@swc/helpers@0.5.23` lockfile entry. Follow-up commit `0b7c06f` normalized the lockfile, reproduces the GitHub Actions installer path locally, and passed GitHub CI.
 
 Risks and rollout notes:
-- Next/Sentry/Supabase/runtime package updates can affect build and runtime behavior; this candidate must not be considered done until full validation and production smoke pass.
+- Next/Sentry/Supabase/runtime package updates can affect build and runtime behavior; Candidate I has passed local validation, GitHub CI, Vercel deployment, and production smoke, but should still be watched through normal Sentry/Vercel runtime monitoring.
 - `npm run check:node` passed on Node `22.21.1`; an earlier install step emitted a transient engine warning from a different local tool runtime.
 - Rollback is a normal git revert of Candidate I. No database rollback is required.

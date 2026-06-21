@@ -1,6 +1,6 @@
 # KU BAZAR Production Readiness
 
-Last updated: 2026-06-20
+Last updated: 2026-06-21
 
 ## Current Status
 
@@ -31,15 +31,17 @@ Validation:
 - `npm audit --omit=dev --audit-level=high`: pass
 - `npm audit --audit-level=high`: expected fail from deferred dev/deploy tooling advisories
 - `npm run perf:budget`: pass
-- Vercel deployment and production smoke for commit `4a2b992`: pass
-- GitHub CI: pending after npm 10 lockfile normalization follow-up
+- GitHub CI for commit `0b7c06f`: pass (`27898130848`)
+- Vercel production deployment for commit `0b7c06f`: ready (`dpl_WD1vgJdecGtQSdGqpEYzJdH1AzKA`) and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`
+- Production smoke for `0b7c06f`: pass for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`
+- Protected production health check: `database=ok`, `storage=ok`, `rateLimit.status=ok`, `rateLimit.configured=true`, `rateLimit.source=vercel-kv`, `rateLimit.backend=upstash`
 
 Known notes:
 - No Supabase schema, table, bucket, RLS, storage, auth-provider, provider, or migration changes were made.
-- Production high advisories dropped from 4 to 0 in `npm audit --omit=dev`.
+- Production high advisories dropped from 4 to 0 in `npm audit --omit=dev`; the final production audit after npm 10 lockfile normalization has 6 total non-high advisories.
 - Remaining high advisories are in full-audit/dev-tooling paths, primarily the Vercel CLI transitive tree. The `vercel` CLI major upgrade is intentionally deferred to a separate tooling slice.
 - `npm run check:node` passed on Node `22.21.1`; an earlier install step emitted a transient engine warning from a different local tool runtime.
-- The first GitHub CI run for `4a2b992` failed at `npm ci` because npm 10 expected a nested optional `@swc/helpers@0.5.23` lockfile entry. The lockfile has now been normalized with npm 10 and local `npx npm@10.9.4 ci --ignore-scripts` passes.
+- The first GitHub CI run for `4a2b992` failed at `npm ci` because npm 10 expected a nested optional `@swc/helpers@0.5.23` lockfile entry. Follow-up commit `0b7c06f` normalized the lockfile with npm 10; local `npx npm@10.9.4 ci --ignore-scripts` and GitHub CI now pass.
 
 ## Previous Candidate
 
