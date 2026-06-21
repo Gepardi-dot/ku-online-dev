@@ -129,7 +129,7 @@
     "msw": "^2.13.2",
     "postcss": "^8.5.15",
     "tailwindcss": "^4.1.18",
-    "typescript": "^5",
+    "typescript": "^6",
     "vercel": "^50.44.0"
   }
 }
