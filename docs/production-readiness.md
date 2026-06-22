@@ -10,6 +10,37 @@ The current hardening focus is to preserve the intended C2C marketplace behavior
 
 ## Latest Candidate
 
+Candidate M: legacy admin-token route parity hardening.
+
+Changes:
+- Added shared timing-safe admin token helper in `src/lib/security/admin-token.ts`.
+- Added unit coverage for Bearer token support, legacy `x-admin-token` fallback, missing expected-token rejection, and mismatched-token rejection.
+- Updated legacy token-admin routes to use the shared helper:
+  - `src/app/api/admin/moderate/route.ts`
+  - `src/app/api/admin/announcements/route.ts`
+  - `src/app/api/admin/revalidate/route.ts`
+- Updated `src/app/api/internal/health/route.ts` to reuse the shared helper instead of carrying a route-local implementation.
+- Added explicit service-role client auth options (`persistSession: false`, `autoRefreshToken: false`) to the remaining token-admin service-role clients in `admin/moderate` and `admin/announcements`.
+- Removed non-production token-length debug logging from `admin/revalidate`.
+
+Validation:
+- `npm run mcp:ensure`: pass.
+- `npm run mcp:auto:core`: pass after pulling Vercel production env into ignored `.env.local` for local validation.
+- Targeted ESLint for changed route/helper/test files: pass.
+- `npm run build:test`: pass.
+- `npm test`: pass.
+- `npm run typecheck`: pass.
+- `npm run lint`: pass on retry with a longer timeout after the first lint command timed out at 120 seconds without a failure result.
+- `npm run build`: pass with `.env.local` loaded from Vercel production env. Initial build without env failed at `/robots.txt` page-data collection because required public env vars were absent.
+
+Known notes:
+- Existing `x-admin-token` callers remain supported.
+- `Authorization: Bearer <token>` is now supported on the legacy admin-token routes.
+- No Supabase schema, table, bucket, RLS, storage, auth-provider, provider, or migration changes were made.
+- `.env.local` and `.vercel/` are local ignored files created only for validation and must not be committed.
+
+## Previous Candidate
+
 Candidate L: scheduled maintenance workflow observation.
 
 Scope:
@@ -42,7 +73,7 @@ Known notes:
 - Continue observing these workflows in normal operations; do not assume one green day proves long-term reliability.
 - If exact timing becomes production-critical, move the critical maintenance trigger to a scheduler with stronger delivery semantics or add freshness alerting around missed GitHub scheduled runs.
 
-## Previous Candidate
+## Earlier Candidate
 
 Candidate K: deploy-tooling audit hardening.
 

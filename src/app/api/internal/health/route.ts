@@ -1,8 +1,8 @@
 import { createClient as createSupabaseServiceRole } from '@supabase/supabase-js';
-import { timingSafeEqual } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { getEnv } from '@/lib/env';
+import { isAdminTokenAuthorized } from '@/lib/security/admin-token';
 import {
   buildOriginAllowList,
   checkRateLimit,
@@ -53,25 +53,6 @@ function toSafeErrorLabel(error: unknown): string {
   return 'unavailable';
 }
 
-function readAuthToken(request: NextRequest): string {
-  const authHeader = request.headers.get('authorization') ?? '';
-  if (authHeader.toLowerCase().startsWith('bearer ')) {
-    return authHeader.slice(7).trim();
-  }
-  return (request.headers.get('x-admin-token') ?? '').trim();
-}
-
-function isAuthorized(request: NextRequest, expected: string): boolean {
-  const provided = readAuthToken(request);
-  if (!provided) return false;
-
-  const expectedBuffer = Buffer.from(expected);
-  const providedBuffer = Buffer.from(provided);
-  if (expectedBuffer.length !== providedBuffer.length) return false;
-
-  return timingSafeEqual(expectedBuffer, providedBuffer);
-}
-
 function tooManyRequestsResponse(retryAfter: number) {
   const response = NextResponse.json(
     { ok: false, error: 'Too many requests. Please try again later.' },
@@ -92,7 +73,7 @@ export const GET = withSentryRoute(async (request: NextRequest) => {
     return NextResponse.json({ ok: false, error: 'Diagnostics token is not configured.' }, { status: 503 });
   }
 
-  if (!isAuthorized(request, expectedToken)) {
+  if (!isAdminTokenAuthorized(request, expectedToken)) {
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 

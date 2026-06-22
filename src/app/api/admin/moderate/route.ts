@@ -3,6 +3,7 @@ import { getEnv } from '@/lib/env';
 import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@supabase/supabase-js';
 import { syncAlgoliaProductById } from '@/lib/services/algolia-products';
+import { isAdminTokenAuthorized } from '@/lib/security/admin-token';
 import {
   buildOriginAllowList,
   checkRateLimit,
@@ -13,7 +14,9 @@ import {
 
 const { ADMIN_REVALIDATE_TOKEN, NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } =
   getEnv();
-const supabaseAdmin = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createClient(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 export const runtime = 'nodejs';
 
@@ -57,8 +60,7 @@ export const POST = withSentryRoute(async (req: NextRequest) => {
     }
   }
 
-  const token = req.headers.get('x-admin-token') ?? '';
-  if (!ADMIN_REVALIDATE_TOKEN || token !== ADMIN_REVALIDATE_TOKEN) {
+  if (!isAdminTokenAuthorized(req, ADMIN_REVALIDATE_TOKEN)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

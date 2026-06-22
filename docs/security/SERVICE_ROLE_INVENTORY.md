@@ -279,7 +279,20 @@ Scope: `src/app/api/**/route.ts` files that instantiate a Supabase service-role/
     - `docs/security/PHASE5_SLICE_A_PART1_CHECKLIST.md`
   - Documented by-design required-now risks and concrete operational follow-up steps.
 
+## Hardening Applied In Candidate M
+- Added shared timing-safe admin-token helper and applied it to:
+  - `src/app/api/admin/moderate/route.ts`
+  - `src/app/api/admin/announcements/route.ts`
+  - `src/app/api/admin/revalidate/route.ts`
+  - `src/app/api/internal/health/route.ts`
+- Preserved legacy `x-admin-token` support and added `Authorization: Bearer <token>` support.
+- Added explicit non-persistent service-role auth options to:
+  - `src/app/api/admin/moderate/route.ts`
+  - `src/app/api/admin/announcements/route.ts`
+- Removed token-length/equality debug logging from:
+  - `src/app/api/admin/revalidate/route.ts`
+
 ## Next Priorities
-1. Execute Phase 5 Slice A Part 1 dependency baseline and triage.
-2. Draft and validate secret-rotation runbook using staging-first rollout.
-3. Define monitoring ownership and alert thresholds for privileged-route abuse signals.
+1. Continue privileged-route observability: alert on `401`, `403`, `429`, `5xx`, and privileged mutation bursts.
+2. Draft and validate secret rotation using the Phase 5 runbook.
+3. Continue reducing by-design service-role blast radius where scoped RPC/RLS can safely replace route-level admin clients.

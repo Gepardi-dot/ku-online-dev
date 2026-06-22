@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 
 import { getEnv } from '@/lib/env';
+import { isAdminTokenAuthorized } from '@/lib/security/admin-token';
 import {
   buildOriginAllowList,
   checkRateLimit,
@@ -16,7 +17,9 @@ export const runtime = 'nodejs';
 const env = getEnv();
 const { ADMIN_REVALIDATE_TOKEN, NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = env;
 
-const supabaseAdmin = createSupabaseAdmin(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = createSupabaseAdmin(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 const ANNOUNCEMENTS_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 3 } as const;
 const ANNOUNCEMENTS_RATE_LIMIT_PER_TOKEN = { windowMs: 60_000, max: 10 } as const;
@@ -34,12 +37,6 @@ function tooManyRequestsResponse(retryAfter: number) {
   const response = NextResponse.json({ error: 'Rate limit exceeded. Wait before publishing another announcement.' }, { status: 429 });
   response.headers.set('Retry-After', String(Math.max(1, retryAfter)));
   return response;
-}
-
-function isAuthorized(req: Request): boolean {
-  const token = req.headers.get('x-admin-token') ?? '';
-  const expected = ADMIN_REVALIDATE_TOKEN ?? '';
-  return Boolean(expected) && token === expected;
 }
 
 function isValidDateString(value: string): boolean {
@@ -69,7 +66,7 @@ export const POST = withSentryRoute(async (req: NextRequest) => {
     }
   }
 
-  if (!isAuthorized(req)) {
+  if (!isAdminTokenAuthorized(req, ADMIN_REVALIDATE_TOKEN)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

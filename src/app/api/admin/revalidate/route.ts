@@ -2,6 +2,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { NextResponse } from 'next/server';
 
 import { getEnv } from '@/lib/env';
+import { isAdminTokenAuthorized } from '@/lib/security/admin-token';
 import {
   buildOriginAllowList,
   checkRateLimit,
@@ -31,14 +32,11 @@ const adminOriginAllowList = buildOriginAllowList([
 ]);
 
 function isAuthorized(req: Request): boolean {
-  const token = req.headers.get('x-admin-token') ?? '';
-  const expected = ADMIN_REVALIDATE_TOKEN ?? '';
-  if (!expected) {
+  if (!ADMIN_REVALIDATE_TOKEN) {
     console.warn('ADMIN_REVALIDATE_TOKEN missing in environment');
-  } else if (process.env.NODE_ENV !== 'production') {
-    console.debug('revalidate token eq', token === expected, token ? token.length : 0, expected ? expected.length : 0);
   }
-  return Boolean(expected) && token === expected;
+
+  return isAdminTokenAuthorized(req, ADMIN_REVALIDATE_TOKEN);
 }
 
 function resolveHost(value: string | undefined | null): string | null {

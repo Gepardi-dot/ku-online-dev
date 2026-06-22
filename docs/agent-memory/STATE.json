@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-22T11:10:18.842Z",
+  "last_updated_utc": "2026-06-22T11:37:04.846Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,14 +27,14 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-l-maintenance-workflow-observation",
-      "title": "Scheduled maintenance workflow observation",
-      "status": "completed_observed_green",
+      "id": "candidate-m-admin-token-parity",
+      "title": "Legacy admin-token route parity hardening",
+      "status": "local_validation_passed_pending_push",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-m-admin-service-role-hardening",
-      "title": "Admin and service-role authorization hardening"
+      "id": "candidate-n-privileged-route-observability",
+      "title": "Privileged-route observability and alert thresholds"
     },
     "latest_user_request": "proceed"
   },
@@ -51,7 +51,8 @@
     "Candidate I required npm 10 lockfile normalization because GitHub Actions npm ci expected a nested optional @swc/helpers@0.5.23 entry. Follow-up commit 0b7c06f passed local npm 10 install validation, GitHub CI 27898130848, Vercel deployment dpl_WD1vgJdecGtQSdGqpEYzJdH1AzKA, production smoke, and protected health verification.",
     "Candidate J found Cleanup expired listings run 27898184065 failed before querying or mutating listings because Supabase realtime initialization on Node 20 lacks native WebSocket support after the dependency upgrade. Maintenance workflows were aligned to Node 22 and commit 10ba092 passed GitHub CI 27898810418, Vercel deployment dpl_Aa8vqtoQjfxz82w5R2w7raN8u7h7, production smoke, and protected health verification.",
     "Candidate K removed the repo-pinned Vercel CLI devDependency, kept Vercel CLI as external operator tooling, and added narrow transitive overrides so full npm audit has 0 high/critical advisories. Commit 8224378 passed GitHub CI 27919595935, Vercel deployment dpl_Hh7tiXrxJoMEzgkeccnXq83UnmWr, production smoke, and protected health verification.",
-    "Candidate L observed production maintenance workflows without dispatching mutation-capable jobs. Product translations and embeddings run 27936502407, Cleanup expired listings run 27942446708, and Algolia Synonyms run 27937125441 all passed on current main commit 0afff39."
+    "Candidate L observed production maintenance workflows without dispatching mutation-capable jobs. Product translations and embeddings run 27936502407, Cleanup expired listings run 27942446708, and Algolia Synonyms run 27937125441 all passed on current main commit 0afff39.",
+    "Candidate M adds shared timing-safe admin-token handling, Bearer/x-admin-token support, non-persistent service-role options for token-admin routes, and removes revalidate token debug logging."
   ],
   "decisions": [
     {
@@ -69,6 +70,7 @@
     "Local browser validation still shows 400s for two local Supabase product image resources on /; this appears tied to local storage/test data, not the Candidate E image asset changes.",
     "Production read-only telemetry after Candidate E showed one / FCP poor sample at 3740ms and one / LCP needs-improvement sample at 3792ms with good TTFB. That sample aged out by 2026-06-19, but current RUM volume is too low to claim full homepage performance clearance.",
     "Distributed rate limiting is now active through Vercel KV/Upstash, but the current provider resource is free tier with eviction enabled and should be revisited before broad public launch.",
+    "Shared ADMIN_REVALIDATE_TOKEN still exists for legacy admin/internal automation; Candidate M hardens comparison and Bearer support but does not replace token routes with per-user admin sessions.",
     "Privileged admin and service-role server paths still need continued ownership-check, authorization-boundary, test, and audit-log hardening.",
     "Supabase CLI currently warns that it does not expose `supabase mcp`; deploy MCP gate still passes because required Vercel checks are ready.",
     "Manual dispatch requires explicit approval because cleanup/i18n/synonyms workflows can mutate production listings, storage, translations, embeddings, and Algolia indexes.",
@@ -233,6 +235,11 @@
     {
       "timestamp_utc": "2026-06-22T11:10:18.842Z",
       "check": "Candidate L maintenance workflow observation follow-up",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-22T11:37:04.846Z",
+      "check": "Candidate M legacy admin-token route parity local implementation",
       "status": "pass"
     }
   ]

@@ -1370,3 +1370,54 @@
 ## Operating Notes
 - One phase at a time to avoid overload and regression noise.
 - Update this file at end of each phase before starting the next.
+
+## Phase 5 Worklog (Candidate M - Admin Token Parity)
+
+### Objectives
+- Reduce legacy shared-token route risk without breaking existing admin automation.
+- Standardize token parsing/comparison between token-admin routes and internal diagnostics.
+- Keep scope to request/auth-layer code only; no DB/RLS/storage/provider mutation.
+
+### Implemented
+1. Added shared admin-token helper:
+   - `src/lib/security/admin-token.ts`
+   - supports `Authorization: Bearer <token>` and legacy `x-admin-token`.
+   - compares non-empty tokens with `timingSafeEqual`.
+2. Added unit coverage:
+   - `src/lib/security/__tests__/admin-token.test.ts`
+3. Rewired legacy token-admin routes:
+   - `src/app/api/admin/moderate/route.ts`
+   - `src/app/api/admin/announcements/route.ts`
+   - `src/app/api/admin/revalidate/route.ts`
+4. Reused the helper in:
+   - `src/app/api/internal/health/route.ts`
+5. Added explicit non-persistent service-role auth options to token-admin service-role clients:
+   - `persistSession: false`
+   - `autoRefreshToken: false`
+6. Removed non-production token-length/equality debug logging from `admin/revalidate`.
+
+### In Practice
+1. Before:
+   - several token-admin routes repeated direct string comparisons.
+   - `admin/revalidate` could emit token length/equality debug data outside production.
+   - two token-admin service-role clients used default auth settings.
+2. After:
+   - all touched token-admin routes use one timing-safe helper.
+   - existing `x-admin-token` callers remain compatible.
+   - Bearer token support is available for operator tooling.
+   - service-role client auth settings match the hardened non-persistent pattern.
+
+### Verification Completed
+- `npm run mcp:ensure`
+- `npm run mcp:auto:core`
+- `npm exec -- eslint src/lib/security/admin-token.ts src/lib/security/__tests__/admin-token.test.ts src/app/api/admin/moderate/route.ts src/app/api/admin/announcements/route.ts src/app/api/admin/revalidate/route.ts src/app/api/internal/health/route.ts`
+- `npm run build:test`
+- `npm test`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`
+
+### Validation Notes
+- Vercel production env was pulled into ignored `.env.local` for local build validation.
+- The first build attempt without env compiled and type-checked but failed collecting `/robots.txt` page data because required public env vars were absent.
+- No DB/RLS/storage/provider mutation was performed.

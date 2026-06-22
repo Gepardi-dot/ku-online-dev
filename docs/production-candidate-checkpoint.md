@@ -384,3 +384,58 @@ Risks and rollout notes:
 - Do not manually dispatch cleanup/i18n/synonyms workflows without explicit production approval; they can mutate production listings, storage, translations, embeddings, and Algolia indexes.
 - Continue normal run monitoring; one green scheduled run does not prove long-term reliability.
 - If exact maintenance timing becomes important, add freshness monitoring or move critical maintenance to a scheduler with stronger delivery guarantees.
+
+## Candidate M Legacy Admin-Token Route Parity Hardening
+
+Date: 2026-06-22
+
+Goal: keep legacy admin-token automation compatible while making token handling and service-role client setup consistent with newer hardened internal routes.
+
+Important files changed:
+- `src/lib/security/admin-token.ts`
+- `src/lib/security/__tests__/admin-token.test.ts`
+- `src/app/api/admin/moderate/route.ts`
+- `src/app/api/admin/announcements/route.ts`
+- `src/app/api/admin/revalidate/route.ts`
+- `src/app/api/internal/health/route.ts`
+- `docs/production-readiness.md`
+- `docs/production-candidate-checkpoint.md`
+- `docs/security/SECURITY_PHASE_NOTES.md`
+- `docs/security/SERVICE_ROLE_INVENTORY.md`
+- `docs/agent-memory/JOURNAL.md`
+- `docs/agent-memory/STATE.json`
+
+Implementation:
+- Added shared admin-token extraction and timing-safe comparison helper.
+- Preserved existing `x-admin-token` support.
+- Added `Authorization: Bearer <token>` support for legacy token-admin routes.
+- Reused the helper in the internal health diagnostics route.
+- Added explicit non-persistent service-role auth options in `admin/moderate` and `admin/announcements`.
+- Removed token-length/equality debug logging from `admin/revalidate`.
+
+Supabase impact:
+- Tables touched: none
+- Buckets touched: none
+- RLS/policies touched: none
+- Migrations added: none
+- Production jobs manually dispatched: none
+
+Validation performed:
+- `npm run mcp:ensure`: pass.
+- `npm run mcp:auto:core`: pass after pulling Vercel production env into ignored `.env.local` for local validation.
+- Targeted ESLint for changed helper/test/routes: pass.
+- `npm run build:test`: pass.
+- `npm test`: pass.
+- `npm run typecheck`: pass.
+- `npm run lint`: pass on retry with a longer timeout after the first lint command timed out at 120 seconds without a failure result.
+- `npm run build`: pass with `.env.local` loaded from Vercel production env. Initial build without env failed at `/robots.txt` page-data collection because required public env vars were absent.
+
+Production interpretation:
+- Token-admin routes now share one timing-safe authorization path instead of repeating direct string comparisons.
+- Operator compatibility is preserved because the legacy header still works.
+- Bearer token support aligns these routes with the protected internal health endpoint and safer CLI/operator usage.
+
+Risks and rollout notes:
+- Low behavior risk; authorization remains tied to the same `ADMIN_REVALIDATE_TOKEN`.
+- Rollback is a normal git revert. No database rollback is required.
+- `.env.local` and `.vercel/` were created only for local validation and are ignored.

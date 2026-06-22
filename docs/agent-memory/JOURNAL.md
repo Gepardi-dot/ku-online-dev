@@ -524,3 +524,12 @@
 - details: `Cleanup expired listings` run `27942446708` passed on commit `0afff39` and processed 0 expired listings. `Algolia Synonyms` run `27937125441` passed on commit `0afff39`, generated 0 auto synonym sets from 0 clicks, and synced 4 synonym sets. `Product translations & embeddings` run `27936502407` also passed on commit `0afff39`.
 - verification: GitHub Actions metadata and logs were inspected for runs `27942446708`, `27937125441`, and `27936502407`. CI `27919961725` passed for docs commit `0afff39`; Vercel deployment `dpl_Hcwtq4aus1j81yypNSdnsP6XmQqY` is ready and aliased to production. No workflow dispatches were run.
 - risks: GitHub scheduled workflows remain best-effort. Continue normal run monitoring, and add freshness alerts or a stronger scheduler if exact maintenance timing becomes production-critical.
+
+## 2026-06-22T11:22:49.733Z
+- type: implementation
+- task_id: candidate-m-admin-token-parity
+- task_title: Legacy admin-token route parity hardening
+- summary: Added a shared timing-safe admin-token helper and rewired legacy token-admin routes while preserving `x-admin-token` compatibility.
+- details: Added `src/lib/security/admin-token.ts` and unit tests. Updated `admin/moderate`, `admin/announcements`, `admin/revalidate`, and `internal/health` to use the shared helper. Added Bearer-token support and explicit non-persistent service-role auth options for token-admin service-role clients. Removed non-production token-length/equality debug logging from `admin/revalidate`.
+- verification: `npm run mcp:ensure` passed. `npm run mcp:auto:core` passed after pulling Vercel production env into ignored `.env.local` for local validation. Targeted ESLint for changed helper/test/routes passed. `npm run build:test`, `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` passed. The first build attempt without env compiled and type-checked but failed collecting `/robots.txt` page data because required public env vars were absent. No DB/RLS/storage/provider mutation was performed.
+- risks: Same shared `ADMIN_REVALIDATE_TOKEN` remains the authorization secret; this slice reduces comparison/debug/client-parity risk but does not replace token-admin routes with per-user admin sessions.
