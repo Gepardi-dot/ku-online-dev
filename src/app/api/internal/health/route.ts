@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 import { getEnv } from '@/lib/env';
 import { isAdminTokenAuthorized } from '@/lib/security/admin-token';
+import { reportPrivilegedRouteEvent } from '@/lib/security/privileged-route-observability';
 import {
   buildOriginAllowList,
   checkRateLimit,
@@ -30,6 +31,7 @@ const {
 const STORAGE_BUCKET = NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET ?? 'product-images';
 const RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 60 } as const;
 const RATE_LIMIT_PER_TOKEN = { windowMs: 60_000, max: 30 } as const;
+const PRIVILEGED_ROUTE = 'internal/health';
 
 const originAllowList = buildOriginAllowList([
   NEXT_PUBLIC_SITE_URL ?? null,
@@ -65,20 +67,57 @@ function tooManyRequestsResponse(retryAfter: number) {
 export const GET = withSentryRoute(async (request: NextRequest) => {
   const originHeader = request.headers.get('origin');
   if (originHeader && !isOriginAllowed(originHeader, originAllowList) && !isSameOriginRequest(request)) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'GET',
+      event: 'forbidden_origin',
+      outcome: 'denied',
+      status: 403,
+      request,
+      reason: 'origin_not_allowed',
+    });
     return NextResponse.json({ ok: false, error: 'Forbidden origin' }, { status: 403 });
   }
 
   const expectedToken = ADMIN_REVALIDATE_TOKEN?.trim() ?? '';
   if (!expectedToken) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'GET',
+      event: 'misconfigured',
+      outcome: 'misconfigured',
+      status: 503,
+      request,
+      reason: 'diagnostics_token_missing',
+    });
     return NextResponse.json({ ok: false, error: 'Diagnostics token is not configured.' }, { status: 503 });
   }
 
   if (!isAdminTokenAuthorized(request, expectedToken)) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'GET',
+      event: 'unauthorized',
+      outcome: 'denied',
+      status: 401,
+      request,
+      reason: 'diagnostics_token_invalid',
+    });
     return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 });
   }
 
   const tokenRate = await checkRateLimit('internal-health:token', RATE_LIMIT_PER_TOKEN);
   if (!tokenRate.success) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'GET',
+      event: 'rate_limited',
+      outcome: 'rate_limited',
+      status: 429,
+      request,
+      reason: 'token_rate_limit',
+      retryAfter: tokenRate.retryAfter,
+    });
     return tooManyRequestsResponse(tokenRate.retryAfter);
   }
 
@@ -86,6 +125,16 @@ export const GET = withSentryRoute(async (request: NextRequest) => {
   if (clientIdentifier !== 'unknown') {
     const ipRate = await checkRateLimit(`internal-health:ip:${clientIdentifier}`, RATE_LIMIT_PER_IP);
     if (!ipRate.success) {
+      reportPrivilegedRouteEvent({
+        route: PRIVILEGED_ROUTE,
+        method: 'GET',
+        event: 'rate_limited',
+        outcome: 'rate_limited',
+        status: 429,
+        request,
+        reason: 'ip_rate_limit',
+        retryAfter: ipRate.retryAfter,
+      });
       return tooManyRequestsResponse(ipRate.retryAfter);
     }
   }
@@ -157,6 +206,25 @@ export const GET = withSentryRoute(async (request: NextRequest) => {
     checks.database.status === 'ok' &&
     checks.storage.status === 'ok' &&
     checks.rateLimit.status === 'ok';
+
+  if (!healthy) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'GET',
+      event: 'diagnostics_failed',
+      outcome: 'failed',
+      status: 503,
+      request,
+      reason: 'internal_health_check_failed',
+      subject: {
+        database: checks.database.status,
+        storage: checks.storage.status,
+        rateLimit: checks.rateLimit.status,
+        rateLimitSource: checks.rateLimit.source,
+        rateLimitBackend: checks.rateLimit.backend,
+      },
+    });
+  }
 
   return NextResponse.json(
     {

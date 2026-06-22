@@ -37,5 +37,24 @@ export async function resolve(specifier, context, nextResolve) {
     }
   }
 
+  if ((specifier.startsWith('./') || specifier.startsWith('../')) && context.parentURL?.startsWith('file:')) {
+    const parentPath = fileURLToPath(context.parentURL);
+    if (parentPath.startsWith(path.join(rootDir, 'dist-tests'))) {
+      const basePath = path.resolve(path.dirname(parentPath), specifier);
+      const candidates = [
+        basePath,
+        `${basePath}.js`,
+        `${basePath}.mjs`,
+        path.join(basePath, 'index.js'),
+        path.join(basePath, 'index.mjs'),
+      ];
+
+      const target = candidates.find((candidate) => fs.existsSync(candidate));
+      if (target) {
+        return { shortCircuit: true, url: pathToFileURL(target).href };
+      }
+    }
+  }
+
   return nextResolve(specifier, context);
 }

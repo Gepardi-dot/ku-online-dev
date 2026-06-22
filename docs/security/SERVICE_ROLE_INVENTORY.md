@@ -292,7 +292,22 @@ Scope: `src/app/api/**/route.ts` files that instantiate a Supabase service-role/
 - Removed token-length/equality debug logging from:
   - `src/app/api/admin/revalidate/route.ts`
 
+## Hardening Applied In Candidate N
+- Added redacted privileged-route observability helper:
+  - `src/lib/security/privileged-route-observability.ts`
+- Added unit coverage:
+  - `src/lib/security/__tests__/privileged-route-observability.test.ts`
+- Applied structured operational events to:
+  - `src/app/api/admin/moderate/route.ts`
+  - `src/app/api/admin/announcements/route.ts`
+  - `src/app/api/admin/revalidate/route.ts`
+  - `src/app/api/internal/health/route.ts`
+- Updated compiled-test resolver:
+  - `tools/test-stubs/alias-loader.mjs`
+- Documented alert thresholds and handling:
+  - `docs/security/PRIVILEGED_ROUTE_OBSERVABILITY.md`
+
 ## Next Priorities
-1. Continue privileged-route observability: alert on `401`, `403`, `429`, `5xx`, and privileged mutation bursts.
+1. Configure provider-side Sentry/Vercel alert rules for the documented privileged-route thresholds after explicit provider-mutation approval.
 2. Draft and validate secret rotation using the Phase 5 runbook.
 3. Continue reducing by-design service-role blast radius where scoped RPC/RLS can safely replace route-level admin clients.

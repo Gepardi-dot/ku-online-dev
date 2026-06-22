@@ -3,6 +3,7 @@ import { createClient as createSupabaseAdmin } from '@supabase/supabase-js';
 
 import { getEnv } from '@/lib/env';
 import { isAdminTokenAuthorized } from '@/lib/security/admin-token';
+import { reportPrivilegedRouteEvent } from '@/lib/security/privileged-route-observability';
 import {
   buildOriginAllowList,
   checkRateLimit,
@@ -23,6 +24,7 @@ const supabaseAdmin = createSupabaseAdmin(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SER
 
 const ANNOUNCEMENTS_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 3 } as const;
 const ANNOUNCEMENTS_RATE_LIMIT_PER_TOKEN = { windowMs: 60_000, max: 10 } as const;
+const PRIVILEGED_ROUTE = 'admin/announcements';
 
 const adminOriginAllowList = buildOriginAllowList([
   NEXT_PUBLIC_SITE_URL ?? null,
@@ -55,6 +57,15 @@ type Body = {
 export const POST = withSentryRoute(async (req: NextRequest) => {
   const originHeader = req.headers.get('origin');
   if (originHeader && !isOriginAllowed(originHeader, adminOriginAllowList) && !isSameOriginRequest(req)) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'POST',
+      event: 'forbidden_origin',
+      outcome: 'denied',
+      status: 403,
+      request: req,
+      reason: 'origin_not_allowed',
+    });
     return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
   }
 
@@ -62,16 +73,45 @@ export const POST = withSentryRoute(async (req: NextRequest) => {
   if (clientIdentifier !== 'unknown') {
     const rate = await checkRateLimit(`admin-announcements:ip:${clientIdentifier}`, ANNOUNCEMENTS_RATE_LIMIT_PER_IP);
     if (!rate.success) {
+      reportPrivilegedRouteEvent({
+        route: PRIVILEGED_ROUTE,
+        method: 'POST',
+        event: 'rate_limited',
+        outcome: 'rate_limited',
+        status: 429,
+        request: req,
+        reason: 'ip_rate_limit',
+        retryAfter: rate.retryAfter,
+      });
       return tooManyRequestsResponse(rate.retryAfter);
     }
   }
 
   if (!isAdminTokenAuthorized(req, ADMIN_REVALIDATE_TOKEN)) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'POST',
+      event: 'unauthorized',
+      outcome: 'denied',
+      status: 401,
+      request: req,
+      reason: 'admin_token_invalid',
+    });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const tokenRate = await checkRateLimit('admin-announcements:token', ANNOUNCEMENTS_RATE_LIMIT_PER_TOKEN);
   if (!tokenRate.success) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'POST',
+      event: 'rate_limited',
+      outcome: 'rate_limited',
+      status: 429,
+      request: req,
+      reason: 'token_rate_limit',
+      retryAfter: tokenRate.retryAfter,
+    });
     return tooManyRequestsResponse(tokenRate.retryAfter);
   }
 
@@ -112,9 +152,37 @@ export const POST = withSentryRoute(async (req: NextRequest) => {
   });
 
   if (error) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'POST',
+      event: 'mutation_failed',
+      outcome: 'failed',
+      status: 500,
+      request: req,
+      reason: 'publish_announcement_failed',
+      subject: {
+        severity,
+        hasStartsAt: Boolean(startsAt),
+        hasEndsAt: Boolean(endsAt),
+      },
+    });
     console.error('Failed to publish announcement', error);
     return NextResponse.json({ error: 'Failed to publish announcement' }, { status: 500 });
   }
+
+  reportPrivilegedRouteEvent({
+    route: PRIVILEGED_ROUTE,
+    method: 'POST',
+    event: 'mutation_succeeded',
+    outcome: 'succeeded',
+    status: 200,
+    request: req,
+    subject: {
+      severity,
+      hasStartsAt: Boolean(startsAt),
+      hasEndsAt: Boolean(endsAt),
+    },
+  });
 
   return NextResponse.json({ ok: true, announcementId: data ?? null });
 }, 'admin-announcements');

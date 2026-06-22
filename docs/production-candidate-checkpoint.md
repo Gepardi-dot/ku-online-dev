@@ -444,3 +444,59 @@ Risks and rollout notes:
 - Rollback is a normal git revert. No database rollback is required.
 - `.env.local` and `.vercel/` were created only for local validation and are ignored.
 - Operator scripts that use `Authorization: Bearer` should call the canonical host `https://www.kubazar.net`; the apex host redirects to `www`, and cross-host redirects can drop the `Authorization` header. Legacy `x-admin-token` was not affected in smoke testing.
+
+## Candidate N Privileged-Route Observability
+
+Date: 2026-06-22
+
+Goal: make high-risk admin/internal route decisions visible in production logs without exposing secrets or changing provider alert settings yet.
+
+Important files changed:
+- `src/lib/security/privileged-route-observability.ts`
+- `src/lib/security/__tests__/privileged-route-observability.test.ts`
+- `src/app/api/admin/moderate/route.ts`
+- `src/app/api/admin/announcements/route.ts`
+- `src/app/api/admin/revalidate/route.ts`
+- `src/app/api/internal/health/route.ts`
+- `tools/test-stubs/alias-loader.mjs`
+- `docs/security/PRIVILEGED_ROUTE_OBSERVABILITY.md`
+- `docs/production-readiness.md`
+- `docs/production-candidate-checkpoint.md`
+- `docs/security/SECURITY_PHASE_NOTES.md`
+- `docs/security/SERVICE_ROLE_INVENTORY.md`
+- `docs/agent-memory/JOURNAL.md`
+- `docs/agent-memory/STATE.json`
+
+Implementation:
+- Added a shared helper that emits `[privileged-route]` structured events.
+- Event payloads include route, method, event, outcome, status, timestamp, normalized host/origin, request id when available, user-agent family, and hashed client identifier.
+- Sensitive values are excluded: token, secret, authorization, cookie, API key, raw IP, request body, announcement title/body.
+- Added events for forbidden origin/host, unauthorized requests, rate-limit hits, privileged mutation success/failure, misconfiguration, and failed internal diagnostics.
+- Kept internal health success quiet to avoid noisy logs; failed diagnostics are logged with safe check statuses.
+
+Supabase impact:
+- Tables touched: none
+- Buckets touched: none
+- RLS/policies touched: none
+- Migrations added: none
+- Provider alert settings changed: none
+- Production jobs manually dispatched: none
+
+Validation performed:
+- `npm run mcp:ensure`: pass.
+- `npm run mcp:auto:core`: pass after pulling Vercel production env into ignored `.env.local` for local validation. Initial run before env pull had a Supabase-local soft warning; no DB/RLS/storage/provider mutation was performed.
+- Targeted ESLint for changed helper/test/routes: pass.
+- `npm run build:test`: pass.
+- `npm test`: pass after the compiled-test ESM loader fix.
+- `npm run typecheck`: pass.
+- `npm run lint`: pass.
+- `npm run build`: pass with `.env.local` loaded from Vercel production env.
+
+Production interpretation:
+- Operators can now search Vercel/Sentry-ingested logs for `[privileged-route]` and group by route/event/outcome/status/clientHash.
+- Provider-side alert rules should be added deliberately in a separate approved provider-mutation phase.
+
+Risks and rollout notes:
+- Expected log volume is low because success logging is limited to privileged mutations and health success is not logged.
+- Rollback is a normal git revert. No database rollback is required.
+- `.env.local` was created only for local validation and is ignored.

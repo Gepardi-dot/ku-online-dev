@@ -1425,3 +1425,50 @@
 - Vercel production deployment `dpl_D4j3SU7FTsREweXC7n2HUW7pGxDA` reached Ready and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
 - Canonical production smoke on `https://www.kubazar.net` passed for homepage, public health, and protected internal health with `Authorization: Bearer`.
 - Apex `https://kubazar.net` redirects to `www`; use the canonical host for Bearer-token operator checks because cross-host redirects can drop the `Authorization` header.
+
+## Phase 5 Worklog (Candidate N - Privileged-Route Observability)
+
+### Objectives
+- Make admin/internal access-control and rate-limit decisions visible in production logs.
+- Keep event payloads redacted and operationally useful.
+- Avoid provider alert mutations until thresholds are documented and approved.
+
+### Implemented
+1. Added shared privileged-route observability helper:
+   - `src/lib/security/privileged-route-observability.ts`
+   - emits `[privileged-route]` structured events.
+   - hashes client identifiers and strips sensitive keys.
+2. Added unit coverage:
+   - `src/lib/security/__tests__/privileged-route-observability.test.ts`
+3. Instrumented:
+   - `src/app/api/admin/moderate/route.ts`
+   - `src/app/api/admin/announcements/route.ts`
+   - `src/app/api/admin/revalidate/route.ts`
+   - `src/app/api/internal/health/route.ts`
+4. Updated compiled-test resolver:
+   - `tools/test-stubs/alias-loader.mjs`
+5. Added runbook:
+   - `docs/security/PRIVILEGED_ROUTE_OBSERVABILITY.md`
+
+### In Practice
+1. Before:
+   - privileged routes returned `401`, `403`, and `429`, but operational log shape varied.
+2. After:
+   - repeated unauthorized access, forbidden origins/hosts, rate limits, failed diagnostics, and privileged mutation outcomes can be searched consistently.
+   - tokens, cookies, authorization headers, raw IPs, and raw request bodies are not logged by the helper.
+
+### Verification Completed
+- `npm run mcp:ensure`
+- `npm run mcp:auto:core`
+- `npm exec -- eslint src/lib/security/privileged-route-observability.ts src/lib/security/__tests__/privileged-route-observability.test.ts src/app/api/admin/moderate/route.ts src/app/api/admin/announcements/route.ts src/app/api/admin/revalidate/route.ts src/app/api/internal/health/route.ts`
+- `npm run build:test`
+- `npm test`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run build`
+
+### Validation Notes
+- Initial `npm run mcp:auto:core` produced a soft-gate warning because local Supabase env vars were not loaded.
+- Vercel production env was pulled into ignored `.env.local` for final local build and MCP validation.
+- No DB/RLS/storage/provider mutation was performed.
+- `npm test` initially exposed that compiled ESM tests could not resolve a new relative extensionless import chain; `tools/test-stubs/alias-loader.mjs` now resolves relative compiled imports under `dist-tests`.

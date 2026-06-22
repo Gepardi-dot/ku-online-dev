@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 
 import { getEnv } from '@/lib/env';
 import { isAdminTokenAuthorized } from '@/lib/security/admin-token';
+import { reportPrivilegedRouteEvent } from '@/lib/security/privileged-route-observability';
 import {
   buildOriginAllowList,
   checkRateLimit,
@@ -22,6 +23,7 @@ const {
 } = env;
 
 const REVALIDATE_RATE_LIMIT = { windowMs: 60_000, max: 5 } as const;
+const PRIVILEGED_ROUTE = 'admin/revalidate';
 
 const adminOriginAllowList = buildOriginAllowList([
   NEXT_PUBLIC_SITE_URL ?? null,
@@ -95,6 +97,15 @@ function tooManyRequestsResponse(retryAfter: number) {
 export const POST = withSentryRoute(async (req: Request) => {
   const originHeader = req.headers.get('origin');
   if (originHeader && !isOriginAllowed(originHeader, adminOriginAllowList) && !isSameOriginRequest(req)) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'POST',
+      event: 'forbidden_origin',
+      outcome: 'denied',
+      status: 403,
+      request: req,
+      reason: 'origin_not_allowed',
+    });
     return NextResponse.json({ error: 'Forbidden origin' }, { status: 403 });
   }
 
@@ -102,15 +113,43 @@ export const POST = withSentryRoute(async (req: Request) => {
   if (clientIdentifier !== 'unknown') {
     const rate = await checkRateLimit(`revalidate:${clientIdentifier}`, REVALIDATE_RATE_LIMIT);
     if (!rate.success) {
+      reportPrivilegedRouteEvent({
+        route: PRIVILEGED_ROUTE,
+        method: 'POST',
+        event: 'rate_limited',
+        outcome: 'rate_limited',
+        status: 429,
+        request: req,
+        reason: 'ip_rate_limit',
+        retryAfter: rate.retryAfter,
+      });
       return tooManyRequestsResponse(rate.retryAfter);
     }
   }
 
   if (!isAllowedHost(req)) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'POST',
+      event: 'forbidden_host',
+      outcome: 'denied',
+      status: 403,
+      request: req,
+      reason: 'host_not_allowed',
+    });
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   if (!isAuthorized(req)) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'POST',
+      event: ADMIN_REVALIDATE_TOKEN ? 'unauthorized' : 'misconfigured',
+      outcome: ADMIN_REVALIDATE_TOKEN ? 'denied' : 'misconfigured',
+      status: 401,
+      request: req,
+      reason: ADMIN_REVALIDATE_TOKEN ? 'admin_token_invalid' : 'admin_token_missing',
+    });
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -140,8 +179,31 @@ export const POST = withSentryRoute(async (req: Request) => {
     const paths = Array.isArray(body.paths) ? [...defaultPaths, ...body.paths] : defaultPaths;
     for (const p of paths) revalidatePath(p);
 
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'POST',
+      event: 'mutation_succeeded',
+      outcome: 'succeeded',
+      status: 200,
+      request: req,
+      subject: {
+        scope,
+        pathsCount: paths.length,
+        tagsCount: Array.isArray(body.tags) ? body.tags.length : 0,
+      },
+    });
+
     return NextResponse.json({ ok: true, scope, paths });
   } catch (error) {
+    reportPrivilegedRouteEvent({
+      route: PRIVILEGED_ROUTE,
+      method: 'POST',
+      event: 'mutation_failed',
+      outcome: 'failed',
+      status: 500,
+      request: req,
+      reason: 'revalidation_failed',
+    });
     return NextResponse.json({ error: String(error) }, { status: 500 });
   }
 });

@@ -542,3 +542,12 @@
 - details: Code commit `d104fb7` was pushed to `main`. GitHub CI run `27949940304` passed. Vercel deployment `dpl_D4j3SU7FTsREweXC7n2HUW7pGxDA` reached Ready and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
 - verification: Canonical production smoke on `https://www.kubazar.net` passed: homepage `200`, public health `200`, protected internal health with `Authorization: Bearer` `200`, and internal health database/storage/rate-limit checks all reported `ok`.
 - risks: `https://kubazar.net` redirects to `https://www.kubazar.net`; Bearer-token requests to the apex endpoint can lose the `Authorization` header during the cross-host redirect. Use the canonical host for Bearer-token operator checks, or the legacy `x-admin-token` header where compatibility is needed.
+
+## 2026-06-22T12:19:40.988Z
+- type: implementation
+- task_id: candidate-n-privileged-route-observability
+- task_title: Privileged-route observability and alert thresholds
+- summary: Added redacted structured privileged-route events for token-admin/internal diagnostic routes.
+- details: Added `src/lib/security/privileged-route-observability.ts` and tests. Instrumented `admin/moderate`, `admin/announcements`, `admin/revalidate`, and `internal/health` for forbidden origin/host, unauthorized, rate-limited, privileged mutation success/failure, misconfiguration, and failed diagnostics events. Added `docs/security/PRIVILEGED_ROUTE_OBSERVABILITY.md` with alert thresholds and handling notes. Updated `tools/test-stubs/alias-loader.mjs` so compiled ESM tests can resolve relative extensionless imports from `dist-tests`.
+- verification: `npm run mcp:ensure` passed. `npm run mcp:auto:core` passed after pulling Vercel production env into ignored `.env.local`; the initial run before env pull had a Supabase-local soft warning. Targeted ESLint for changed helper/test/routes, `npm run build:test`, `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` passed. No DB/RLS/storage/provider mutation was performed.
+- risks: This phase emits code-level structured logs only; provider-side alert rules are still pending explicit approval.

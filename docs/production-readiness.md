@@ -10,6 +10,37 @@ The current hardening focus is to preserve the intended C2C marketplace behavior
 
 ## Latest Candidate
 
+Candidate N: privileged-route observability.
+
+Changes:
+- Added `src/lib/security/privileged-route-observability.ts` for redacted structured privileged-route events.
+- Added unit coverage proving the helper hashes client identifiers and strips sensitive subject keys such as token/secret/apiKey.
+- Instrumented the token-admin/internal diagnostic routes:
+  - `src/app/api/admin/moderate/route.ts`
+  - `src/app/api/admin/announcements/route.ts`
+  - `src/app/api/admin/revalidate/route.ts`
+  - `src/app/api/internal/health/route.ts`
+- Updated `tools/test-stubs/alias-loader.mjs` so compiled ESM tests can resolve relative extensionless imports from `dist-tests`.
+- Added `docs/security/PRIVILEGED_ROUTE_OBSERVABILITY.md` with event fields, alert thresholds, and operational handling notes.
+
+Validation:
+- `npm run mcp:ensure`: pass.
+- `npm run mcp:auto:core`: pass after pulling Vercel production env into ignored `.env.local` for local validation. Initial run before env pull had a Supabase-local soft warning; no DB/RLS/storage/provider mutation was performed.
+- Targeted ESLint for changed helper/test/routes: pass.
+- `npm run build:test`: pass.
+- `npm test`: pass after the compiled-test ESM loader fix.
+- `npm run typecheck`: pass.
+- `npm run lint`: pass.
+- `npm run build`: pass with `.env.local` loaded from Vercel production env.
+
+Known notes:
+- Events are emitted through server logs with `[privileged-route]`.
+- Payloads intentionally avoid raw IP, tokens, cookies, authorization headers, announcement body/title, and raw request bodies.
+- This phase does not create provider-side Sentry/Vercel alert rules. Alert thresholds are documented for deliberate provider setup later.
+- `.env.local` is a local ignored validation file and must not be committed.
+
+## Previous Candidate
+
 Candidate M: legacy admin-token route parity hardening.
 
 Changes:
@@ -44,7 +75,7 @@ Known notes:
 - `.env.local` and `.vercel/` are local ignored files created only for validation and must not be committed.
 - Operator scripts that use `Authorization: Bearer` should call the canonical host `https://www.kubazar.net`; the apex host redirects to `www`, and cross-host redirects can drop the `Authorization` header. Legacy `x-admin-token` was not affected in smoke testing.
 
-## Previous Candidate
+## Earlier Candidate
 
 Candidate L: scheduled maintenance workflow observation.
 
