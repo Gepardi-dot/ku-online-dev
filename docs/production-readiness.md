@@ -25,20 +25,21 @@ Observed workflows:
 Validation:
 - GitHub CLI auth: pass with repo/workflow scope.
 - Worktree before observation: clean.
-- `Product translations & embeddings`: latest inspected scheduled run `27918545148` passed on commit `68130fe`; all job steps passed. Logs showed Algolia settings updated, product translation backfill completed with 0 products updated, and product embeddings already populated.
-- Additional `Product translations & embeddings` scheduled runs after Candidate J also passed: `27901389780`, `27904202989`, `27907664311`, `27910406643`, `27912878415`, and `27916057862`.
+- `Cleanup expired listings`: scheduled run `27942446708` passed on commit `0afff39`; logs showed Node `22.22.3`, npm `10.9.8`, and `Cleanup complete. Total expired listings processed: 0.`
+- `Product translations & embeddings`: scheduled run `27936502407` passed on commit `0afff39`; logs showed Algolia settings updated, product translation backfill completed with 0 products updated, and product embeddings already populated.
+- `Algolia Synonyms`: scheduled run `27937125441` passed on commit `0afff39`; logs showed 0 auto synonym sets generated from 0 clicks and 4 synonym sets synced.
+- Earlier `Product translations & embeddings` scheduled runs after Candidate J also passed: `27901389780`, `27904202989`, `27907664311`, `27910406643`, `27912878415`, `27916057862`, `27918545148`, `27920270241`, and `27924895874`.
 - Earlier `Product translations & embeddings` failures on commit `4a2b992` failed at `npm ci` because the lockfile was missing `@swc/helpers@0.5.23`; this was the Candidate I lockfile issue fixed by `0b7c06f`.
-- Latest `Cleanup expired listings` scheduled run `27898184065` is still the pre-Candidate-J failure on commit `0b7c06f`; logs confirm it failed before product mutation because the workflow used Node 20 and Supabase realtime initialization required native WebSocket support.
-- Latest `Algolia Synonyms` scheduled run `27896749972` is still the pre-lockfile-normalization failure on commit `4a2b992`; logs confirm it failed at `npm ci` before the synonym sync step.
+- Earlier `Cleanup expired listings` failure `27898184065` on commit `0b7c06f` failed before product mutation because the workflow used Node 20 and Supabase realtime initialization required native WebSocket support.
+- Earlier `Algolia Synonyms` failure `27896749972` on commit `4a2b992` failed at `npm ci` before the synonym sync step.
 
 Production interpretation:
-- Product translation/embedding maintenance is now observed healthy after the Node 22 and lockfile fixes.
-- Cleanup and Algolia synonyms are fixed in the current workflow definitions but have not yet had a later daily scheduled run to prove the production path end to end.
+- Product translation/embedding, cleanup, and Algolia synonym maintenance are now observed healthy on the current `main` commit after the Node 22 and lockfile fixes.
 - Manual dispatch remains intentionally avoided because these workflows can mutate production listings, storage, translations, embeddings, and Algolia indexes.
 
 Known notes:
 - GitHub scheduled workflows are best-effort. The observed product workflow cadence was not a strict 30-minute interval, so do not treat GitHub Actions schedule timing as a hard production SLA.
-- Next operational check should re-inspect `Cleanup expired listings` after its next daily scheduled run and `Algolia Synonyms` after its next daily scheduled run.
+- Continue observing these workflows in normal operations; do not assume one green day proves long-term reliability.
 - If exact timing becomes production-critical, move the critical maintenance trigger to a scheduler with stronger delivery semantics or add freshness alerting around missed GitHub scheduled runs.
 
 ## Previous Candidate

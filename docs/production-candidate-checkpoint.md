@@ -368,18 +368,19 @@ Validation performed:
 - `gh auth status`: pass with repo/workflow scope.
 - `git status -sb`: clean before observation.
 - Workflow definitions inspected: `cleanup-expired-listings.yml`, `product-i18n.yml`, and `algolia-synonyms.yml` are active and configured for Node 22.
-- `Product translations & embeddings` run `27918545148`: success on commit `68130fe`; all steps passed.
+- `Cleanup expired listings` run `27942446708`: success on commit `0afff39`; logs showed Node `22.22.3`, npm `10.9.8`, and `Cleanup complete. Total expired listings processed: 0.`
+- `Product translations & embeddings` run `27936502407`: success on commit `0afff39`; all steps passed. Logs showed Algolia settings updated, product translation backfill completed with 0 products updated, and product embeddings already populated.
+- `Algolia Synonyms` run `27937125441`: success on commit `0afff39`; logs showed 0 auto synonym sets generated from 0 clicks and 4 synonym sets synced.
 - Additional post-Candidate-J product maintenance scheduled successes observed: `27901389780`, `27904202989`, `27907664311`, `27910406643`, `27912878415`, and `27916057862`.
 - Earlier product/i18n failures on commit `4a2b992`: confirmed as `npm ci` lockfile drift (`@swc/helpers@0.5.23` missing before `0b7c06f`).
-- Latest cleanup run `27898184065`: confirmed as the pre-Candidate-J Node 20 WebSocket failure before product mutation.
-- Latest Algolia Synonyms run `27896749972`: confirmed as the pre-lockfile-normalization `npm ci` failure before the sync step.
+- Earlier cleanup run `27898184065`: confirmed as the pre-Candidate-J Node 20 WebSocket failure before product mutation.
+- Earlier Algolia Synonyms run `27896749972`: confirmed as the pre-lockfile-normalization `npm ci` failure before the sync step.
 
 Production interpretation:
-- Product translation/embedding scheduled maintenance is observed healthy after the dependency, lockfile, and Node 22 fixes.
-- Cleanup and Algolia Synonyms are fixed in the current workflow definitions, but they still need their next daily scheduled runs observed before marking those maintenance paths green.
+- Product translation/embedding, cleanup, and Algolia Synonyms scheduled maintenance are observed healthy after the dependency, lockfile, and Node 22 fixes.
 - GitHub scheduled workflows are best-effort. Observed product workflow timing did not behave like a strict 30-minute SLA, so this is acceptable for non-urgent enrichment work but weak for time-critical production operations.
 
 Risks and rollout notes:
 - Do not manually dispatch cleanup/i18n/synonyms workflows without explicit production approval; they can mutate production listings, storage, translations, embeddings, and Algolia indexes.
-- Next observation should check the next scheduled `Cleanup expired listings` and `Algolia Synonyms` runs.
+- Continue normal run monitoring; one green scheduled run does not prove long-term reliability.
 - If exact maintenance timing becomes important, add freshness monitoring or move critical maintenance to a scheduler with stronger delivery guarantees.

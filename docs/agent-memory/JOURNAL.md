@@ -515,3 +515,12 @@
 - details: `Product translations & embeddings` is observed healthy after Candidate J: latest inspected scheduled run `27918545148` passed on commit `68130fe`, and six earlier post-J scheduled product runs also passed. The latest cleanup run remains the pre-J failure `27898184065`, which failed on Node 20 WebSocket initialization before any listing mutation. The latest Algolia Synonyms run remains the pre-lockfile-normalization failure `27896749972`, which failed at `npm ci` before the sync step.
 - verification: `gh auth status` passed with repo/workflow scope. Workflow definitions were inspected and are active with Node 22. Logs for product success `27918545148`, cleanup failure `27898184065`, product failure `27896380259`, and Algolia failure `27896749972` were inspected. No workflow dispatches were run.
 - risks: Cleanup and Algolia Synonyms still need their next daily scheduled runs observed before those production maintenance paths can be marked green. GitHub scheduled workflows are best-effort; observed product cadence was not a strict 30-minute interval.
+
+## 2026-06-22T11:10:18.842Z
+- type: observation
+- task_id: candidate-l-maintenance-workflow-observation
+- task_title: Scheduled maintenance workflow observation follow-up
+- summary: Completed Candidate L observation after the next daily cleanup and Algolia Synonyms runs passed on the current `main` commit.
+- details: `Cleanup expired listings` run `27942446708` passed on commit `0afff39` and processed 0 expired listings. `Algolia Synonyms` run `27937125441` passed on commit `0afff39`, generated 0 auto synonym sets from 0 clicks, and synced 4 synonym sets. `Product translations & embeddings` run `27936502407` also passed on commit `0afff39`.
+- verification: GitHub Actions metadata and logs were inspected for runs `27942446708`, `27937125441`, and `27936502407`. CI `27919961725` passed for docs commit `0afff39`; Vercel deployment `dpl_Hcwtq4aus1j81yypNSdnsP6XmQqY` is ready and aliased to production. No workflow dispatches were run.
+- risks: GitHub scheduled workflows remain best-effort. Continue normal run monitoring, and add freshness alerts or a stronger scheduler if exact maintenance timing becomes production-critical.
