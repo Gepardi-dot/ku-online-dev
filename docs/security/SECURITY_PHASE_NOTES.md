@@ -1472,3 +1472,7 @@
 - Vercel production env was pulled into ignored `.env.local` for final local build and MCP validation.
 - No DB/RLS/storage/provider mutation was performed.
 - `npm test` initially exposed that compiled ESM tests could not resolve a new relative extensionless import chain; `tools/test-stubs/alias-loader.mjs` now resolves relative compiled imports under `dist-tests`.
+- Code commit `5ae9b7b` passed GitHub CI run `27952977699`.
+- Vercel production deployment `dpl_FxF18o2AqUmMexss8yK2DPicApBQ` reached Ready and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Canonical production smoke on `https://www.kubazar.net` passed for homepage, public health, and protected internal health with `Authorization: Bearer`.
+- Deliberate unauthenticated `GET /api/internal/health` returned `401`, and Vercel logs showed a redacted `[privileged-route]` event for `route=internal/health`, `event=unauthorized`, and `outcome=denied`.

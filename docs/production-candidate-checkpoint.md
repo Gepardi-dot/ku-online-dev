@@ -491,6 +491,11 @@ Validation performed:
 - `npm run typecheck`: pass.
 - `npm run lint`: pass.
 - `npm run build`: pass with `.env.local` loaded from Vercel production env.
+- Code commit: `5ae9b7b`.
+- GitHub CI: run `27952977699` passed.
+- Vercel production deployment: `dpl_FxF18o2AqUmMexss8yK2DPicApBQ` ready and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Canonical production smoke on `https://www.kubazar.net`: homepage `200`, public health `200`, protected internal health with `Authorization: Bearer` `200` with database/storage/rate-limit checks `ok`.
+- Observability smoke: deliberate unauthenticated `GET /api/internal/health` returned `401`, and Vercel logs for deployment `dpl_FxF18o2AqUmMexss8yK2DPicApBQ` contained a redacted `[privileged-route]` event with `route=internal/health`, `event=unauthorized`, `outcome=denied`, and a hashed client identifier.
 
 Production interpretation:
 - Operators can now search Vercel/Sentry-ingested logs for `[privileged-route]` and group by route/event/outcome/status/clientHash.
@@ -500,3 +505,4 @@ Risks and rollout notes:
 - Expected log volume is low because success logging is limited to privileged mutations and health success is not logged.
 - Rollback is a normal git revert. No database rollback is required.
 - `.env.local` was created only for local validation and is ignored.
+- The observability smoke intentionally generated one production `401` event for verification.

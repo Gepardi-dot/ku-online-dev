@@ -32,12 +32,18 @@ Validation:
 - `npm run typecheck`: pass.
 - `npm run lint`: pass.
 - `npm run build`: pass with `.env.local` loaded from Vercel production env.
+- Code commit: `5ae9b7b`.
+- GitHub CI: run `27952977699` passed.
+- Vercel production deployment: `dpl_FxF18o2AqUmMexss8yK2DPicApBQ` ready and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Canonical production smoke on `https://www.kubazar.net`: homepage `200`, public health `200`, protected internal health with `Authorization: Bearer` `200` with database/storage/rate-limit checks `ok`.
+- Observability smoke: deliberate unauthenticated `GET /api/internal/health` returned `401`, and Vercel logs for deployment `dpl_FxF18o2AqUmMexss8yK2DPicApBQ` contained a redacted `[privileged-route]` event with `route=internal/health`, `event=unauthorized`, `outcome=denied`, and a hashed client identifier.
 
 Known notes:
 - Events are emitted through server logs with `[privileged-route]`.
 - Payloads intentionally avoid raw IP, tokens, cookies, authorization headers, announcement body/title, and raw request bodies.
 - This phase does not create provider-side Sentry/Vercel alert rules. Alert thresholds are documented for deliberate provider setup later.
 - `.env.local` is a local ignored validation file and must not be committed.
+- The observability smoke intentionally generated one production `401` event for verification.
 
 ## Previous Candidate
 
