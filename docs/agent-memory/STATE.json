@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-22T11:37:04.846Z",
+  "last_updated_utc": "2026-06-22T11:43:59.807Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -29,7 +29,7 @@
     "current_task": {
       "id": "candidate-m-admin-token-parity",
       "title": "Legacy admin-token route parity hardening",
-      "status": "local_validation_passed_pending_push",
+      "status": "completed_deployed_verified",
       "phase": "production-hardening"
     },
     "next_task": {
@@ -52,7 +52,8 @@
     "Candidate J found Cleanup expired listings run 27898184065 failed before querying or mutating listings because Supabase realtime initialization on Node 20 lacks native WebSocket support after the dependency upgrade. Maintenance workflows were aligned to Node 22 and commit 10ba092 passed GitHub CI 27898810418, Vercel deployment dpl_Aa8vqtoQjfxz82w5R2w7raN8u7h7, production smoke, and protected health verification.",
     "Candidate K removed the repo-pinned Vercel CLI devDependency, kept Vercel CLI as external operator tooling, and added narrow transitive overrides so full npm audit has 0 high/critical advisories. Commit 8224378 passed GitHub CI 27919595935, Vercel deployment dpl_Hh7tiXrxJoMEzgkeccnXq83UnmWr, production smoke, and protected health verification.",
     "Candidate L observed production maintenance workflows without dispatching mutation-capable jobs. Product translations and embeddings run 27936502407, Cleanup expired listings run 27942446708, and Algolia Synonyms run 27937125441 all passed on current main commit 0afff39.",
-    "Candidate M adds shared timing-safe admin-token handling, Bearer/x-admin-token support, non-persistent service-role options for token-admin routes, and removes revalidate token debug logging."
+    "Candidate M adds shared timing-safe admin-token handling, Bearer/x-admin-token support, non-persistent service-role options for token-admin routes, and removes revalidate token debug logging.",
+    "Candidate M code commit d104fb7 passed GitHub CI run 27949940304 and Vercel deployment dpl_D4j3SU7FTsREweXC7n2HUW7pGxDA reached Ready. Canonical www.kubazar.net smoke passed for homepage, public health, and protected internal health with Bearer auth."
   ],
   "decisions": [
     {
@@ -74,7 +75,8 @@
     "Privileged admin and service-role server paths still need continued ownership-check, authorization-boundary, test, and audit-log hardening.",
     "Supabase CLI currently warns that it does not expose `supabase mcp`; deploy MCP gate still passes because required Vercel checks are ready.",
     "Manual dispatch requires explicit approval because cleanup/i18n/synonyms workflows can mutate production listings, storage, translations, embeddings, and Algolia indexes.",
-    "GitHub scheduled workflows are best-effort; observed product maintenance cadence was not a strict 30-minute interval, so production-critical maintenance may need freshness alerting or a scheduler with stronger delivery guarantees."
+    "GitHub scheduled workflows are best-effort; observed product maintenance cadence was not a strict 30-minute interval, so production-critical maintenance may need freshness alerting or a scheduler with stronger delivery guarantees.",
+    "Bearer-token operator requests should target canonical https://www.kubazar.net because the apex https://kubazar.net redirects to www and cross-host redirects can drop the Authorization header."
   ],
   "verification_log": [
     {
@@ -240,6 +242,11 @@
     {
       "timestamp_utc": "2026-06-22T11:37:04.846Z",
       "check": "Candidate M legacy admin-token route parity local implementation",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-22T11:43:59.807Z",
+      "check": "Candidate M production deployment, CI, and smoke",
       "status": "pass"
     }
   ]

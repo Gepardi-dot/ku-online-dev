@@ -1421,3 +1421,7 @@
 - Vercel production env was pulled into ignored `.env.local` for local build validation.
 - The first build attempt without env compiled and type-checked but failed collecting `/robots.txt` page data because required public env vars were absent.
 - No DB/RLS/storage/provider mutation was performed.
+- Code commit `d104fb7` passed GitHub CI run `27949940304`.
+- Vercel production deployment `dpl_D4j3SU7FTsREweXC7n2HUW7pGxDA` reached Ready and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Canonical production smoke on `https://www.kubazar.net` passed for homepage, public health, and protected internal health with `Authorization: Bearer`.
+- Apex `https://kubazar.net` redirects to `www`; use the canonical host for Bearer-token operator checks because cross-host redirects can drop the `Authorization` header.

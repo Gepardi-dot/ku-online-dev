@@ -533,3 +533,12 @@
 - details: Added `src/lib/security/admin-token.ts` and unit tests. Updated `admin/moderate`, `admin/announcements`, `admin/revalidate`, and `internal/health` to use the shared helper. Added Bearer-token support and explicit non-persistent service-role auth options for token-admin service-role clients. Removed non-production token-length/equality debug logging from `admin/revalidate`.
 - verification: `npm run mcp:ensure` passed. `npm run mcp:auto:core` passed after pulling Vercel production env into ignored `.env.local` for local validation. Targeted ESLint for changed helper/test/routes passed. `npm run build:test`, `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build` passed. The first build attempt without env compiled and type-checked but failed collecting `/robots.txt` page data because required public env vars were absent. No DB/RLS/storage/provider mutation was performed.
 - risks: Same shared `ADMIN_REVALIDATE_TOKEN` remains the authorization secret; this slice reduces comparison/debug/client-parity risk but does not replace token-admin routes with per-user admin sessions.
+
+## 2026-06-22T11:43:59.807Z
+- type: verification
+- task_id: candidate-m-admin-token-parity
+- task_title: Legacy admin-token route parity hardening
+- summary: Verified Candidate M on production after push.
+- details: Code commit `d104fb7` was pushed to `main`. GitHub CI run `27949940304` passed. Vercel deployment `dpl_D4j3SU7FTsREweXC7n2HUW7pGxDA` reached Ready and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- verification: Canonical production smoke on `https://www.kubazar.net` passed: homepage `200`, public health `200`, protected internal health with `Authorization: Bearer` `200`, and internal health database/storage/rate-limit checks all reported `ok`.
+- risks: `https://kubazar.net` redirects to `https://www.kubazar.net`; Bearer-token requests to the apex endpoint can lose the `Authorization` header during the cross-host redirect. Use the canonical host for Bearer-token operator checks, or the legacy `x-admin-token` header where compatibility is needed.

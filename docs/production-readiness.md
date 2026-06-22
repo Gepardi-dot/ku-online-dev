@@ -32,12 +32,17 @@ Validation:
 - `npm run typecheck`: pass.
 - `npm run lint`: pass on retry with a longer timeout after the first lint command timed out at 120 seconds without a failure result.
 - `npm run build`: pass with `.env.local` loaded from Vercel production env. Initial build without env failed at `/robots.txt` page-data collection because required public env vars were absent.
+- Code commit: `d104fb7`.
+- GitHub CI: run `27949940304` passed.
+- Vercel production deployment: `dpl_D4j3SU7FTsREweXC7n2HUW7pGxDA` ready and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Canonical production smoke on `https://www.kubazar.net`: homepage `200`, public health `200`, protected internal health with `Authorization: Bearer` `200` with database/storage/rate-limit checks `ok`.
 
 Known notes:
 - Existing `x-admin-token` callers remain supported.
 - `Authorization: Bearer <token>` is now supported on the legacy admin-token routes.
 - No Supabase schema, table, bucket, RLS, storage, auth-provider, provider, or migration changes were made.
 - `.env.local` and `.vercel/` are local ignored files created only for validation and must not be committed.
+- Operator scripts that use `Authorization: Bearer` should call the canonical host `https://www.kubazar.net`; the apex host redirects to `www`, and cross-host redirects can drop the `Authorization` header. Legacy `x-admin-token` was not affected in smoke testing.
 
 ## Previous Candidate
 
