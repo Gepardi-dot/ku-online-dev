@@ -1476,3 +1476,46 @@
 - Vercel production deployment `dpl_FxF18o2AqUmMexss8yK2DPicApBQ` reached Ready and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
 - Canonical production smoke on `https://www.kubazar.net` passed for homepage, public health, and protected internal health with `Authorization: Bearer`.
 - Deliberate unauthenticated `GET /api/internal/health` returned `401`, and Vercel logs showed a redacted `[privileged-route]` event for `route=internal/health`, `event=unauthorized`, and `outcome=denied`.
+
+## Phase 5 Worklog (Candidate O - Secret Rotation Readiness)
+
+### Objectives
+- Turn the preliminary Phase 5 secret-rotation baseline into a concrete operator runbook.
+- Add a safe local readiness check for required/recommended runtime secret groups.
+- Avoid any live secret rotation or provider mutation in this slice.
+
+### Implemented
+1. Added secret rotation runbook:
+   - `docs/security/SECRET_ROTATION_RUNBOOK.md`
+   - covers staging-first order, MCP gates, variable-specific verification, rollback, and production approval template.
+2. Added readiness checker:
+   - `tools/scripts/secret-rotation-readiness.mjs`
+   - reports presence only and never prints values.
+3. Added package command:
+   - `npm run security:secrets:readiness`
+4. Updated production and memory docs for Candidate O.
+
+### In Practice
+1. Before:
+   - the project had a baseline secret-rotation draft, but no executable presence check and no standalone operator runbook.
+2. After:
+   - operators can review expected production env names safely before rotation.
+   - future rotation work has a documented staging-first process and rollback template.
+3. User impact:
+   - no user-facing app behavior changes in this slice.
+   - no production secrets, provider settings, Supabase data, storage, RLS, or auth-provider settings are changed.
+
+### Verification Completed
+- `node --check tools/scripts/secret-rotation-readiness.mjs`
+- `node tools/scripts/secret-rotation-readiness.mjs --help`
+- `npm run security:secrets:readiness -- --no-env-files --mode production` with command-scoped placeholder env
+- `node tools/scripts/secret-rotation-readiness.mjs --no-env-files --mode production` with no required env values set, expected fail
+- `node -e "JSON.parse(...STATE.json...)"`
+- `npm run typecheck`
+- `npm run lint`
+- `git diff --check`
+
+### Validation Notes
+- The no-required-env production-mode check failed as expected and listed only missing variable/group names.
+- `npm run build` was not run because this slice changes docs, `package.json` scripts, and a standalone Node operator tool only; no app runtime code changed.
+- No DB/RLS/storage/provider mutation was performed.

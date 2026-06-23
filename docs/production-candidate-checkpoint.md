@@ -1,6 +1,6 @@
 # Production Candidate Checkpoint
 
-Last updated: 2026-06-21
+Last updated: 2026-06-23
 
 ## Candidate E
 
@@ -506,3 +506,53 @@ Risks and rollout notes:
 - Rollback is a normal git revert. No database rollback is required.
 - `.env.local` was created only for local validation and is ignored.
 - The observability smoke intentionally generated one production `401` event for verification.
+
+## Candidate O Secret Rotation Readiness
+
+Date: 2026-06-23
+
+Goal: turn the Phase 5 secret-rotation baseline into a repeatable operator runbook and local readiness check without rotating secrets or mutating providers.
+
+Important files changed:
+- `tools/scripts/secret-rotation-readiness.mjs`
+- `package.json`
+- `docs/security/SECRET_ROTATION_RUNBOOK.md`
+- `docs/production-readiness.md`
+- `docs/production-candidate-checkpoint.md`
+- `docs/security/SECURITY_PHASE_NOTES.md`
+- `docs/security/SERVICE_ROLE_INVENTORY.md`
+- `docs/agent-memory/JOURNAL.md`
+- `docs/agent-memory/STATE.json`
+
+Implementation:
+- Added a presence-only readiness checker for required and recommended production env names.
+- Added the `npm run security:secrets:readiness` command.
+- Added a production-safe rotation runbook with staging-first order, MCP gates, variable-specific verification, rollback notes, and approval template.
+- Kept payments, vouchers, and subscriptions out of scope.
+
+Supabase impact:
+- Tables touched: none
+- Buckets touched: none
+- RLS/policies touched: none
+- Migrations added: none
+- Production secrets rotated: none
+- Provider settings changed: none
+
+Validation performed:
+- `node --check tools/scripts/secret-rotation-readiness.mjs`: pass.
+- `node tools/scripts/secret-rotation-readiness.mjs --help`: pass.
+- `npm run security:secrets:readiness -- --no-env-files --mode production` with command-scoped placeholder env: pass.
+- `node tools/scripts/secret-rotation-readiness.mjs --no-env-files --mode production` with no required env values set: expected fail; output listed only missing variable/group names.
+- `node -e "JSON.parse(...STATE.json...)"`: pass.
+- `npm run typecheck`: pass.
+- `npm run lint`: pass.
+- `git diff --check`: pass.
+- `npm run build`: not run; no app runtime code changed.
+
+Production interpretation:
+- Operators now have a concrete way to check whether the environment contains the expected secret groups before attempting rotation.
+- The runbook defines the safe order for future rotation but does not itself change live credentials.
+
+Risks and rollout notes:
+- The checker proves presence, not correctness. Live verification still requires protected health, auth, search, SMS, workflow, and provider-specific smoke checks after any real rotation.
+- Rollback for this slice is a normal git revert. No database or provider rollback is required.

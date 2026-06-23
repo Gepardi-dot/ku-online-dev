@@ -1,6 +1,6 @@
 # Service-Role Inventory (Phase 4)
 
-Last updated: `2026-02-23`
+Last updated: `2026-06-23`
 Scope: `src/app/api/**/route.ts` files that instantiate a Supabase service-role/admin client.
 
 ## Classification Rules
@@ -307,7 +307,16 @@ Scope: `src/app/api/**/route.ts` files that instantiate a Supabase service-role/
 - Documented alert thresholds and handling:
   - `docs/security/PRIVILEGED_ROUTE_OBSERVABILITY.md`
 
+## Hardening Applied In Candidate O
+- Added secret-rotation readiness tooling:
+  - `tools/scripts/secret-rotation-readiness.mjs`
+- Added package command:
+  - `npm run security:secrets:readiness`
+- Added operator runbook:
+  - `docs/security/SECRET_ROTATION_RUNBOOK.md`
+- No service-role routes were added, removed, or changed in this slice.
+
 ## Next Priorities
-1. Configure provider-side Sentry/Vercel alert rules for the documented privileged-route thresholds after explicit provider-mutation approval.
-2. Draft and validate secret rotation using the Phase 5 runbook.
+1. Run a staging secret-rotation dry run with explicit approval before any production rotation.
+2. Configure provider-side Sentry/Vercel alert rules for the documented privileged-route thresholds after explicit provider-mutation approval.
 3. Continue reducing by-design service-role blast radius where scoped RPC/RLS can safely replace route-level admin clients.

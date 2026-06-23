@@ -1,6 +1,6 @@
 # KU BAZAR Production Readiness
 
-Last updated: 2026-06-22
+Last updated: 2026-06-23
 
 ## Current Status
 
@@ -9,6 +9,32 @@ KU BAZAR should still be treated as a production-capable beta until abuse resist
 The current hardening focus is to preserve the intended C2C marketplace behavior while improving production confidence. Intentional product decisions remain in place: public product browsing for signed-out users, contact/actions gated by sign-in, no marketplace payments for now, and automatic product lifecycle cleanup after roughly three months.
 
 ## Latest Candidate
+
+Candidate O: secret rotation readiness and runbook.
+
+Changes:
+- Added `docs/security/SECRET_ROTATION_RUNBOOK.md` with staged rotation order, production approval template, variable-specific verification, and rollback notes.
+- Added `tools/scripts/secret-rotation-readiness.mjs`, a presence-only checker that does not print secret values.
+- Added `npm run security:secrets:readiness`.
+- Updated production/security/agent-memory docs so secret rotation work has a concrete, repeatable operator path.
+
+Validation:
+- `node --check tools/scripts/secret-rotation-readiness.mjs`: pass.
+- `node tools/scripts/secret-rotation-readiness.mjs --help`: pass.
+- `npm run security:secrets:readiness -- --no-env-files --mode production` with command-scoped placeholder env: pass.
+- `node tools/scripts/secret-rotation-readiness.mjs --no-env-files --mode production` with no required env values set: expected fail; output listed only missing variable/group names.
+- `node -e "JSON.parse(...STATE.json...)"`: pass.
+- `npm run typecheck`: pass.
+- `npm run lint`: pass.
+- `git diff --check`: pass.
+
+Known notes:
+- This phase does not rotate secrets.
+- This phase does not mutate Vercel, Supabase, Sentry, Vonage, Algolia, OpenAI, Resend, storage, auth providers, RLS, or production data.
+- The readiness checker validates required production names and groups only by presence; it intentionally cannot prove that a secret value is correct.
+- `npm run build` was not run because this slice changes docs, `package.json` scripts, and a standalone Node operator tool only; no app runtime code changed.
+
+## Previous Candidate
 
 Candidate N: privileged-route observability.
 
@@ -45,7 +71,7 @@ Known notes:
 - `.env.local` is a local ignored validation file and must not be committed.
 - The observability smoke intentionally generated one production `401` event for verification.
 
-## Previous Candidate
+## Earlier Candidate
 
 Candidate M: legacy admin-token route parity hardening.
 

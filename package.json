@@ -26,6 +26,7 @@
     "supabase:apply": "node tools/scripts/mcp-auto.mjs --task db -- node scripts/apply-supabase-schema.mjs",
     "supabase:policies": "node tools/scripts/mcp-auto.mjs --task db -- node scripts/show-policies.mjs",
     "tooling:status": "node scripts/check-tooling-status.mjs",
+    "security:secrets:readiness": "node tools/scripts/secret-rotation-readiness.mjs",
     "mcp:profile": "node tools/scripts/mcp-profile.mjs",
     "mcp:status": "node tools/scripts/mcp-profile.mjs status",
     "mcp:off": "node tools/scripts/mcp-profile.mjs reset",

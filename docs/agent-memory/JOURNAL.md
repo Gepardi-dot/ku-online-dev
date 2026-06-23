@@ -560,3 +560,12 @@
 - details: Code commit `5ae9b7b` was pushed to `main`. GitHub CI run `27952977699` passed. Vercel deployment `dpl_FxF18o2AqUmMexss8yK2DPicApBQ` reached Ready and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
 - verification: Canonical production smoke on `https://www.kubazar.net` passed: homepage `200`, public health `200`, protected internal health with `Authorization: Bearer` `200`, and internal health database/storage/rate-limit checks all reported `ok`. Deliberate unauthenticated `GET /api/internal/health` returned `401`; Vercel logs contained a redacted `[privileged-route]` event for `route=internal/health`, `event=unauthorized`, `outcome=denied`, and hashed `clientHash`.
 - risks: Provider-side Sentry/Vercel alert rules are still not configured; Candidate N only adds code-level structured events and documented thresholds.
+
+## 2026-06-23T14:02:21.005Z
+- type: implementation
+- task_id: candidate-o-secret-rotation-readiness
+- task_title: Secret rotation readiness runbook and checker
+- summary: Added a production-safe secret rotation runbook and presence-only readiness checker.
+- details: Added `docs/security/SECRET_ROTATION_RUNBOOK.md`, `tools/scripts/secret-rotation-readiness.mjs`, and `npm run security:secrets:readiness`. Updated production/security/memory docs to make future secret rotation staging-first, explicitly approved, and verifiable without printing secret values.
+- verification: `node --check tools/scripts/secret-rotation-readiness.mjs`, script help, placeholder production-mode readiness command, expected no-required-env failure path, `STATE.json` parse check, `npm run typecheck`, `npm run lint`, and `git diff --check` passed.
+- risks: This slice does not rotate secrets or mutate Vercel/Supabase/provider settings. The checker verifies presence only; future rotation still needs provider-specific smoke checks.

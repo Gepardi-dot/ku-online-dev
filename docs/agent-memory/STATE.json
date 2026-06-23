@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-22T12:37:55.668Z",
+  "last_updated_utc": "2026-06-23T14:07:18.990Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,14 +27,14 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-n-privileged-route-observability",
-      "title": "Privileged-route observability and alert thresholds",
-      "status": "completed_deployed_verified",
+      "id": "candidate-o-secret-rotation-readiness",
+      "title": "Secret rotation readiness runbook and checker",
+      "status": "local_implementation_validated_pending_commit",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-o-secret-rotation-runbook",
-      "title": "Secret rotation runbook and provider alert setup planning"
+      "id": "candidate-p-provider-alert-rules-or-staging-rotation-dry-run",
+      "title": "Provider alert rules or staging secret-rotation dry run after explicit approval"
     },
     "latest_user_request": "proceed"
   },
@@ -56,7 +56,8 @@
     "Candidate M code commit d104fb7 passed GitHub CI run 27949940304 and Vercel deployment dpl_D4j3SU7FTsREweXC7n2HUW7pGxDA reached Ready. Canonical www.kubazar.net smoke passed for homepage, public health, and protected internal health with Bearer auth.",
     "Candidate N adds redacted structured privileged-route events for token-admin/internal diagnostic routes and documents alert thresholds without mutating provider alert settings.",
     "Candidate N updated tools/test-stubs/alias-loader.mjs so compiled ESM tests can resolve relative extensionless imports from dist-tests.",
-    "Candidate N code commit 5ae9b7b passed GitHub CI run 27952977699 and Vercel deployment dpl_FxF18o2AqUmMexss8yK2DPicApBQ reached Ready. Canonical www.kubazar.net smoke passed, and a deliberate unauthenticated internal-health request produced a redacted [privileged-route] unauthorized event in Vercel logs."
+    "Candidate N code commit 5ae9b7b passed GitHub CI run 27952977699 and Vercel deployment dpl_FxF18o2AqUmMexss8yK2DPicApBQ reached Ready. Canonical www.kubazar.net smoke passed, and a deliberate unauthenticated internal-health request produced a redacted [privileged-route] unauthorized event in Vercel logs.",
+    "Candidate O adds a presence-only secret rotation readiness checker and a staging-first rotation runbook. This slice is local/docs/tooling only and does not rotate secrets or mutate provider settings."
   ],
   "decisions": [
     {
@@ -80,7 +81,8 @@
     "Manual dispatch requires explicit approval because cleanup/i18n/synonyms workflows can mutate production listings, storage, translations, embeddings, and Algolia indexes.",
     "GitHub scheduled workflows are best-effort; observed product maintenance cadence was not a strict 30-minute interval, so production-critical maintenance may need freshness alerting or a scheduler with stronger delivery guarantees.",
     "Bearer-token operator requests should target canonical https://www.kubazar.net because the apex https://kubazar.net redirects to www and cross-host redirects can drop the Authorization header.",
-    "Provider-side Sentry/Vercel privileged-route alerts are not configured yet; Candidate N documents thresholds for a later explicit provider-mutation phase."
+    "Provider-side Sentry/Vercel privileged-route alerts are not configured yet; Candidate N documents thresholds for a later explicit provider-mutation phase.",
+    "Secret readiness checks prove env names are present, not that values are correct. Real rotation still requires staging-first smoke checks and explicit production approval."
   ],
   "verification_log": [
     {
@@ -261,6 +263,11 @@
     {
       "timestamp_utc": "2026-06-22T12:37:55.668Z",
       "check": "Candidate N production deployment, smoke, and log verification",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-23T14:07:18.990Z",
+      "check": "Candidate O secret rotation readiness local implementation",
       "status": "pass"
     }
   ]
