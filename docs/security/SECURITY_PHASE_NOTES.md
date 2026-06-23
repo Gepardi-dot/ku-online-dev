@@ -1514,8 +1514,16 @@
 - `npm run typecheck`
 - `npm run lint`
 - `git diff --check`
+- GitHub CI run `28034201187`
+- Vercel production deployment `dpl_4ThYGRQphDEqC1Ks6zGXsQdPDD6J`
+- Production public smoke
+- Protected production health check
 
 ### Validation Notes
 - The no-required-env production-mode check failed as expected and listed only missing variable/group names.
 - `npm run build` was not run because this slice changes docs, `package.json` scripts, and a standalone Node operator tool only; no app runtime code changed.
 - No DB/RLS/storage/provider mutation was performed.
+- Code commit `b3a138e` passed GitHub CI run `28034201187`.
+- Vercel production deployment `dpl_4ThYGRQphDEqC1Ks6zGXsQdPDD6J` reached Ready and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Canonical production smoke passed for homepage, public health, `/sell`, apex public health, and Vercel app public health.
+- Protected internal health returned database/storage/rate-limit `ok`, with rate limiting configured through `vercel-kv` / `upstash`.

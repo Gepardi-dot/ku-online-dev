@@ -27,12 +27,18 @@ Validation:
 - `npm run typecheck`: pass.
 - `npm run lint`: pass.
 - `git diff --check`: pass.
+- Code commit: `b3a138e`.
+- GitHub CI: run `28034201187` passed.
+- Vercel production deployment: `dpl_4ThYGRQphDEqC1Ks6zGXsQdPDD6J` ready and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Production public smoke: `https://www.kubazar.net/`, `/api/health`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health` returned HTTP `200`.
+- Protected production health on `https://www.kubazar.net/api/internal/health`: database `ok`, storage `ok`, rateLimit `ok`, rateLimit configured `true`, source `vercel-kv`, backend `upstash`.
 
 Known notes:
 - This phase does not rotate secrets.
 - This phase does not mutate Vercel, Supabase, Sentry, Vonage, Algolia, OpenAI, Resend, storage, auth providers, RLS, or production data.
 - The readiness checker validates required production names and groups only by presence; it intentionally cannot prove that a secret value is correct.
 - `npm run build` was not run because this slice changes docs, `package.json` scripts, and a standalone Node operator tool only; no app runtime code changed.
+- Production env was pulled into a temporary OS file only to read `ADMIN_REVALIDATE_TOKEN` for protected health verification; the temp file was deleted by the same command and no secret values were printed.
 
 ## Previous Candidate
 

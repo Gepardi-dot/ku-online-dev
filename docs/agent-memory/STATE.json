@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-23T14:07:18.990Z",
+  "last_updated_utc": "2026-06-23T14:44:18.430Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -29,7 +29,7 @@
     "current_task": {
       "id": "candidate-o-secret-rotation-readiness",
       "title": "Secret rotation readiness runbook and checker",
-      "status": "local_implementation_validated_pending_commit",
+      "status": "completed_deployed_verified",
       "phase": "production-hardening"
     },
     "next_task": {
@@ -57,7 +57,8 @@
     "Candidate N adds redacted structured privileged-route events for token-admin/internal diagnostic routes and documents alert thresholds without mutating provider alert settings.",
     "Candidate N updated tools/test-stubs/alias-loader.mjs so compiled ESM tests can resolve relative extensionless imports from dist-tests.",
     "Candidate N code commit 5ae9b7b passed GitHub CI run 27952977699 and Vercel deployment dpl_FxF18o2AqUmMexss8yK2DPicApBQ reached Ready. Canonical www.kubazar.net smoke passed, and a deliberate unauthenticated internal-health request produced a redacted [privileged-route] unauthorized event in Vercel logs.",
-    "Candidate O adds a presence-only secret rotation readiness checker and a staging-first rotation runbook. This slice is local/docs/tooling only and does not rotate secrets or mutate provider settings."
+    "Candidate O adds a presence-only secret rotation readiness checker and a staging-first rotation runbook. This slice is docs/tooling only and does not rotate secrets or mutate provider settings.",
+    "Candidate O code commit b3a138e passed GitHub CI run 28034201187 and Vercel deployment dpl_4ThYGRQphDEqC1Ks6zGXsQdPDD6J reached Ready. Public production smoke passed and protected health returned database/storage/rate-limit ok with vercel-kv/upstash."
   ],
   "decisions": [
     {
@@ -268,6 +269,11 @@
     {
       "timestamp_utc": "2026-06-23T14:07:18.990Z",
       "check": "Candidate O secret rotation readiness local implementation",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-23T14:44:18.430Z",
+      "check": "Candidate O production deployment, CI, and smoke",
       "status": "pass"
     }
   ]

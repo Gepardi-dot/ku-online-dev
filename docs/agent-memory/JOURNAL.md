@@ -569,3 +569,12 @@
 - details: Added `docs/security/SECRET_ROTATION_RUNBOOK.md`, `tools/scripts/secret-rotation-readiness.mjs`, and `npm run security:secrets:readiness`. Updated production/security/memory docs to make future secret rotation staging-first, explicitly approved, and verifiable without printing secret values.
 - verification: `node --check tools/scripts/secret-rotation-readiness.mjs`, script help, placeholder production-mode readiness command, expected no-required-env failure path, `STATE.json` parse check, `npm run typecheck`, `npm run lint`, and `git diff --check` passed.
 - risks: This slice does not rotate secrets or mutate Vercel/Supabase/provider settings. The checker verifies presence only; future rotation still needs provider-specific smoke checks.
+
+## 2026-06-23T14:44:18.430Z
+- type: verification
+- task_id: candidate-o-secret-rotation-readiness
+- task_title: Secret rotation readiness runbook and checker
+- summary: Verified Candidate O after push to `main`.
+- details: Code commit `b3a138e` was pushed to `main`. GitHub CI run `28034201187` passed. Vercel production deployment `dpl_4ThYGRQphDEqC1Ks6zGXsQdPDD6J` reached Ready and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- verification: Remote `main` points to `b3a138e32a4674b948f19ee14e12461f4e3c0f1a`. Public production smoke returned HTTP `200` for homepage, public health, `/sell`, apex public health, and Vercel app public health. Protected internal health returned database/storage/rate-limit `ok`, with rate limiting configured through `vercel-kv` / `upstash`.
+- risks: No secrets were rotated and no provider settings were mutated. Production env was pulled into a temporary OS file only to read `ADMIN_REVALIDATE_TOKEN` for protected health verification; the temp file was deleted and no secret values were printed.

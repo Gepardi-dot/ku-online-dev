@@ -548,6 +548,11 @@ Validation performed:
 - `npm run lint`: pass.
 - `git diff --check`: pass.
 - `npm run build`: not run; no app runtime code changed.
+- Code commit: `b3a138e`.
+- GitHub CI: run `28034201187` passed.
+- Vercel production deployment: `dpl_4ThYGRQphDEqC1Ks6zGXsQdPDD6J` ready and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Production public smoke: `https://www.kubazar.net/`, `/api/health`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health` returned HTTP `200`.
+- Protected production health on `https://www.kubazar.net/api/internal/health`: database `ok`, storage `ok`, rateLimit `ok`, rateLimit configured `true`, source `vercel-kv`, backend `upstash`.
 
 Production interpretation:
 - Operators now have a concrete way to check whether the environment contains the expected secret groups before attempting rotation.
@@ -556,3 +561,4 @@ Production interpretation:
 Risks and rollout notes:
 - The checker proves presence, not correctness. Live verification still requires protected health, auth, search, SMS, workflow, and provider-specific smoke checks after any real rotation.
 - Rollback for this slice is a normal git revert. No database or provider rollback is required.
+- Production env was pulled into a temporary OS file only to read `ADMIN_REVALIDATE_TOKEN` for protected health verification; the temp file was deleted by the same command and no secret values were printed.
