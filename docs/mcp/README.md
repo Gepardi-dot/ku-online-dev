@@ -39,6 +39,15 @@ Supabase npm scripts are already wrapped with `mcp:auto --task db`, so running
 `npm run supabase:parity|supabase:sql|supabase:admin:grant|supabase:apply|supabase:policies`
 automatically enforces MCP profile activation + doctor gating.
 
+`npm run supabase:sql` is additionally guarded in write mode. Mutating SQL must include
+both `--confirm-write` and `--confirm-project-ref <same-ref>`; read-only SQL must use
+`--read-only`. When applying a Supabase migration file through this Management API helper,
+include `--record-migration` so `supabase_migrations.schema_migrations` stays aligned with
+the schema change.
+
+`npm run supabase:project:status` is read-only and can be used after a provider-side
+restore/resume to wait for `ACTIVE_HEALTHY` before any SQL command.
+
 Windsurf to Cursor sync (one-time or repeatable):
 ```bash
 npm run mcp:sync:windsurf

@@ -12,6 +12,9 @@ try {
 }
 
 const distRoot = path.resolve(process.cwd(), 'dist-tests');
+const directTestRoots = [
+  path.resolve(process.cwd(), 'tools/scripts/__tests__'),
+];
 const testFiles = [];
 
 function ensureDistTestsIsEsm() {
@@ -38,6 +41,12 @@ function collectTests(dir) {
 if (fs.existsSync(distRoot)) {
   ensureDistTestsIsEsm();
   collectTests(distRoot);
+}
+
+for (const testRoot of directTestRoots) {
+  if (fs.existsSync(testRoot)) {
+    collectTests(testRoot);
+  }
 }
 
 if (testFiles.length === 0) {

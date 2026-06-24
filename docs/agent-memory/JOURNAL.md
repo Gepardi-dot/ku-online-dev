@@ -578,3 +578,174 @@
 - details: Code commit `b3a138e` was pushed to `main`. GitHub CI run `28034201187` passed. Vercel production deployment `dpl_4ThYGRQphDEqC1Ks6zGXsQdPDD6J` reached Ready and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
 - verification: Remote `main` points to `b3a138e32a4674b948f19ee14e12461f4e3c0f1a`. Public production smoke returned HTTP `200` for homepage, public health, `/sell`, apex public health, and Vercel app public health. Protected internal health returned database/storage/rate-limit `ok`, with rate limiting configured through `vercel-kv` / `upstash`.
 - risks: No secrets were rotated and no provider settings were mutated. Production env was pulled into a temporary OS file only to read `ADMIN_REVALIDATE_TOKEN` for protected health verification; the temp file was deleted and no secret values were printed.
+
+## 2026-06-23T15:11:36.373Z
+- type: observation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Supabase schema/RPC parity repair
+- summary: Pivoted from provider alert setup to a P0 Supabase parity repair after production logs showed an active missing-RPC runtime error.
+- details: Vercel production logs show `/api/messages/conversations` returning `500` with Supabase `PGRST202` because `public.list_conversation_summaries_secure()` is missing. Production metadata confirms only legacy `public.list_conversation_summaries(p_user_id uuid)` exists among checked conversation-list functions. Production has the core message tables needed by the secure RPCs, but also lacks `products.listing_type` and `products.rental_term` while deployed sell/edit code sends those columns. Staging read-only SQL timed out even on `select 1`; `supabase projects list -o json` reports staging project `iypynouqbmmvoqecfmuw` as `INACTIVE`.
+- verification: `vercel logs --environment production --level error --since 24h --json` found the PGRST202 event; Supabase production read-only metadata queries confirmed function and column state; `supabase projects list -o json` showed production `ACTIVE_HEALTHY` and staging `INACTIVE`; `npm run mcp:auto -- --task db --doctor-only --keep-profile` was blocked by local Docker/Supabase env but remote Supabase access was ready; `.cursor/mcp.json` was restored after the MCP profile change.
+- risks: Do not blindly apply all missing local migrations. Production has later remote migration versions and at least one local sponsor migration targets a table absent in production. Secure RPC repair requires explicit approval, rollback SQL, and staging-first validation where possible.
+
+## 2026-06-23T15:20:00.000Z
+- type: progress
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Supabase schema/RPC parity repair
+- summary: Prepared a narrow secure RPC repair migration and rollback runbook without applying SQL.
+- details: Added `supabase/migrations/20260623152000_repair_secure_rpc_parity.sql` for the missing secure message RPCs plus `get_algolia_product_row_secure`, and `docs/security/CANDIDATE_P0_SUPABASE_RPC_REPAIR.md` with staging/production gates and rollback SQL. The repair intentionally does not apply broad missing migrations or the listing-mode schema migration.
+- verification: pending static validation; no Supabase staging or production mutation executed.
+- risks: Applying remains blocked by the DB MCP gate until Docker/local Supabase is available, unless the user explicitly approves bypassing that gate for the remote Supabase Management API path.
+
+## 2026-06-24T12:25:00.000Z
+- type: validation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Supabase schema/RPC parity repair
+- summary: Cleared the local DB MCP gate and validated that the repair migration applies locally.
+- details: Started Docker Desktop, confirmed local Supabase is reachable, and mapped local `supabase status -o env` names into the env names expected by the MCP doctor. Updated the Algolia secure RPC repair so it returns real `listing_type`/`rental_term` when those columns exist and safe defaults when they do not.
+- verification: `npm run mcp:auto -- --task db --doctor-only --keep-profile` passed with command-scoped local env mapping. `supabase db reset` applied migrations through `20260623152000_repair_secure_rpc_parity.sql` but exited non-zero at the final storage bucket readiness check. Local metadata confirmed migration `20260623152000`, all seven secure RPCs, and `get_algolia_product_row_secure` compatibility logic.
+- risks: No staging or production SQL mutation has been executed. Staging remains `INACTIVE`; next mutation is `POST https://api.supabase.com/v1/projects/iypynouqbmmvoqecfmuw/restore`, which requires explicit approval because it changes provider state.
+
+## 2026-06-24T12:35:00.000Z
+- type: implementation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Supabase schema/RPC parity repair
+- summary: Added a read-only RPC readiness checker for pre/post staging and production validation.
+- details: Added `tools/scripts/supabase-rpc-readiness.mjs` and `npm run supabase:rpc:readiness`. The checker uses Supabase Management API read-only SQL to report project status, required secure RPC presence in the `public` schema, execute grants, migration `20260623152000`, and product listing-mode column drift without printing secret values or mutating databases.
+- verification: `node --check tools/scripts/supabase-rpc-readiness.mjs` passed; script help passed; production readiness check failed as expected with missing secure RPCs/listing-mode columns/migration `20260623152000`; staging readiness check failed as expected because staging is `INACTIVE`; JSON parse check passed; `git diff --check` passed; `npm run lint` passed.
+- risks: This checker intentionally reports listing-mode column drift as an issue even though the immediate P0 repair only fixes missing secure RPCs; that keeps the follow-up production schema gap visible.
+
+## 2026-06-24T12:55:00.000Z
+- type: validation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Supabase schema/RPC parity repair
+- summary: Clarified the local reset storage readiness failure as CLI/Docker port drift.
+- details: Docker published local Kong on `127.0.0.1:55321` while `supabase status` and the reset readiness probe reported `127.0.0.1:54321`. REST on `55321` returned `200`, and authenticated storage bucket readiness on `55321` returned `200`.
+- verification: Re-ran local metadata checks confirming migration `20260623152000`, all seven secure RPCs, and `get_algolia_product_row_secure` compatibility logic. `.cursor/mcp.json` remained clean.
+- risks: Local `supabase db reset` still exits non-zero because of the CLI-reported port, so production/staging decisions must rely on the migration metadata plus the authenticated storage check rather than the reset exit code alone.
+
+## 2026-06-24T13:10:00.000Z
+- type: validation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Supabase schema/RPC parity repair
+- summary: Reconfirmed remote P0 state with read-only commands before the staging restore gate.
+- details: `supabase projects list -o json` still reports production `kvmbtbhlapjlhfppomsw` as `ACTIVE_HEALTHY` and staging `iypynouqbmmvoqecfmuw` as `INACTIVE`. Supabase restore metadata still exposes restore version `supabase-postgres-17.6.1.063` for staging.
+- verification: Final `npm run supabase:rpc:readiness -- --project-ref kvmbtbhlapjlhfppomsw` failed as expected with all seven secure RPCs missing, `products.listing_type` and `products.rental_term` missing, and migration `20260623152000` absent. Final staging readiness failed as expected because the staging project is inactive.
+- risks: Next meaningful action is a provider-state mutation to restore staging. Do not run it without explicit approval of the exact restore command.
+
+## 2026-06-24T13:25:00.000Z
+- type: observation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Product listing-mode schema drift audit
+- summary: Audited the separate listing-mode drift and documented the safer custom migration shape.
+- details: Production read-only metadata shows `products.images` is `text[]`, `products.listing_type` and `products.rental_term` are missing, listing-mode constraints/indexes are absent, and `search_products` / `search_products_semantic` still have old signatures without listing-mode parameters or return fields. Local reset state has the March listing-mode schema and new search RPC signatures.
+- verification: Code audit confirmed sell/edit writes and product filters depend on `listing_type` / `rental_term`; Algolia and product-search paths expect those fields. No direct app-side `rpc('search_products...')` usage was found.
+- risks: Do not apply the March listing-mode migration verbatim. The safer follow-up is a custom compatibility migration that adds columns/index/constraints and new overloaded search RPC signatures while preserving old signatures during rollout.
+
+## 2026-06-24T13:40:00.000Z
+- type: implementation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Supabase RPC readiness checker expansion
+- summary: Expanded the read-only readiness checker to enforce the listing-mode parity gate.
+- details: `tools/scripts/supabase-rpc-readiness.mjs` now reports `products.images` type, listing-mode columns, the three listing-mode constraints, candidate listing-mode indexes, and old/new search RPC signatures. The checker expects both legacy and listing-mode search RPC signatures so future rollout can preserve compatibility.
+- verification: `node --check tools/scripts/supabase-rpc-readiness.mjs` and script help passed. Production readiness still fails as expected: seven secure RPCs missing, listing-mode columns/constraints/index/search RPC signatures missing, only `2/4` search RPC signatures present, `products.images` type `_text`, and migration `20260623152000` absent. Staging readiness still fails as expected because staging is `INACTIVE`.
+- risks: This is read-only tooling only. It does not restore staging, apply SQL, or mutate provider state.
+
+## 2026-06-24T13:55:00.000Z
+- type: implementation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Supabase SQL apply command guard
+- summary: Hardened the local SQL apply tool against accidental writes.
+- details: `tools/scripts/supabase-apply-sql.mjs` now requires `--confirm-write --confirm-project-ref <same-ref>` for non-read-only SQL. P0 and MCP docs were updated so future approved staging/production SQL commands include the confirmation flags.
+- verification: `node --check tools/scripts/supabase-apply-sql.mjs`, script help, expected missing `--confirm-write` failure, expected mismatched `--confirm-project-ref` failure, JSON parse check, `git diff --check`, and `npm run lint` passed.
+- risks: This does not restore staging, apply SQL, or mutate provider state. Future operator commands must include the new flags for intended SQL writes.
+
+## 2026-06-24T14:10:00.000Z
+- type: implementation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Supabase project status wait helper
+- summary: Added a read-only project status/wait helper for restore verification.
+- details: Added `tools/scripts/supabase-project-status.mjs` and `npm run supabase:project:status`. The helper uses the Supabase Management API to report a project status or wait for an expected status such as `ACTIVE_HEALTHY` with timeout/interval controls.
+- verification: `node --check tools/scripts/supabase-project-status.mjs`, script help, production status, production `ACTIVE_HEALTHY` wait, staging status, and JSON parse checks passed.
+- risks: This helper is read-only. It does not restore staging, apply SQL, or mutate provider state.
+
+## 2026-06-24T14:20:00.000Z
+- type: implementation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Supabase operator-tool offline test coverage
+- summary: Added normal-test-path coverage for the P0 Supabase operator tooling.
+- details: Refactored `supabase-apply-sql`, `supabase-project-status`, and `supabase-rpc-readiness` to expose pure parsing/report helpers behind direct-run CLI guards. Updated `tools/scripts/run-tests.mjs` to include `tools/scripts/__tests__/*.test.mjs`, and added offline tests for SQL write confirmation gates, status wait parsing, readiness SQL generation, and readiness failure detection.
+- verification: `node --test tools/scripts/__tests__/*.test.mjs` passed with 15 tests. `npm test` passed and now includes the operator-tool tests. `node --check` passed for the three operator scripts and `tools/scripts/run-tests.mjs`. CLI help passed for all three operator scripts, and the missing `--confirm-write` failure path fails before token lookup or network access. `npm run lint`, `npm run typecheck`, JSON parse checks, and `git diff --check` passed.
+- risks: This slice is local tooling/test/docs only. It does not restore staging, apply SQL, mutate Supabase, or change app runtime behavior.
+
+## 2026-06-24T15:25:00.000Z
+- type: implementation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Product listing-mode parity migration
+- summary: Prepared and locally validated the custom listing-mode schema/search parity migration.
+- details: Added `supabase/migrations/20260624143000_product_listing_mode_parity.sql`. The migration adds `products.listing_type` and `products.rental_term` idempotently, normalizes existing rows before validation, adds the listing-mode constraints and index, recreates legacy search RPC signatures, and adds listing-mode search RPC overloads. A first local reset caught a Postgres argument-name incompatibility with existing March overloads; the migration was corrected to keep the established argument names.
+- verification: `node --check tools/scripts/supabase-rpc-readiness.mjs` passed. Targeted readiness test passed after adding coverage for both P0 migration versions. Local `supabase db reset` applied through `20260624143000`, then failed only at the known final storage readiness probe on `127.0.0.1:54321`. Local DB metadata confirmed both P0 migration versions, listing-mode columns/defaults, validated constraints, listing-mode index, and all four legacy/listing-mode search RPC signatures. Remote production readiness failed as expected with both P0 migrations and related objects missing; remote staging readiness failed as expected because staging is `INACTIVE`. `npm test`, `npm run lint`, and `npm run typecheck` passed.
+- risks: No staging or production SQL mutation has been executed. The listing-mode migration touches `public.products` and public search RPCs when applied remotely, so staging restore and explicit approval remain required before any remote apply.
+
+## 2026-06-24T15:45:00.000Z
+- type: blocked
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Staging restore attempt
+- summary: Approved staging restore failed because the staging project cannot be restored.
+- details: DB/provider MCP gate passed with command-scoped local Supabase env mapping. The approved Supabase Management API restore request targeted staging project `iypynouqbmmvoqecfmuw` only. Supabase rejected it with the message that the project has been paused for more than 90 days and cannot be restored.
+- verification: `npm run supabase:project:status -- --project-ref iypynouqbmmvoqecfmuw` reports `INACTIVE`. `npm run supabase:rpc:readiness -- --project-ref iypynouqbmmvoqecfmuw` fails as expected because staging is inactive.
+- risks: No remote SQL was applied. Normal staging-first DB repair is blocked until a replacement staging path exists, unless the user explicitly approves a production override.
+
+## 2026-06-24T17:53:00.000Z
+- type: implementation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Replacement staging readiness handling
+- summary: Hardened the readiness checker for the active but blank replacement staging project.
+- details: Replacement staging project `cuotmvhhgakjeqdsfziu` (`ku-online-staging`, `eu-central-1`) is `ACTIVE_HEALTHY` but blank. `tools/scripts/supabase-rpc-readiness.mjs` now defaults to production plus replacement staging and reports missing migration metadata when `supabase_migrations.schema_migrations` is absent instead of crashing. Supabase production branches currently list only default `main`; no production-clone staging branch is available.
+- verification: `node --check tools/scripts/supabase-rpc-readiness.mjs` passed. `node --test tools/scripts/__tests__/supabase-rpc-readiness.test.mjs` passed. `npm run supabase:rpc:readiness -- --project-ref cuotmvhhgakjeqdsfziu` fails as expected with a clean report: `0/2` P0 migrations, `0/7` secure RPCs, no `products` columns, no listing-mode constraints/index, and `0/4` search RPC signatures.
+- risks: No remote SQL was applied. The replacement staging project is not yet production-like; do not apply the two P0 repair migrations there until the app baseline schema is initialized or a production-clone staging path exists.
+
+## 2026-06-24T18:10:00.000Z
+- type: implementation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: SQL apply migration-recording guard
+- summary: Fixed the Management API SQL apply path so approved migration applies can update migration history.
+- details: `tools/scripts/supabase-apply-sql.mjs` now supports explicit `--record-migration` for files named `<14-digit-version>_<name>.sql`. The helper appends a guarded insert/update into `supabase_migrations.schema_migrations` after the migration SQL, and the P0 runbook examples now include the flag.
+- verification: `node --check tools/scripts/supabase-apply-sql.mjs`, `node --test tools/scripts/__tests__/supabase-apply-sql.test.mjs`, and script help passed.
+- risks: No remote SQL was applied. Migration recording is not automatic for arbitrary SQL; future approved P0 Management API applies must include `--record-migration`.
+
+## 2026-06-24T18:28:00.000Z
+- type: blocked
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Supabase Branching staging foundation
+- summary: Schema-only persistent branch creation is blocked by the current Supabase plan.
+- details: DB/provider MCP gate passed after command-scoped local Supabase env mapping. The schema-only branch command for `ku-online-staging-p0` omitted `--with-data` but failed with `402`: Supabase Branching requires the Pro plan or above. Follow-up branch listing still shows only default production `main`. Replacement staging project `cuotmvhhgakjeqdsfziu` remains `ACTIVE_HEALTHY` and blank.
+- verification: `supabase branches list --project-ref kvmbtbhlapjlhfppomsw -o json` showed only `main`. `supabase projects list -o json` showed production active, legacy staging inactive, replacement staging active, and no new branch project. `.cursor/mcp.json` was restored to its tracked baseline after the MCP profile switch.
+- risks: No remote SQL was applied and production remains untouched. Without a Supabase plan upgrade, the best available staging-first fallback is standalone staging initialization, which validates a clean migration chain rather than a production-clone schema.
+
+## 2026-06-24T18:50:00.000Z
+- type: implementation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Standalone staging initialization
+- summary: Initialized replacement staging and validated the P0 repair surface there.
+- details: Applied all 99 repository migration files to standalone staging project `cuotmvhhgakjeqdsfziu` using `tools/scripts/supabase-apply-sql.mjs --confirm-write --confirm-project-ref cuotmvhhgakjeqdsfziu --record-migration`. Production was not targeted. The apply path used the Supabase Management API query endpoint and did not require changing or exposing the staging DB password.
+- verification: Staging project status matched `ACTIVE_HEALTHY`. `npm run supabase:rpc:readiness -- --project-ref cuotmvhhgakjeqdsfziu` passed with no issues: both P0 migrations present, seven secure RPCs present, listing-mode columns/constraints/index present, and all four search RPC signatures present. A staging sanity query returned `99` recorded migrations, `13` categories, and a public `product-images` bucket. `npm run supabase:parity -- --prod-ref kvmbtbhlapjlhfppomsw --staging-ref cuotmvhhgakjeqdsfziu` failed as expected with drift: staging has the P0 repair objects and no missing tables/functions relative to production, but production has five reader/TTS migration-history rows absent from staging.
+- risks: Standalone staging is not a production clone. Do not run broad migration catch-up on production. The next production mutation must be limited to the two P0 repair migrations and requires exact explicit approval.
+
+## 2026-06-24T18:26:00.000Z
+- type: implementation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: Production P0 Supabase repair apply
+- summary: Applied and verified the two P0 repair migrations on production.
+- details: After explicit user approval, applied `20260623152000_repair_secure_rpc_parity.sql` and `20260624143000_product_listing_mode_parity.sql` to production project `kvmbtbhlapjlhfppomsw` with `npm run supabase:sql -- --confirm-write --confirm-project-ref kvmbtbhlapjlhfppomsw --record-migration`. The DB/provider MCP gate passed before writes. The apply targeted production only for these two migrations; no broad migration catch-up was run.
+- verification: Production project status matched `ACTIVE_HEALTHY`. Pre-apply readiness failed as expected; post-apply `npm run supabase:rpc:readiness -- --project-ref kvmbtbhlapjlhfppomsw` passed with no issues. Public production smoke returned `200` for `/api/health`, `/`, and `/sell`. Protected internal health returned `200` with database/storage/rate-limit `ok`. Recent Vercel production error-log check after apply returned no error records in the checked window. Signed-out `/api/messages/conversations` returned `401`, not `500`.
+- risks: Authenticated message-list flow still needs a real signed-in browser/user smoke when credentials are available. Do not run broad migration catch-up on production without a separate approved plan.
+
+## 2026-06-24T18:45:00.000Z
+- type: validation
+- task_id: candidate-p0-supabase-parity-repair
+- task_title: P0 source-control closeout validation
+- summary: Re-ran local validation and remote readiness checks before committing the P0 repair slice.
+- details: Reviewed the worktree scope and confirmed the diff is limited to P0 migrations, Supabase operator tooling/tests, package scripts, and docs/agent-memory. `.cursor/mcp.json` has no diff. The production build was rerun with a temporary pulled Vercel production env file because the plain local shell lacks required public Supabase env values; the temp file was deleted after the build.
+- verification: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build` with temp Vercel production env, and `git diff --check` passed. Production and replacement staging both matched `ACTIVE_HEALTHY`. `npm run supabase:rpc:readiness` passed with no issues for production `kvmbtbhlapjlhfppomsw` and staging `cuotmvhhgakjeqdsfziu`.
+- risks: Authenticated browser/user-flow smoke still requires a real signed-in session after source-control/deploy closeout.

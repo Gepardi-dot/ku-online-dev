@@ -25,6 +25,8 @@
     "supabase:admin:grant": "node tools/scripts/mcp-auto.mjs --task db -- node tools/scripts/supabase-grant-role.mjs",
     "supabase:apply": "node tools/scripts/mcp-auto.mjs --task db -- node scripts/apply-supabase-schema.mjs",
     "supabase:policies": "node tools/scripts/mcp-auto.mjs --task db -- node scripts/show-policies.mjs",
+    "supabase:project:status": "node tools/scripts/supabase-project-status.mjs",
+    "supabase:rpc:readiness": "node tools/scripts/supabase-rpc-readiness.mjs",
     "tooling:status": "node scripts/check-tooling-status.mjs",
     "security:secrets:readiness": "node tools/scripts/secret-rotation-readiness.mjs",
     "mcp:profile": "node tools/scripts/mcp-profile.mjs",

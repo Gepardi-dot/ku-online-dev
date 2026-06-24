@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-23T14:44:18.430Z",
+  "last_updated_utc": "2026-06-24T18:45:00.000Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,16 +27,16 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-o-secret-rotation-readiness",
-      "title": "Secret rotation readiness runbook and checker",
-      "status": "completed_deployed_verified",
+      "id": "candidate-p0-supabase-parity-repair",
+      "title": "Supabase schema/RPC parity repair",
+      "status": "source_control_closeout_in_progress",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-p-provider-alert-rules-or-staging-rotation-dry-run",
-      "title": "Provider alert rules or staging secret-rotation dry run after explicit approval"
+      "id": "candidate-p1-post-db-hardening",
+      "title": "Continue production hardening after resolved P0 Supabase drift"
     },
-    "latest_user_request": "proceed"
+    "latest_user_request": "proceed with production-readiness testing and ask for intervention when sign-in testing is needed"
   },
   "technical_findings": [
     "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
@@ -58,7 +58,34 @@
     "Candidate N updated tools/test-stubs/alias-loader.mjs so compiled ESM tests can resolve relative extensionless imports from dist-tests.",
     "Candidate N code commit 5ae9b7b passed GitHub CI run 27952977699 and Vercel deployment dpl_FxF18o2AqUmMexss8yK2DPicApBQ reached Ready. Canonical www.kubazar.net smoke passed, and a deliberate unauthenticated internal-health request produced a redacted [privileged-route] unauthorized event in Vercel logs.",
     "Candidate O adds a presence-only secret rotation readiness checker and a staging-first rotation runbook. This slice is docs/tooling only and does not rotate secrets or mutate provider settings.",
-    "Candidate O code commit b3a138e passed GitHub CI run 28034201187 and Vercel deployment dpl_4ThYGRQphDEqC1Ks6zGXsQdPDD6J reached Ready. Public production smoke passed and protected health returned database/storage/rate-limit ok with vercel-kv/upstash."
+    "Candidate O code commit b3a138e passed GitHub CI run 28034201187 and Vercel deployment dpl_4ThYGRQphDEqC1Ks6zGXsQdPDD6J reached Ready. Public production smoke passed and protected health returned database/storage/rate-limit ok with vercel-kv/upstash.",
+    "Candidate P0 read-only audit found an active production runtime error: /api/messages/conversations returns 500 with Supabase PGRST202 because public.list_conversation_summaries_secure() is missing from production.",
+    "Supabase production metadata currently exposes only legacy public.list_conversation_summaries(p_user_id uuid) among the checked conversation-list functions; the secure message RPC migrations from 20260223 are not reflected in production.",
+    "Supabase production has the message/conversation/product/public_user_profiles tables needed by the secure message RPCs, but products.listing_type and products.rental_term are absent while deployed sell/edit code sends those columns.",
+    "Supabase staging read-only SQL timed out even on select 1 during Candidate P0 audit; supabase projects list reports staging project iypynouqbmmvoqecfmuw as INACTIVE.",
+    "Candidate P0 prepared supabase/migrations/20260623152000_repair_secure_rpc_parity.sql and docs/security/CANDIDATE_P0_SUPABASE_RPC_REPAIR.md, but no staging or production SQL mutation has been executed.",
+    "DB MCP gate is ready after starting Docker Desktop and mapping local Supabase status env names to SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY/SUPABASE_ANON_KEY for the command.",
+    "Local supabase db reset applies migrations through 20260623152000, but exits non-zero during final storage bucket readiness check because the CLI probes 127.0.0.1:54321 while Docker published local Kong on 127.0.0.1:55321. Local metadata confirms migration 20260623152000, all seven secure RPCs, and Algolia listing-mode compatibility logic; authenticated storage readiness on 55321 returns 200.",
+    "Candidate P0 added npm run supabase:rpc:readiness for read-only Supabase project status, secure RPC, execute grant, migration, and listing-mode column checks.",
+    "Read-only reconfirmation on 2026-06-24: production kvmbtbhlapjlhfppomsw remains ACTIVE_HEALTHY but missing all seven secure RPCs, products.listing_type, products.rental_term, and migration 20260623152000; staging iypynouqbmmvoqecfmuw remains INACTIVE with restore version supabase-postgres-17.6.1.063 available.",
+    "Listing-mode drift audit: production products.images is text[], products.listing_type/products.rental_term are missing, listing-mode constraints/indexes are absent, and production search_products/search_products_semantic still use old signatures without listing-mode parameters or return fields.",
+    "Code audit confirmed sell/edit writes, product filters, Algolia paths, and product-search paths expect listing_type/rental_term; no direct app-side rpc('search_products...') usage was found.",
+    "Candidate P0 expanded npm run supabase:rpc:readiness to check products.images type, listing-mode constraints/indexes, and both legacy and listing-mode search RPC signatures. Production currently reports products.images _text and 2/4 search RPC signatures present.",
+    "Candidate P0 hardened npm run supabase:sql so mutating SQL requires --confirm-write and --confirm-project-ref matching --project-ref in addition to the DB MCP gate.",
+    "Candidate P0 Management API migration applies now support --record-migration, which records <14-digit-version>_<name>.sql files in supabase_migrations.schema_migrations after SQL execution. Future approved P0 remote applies should include this flag.",
+    "Candidate P0 added npm run supabase:project:status as a read-only Management API helper to report or wait for project status such as ACTIVE_HEALTHY after an approved restore/resume.",
+    "Candidate P0 operator tooling now has offline node:test coverage under tools/scripts/__tests__; npm test includes those tests through tools/scripts/run-tests.mjs.",
+    "Candidate P0 added supabase/migrations/20260624143000_product_listing_mode_parity.sql as a custom compatibility migration that preserves legacy search RPC signatures while adding listing-mode columns, constraints, index, and new search overloads. Local db reset applies through both P0 migrations, then still fails only at the known storage readiness port drift.",
+    "Approved staging restore attempt for iypynouqbmmvoqecfmuw on 2026-06-24 failed because Supabase reported the project has been paused for more than 90 days and cannot be restored. Staging remains INACTIVE; no SQL was applied remotely.",
+    "Replacement staging project cuotmvhhgakjeqdsfziu (ku-online-staging, eu-central-1) was created and is ACTIVE_HEALTHY. The generated DB password was not printed or stored.",
+    "supabase branches list for production kvmbtbhlapjlhfppomsw currently lists only the default main branch, so no production-clone staging branch is available.",
+    "Candidate P0 readiness checker now defaults to production plus replacement staging and handles blank Supabase projects by reporting missing migration metadata instead of crashing on a missing supabase_migrations.schema_migrations table.",
+    "Supabase Branching was attempted with a schema-only persistent branch command for ku-online-staging-p0, but Supabase returned 402 because Branching requires the Pro plan or above. No branch was created.",
+    "Without upgrading Supabase, the best available staging-first path was standalone replacement staging initialization, then exact production SQL approval for the two P0 migrations.",
+    "Standalone staging cuotmvhhgakjeqdsfziu was initialized by applying all 99 repository migration files through tools/scripts/supabase-apply-sql.mjs with --record-migration. Staging readiness now passes with both P0 migrations present, seven secure RPCs present, listing-mode schema/search gates complete, 99 migrations recorded, 13 categories, and public product-images bucket present.",
+    "Parity against production intentionally reports drift: standalone staging has P0 repair objects and no missing tables/functions relative to production, but production has five reader/TTS migration-history rows absent from staging. Do not run broad migration catch-up on production.",
+    "Candidate P0 production apply completed on 2026-06-24: migrations 20260623152000 and 20260624143000 were applied to production kvmbtbhlapjlhfppomsw with --record-migration. Production readiness now passes with both P0 migrations present, seven secure RPCs present, listing-mode schema/search gates complete, public smoke 200, protected health 200 with database/storage/rate-limit ok, and signed-out /api/messages/conversations returning 401 instead of 500.",
+    "Candidate P0 closeout validation passed before commit: npm test, npm run lint, npm run typecheck, npm run build with temporary Vercel production env, git diff --check, production/staging project status, and production/staging RPC readiness. Authenticated browser/user-flow smoke remains pending a real signed-in session."
   ],
   "decisions": [
     {
@@ -83,7 +110,10 @@
     "GitHub scheduled workflows are best-effort; observed product maintenance cadence was not a strict 30-minute interval, so production-critical maintenance may need freshness alerting or a scheduler with stronger delivery guarantees.",
     "Bearer-token operator requests should target canonical https://www.kubazar.net because the apex https://kubazar.net redirects to www and cross-host redirects can drop the Authorization header.",
     "Provider-side Sentry/Vercel privileged-route alerts are not configured yet; Candidate N documents thresholds for a later explicit provider-mutation phase.",
-    "Secret readiness checks prove env names are present, not that values are correct. Real rotation still requires staging-first smoke checks and explicit production approval."
+    "Secret readiness checks prove env names are present, not that values are correct. Real rotation still requires staging-first smoke checks and explicit production approval.",
+    "Do not blindly apply all missing local Supabase migrations; production has later remote migration versions and at least one local migration targets a table absent in production.",
+    "Local Supabase reset still reports final storage readiness failure on the CLI-reported port even though authenticated storage readiness succeeds on Docker's actual published port; keep this separated from repair migration correctness.",
+    "Do not run broad migration catch-up on production without a separate plan. Production has later reader/TTS migration-history rows and standalone staging is intentionally not a production clone."
   ],
   "verification_log": [
     {
@@ -275,6 +305,56 @@
       "timestamp_utc": "2026-06-23T14:44:18.430Z",
       "check": "Candidate O production deployment, CI, and smoke",
       "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-24T12:35:00.000Z",
+      "check": "Candidate P0 repair migration and RPC readiness checker validation",
+      "status": "partial_pass_pending_staging_restore"
+    },
+    {
+      "timestamp_utc": "2026-06-24T14:20:00.000Z",
+      "check": "Candidate P0 operator-tool offline tests",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-24T15:25:00.000Z",
+      "check": "Candidate P0 listing-mode parity migration local validation",
+      "status": "pass_with_known_storage_probe_failure"
+    },
+    {
+      "timestamp_utc": "2026-06-24T15:45:00.000Z",
+      "check": "Candidate P0 staging restore attempt",
+      "status": "blocked_project_paused_over_90_days"
+    },
+    {
+      "timestamp_utc": "2026-06-24T17:53:00.000Z",
+      "check": "Candidate P0 replacement staging readiness handling",
+      "status": "pass_blank_project_reported_cleanly"
+    },
+    {
+      "timestamp_utc": "2026-06-24T18:10:00.000Z",
+      "check": "Candidate P0 SQL apply migration-recording guard",
+      "status": "pass_local_tooling"
+    },
+    {
+      "timestamp_utc": "2026-06-24T18:28:00.000Z",
+      "check": "Candidate P0 Supabase Branching attempt",
+      "status": "blocked_plan_requires_pro"
+    },
+    {
+      "timestamp_utc": "2026-06-24T18:50:00.000Z",
+      "check": "Candidate P0 standalone staging initialization",
+      "status": "pass_staging_readiness"
+    },
+    {
+      "timestamp_utc": "2026-06-24T18:26:00.000Z",
+      "check": "Candidate P0 production apply and readiness verification",
+      "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-24T18:45:00.000Z",
+      "check": "Candidate P0 local build/test and production/staging readiness closeout",
+      "status": "pass_pending_auth_smoke"
     }
   ]
 }

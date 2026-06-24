@@ -2,19 +2,24 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { pathToFileURL } from 'node:url';
 
 const TOKEN_ENV_KEY = 'SUPABASE_ACCESS_TOKEN';
 
 function printUsage() {
-  console.log('Usage: npm run supabase:sql -- --project-ref <ref> --file <path-to-sql>');
-  console.log('Optional: --read-only');
+  console.log('Usage: npm run supabase:sql -- --project-ref <ref> --file <path-to-sql> --read-only');
+  console.log('Write mode requires: --confirm-write --confirm-project-ref <same-ref>');
+  console.log('Migration files may add: --record-migration');
 }
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const args = {
     projectRef: '',
+    confirmProjectRef: '',
     file: '',
     readOnly: false,
+    confirmWrite: false,
+    recordMigration: false,
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -29,8 +34,21 @@ function parseArgs(argv) {
       i += 1;
       continue;
     }
+    if (current === '--confirm-project-ref') {
+      args.confirmProjectRef = (argv[i + 1] ?? '').trim();
+      i += 1;
+      continue;
+    }
     if (current === '--read-only') {
       args.readOnly = true;
+      continue;
+    }
+    if (current === '--confirm-write') {
+      args.confirmWrite = true;
+      continue;
+    }
+    if (current === '--record-migration') {
+      args.recordMigration = true;
       continue;
     }
     if (current === '--help' || current === '-h') {
@@ -40,6 +58,69 @@ function parseArgs(argv) {
   }
 
   return args;
+}
+
+export function assertSqlArgsReady(args) {
+  if (!args.projectRef || !args.file) {
+    return false;
+  }
+
+  if (!args.readOnly) {
+    if (!args.confirmWrite) {
+      throw new Error('Write mode requires --confirm-write.');
+    }
+    if (!args.confirmProjectRef) {
+      throw new Error('Write mode requires --confirm-project-ref <ref>.');
+    }
+    if (args.confirmProjectRef !== args.projectRef) {
+      throw new Error('--confirm-project-ref must exactly match --project-ref.');
+    }
+  } else if (args.recordMigration) {
+    throw new Error('--record-migration is only valid in write mode.');
+  }
+
+  return true;
+}
+
+export function extractMigrationMetadata(filePath) {
+  const fileName = path.basename(filePath);
+  const match = fileName.match(/^(\d{14})_(.+)\.sql$/);
+  if (!match) {
+    throw new Error('--record-migration requires a file named <14-digit-version>_<name>.sql.');
+  }
+
+  return {
+    version: match[1],
+    name: match[2],
+  };
+}
+
+export function sqlLiteral(value) {
+  return `'${String(value).replace(/'/g, "''")}'`;
+}
+
+export function ensureStatementTerminated(sql) {
+  const trimmed = sql.trimEnd();
+  if (!trimmed) return '';
+  return trimmed.endsWith(';') ? trimmed : `${trimmed};`;
+}
+
+export function buildMigrationRecordSql({ version, name, sql }) {
+  return `
+create schema if not exists supabase_migrations;
+
+create table if not exists supabase_migrations.schema_migrations (
+  version text not null primary key,
+  statements text[],
+  name text
+);
+
+insert into supabase_migrations.schema_migrations (version, statements, name)
+values (${sqlLiteral(version)}, array[${sqlLiteral(sql)}]::text[], ${sqlLiteral(name)})
+on conflict (version) do update
+set statements = excluded.statements,
+    name = excluded.name;
+`;
 }
 
 async function runQuery(projectRef, token, sql, readOnly) {
@@ -64,7 +145,7 @@ async function runQuery(projectRef, token, sql, readOnly) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!args.projectRef || !args.file) {
+  if (!assertSqlArgsReady(args)) {
     printUsage();
     process.exit(1);
   }
@@ -76,16 +157,27 @@ async function main() {
 
   const absolutePath = path.resolve(args.file);
   const sql = await readFile(absolutePath, 'utf8');
+  const migrationMetadata = args.recordMigration ? extractMigrationMetadata(absolutePath) : null;
+  const sqlToRun = migrationMetadata
+    ? `${ensureStatementTerminated(sql)}\n\n${buildMigrationRecordSql({ ...migrationMetadata, sql })}`
+    : sql;
 
   console.log(
     `${args.readOnly ? 'Running read-only SQL' : 'Applying SQL'} on project ${args.projectRef} from ${path.relative(process.cwd(), absolutePath)}...`,
   );
-  const result = await runQuery(args.projectRef, token, sql, args.readOnly);
+  const result = await runQuery(args.projectRef, token, sqlToRun, args.readOnly);
   const rowCount = Array.isArray(result) ? result.length : 0;
-  console.log(`Done. Result rows: ${rowCount}`);
+  const migrationMessage = migrationMetadata ? ` Migration ${migrationMetadata.version} recorded.` : '';
+  console.log(`Done. Result rows: ${rowCount}.${migrationMessage}`);
 }
 
-main().catch((error) => {
-  console.error('supabase:sql failed:', error.message);
-  process.exit(1);
-});
+function isDirectRun() {
+  return process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+}
+
+if (isDirectRun()) {
+  main().catch((error) => {
+    console.error('supabase:sql failed:', error.message);
+    process.exit(1);
+  });
+}
