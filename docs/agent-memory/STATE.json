@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-24T18:45:00.000Z",
+  "last_updated_utc": "2026-06-24T18:51:00.000Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -29,7 +29,7 @@
     "current_task": {
       "id": "candidate-p0-supabase-parity-repair",
       "title": "Supabase schema/RPC parity repair",
-      "status": "source_control_closeout_in_progress",
+      "status": "pushed_deployed_verified_pending_auth_smoke",
       "phase": "production-hardening"
     },
     "next_task": {
@@ -85,7 +85,8 @@
     "Standalone staging cuotmvhhgakjeqdsfziu was initialized by applying all 99 repository migration files through tools/scripts/supabase-apply-sql.mjs with --record-migration. Staging readiness now passes with both P0 migrations present, seven secure RPCs present, listing-mode schema/search gates complete, 99 migrations recorded, 13 categories, and public product-images bucket present.",
     "Parity against production intentionally reports drift: standalone staging has P0 repair objects and no missing tables/functions relative to production, but production has five reader/TTS migration-history rows absent from staging. Do not run broad migration catch-up on production.",
     "Candidate P0 production apply completed on 2026-06-24: migrations 20260623152000 and 20260624143000 were applied to production kvmbtbhlapjlhfppomsw with --record-migration. Production readiness now passes with both P0 migrations present, seven secure RPCs present, listing-mode schema/search gates complete, public smoke 200, protected health 200 with database/storage/rate-limit ok, and signed-out /api/messages/conversations returning 401 instead of 500.",
-    "Candidate P0 closeout validation passed before commit: npm test, npm run lint, npm run typecheck, npm run build with temporary Vercel production env, git diff --check, production/staging project status, and production/staging RPC readiness. Authenticated browser/user-flow smoke remains pending a real signed-in session."
+    "Candidate P0 closeout validation passed before commit: npm test, npm run lint, npm run typecheck, npm run build with temporary Vercel production env, git diff --check, production/staging project status, and production/staging RPC readiness. Authenticated browser/user-flow smoke remains pending a real signed-in session.",
+    "Candidate P0 source-control/deploy closeout completed: commit 0b3da09 was pushed to main, GitHub CI run 28121756571 passed, Vercel deployment dpl_81akCqA4Qu3XvLuCW9gAxv8rcU9C is Ready on production aliases, post-deploy public/protected smoke passed, and Vercel logs showed only expected smoke traffic."
   ],
   "decisions": [
     {
@@ -354,6 +355,11 @@
     {
       "timestamp_utc": "2026-06-24T18:45:00.000Z",
       "check": "Candidate P0 local build/test and production/staging readiness closeout",
+      "status": "pass_pending_auth_smoke"
+    },
+    {
+      "timestamp_utc": "2026-06-24T18:51:00.000Z",
+      "check": "Candidate P0 main push, CI, Vercel deploy, and live smoke",
       "status": "pass_pending_auth_smoke"
     }
   ]

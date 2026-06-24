@@ -692,3 +692,11 @@ Validation performed:
 - `npm test`: pass.
 - `npm run lint`: pass.
 - `npm run typecheck`: pass.
+- `npm run build`: first run failed because local public Supabase env values were absent; rerun with a temporary pulled Vercel production env file passed, and the temporary file was deleted.
+- Source-control closeout commit `0b3da09` pushed to `main`.
+- GitHub CI run `28121756571` for commit `0b3da09`: pass.
+- Vercel production deployment `dpl_81akCqA4Qu3XvLuCW9gAxv8rcU9C`: ready and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Post-deploy public smoke returned `200` for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`.
+- Post-deploy protected internal health returned database/storage/rate-limit `ok`.
+- Post-deploy signed-out `/api/messages/conversations` returned `401`, not `500`.
+- Post-deploy Vercel log scan for the new deployment showed only expected smoke traffic and no error-level records in the checked window.

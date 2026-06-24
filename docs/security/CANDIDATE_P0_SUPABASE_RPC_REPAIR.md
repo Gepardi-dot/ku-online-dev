@@ -165,6 +165,12 @@ Verified success signal:
 - `npm run supabase:project:status -- --project-ref kvmbtbhlapjlhfppomsw --expect ACTIVE_HEALTHY --timeout-seconds 300 --interval-seconds 15` reports production healthy.
 - `npm run supabase:rpc:readiness -- --project-ref kvmbtbhlapjlhfppomsw` shows both P0 migrations recorded, all seven secure functions present with expected execute grants, and listing-mode schema/search gates complete.
 - Recent Vercel production error-log check after apply returned no error records in the checked window.
+- Source-control closeout commit `0b3da09` was pushed to `main`.
+- GitHub CI run `28121756571` for commit `0b3da09`: pass.
+- Vercel production deployment `dpl_81akCqA4Qu3XvLuCW9gAxv8rcU9C`: ready and aliased to the canonical production domains.
+- Post-deploy public smoke returned `200` for canonical health, homepage, `/sell`, apex health, and the Vercel app health URL.
+- Post-deploy protected internal health returned database/storage/rate-limit `ok`, with rate limiting backed by Vercel KV/Upstash.
+- Post-deploy Vercel log scan for the new deployment showed only expected smoke traffic and no error-level records in the checked window.
 
 ## Rollback SQL
 

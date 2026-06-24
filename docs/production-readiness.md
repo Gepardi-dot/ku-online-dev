@@ -146,6 +146,12 @@ Validation performed so far:
 - Closeout recheck `npm run supabase:project:status -- --project-ref cuotmvhhgakjeqdsfziu --expect ACTIVE_HEALTHY --timeout-seconds 120 --interval-seconds 10`: pass.
 - Closeout recheck `npm run supabase:rpc:readiness -- --project-ref kvmbtbhlapjlhfppomsw`: pass; no issues.
 - Closeout recheck `npm run supabase:rpc:readiness -- --project-ref cuotmvhhgakjeqdsfziu`: pass; no issues.
+- Source-control closeout commit `0b3da09` (`fix: repair production Supabase parity`) pushed to `main`.
+- GitHub CI run `28121756571` for commit `0b3da09`: pass.
+- Vercel production deployment `dpl_81akCqA4Qu3XvLuCW9gAxv8rcU9C`: ready and aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Post-deploy public smoke returned `200` for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`.
+- Post-deploy protected internal health returned database/storage/rate-limit `ok`; rate limiting remains configured through `vercel-kv` / `upstash`.
+- Post-deploy Vercel log scan for the new deployment showed only expected smoke traffic: health/home/sell `200`, internal health `200`, and signed-out conversations `401`.
 
 Acceptance criteria:
 - Staging and production have the required secure RPCs with authenticated/service-role execute grants and anon/public revoked where intended.
