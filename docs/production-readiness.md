@@ -58,7 +58,7 @@ Validation performed:
 - `npm test`: pass.
 - `npm run lint`: pass.
 - `npm run typecheck`: pass.
-- Manual Algolia provider rollout workflow dispatches: first failed before provider mutation because the configured Algolia key could not manage API keys; second got past search-key resolution but failed before Vercel env sync because the GitHub `VERCEL_TOKEN` could not access the forced Vercel scope. No Vercel env, redeploy, backfill, or Algolia index mutation occurred.
+- Manual Algolia provider rollout workflow dispatches: first failed before provider mutation because the configured Algolia key could not manage API keys; second got past search-key resolution but failed before Vercel env sync because the GitHub `VERCEL_TOKEN` could not access the forced Vercel scope; third confirmed the GitHub `VERCEL_TOKEN` is invalid. No Vercel env, redeploy, backfill, or Algolia index mutation occurred.
 
 Prior candidate:
 
