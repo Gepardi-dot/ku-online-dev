@@ -113,19 +113,14 @@ jobs:
           add_vercel_env ALGOLIA_SEARCH_API_KEY "$ALGOLIA_SEARCH_API_KEY"
           add_vercel_env ALGOLIA_INDEX_NAME "$ALGOLIA_INDEX_NAME"
 
-      - name: Verify Vercel Algolia env values
+      - name: Verify Vercel Algolia env names
         if: ${{ inputs.apply_vercel_env }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          env_file="$(mktemp)"
-          trap 'rm -f "$env_file"' EXIT
-          npx --yes vercel@54.9.1 env pull "$env_file" --environment=production --yes --token "$VERCEL_TOKEN"
-          node - "$env_file" <<'NODE'
-          const fs = require('node:fs');
-
-          const file = process.argv[2];
+          env_list="$(npx --yes vercel@54.9.1 env ls production --token "$VERCEL_TOKEN")"
+          VERCEL_ENV_LIST="$env_list" node <<'NODE'
           const required = [
             'ALGOLIA_APP_ID',
             'ALGOLIA_ADMIN_API_KEY',
@@ -133,31 +128,16 @@ jobs:
             'ALGOLIA_INDEX_NAME',
           ];
 
-          const values = new Map();
-          for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
-            const trimmed = line.trim();
-            if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
-            const index = trimmed.indexOf('=');
-            const key = trimmed.slice(0, index).trim();
-            let value = trimmed.slice(index + 1).trim();
-            if (
-              (value.startsWith('"') && value.endsWith('"')) ||
-              (value.startsWith("'") && value.endsWith("'"))
-            ) {
-              value = value.slice(1, -1);
-            }
-            values.set(key, value);
-          }
-
-          const missing = required.filter((key) => !values.get(key));
+          const input = process.env.VERCEL_ENV_LIST ?? '';
+          const missing = required.filter((key) => !new RegExp(`(^|\\s)${key}(\\s|$)`).test(input));
           if (missing.length > 0) {
             for (const key of missing) {
-              console.error(`::error::${key} is missing or empty in Vercel production env after sync`);
+              console.error(`::error::${key} is missing from Vercel production env after sync`);
             }
             process.exit(1);
           }
 
-          console.log('Verified non-empty Vercel production Algolia env values.');
+          console.log('Verified Vercel production Algolia env names. Sensitive values are runtime-smoked after deploy.');
           NODE
 
       - name: Redeploy Vercel production
