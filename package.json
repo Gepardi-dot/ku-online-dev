@@ -29,6 +29,7 @@
     "supabase:rpc:readiness": "node tools/scripts/supabase-rpc-readiness.mjs",
     "tooling:status": "node scripts/check-tooling-status.mjs",
     "security:secrets:readiness": "node tools/scripts/secret-rotation-readiness.mjs",
+    "algolia:production-smoke": "node tools/scripts/algolia-production-smoke.mjs",
     "mcp:profile": "node tools/scripts/mcp-profile.mjs",
     "mcp:status": "node tools/scripts/mcp-profile.mjs status",
     "mcp:off": "node tools/scripts/mcp-profile.mjs reset",
