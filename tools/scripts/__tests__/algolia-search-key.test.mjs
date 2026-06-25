@@ -6,6 +6,7 @@ import {
   buildIndexScope,
   getOrCreateSearchApiKey,
   isReusableSearchKey,
+  resolveSearchApiKey,
 } from '../algolia-search-key.mjs';
 
 function jsonResponse(status, payload) {
@@ -120,4 +121,23 @@ test('getOrCreateSearchApiKey creates a restricted key when no reusable key exis
     description: DEFAULT_DESCRIPTION,
     indexes: buildIndexScope('products'),
   });
+});
+
+test('resolveSearchApiKey prefers an existing provided search key without API calls', async () => {
+  let called = false;
+  const result = await resolveSearchApiKey({
+    existingSearchApiKey: 'provided-search-key',
+    appId: 'app123',
+    adminApiKey: 'admin123',
+    indexName: 'products',
+    fetchImpl: async () => {
+      called = true;
+      throw new Error('should not call Algolia');
+    },
+  });
+
+  assert.equal(result.status, 'provided');
+  assert.equal(result.key, 'provided-search-key');
+  assert.deepEqual(result.indexes, buildIndexScope('products'));
+  assert.equal(called, false);
 });

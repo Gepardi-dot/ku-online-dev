@@ -29,7 +29,7 @@
     "current_task": {
       "id": "candidate-p1-algolia-rpc-provider-readiness",
       "title": "Algolia sync RPC repair and provider readiness",
-      "status": "rpc_repaired_provider_rollout_prepared_not_run",
+      "status": "rpc_repaired_provider_rollout_blocked_by_algolia_key_permission",
       "phase": "production-hardening"
     },
     "next_task": {
@@ -91,7 +91,8 @@
     "Authenticated production smoke originally found two production blockers: /api/search/algolia-sync returned 500 with Supabase SQL error 42601 near a comma, causing the new listing to miss title search; and /sell did not expose rental/listing-mode controls for property, storing the property smoke listing as listing_type=sale and rental_term=null.",
     "Candidate P1 repaired the Algolia secure product-row RPC with migration 20260625104000_fix_algolia_product_row_secure.sql. The migration was applied to replacement staging cuotmvhhgakjeqdsfziu and production kvmbtbhlapjlhfppomsw with --record-migration, and readiness now requires all three repair migrations and reports the Algolia RPC body as ok.",
     "Post-repair signed-in production smoke created temporary listing 571fdb0a-daab-4f4c-a952-03636a5c7fc1. Product insert returned 201 and /api/search/algolia-sync returned HTTP 200 with no recent 500 logs, but the response was {\"ok\":false} and title search still failed because Vercel production lacks ALGOLIA_APP_ID, ALGOLIA_ADMIN_API_KEY, ALGOLIA_SEARCH_API_KEY, and ALGOLIA_INDEX_NAME. The smoke listing was deleted through the owner UI and read-only production DB cleanup returned matching_smoke_rows 0.",
-    "Candidate P1b prepared a manual-only Algolia Provider Rollout workflow plus tools/scripts/algolia-search-key.mjs. The workflow can create or reuse a restricted search-only key scoped to the base product index and replicas, sync all four Algolia env vars into Vercel production, redeploy, and backfill the Algolia index. It has not been dispatched and has not mutated Algolia or Vercel yet."
+    "Candidate P1b prepared a manual-only Algolia Provider Rollout workflow plus tools/scripts/algolia-search-key.mjs. The workflow can use an existing ALGOLIA_SEARCH_API_KEY GitHub secret or create/reuse a restricted search-only key scoped to the base product index and replicas, sync all four Algolia env vars into Vercel production, redeploy, and backfill the Algolia index.",
+    "First Algolia Provider Rollout dispatch 28197874539 failed before provider mutation: Algolia returned 403 Invalid Application-ID or API key while listing/creating API keys. Vercel env, Vercel deployment, and Algolia index were not changed. Next safe path is adding a valid search-only key as GitHub secret ALGOLIA_SEARCH_API_KEY or replacing the Algolia admin/write secret with one that can manage API keys."
   ],
   "decisions": [
     {
@@ -382,7 +383,7 @@
     {
       "timestamp_utc": "2026-06-25T20:04:07.648Z",
       "check": "Candidate P1b Algolia provider rollout workflow prepared",
-      "status": "pass_local_validation_not_dispatched"
+      "status": "pass_local_validation_dispatch_blocked_by_algolia_key_permission"
     }
   ]
 }

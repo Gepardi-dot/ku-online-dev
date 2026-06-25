@@ -138,6 +138,34 @@ export async function getOrCreateSearchApiKey({
   };
 }
 
+export async function resolveSearchApiKey({
+  existingSearchApiKey,
+  appId,
+  adminApiKey,
+  indexName,
+  description = DEFAULT_DESCRIPTION,
+  fetchImpl = fetch,
+}) {
+  const indexes = buildIndexScope(indexName);
+  const normalizedExisting = typeof existingSearchApiKey === 'string' ? existingSearchApiKey.trim() : '';
+  if (normalizedExisting) {
+    return {
+      key: normalizedExisting,
+      status: 'provided',
+      description: normalizeRequiredString(description, 'description'),
+      indexes,
+    };
+  }
+
+  return getOrCreateSearchApiKey({
+    appId,
+    adminApiKey,
+    indexName,
+    description,
+    fetchImpl,
+  });
+}
+
 export function writeGitHubEnv(name, value, envPath = process.env.GITHUB_ENV) {
   const envName = normalizeRequiredString(name, 'GitHub env name');
   const envValue = normalizeRequiredString(value, envName);
@@ -192,6 +220,7 @@ function printHelp() {
   console.log(`Usage: node tools/scripts/algolia-search-key.mjs [options]
 
 Creates or reuses a restricted Algolia search-only key for the configured product index.
+If ALGOLIA_SEARCH_API_KEY is already present, that value is used and no key-management API call is made.
 
 Options:
   --description <text>       API key description used for idempotent reuse.
@@ -200,6 +229,7 @@ Options:
   -h, --help                 Show this help.
 
 Required env:
+  ALGOLIA_SEARCH_API_KEY (optional; preferred when the admin key cannot manage keys)
   ALGOLIA_APP_ID
   ALGOLIA_ADMIN_API_KEY
   ALGOLIA_INDEX_NAME
@@ -213,7 +243,8 @@ async function main() {
     return;
   }
 
-  const result = await getOrCreateSearchApiKey({
+  const result = await resolveSearchApiKey({
+    existingSearchApiKey: process.env[args.githubEnvName],
     appId: process.env.ALGOLIA_APP_ID,
     adminApiKey: process.env.ALGOLIA_ADMIN_API_KEY,
     indexName: process.env.ALGOLIA_INDEX_NAME,
