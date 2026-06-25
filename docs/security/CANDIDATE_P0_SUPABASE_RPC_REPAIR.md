@@ -18,6 +18,7 @@ Prepared migration:
 ```text
 supabase/migrations/20260623152000_repair_secure_rpc_parity.sql
 supabase/migrations/20260624143000_product_listing_mode_parity.sql
+supabase/migrations/20260625104000_fix_algolia_product_row_secure.sql
 ```
 
 The secure RPC migration recreates the missing secure RPC surface required by current deployed code:
@@ -32,6 +33,8 @@ The secure RPC migration recreates the missing secure RPC surface required by cu
 It also revokes `anon`/`public` execute on the secure functions and grants execute to `authenticated` and `service_role`.
 
 `get_algolia_product_row_secure` is compatibility-safe for the current drift: it returns `listing_type` and `rental_term` when those product columns exist, and falls back to `listing_type = 'sale'` / `rental_term = null` when production has not received the listing-mode schema migration yet.
+
+Follow-up migration `20260625104000_fix_algolia_product_row_secure.sql` replaces only `public.get_algolia_product_row_secure(uuid)`. It removes the broken dynamic SQL `SELECT INTO` body that caused production Supabase `42601` errors after listing creation, while preserving the authenticated owner/admin/moderator guard and the restricted execute grants.
 
 The listing-mode parity migration intentionally replaces the unsafe March migration path. It:
 - Adds `products.listing_type` and `products.rental_term` idempotently.
@@ -205,7 +208,7 @@ Rollback risk:
 ## Follow-Up
 
 Authenticated browser/user-flow smoke is complete. The P0 schema/RPC repair itself is verified, but two production blockers remain:
-- Repair `/api/search/algolia-sync` so newly created listings are indexed and discoverable by title search.
+- Configure Algolia provider env in Vercel production, redeploy, backfill, and re-smoke title search. The DB/RPC crash in `/api/search/algolia-sync` is repaired by `20260625104000`, but the production sync response remains `{"ok":false}` because Algolia env is absent.
 - Repair the `/sell` rental listing flow so property rental intent is visible to the user and persists `listing_type = rent` with a valid `rental_term`.
 
 Do not run broad production migration catch-up. Production still has reader/TTS migration-history rows that are intentionally not part of this P0 repair.

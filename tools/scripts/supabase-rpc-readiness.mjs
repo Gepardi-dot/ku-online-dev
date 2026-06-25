@@ -52,6 +52,7 @@ const REQUIRED_LISTING_MODE_CONSTRAINTS = [
 const REQUIRED_MIGRATIONS = [
   '20260623152000',
   '20260624143000',
+  '20260625104000',
 ];
 
 function printUsage() {
@@ -173,6 +174,14 @@ export function sqlString(value) {
   return `'${String(value).replace(/'/g, "''")}'`;
 }
 
+export function hasBrokenAlgoliaSecureRpcDefinition(functionDef) {
+  const value = String(functionDef ?? '');
+  return (
+    /execute\s+format\s*\(/i.test(value) &&
+    /into\s+v_seller_id\s*,\s*v_row\s+from\s+public\.products/i.test(value)
+  );
+}
+
 async function inspectProject(projectRef, token) {
   const project = await getProject(projectRef, token);
   const report = {
@@ -189,6 +198,7 @@ async function inspectProject(projectRef, token) {
       productListingModeConstraints: [],
       productListingModeIndexes: [],
       searchRpcSignatures: [],
+      algoliaProductRowFunction: null,
       requiredMigrations: [],
       migrationPresent: false,
       migrationTablePresent: false,
@@ -339,6 +349,23 @@ async function inspectProject(projectRef, token) {
     `,
   );
 
+  const algoliaFunctionRows = await runReadOnlyQuery(
+    projectRef,
+    token,
+    `
+    select
+      p.oid is not null as exists,
+      case when p.oid is null then '' else pg_get_functiondef(p.oid) end as function_def
+    from (values ('get_algolia_product_row_secure', 'uuid')) e(function_name, argument_types)
+    left join pg_namespace n
+      on n.nspname = 'public'
+    left join pg_proc p
+      on p.pronamespace = n.oid
+     and p.proname = e.function_name
+     and oidvectortypes(p.proargtypes) = e.argument_types;
+    `,
+  );
+
   const migrationTableRows = await runReadOnlyQuery(
     projectRef,
     token,
@@ -378,6 +405,7 @@ async function inspectProject(projectRef, token) {
   report.checks.productListingModeConstraints = constraintRows;
   report.checks.productListingModeIndexes = indexRows;
   report.checks.searchRpcSignatures = searchRpcRows;
+  report.checks.algoliaProductRowFunction = algoliaFunctionRows[0] ?? null;
   report.checks.requiredMigrations = migrationRows;
   report.checks.migrationPresent = migrationRows.length > 0 && migrationRows.every((row) => row.exists);
   report.checks.migrationTablePresent = migrationTablePresent;
@@ -489,6 +517,13 @@ async function inspectProject(projectRef, token) {
     }
   }
 
+  const algoliaFunction = report.checks.algoliaProductRowFunction;
+  if (!algoliaFunction?.exists) {
+    report.errors.push('Missing public.get_algolia_product_row_secure(uuid) function definition.');
+  } else if (hasBrokenAlgoliaSecureRpcDefinition(algoliaFunction.function_def)) {
+    report.errors.push('public.get_algolia_product_row_secure(uuid) contains broken dynamic SELECT INTO syntax.');
+  }
+
   for (const row of migrationRows) {
     if (!row.exists) {
       report.errors.push(`Migration ${row.version} is not recorded.`);
@@ -534,6 +569,12 @@ function printHumanReport(reports) {
       const total = report.checks.searchRpcSignatures.length;
       console.log(`  search RPC signatures: ${present}/${total} present`);
     }
+    if (report.checks.algoliaProductRowFunction) {
+      const status = hasBrokenAlgoliaSecureRpcDefinition(report.checks.algoliaProductRowFunction.function_def)
+        ? 'broken dynamic SELECT INTO'
+        : 'ok';
+      console.log(`  algolia product-row RPC body: ${status}`);
+    }
     if (report.errors.length) {
       console.log('  issues:');
       for (const issue of report.errors) {
@@ -574,6 +615,7 @@ async function main() {
           productListingModeConstraints: [],
           productListingModeIndexes: [],
           searchRpcSignatures: [],
+          algoliaProductRowFunction: null,
           requiredMigrations: [],
           migrationPresent: false,
           migrationTablePresent: false,

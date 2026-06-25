@@ -2,6 +2,51 @@
 
 Last updated: 2026-06-25
 
+## Candidate P1 Algolia Product-Row RPC Repair
+
+Date: 2026-06-25
+
+Goal: repair the production Algolia sync `500` found during authenticated listing smoke without adding an app-side workaround or broad migration catch-up.
+
+Important files changed:
+- `supabase/migrations/20260625104000_fix_algolia_product_row_secure.sql`
+- `.github/workflows/algolia-provider-rollout.yml`
+- `tools/scripts/algolia-search-key.mjs`
+- `tools/scripts/__tests__/algolia-search-key.test.mjs`
+- `tools/scripts/supabase-rpc-readiness.mjs`
+- `tools/scripts/__tests__/supabase-rpc-readiness.test.mjs`
+
+Supabase impact:
+- Tables touched: none directly.
+- Buckets touched: none.
+- RLS/policies touched: none.
+- Function replaced: `public.get_algolia_product_row_secure(uuid)`.
+- Migrations added: `20260625104000_fix_algolia_product_row_secure.sql`.
+- Provider rollout prepared: manual-only workflow can sync Vercel production Algolia env, redeploy, and backfill after explicit dispatch approval. It has not been run yet.
+
+Validation performed:
+- Root cause confirmed: production `public.get_algolia_product_row_secure(uuid)` used dynamic SQL with an inner `select ... into v_seller_id, v_row`, which Postgres parsed as invalid SQL and returned `42601`.
+- `node --check tools/scripts/supabase-rpc-readiness.mjs`: pass.
+- `node --test tools/scripts/__tests__/supabase-rpc-readiness.test.mjs`: pass.
+- Production readiness before apply failed as expected on missing migration `20260625104000` and the broken Algolia RPC body.
+- Staging apply to `cuotmvhhgakjeqdsfziu`: pass; staging readiness passed with required migrations `3/3` and Algolia RPC body `ok`.
+- Production apply to `kvmbtbhlapjlhfppomsw`: pass; production readiness passed with required migrations `3/3` and Algolia RPC body `ok`.
+- `npm test`, `npm run lint`, `npm run typecheck`: pass.
+- `npm run build`: pass with temporary Vercel production env loaded; the temp env file was deleted.
+- Signed-in production smoke created temporary listing `571fdb0a-daab-4f4c-a952-03636a5c7fc1`; product insert returned `201`, `/api/search/algolia-sync` returned HTTP `200`, Vercel `500` log scan returned no records, owner deletion succeeded, and read-only production DB cleanup returned `matching_smoke_rows: 0`.
+- Prepared workflow validation for `tools/scripts/algolia-search-key.mjs`: `node --check`, focused `node --test`, `npm test`, `npm run lint`, and `npm run typecheck` passed.
+- Manual provider rollout workflow dispatch: not run.
+
+Production result:
+- The production DB/RPC crash is fixed; `/api/search/algolia-sync` no longer returns the previous Supabase `42601` `500`.
+- Full search indexing is still not ready. The sync response was `{"ok":false}`, and title search did not find the smoke listing because Vercel production lacks `ALGOLIA_APP_ID`, `ALGOLIA_ADMIN_API_KEY`, `ALGOLIA_SEARCH_API_KEY`, and `ALGOLIA_INDEX_NAME`.
+
+Risks and rollout notes:
+- Next step is provider/deploy work, not another DB repair: configure Algolia env in Vercel production, redeploy, backfill the index, and repeat the signed-in create/search/delete smoke.
+- The prepared workflow uses existing GitHub secrets for app/admin/index values and creates or reuses a restricted search-only key scoped to the base product index and current replica indices. It does not print the key.
+- Do not claim marketplace title search is production-ready until the sync response is `ok:true` and the created listing is discoverable by title search.
+- Rental listing creation remains a separate blocker from Candidate P0 smoke.
+
 ## Candidate P0 Authenticated Production Smoke
 
 Date: 2026-06-25
@@ -35,11 +80,11 @@ Validation performed:
 Production result:
 - P0 message RPC repair is confirmed in signed-in production use. The prior authenticated messages path no longer fails with the missing-RPC `PGRST202` class of error.
 - Core sale-listing creation works through Supabase/storage enough for the listing to render on the detail page and category listing, and deletion cleanup works from the owner UI.
-- Search consistency is not production-ready: `/api/search/algolia-sync` returned `500` after create, and Vercel logs show Supabase error `42601` / `syntax error at or near ","` while loading the product for Algolia sync. The new listing was not found by title search.
+- Search consistency is not production-ready: Candidate P1 repaired the `/api/search/algolia-sync` DB/RPC `500`, but the post-repair sync response is still `{"ok":false}` and title search still fails because Vercel production is missing Algolia provider env vars.
 - Rental listing creation is not production-ready: the `/sell` UI did not expose rental/listing-mode controls for the property category, and the property smoke listing was stored as `listing_type = sale` with `rental_term = null`.
 
 Risks and rollout notes:
-- Do not treat marketplace search as reliable for new listings until the Algolia sync SQL issue is repaired and re-smoked.
+- Do not treat marketplace search as reliable for new listings until Algolia production env is configured, the index is backfilled, and title-search smoke passes.
 - Do not claim rental listing readiness until `/sell` exposes the intended rental controls and persists `listing_type = rent` / `rental_term` correctly.
 - No production data from the smoke run remains; both temporary listing records were deleted and verified absent.
 

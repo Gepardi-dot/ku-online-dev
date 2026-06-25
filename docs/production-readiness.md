@@ -10,6 +10,57 @@ The current hardening focus is to preserve the intended C2C marketplace behavior
 
 ## Latest Candidate
 
+Candidate P1: Algolia secure product-row RPC repair (production applied and smoked; provider env still blocks full indexing).
+
+User-visible outcome:
+- New listing creation should no longer produce a production `500` from `/api/search/algolia-sync` because of the broken secure product-row RPC body.
+- Marketplace title search is still not fully production-ready until Algolia provider environment variables are configured in Vercel production, the index is backfilled, and title-search smoke passes.
+
+Current production state:
+- Migration `20260625104000_fix_algolia_product_row_secure.sql` was applied to replacement staging and production on 2026-06-25 and recorded in `supabase_migrations.schema_migrations`.
+- `npm run supabase:rpc:readiness -- --project-ref kvmbtbhlapjlhfppomsw` now requires all three repair migrations and reports the Algolia product-row RPC body as `ok`.
+- Signed-in production smoke created temporary listing `571fdb0a-daab-4f4c-a952-03636a5c7fc1`; product insert returned `201`, `/api/search/algolia-sync` returned HTTP `200`, and no recent `500` logs were found.
+- The same smoke returned `{"ok":false}` from the sync endpoint and title search did not find the listing because Vercel production does not currently define `ALGOLIA_APP_ID`, `ALGOLIA_ADMIN_API_KEY`, `ALGOLIA_SEARCH_API_KEY`, or `ALGOLIA_INDEX_NAME`.
+- A manual-only GitHub Actions rollout path is prepared to create/reuse a restricted Algolia search-only key, sync all four Algolia env vars into Vercel production, redeploy, and backfill the index. It has not been run yet.
+- The temporary smoke listing was removed through the production owner UI and a read-only production DB cleanup check returned `matching_smoke_rows: 0`.
+
+Files and systems involved:
+- `supabase/migrations/20260625104000_fix_algolia_product_row_secure.sql`
+- `.github/workflows/algolia-provider-rollout.yml`
+- `tools/scripts/algolia-search-key.mjs`
+- `tools/scripts/__tests__/algolia-search-key.test.mjs`
+- `tools/scripts/supabase-rpc-readiness.mjs`
+- `tools/scripts/__tests__/supabase-rpc-readiness.test.mjs`
+- Supabase production project `kvmbtbhlapjlhfppomsw`
+- Replacement Supabase staging project `cuotmvhhgakjeqdsfziu`
+- Vercel production env/logs for `ku-online-dev`
+
+Risks and rollback:
+- The SQL repair is a `SECURITY DEFINER` function replacement. It preserves the existing owner/admin/moderator guard, removes the broken dynamic `SELECT INTO`, and keeps execute grants restricted to `authenticated` and `service_role`.
+- Rollback would reintroduce the known production `42601` sync crash, so prefer a forward fix unless a new regression is proven.
+- Search consistency remains an active production risk until Algolia env is configured, production is redeployed with those env vars, existing products are backfilled, and a signed-in title-search smoke returns the new listing.
+- The prepared workflow can mutate Algolia keys, Vercel production env, Vercel production deployment, and the Algolia product index. It must remain manual-only and requires explicit approval before dispatch.
+
+Validation performed:
+- `node --check tools/scripts/supabase-rpc-readiness.mjs`: pass.
+- `node --test tools/scripts/__tests__/supabase-rpc-readiness.test.mjs`: pass.
+- Production readiness before apply failed as expected on missing migration `20260625104000` and the broken dynamic RPC body.
+- Staging apply and staging readiness: pass.
+- Production apply and production readiness: pass.
+- `npm test`: pass.
+- `npm run lint`: pass.
+- `npm run typecheck`: pass.
+- `npm run build`: pass with temporary Vercel production env loaded; temp env file deleted.
+- Signed-in production browser smoke: mixed. The DB/RPC `500` is fixed, but provider/indexing is not complete because Algolia env is absent in Vercel production.
+- `node --check tools/scripts/algolia-search-key.mjs`: pass.
+- `node --test tools/scripts/__tests__/algolia-search-key.test.mjs`: pass.
+- `npm test`: pass.
+- `npm run lint`: pass.
+- `npm run typecheck`: pass.
+- Manual Algolia provider rollout workflow dispatch: not run.
+
+Prior candidate:
+
 Candidate P0: Supabase schema/RPC parity repair (production applied, verified, and authenticated-smoked with follow-up issues).
 
 User-visible outcome:
@@ -31,7 +82,7 @@ Current production state:
 - Recent Vercel error-log check after the apply returned no error records in the checked window, and signed-out `/api/messages/conversations` returns `401` rather than `500`.
 - Authenticated production smoke on 2026-06-25 confirmed Google sign-in, signed-in header controls, and `GET /api/messages/conversations` returning `200` in a real browser session.
 - Authenticated sale-listing smoke on 2026-06-25 confirmed image upload/signing, product insert, product detail rendering, category discoverability, favorite creation, owner delete controls, and cleanup through the production UI. Read-only production DB verification returned `matching_smoke_rows: 0` for the two temporary smoke listings after cleanup.
-- The authenticated smoke found a real follow-up issue: `/api/search/algolia-sync` returned `500` after listing creation. Vercel logs show `Failed to load product for Algolia sync` with Supabase error `42601` / `syntax error at or near ","`. The smoke listing was visible by detail/category, but not by title search.
+- The authenticated smoke originally found `/api/search/algolia-sync` returning `500` with Supabase error `42601` / `syntax error at or near ","`. Candidate P1 repaired the DB/RPC crash, but title search still did not find the post-repair smoke listing because Vercel production lacks the required Algolia env vars.
 - The authenticated smoke also found that the production `/sell` UI does not expose a rental/listing-mode control for property listings. A property smoke listing was stored as `listing_type = sale` with `rental_term = null` and displayed as `For Sale`, so rental listing creation is not production-ready yet.
 - A non-blocking accessibility warning was observed for the auth dialog: missing dialog description / `aria-describedby`.
 - Legacy staging project `iypynouqbmmvoqecfmuw` is `INACTIVE`. An approved restore attempt on 2026-06-24 failed because Supabase reported that the project has been paused for more than 90 days and cannot be restored.
@@ -49,6 +100,7 @@ Files and systems involved:
 - Prepared repair files:
   - `supabase/migrations/20260623152000_repair_secure_rpc_parity.sql`
   - `supabase/migrations/20260624143000_product_listing_mode_parity.sql`
+  - `supabase/migrations/20260625104000_fix_algolia_product_row_secure.sql`
   - `docs/security/CANDIDATE_P0_SUPABASE_RPC_REPAIR.md`
   - `tools/scripts/supabase-rpc-readiness.mjs`
   - `tools/scripts/supabase-project-status.mjs`
@@ -79,7 +131,7 @@ Risks and rollback:
 - Rollback must be prepared as explicit `drop function if exists ...` statements plus privilege restoration for legacy RPCs only if needed.
 - Product listing-mode schema repair uses a custom compatibility migration rather than applying `20260310120838_add_property_listing_modes.sql` verbatim.
 - Rollback remains risky because current deployed code now depends on the secure RPCs and listing-mode columns. Prefer forward fixes over rollback unless there is a clear production regression.
-- Algolia sync failure is now a production consistency risk: newly created listings can exist in Supabase and category/detail views while missing from title search until the sync path is repaired or a fallback/index reconciliation path is run.
+- Algolia search consistency remains a production risk: the DB/RPC `500` is repaired, but newly created listings can still miss title search until production Algolia env is configured and the index is backfilled/re-smoked.
 - Rental listing creation remains a product-readiness gap: the schema now supports `listing_type` and `rental_term`, but the user-facing sell flow did not create a rental listing in the authenticated smoke.
 
 Validation performed so far:

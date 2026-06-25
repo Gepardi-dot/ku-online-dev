@@ -5,6 +5,7 @@ import {
   expectedMigrationsSql,
   expectedFunctionsSql,
   expectedSearchRpcSql,
+  hasBrokenAlgoliaSecureRpcDefinition,
   hasReadinessFailures,
   missingMigrationRows,
   parseArgs,
@@ -58,13 +59,32 @@ test('expected migration SQL requires both P0 repair migrations', () => {
 
   assert.match(sql, /20260623152000/);
   assert.match(sql, /20260624143000/);
+  assert.match(sql, /20260625104000/);
 });
 
 test('blank project migration fallback marks required migrations missing', () => {
   assert.deepEqual(missingMigrationRows(), [
     { version: '20260623152000', exists: false },
     { version: '20260624143000', exists: false },
+    { version: '20260625104000', exists: false },
   ]);
+});
+
+test('Algolia secure RPC guard detects broken dynamic SELECT INTO body', () => {
+  assert.equal(hasBrokenAlgoliaSecureRpcDefinition(`
+    execute format($fmt$
+      select p.seller_id, jsonb_build_object('id', p.id)
+      into v_seller_id, v_row
+      from public.products p
+    $fmt$)
+    into v_seller_id, v_row;
+  `), true);
+
+  assert.equal(hasBrokenAlgoliaSecureRpcDefinition(`
+    select p.seller_id, jsonb_build_object('id', p.id)
+    into v_seller_id, v_row
+    from public.products p;
+  `), false);
 });
 
 test('readiness failure detection is based on report errors', () => {

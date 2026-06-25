@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-25T10:33:13.335Z",
+  "last_updated_utc": "2026-06-25T20:04:07.648Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,16 +27,16 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-p0-supabase-parity-repair",
-      "title": "Supabase schema/RPC parity repair",
-      "status": "auth_smoke_completed_mixed_followups_open",
+      "id": "candidate-p1-algolia-rpc-provider-readiness",
+      "title": "Algolia sync RPC repair and provider readiness",
+      "status": "rpc_repaired_provider_rollout_prepared_not_run",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-p1-search-sync-and-rental-listing-repair",
-      "title": "Repair Algolia listing sync/title search and rental listing creation"
+      "id": "candidate-p1b-algolia-provider-rollout",
+      "title": "Configure Algolia production env, backfill index, and re-smoke title search"
     },
-    "latest_user_request": "continue authenticated production browser smoke after the user signed in"
+    "latest_user_request": "open the browser, keep it open, and continue Candidate P1 closeout"
   },
   "technical_findings": [
     "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
@@ -88,7 +88,10 @@
     "Candidate P0 closeout validation passed before commit: npm test, npm run lint, npm run typecheck, npm run build with temporary Vercel production env, git diff --check, production/staging project status, and production/staging RPC readiness. Authenticated browser/user-flow smoke remains pending a real signed-in session.",
     "Candidate P0 source-control/deploy closeout completed: commit 0b3da09 was pushed to main, GitHub CI run 28121756571 passed, Vercel deployment dpl_81akCqA4Qu3XvLuCW9gAxv8rcU9C is Ready on production aliases, post-deploy public/protected smoke passed, and Vercel logs showed only expected smoke traffic.",
     "Authenticated production smoke on 2026-06-25 confirmed Google sign-in, signed-in header controls, and GET /api/messages/conversations returning 200 in a real browser session. Sale listing creation with image upload, product detail/category visibility, favorite creation, owner deletion, and cleanup passed; production read-only DB cleanup count for the two smoke listing IDs returned 0.",
-    "Authenticated production smoke found two production blockers: /api/search/algolia-sync returned 500 with Supabase SQL error 42601 near a comma, causing the new listing to miss title search; and /sell did not expose rental/listing-mode controls for property, storing the property smoke listing as listing_type=sale and rental_term=null."
+    "Authenticated production smoke originally found two production blockers: /api/search/algolia-sync returned 500 with Supabase SQL error 42601 near a comma, causing the new listing to miss title search; and /sell did not expose rental/listing-mode controls for property, storing the property smoke listing as listing_type=sale and rental_term=null.",
+    "Candidate P1 repaired the Algolia secure product-row RPC with migration 20260625104000_fix_algolia_product_row_secure.sql. The migration was applied to replacement staging cuotmvhhgakjeqdsfziu and production kvmbtbhlapjlhfppomsw with --record-migration, and readiness now requires all three repair migrations and reports the Algolia RPC body as ok.",
+    "Post-repair signed-in production smoke created temporary listing 571fdb0a-daab-4f4c-a952-03636a5c7fc1. Product insert returned 201 and /api/search/algolia-sync returned HTTP 200 with no recent 500 logs, but the response was {\"ok\":false} and title search still failed because Vercel production lacks ALGOLIA_APP_ID, ALGOLIA_ADMIN_API_KEY, ALGOLIA_SEARCH_API_KEY, and ALGOLIA_INDEX_NAME. The smoke listing was deleted through the owner UI and read-only production DB cleanup returned matching_smoke_rows 0.",
+    "Candidate P1b prepared a manual-only Algolia Provider Rollout workflow plus tools/scripts/algolia-search-key.mjs. The workflow can create or reuse a restricted search-only key scoped to the base product index and replicas, sync all four Algolia env vars into Vercel production, redeploy, and backfill the Algolia index. It has not been dispatched and has not mutated Algolia or Vercel yet."
   ],
   "decisions": [
     {
@@ -117,7 +120,7 @@
     "Do not blindly apply all missing local Supabase migrations; production has later remote migration versions and at least one local migration targets a table absent in production.",
     "Local Supabase reset still reports final storage readiness failure on the CLI-reported port even though authenticated storage readiness succeeds on Docker's actual published port; keep this separated from repair migration correctness.",
     "Do not run broad migration catch-up on production without a separate plan. Production has later reader/TTS migration-history rows and standalone staging is intentionally not a production clone.",
-    "Algolia sync/title search is not production-ready for newly created listings until the 42601 SQL error in /api/search/algolia-sync is repaired and re-smoked.",
+    "Algolia sync/title search is not production-ready for newly created listings until Vercel production has Algolia provider env configured, production is redeployed, the index is backfilled, and signed-in create/search/delete smoke passes with sync ok:true.",
     "Rental listing creation is not production-ready until the /sell flow exposes the intended listing-mode/rental-term controls and persists listing_type=rent with a valid rental_term."
   ],
   "verification_log": [
@@ -370,6 +373,16 @@
       "timestamp_utc": "2026-06-25T10:33:13.335Z",
       "check": "Candidate P0 authenticated production browser smoke",
       "status": "mixed_core_pass_search_rental_fail"
+    },
+    {
+      "timestamp_utc": "2026-06-25T11:26:31.572Z",
+      "check": "Candidate P1 Algolia secure product-row RPC repair and signed-in production smoke",
+      "status": "mixed_rpc_pass_provider_env_missing"
+    },
+    {
+      "timestamp_utc": "2026-06-25T20:04:07.648Z",
+      "check": "Candidate P1b Algolia provider rollout workflow prepared",
+      "status": "pass_local_validation_not_dispatched"
     }
   ]
 }
