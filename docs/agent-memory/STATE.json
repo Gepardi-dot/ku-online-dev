@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-25T20:04:07.648Z",
+  "last_updated_utc": "2026-06-25T21:23:00.000Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -29,14 +29,14 @@
     "current_task": {
       "id": "candidate-p1-algolia-rpc-provider-readiness",
       "title": "Algolia sync RPC repair and provider readiness",
-      "status": "rpc_repaired_provider_rollout_blocked_by_vercel_token_scope",
+      "status": "provider_public_search_smoked_followup_signed_in_sync_pending",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-p1b-algolia-provider-rollout",
-      "title": "Configure Algolia production env, backfill index, and re-smoke title search"
+      "id": "candidate-p1c-signed-in-algolia-sync-smoke",
+      "title": "Confirm signed-in create flow returns Algolia sync ok:true after provider rollout"
     },
-    "latest_user_request": "open the browser, keep it open, and continue Candidate P1 closeout"
+    "latest_user_request": "Proceed with Algolia provider/search production readiness and avoid exposing provider secrets locally"
   },
   "technical_findings": [
     "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
@@ -92,7 +92,9 @@
     "Candidate P1 repaired the Algolia secure product-row RPC with migration 20260625104000_fix_algolia_product_row_secure.sql. The migration was applied to replacement staging cuotmvhhgakjeqdsfziu and production kvmbtbhlapjlhfppomsw with --record-migration, and readiness now requires all three repair migrations and reports the Algolia RPC body as ok.",
     "Post-repair signed-in production smoke created temporary listing 571fdb0a-daab-4f4c-a952-03636a5c7fc1. Product insert returned 201 and /api/search/algolia-sync returned HTTP 200 with no recent 500 logs, but the response was {\"ok\":false} and title search still failed because Vercel production lacks ALGOLIA_APP_ID, ALGOLIA_ADMIN_API_KEY, ALGOLIA_SEARCH_API_KEY, and ALGOLIA_INDEX_NAME. The smoke listing was deleted through the owner UI and read-only production DB cleanup returned matching_smoke_rows 0.",
     "Candidate P1b prepared a manual-only Algolia Provider Rollout workflow plus tools/scripts/algolia-search-key.mjs. The workflow can use an existing ALGOLIA_SEARCH_API_KEY GitHub secret or create/reuse a restricted search-only key scoped to the base product index and replicas, sync all four Algolia env vars into Vercel production, redeploy, and backfill the Algolia index.",
-    "First Algolia Provider Rollout dispatch 28197874539 failed before provider mutation: Algolia returned 403 Invalid Application-ID or API key while listing/creating API keys. After adding ALGOLIA_SEARCH_API_KEY, second dispatch 28198477569 passed search-key resolution but failed before Vercel env sync because the GitHub VERCEL_TOKEN could not access the forced Vercel scope. Third dispatch 28198606392 confirmed GitHub secret VERCEL_TOKEN is invalid. Vercel env, Vercel deployment, and Algolia index were not changed."
+    "First Algolia Provider Rollout dispatch 28197874539 failed before provider mutation: Algolia returned 403 Invalid Application-ID or API key while listing/creating API keys. After adding ALGOLIA_SEARCH_API_KEY, second dispatch 28198477569 passed search-key resolution but failed before Vercel env sync because the GitHub VERCEL_TOKEN could not access the forced Vercel scope. Third dispatch 28198606392 confirmed GitHub secret VERCEL_TOKEN is invalid. Vercel env, Vercel deployment, and Algolia index were not changed.",
+    "Candidate P1b provider rollout completed on run 28200724605 after correcting the linked Vercel project behavior and accounting for Vercel sensitive production env values. The run verified Algolia env names, redeployed production, and backfilled 17 Algolia product records.",
+    "Candidate P1b added a manual Algolia Production Smoke workflow and tools/scripts/algolia-production-smoke.mjs. Smoke run 28201312665 created temporary product fdea28c2-91bf-42b2-a9f4-508e091fbdeb, verified direct Algolia search and public /api/products/search, then deleted the Algolia object and DB row."
   ],
   "decisions": [
     {
@@ -121,7 +123,7 @@
     "Do not blindly apply all missing local Supabase migrations; production has later remote migration versions and at least one local migration targets a table absent in production.",
     "Local Supabase reset still reports final storage readiness failure on the CLI-reported port even though authenticated storage readiness succeeds on Docker's actual published port; keep this separated from repair migration correctness.",
     "Do not run broad migration catch-up on production without a separate plan. Production has later reader/TTS migration-history rows and standalone staging is intentionally not a production clone.",
-    "Algolia sync/title search is not production-ready for newly created listings until Vercel production has Algolia provider env configured, production is redeployed, the index is backfilled, and signed-in create/search/delete smoke passes with sync ok:true.",
+    "Algolia provider/runtime public search is now smoke-proven after env rollout, redeploy, backfill, and controlled temporary listing cleanup. The remaining search risk is narrower: the signed-in create flow still needs a follow-up smoke confirming /api/search/algolia-sync returns ok:true after the env rollout.",
     "Rental listing creation is not production-ready until the /sell flow exposes the intended listing-mode/rental-term controls and persists listing_type=rent with a valid rental_term."
   ],
   "verification_log": [
@@ -384,6 +386,11 @@
       "timestamp_utc": "2026-06-25T20:04:07.648Z",
       "check": "Candidate P1b Algolia provider rollout workflow prepared",
       "status": "pass_local_validation_dispatch_blocked_by_vercel_scope"
+    },
+    {
+      "timestamp_utc": "2026-06-25T21:23:00.000Z",
+      "check": "Candidate P1b Algolia provider rollout, backfill, public search smoke, and cleanup",
+      "status": "pass_followup_signed_in_sync_smoke_pending"
     }
   ]
 }

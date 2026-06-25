@@ -6,13 +6,16 @@ Last updated: 2026-06-25
 
 Date: 2026-06-25
 
-Goal: repair the production Algolia sync `500` found during authenticated listing smoke without adding an app-side workaround or broad migration catch-up.
+Goal: repair the production Algolia sync `500` found during authenticated listing smoke and complete the provider rollout needed for public title search, without adding an app-side workaround or broad migration catch-up.
 
 Important files changed:
 - `supabase/migrations/20260625104000_fix_algolia_product_row_secure.sql`
 - `.github/workflows/algolia-provider-rollout.yml`
+- `.github/workflows/algolia-production-smoke.yml`
 - `tools/scripts/algolia-search-key.mjs`
 - `tools/scripts/__tests__/algolia-search-key.test.mjs`
+- `tools/scripts/algolia-production-smoke.mjs`
+- `tools/scripts/__tests__/algolia-production-smoke.test.mjs`
 - `tools/scripts/supabase-rpc-readiness.mjs`
 - `tools/scripts/__tests__/supabase-rpc-readiness.test.mjs`
 
@@ -23,6 +26,7 @@ Supabase impact:
 - Function replaced: `public.get_algolia_product_row_secure(uuid)`.
 - Migrations added: `20260625104000_fix_algolia_product_row_secure.sql`.
 - Provider rollout prepared: manual-only workflow can sync Vercel production Algolia env, redeploy, and backfill after explicit dispatch approval. It can use a pre-provided `ALGOLIA_SEARCH_API_KEY` GitHub secret or create/reuse a restricted key when the Algolia key has API-key-management permission.
+- Production smoke tooling added: manual-only workflow creates one temporary production listing, indexes it, verifies direct Algolia search and public `/api/products/search`, then removes both the Algolia object and DB row.
 
 Validation performed:
 - Root cause confirmed: production `public.get_algolia_product_row_secure(uuid)` used dynamic SQL with an inner `select ... into v_seller_id, v_row`, which Postgres parsed as invalid SQL and returned `42601`.
@@ -38,15 +42,21 @@ Validation performed:
 - Manual provider rollout workflow dispatch `28197874539`: failed before provider mutation at the search-key resolution step. Algolia returned `403 Invalid Application-ID or API key` for key list/create, so Vercel env, Vercel deployment, and Algolia index were not changed.
 - Manual provider rollout workflow dispatch `28198477569`: passed search-key resolution with the provided secret but failed before Vercel env sync because the GitHub `VERCEL_TOKEN` could not access the forced Vercel scope. Vercel env, Vercel deployment, and Algolia index were not changed.
 - Manual provider rollout workflow dispatch `28198606392`: passed search-key resolution but failed before Vercel env sync because GitHub secret `VERCEL_TOKEN` is invalid. Vercel env, Vercel deployment, and Algolia index were not changed.
+- Manual provider rollout workflow dispatch `28200601751`: failed at the new Vercel value-length verification because Vercel sensitive production env values pull as empty; no redeploy or backfill was run.
+- Manual provider rollout workflow dispatch `28200724605`: passed. Vercel Algolia env names were present after sync, production redeployed, and backfill logged `Indexed 17` plus `Algolia indexing complete`.
+- Production smoke helper validation: `node --check tools/scripts/algolia-production-smoke.mjs`, `node --test tools/scripts/__tests__/algolia-production-smoke.test.mjs`, `npm test`, `npm run lint`, and `npm run typecheck` passed.
+- GitHub CI run `28201304955` for commit `fdb265d`: passed.
+- Manual Algolia production smoke workflow dispatch `28201312665`: passed. It created temporary product `fdea28c2-91bf-42b2-a9f4-508e091fbdeb`, indexed it, direct Algolia search returned `nbHits=1`, public `/api/products/search` returned `count=1` / `items=1`, and both Algolia plus DB cleanup passed.
+- Public production health after rollout and smoke returned `200`.
 
 Production result:
 - The production DB/RPC crash is fixed; `/api/search/algolia-sync` no longer returns the previous Supabase `42601` `500`.
-- Full search indexing is still not ready. The sync response was `{"ok":false}`, and title search did not find the smoke listing because Vercel production lacks `ALGOLIA_APP_ID`, `ALGOLIA_ADMIN_API_KEY`, `ALGOLIA_SEARCH_API_KEY`, and `ALGOLIA_INDEX_NAME`.
+- Provider/runtime search is now proven for controlled public title search: Vercel Algolia env names are configured, production was redeployed, the index was backfilled, and a temporary listing was found through public `/api/products/search` before cleanup.
 
 Risks and rollout notes:
-- Next step is provider/deploy work, not another DB repair: configure Algolia env in Vercel production, redeploy, backfill the index, and repeat the signed-in create/search/delete smoke.
-- The prepared workflow uses existing GitHub secrets for app/admin/index values and either uses `ALGOLIA_SEARCH_API_KEY` if provided or creates/reuses a restricted search-only key scoped to the base product index and current replica indices. It does not print the key.
-- Do not claim marketplace title search is production-ready until the sync response is `ok:true` and the created listing is discoverable by title search.
+- The controlled production smoke indexes directly for deterministic cleanup. It proves provider env, direct Algolia search, public API search, and cleanup, but it does not re-exercise the signed-in `/api/search/algolia-sync` endpoint after env rollout. A follow-up signed-in create/search/delete smoke should confirm the sync response is `ok:true`.
+- Vercel sensitive production env values cannot be verified by `vercel env pull`; runtime smoke is the authoritative value check.
+- The provider rollout workflow uses existing GitHub secrets for app/admin/index values and either uses `ALGOLIA_SEARCH_API_KEY` if provided or creates/reuses a restricted search-only key scoped to the base product index and current replica indices. It does not print the key.
 - Rental listing creation remains a separate blocker from Candidate P0 smoke.
 
 ## Candidate P0 Authenticated Production Smoke
