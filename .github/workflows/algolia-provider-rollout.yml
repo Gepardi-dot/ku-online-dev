@@ -28,7 +28,6 @@ jobs:
     env:
       VERCEL_PROJECT_ID: prj_WwkxcoVClYZDp71ERhA1HmCaq2ee
       VERCEL_ORG_ID: team_7eU5928MpOB8p7W30xLozieg
-      VERCEL_SCOPE: ku-onlines-projects
       ALGOLIA_KEY_DESCRIPTION: KU BAZAR production server search key
 
     steps:
@@ -106,7 +105,7 @@ jobs:
               echo "::error::${name} is empty"
               exit 1
             fi
-            printf '%s' "$value" | npx --yes vercel@54.9.1 env add "$name" production --force --yes --token "$VERCEL_TOKEN" --scope "$VERCEL_SCOPE"
+            printf '%s' "$value" | npx --yes vercel@54.9.1 env add "$name" production --force --yes --token "$VERCEL_TOKEN"
           }
 
           add_vercel_env ALGOLIA_APP_ID "$ALGOLIA_APP_ID"
@@ -118,7 +117,7 @@ jobs:
         if: ${{ inputs.deploy_production }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: npx --yes vercel@54.9.1 deploy --prod --yes --token "$VERCEL_TOKEN" --scope "$VERCEL_SCOPE"
+        run: npx --yes vercel@54.9.1 deploy --prod --yes --token "$VERCEL_TOKEN"
 
       - name: Backfill Algolia index from Supabase
         if: ${{ inputs.backfill_index }}

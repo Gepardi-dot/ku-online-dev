@@ -36,6 +36,7 @@ Validation performed:
 - Signed-in production smoke created temporary listing `571fdb0a-daab-4f4c-a952-03636a5c7fc1`; product insert returned `201`, `/api/search/algolia-sync` returned HTTP `200`, Vercel `500` log scan returned no records, owner deletion succeeded, and read-only production DB cleanup returned `matching_smoke_rows: 0`.
 - Prepared workflow validation for `tools/scripts/algolia-search-key.mjs`: `node --check`, focused `node --test`, `npm test`, `npm run lint`, and `npm run typecheck` passed.
 - Manual provider rollout workflow dispatch `28197874539`: failed before provider mutation at the search-key resolution step. Algolia returned `403 Invalid Application-ID or API key` for key list/create, so Vercel env, Vercel deployment, and Algolia index were not changed.
+- Manual provider rollout workflow dispatch `28198477569`: passed search-key resolution with the provided secret but failed before Vercel env sync because the GitHub `VERCEL_TOKEN` could not access the forced Vercel scope. Vercel env, Vercel deployment, and Algolia index were not changed.
 
 Production result:
 - The production DB/RPC crash is fixed; `/api/search/algolia-sync` no longer returns the previous Supabase `42601` `500`.
