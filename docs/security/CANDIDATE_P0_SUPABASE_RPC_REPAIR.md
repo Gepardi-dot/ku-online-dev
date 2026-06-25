@@ -171,6 +171,10 @@ Verified success signal:
 - Post-deploy public smoke returned `200` for canonical health, homepage, `/sell`, apex health, and the Vercel app health URL.
 - Post-deploy protected internal health returned database/storage/rate-limit `ok`, with rate limiting backed by Vercel KV/Upstash.
 - Post-deploy Vercel log scan for the new deployment showed only expected smoke traffic and no error-level records in the checked window.
+- Authenticated production smoke on 2026-06-25 confirmed Google sign-in, signed-in header controls, and signed-in `GET /api/messages/conversations` returning `200` in a real browser session.
+- The smoke also confirmed sale listing creation with image upload, product detail/category visibility, favorite creation, owner deletion, and cleanup. Production read-only DB cleanup check returned `matching_smoke_rows: 0` for both temporary smoke listings.
+- The same smoke found `/api/search/algolia-sync` returning `500`; Vercel logs show Supabase error `42601` / `syntax error at or near ","` while loading the product for Algolia sync.
+- The property/rental smoke found `/sell` does not expose rental/listing-mode controls and stored the property smoke listing as `listing_type = sale` with `rental_term = null`.
 
 ## Rollback SQL
 
@@ -200,12 +204,8 @@ Rollback risk:
 
 ## Follow-Up
 
-Remaining P0 follow-up is authenticated browser/user-flow smoke, not another schema repair. The minimum flow to test with a real signed-in user is:
-- open messages and confirm the conversation list loads without a `PGRST202`/`500`
-- create a sale listing and a rental/property listing
-- upload at least one product image
-- search/filter for sale and rental listings
-- favorite a listing
-- start or open a conversation
+Authenticated browser/user-flow smoke is complete. The P0 schema/RPC repair itself is verified, but two production blockers remain:
+- Repair `/api/search/algolia-sync` so newly created listings are indexed and discoverable by title search.
+- Repair the `/sell` rental listing flow so property rental intent is visible to the user and persists `listing_type = rent` with a valid `rental_term`.
 
 Do not run broad production migration catch-up. Production still has reader/TTS migration-history rows that are intentionally not part of this P0 repair.

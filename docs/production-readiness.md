@@ -1,6 +1,6 @@
 # KU BAZAR Production Readiness
 
-Last updated: 2026-06-24
+Last updated: 2026-06-25
 
 ## Current Status
 
@@ -10,7 +10,7 @@ The current hardening focus is to preserve the intended C2C marketplace behavior
 
 ## Latest Candidate
 
-Candidate P0: Supabase schema/RPC parity repair (production applied and verified).
+Candidate P0: Supabase schema/RPC parity repair (production applied, verified, and authenticated-smoked with follow-up issues).
 
 User-visible outcome:
 - Authenticated messaging endpoints should stop returning `500` because required secure RPCs were missing from production.
@@ -29,6 +29,11 @@ Current production state:
 - Production has the required seven secure RPCs, `products.listing_type`, `products.rental_term`, the three listing-mode constraints, the listing-mode index candidate, and all four legacy/listing-mode search RPC signatures.
 - Public production smoke for homepage, `/sell`, and `/api/health` returns `200`; protected internal health returns database/storage/rate-limit `ok`.
 - Recent Vercel error-log check after the apply returned no error records in the checked window, and signed-out `/api/messages/conversations` returns `401` rather than `500`.
+- Authenticated production smoke on 2026-06-25 confirmed Google sign-in, signed-in header controls, and `GET /api/messages/conversations` returning `200` in a real browser session.
+- Authenticated sale-listing smoke on 2026-06-25 confirmed image upload/signing, product insert, product detail rendering, category discoverability, favorite creation, owner delete controls, and cleanup through the production UI. Read-only production DB verification returned `matching_smoke_rows: 0` for the two temporary smoke listings after cleanup.
+- The authenticated smoke found a real follow-up issue: `/api/search/algolia-sync` returned `500` after listing creation. Vercel logs show `Failed to load product for Algolia sync` with Supabase error `42601` / `syntax error at or near ","`. The smoke listing was visible by detail/category, but not by title search.
+- The authenticated smoke also found that the production `/sell` UI does not expose a rental/listing-mode control for property listings. A property smoke listing was stored as `listing_type = sale` with `rental_term = null` and displayed as `For Sale`, so rental listing creation is not production-ready yet.
+- A non-blocking accessibility warning was observed for the auth dialog: missing dialog description / `aria-describedby`.
 - Legacy staging project `iypynouqbmmvoqecfmuw` is `INACTIVE`. An approved restore attempt on 2026-06-24 failed because Supabase reported that the project has been paused for more than 90 days and cannot be restored.
 - Replacement staging project `cuotmvhhgakjeqdsfziu` (`ku-online-staging`, `eu-central-1`) is `ACTIVE_HEALTHY` and has been initialized with the repository migration chain through both P0 repair migrations.
 - A schema-only persistent Supabase branch was attempted for production-safe staging, but Supabase returned `402` because Branching is supported only on the Pro plan or above. No branch was created.
@@ -74,6 +79,8 @@ Risks and rollback:
 - Rollback must be prepared as explicit `drop function if exists ...` statements plus privilege restoration for legacy RPCs only if needed.
 - Product listing-mode schema repair uses a custom compatibility migration rather than applying `20260310120838_add_property_listing_modes.sql` verbatim.
 - Rollback remains risky because current deployed code now depends on the secure RPCs and listing-mode columns. Prefer forward fixes over rollback unless there is a clear production regression.
+- Algolia sync failure is now a production consistency risk: newly created listings can exist in Supabase and category/detail views while missing from title search until the sync path is repaired or a fallback/index reconciliation path is run.
+- Rental listing creation remains a product-readiness gap: the schema now supports `listing_type` and `rental_term`, but the user-facing sell flow did not create a rental listing in the authenticated smoke.
 
 Validation performed so far:
 - Vercel production error logs inspected; active `PGRST202` found for `/api/messages/conversations`.
@@ -152,14 +159,24 @@ Validation performed so far:
 - Post-deploy public smoke returned `200` for `https://www.kubazar.net/api/health`, `/`, `/sell`, `https://kubazar.net/api/health`, and `https://ku-online-dev.vercel.app/api/health`.
 - Post-deploy protected internal health returned database/storage/rate-limit `ok`; rate limiting remains configured through `vercel-kv` / `upstash`.
 - Post-deploy Vercel log scan for the new deployment showed only expected smoke traffic: health/home/sell `200`, internal health `200`, and signed-out conversations `401`.
+- Authenticated production smoke on 2026-06-25:
+  - Google sign-in: pass.
+  - Signed-in `/api/messages/conversations`: pass, returned `200`.
+  - Sale listing create with image upload: pass; product insert returned `201`.
+  - Product detail/category visibility and favorite creation: pass.
+  - Owner listing deletion and cleanup: pass; production read-only DB count for smoke listing IDs returned `0`.
+  - Algolia sync after create: fail; `/api/search/algolia-sync` returned `500`, and Vercel logs show Supabase SQL error `42601` near `,`.
+  - Title search for the newly created listing: fail; listing was not discoverable by title search after the sync failure.
+  - Property/rental creation: fail for rental readiness; `/sell` did not expose rental controls and stored the property smoke listing as sale with `rental_term = null`.
+  - Browser console after cleanup: pass, `0` errors and `0` warnings.
 
 Acceptance criteria:
 - Staging and production have the required secure RPCs with authenticated/service-role execute grants and anon/public revoked where intended.
 - `/api/messages/conversations` no longer produces `PGRST202` in production logs.
-- Listing creation/editing schema drift is either fixed with a compatibility-safe migration or explicitly tracked as the next P0 substep.
+- Listing creation/editing schema drift is fixed at the Supabase schema/RPC level, but search synchronization and rental-listing UI/data behavior are explicitly tracked as follow-up production blockers.
 - No unrelated Supabase objects are changed.
 - Documentation and agent memory remain current.
-- Remaining verification gate is authenticated browser/user-flow smoke with a real signed-in user session.
+- Authenticated browser/user-flow smoke has been completed; the next verification gate is repairing and re-smoking Algolia sync/title search and rental listing creation.
 
 ## Previous Candidate
 

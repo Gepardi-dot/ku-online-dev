@@ -1,6 +1,47 @@
 # Production Candidate Checkpoint
 
-Last updated: 2026-06-24
+Last updated: 2026-06-25
+
+## Candidate P0 Authenticated Production Smoke
+
+Date: 2026-06-25
+
+Goal: prove the P0 Supabase repair in a real signed-in production browser session and identify any remaining production blockers in the listing flow.
+
+Important systems checked:
+- Production app: `https://www.kubazar.net`
+- Supabase production project: `kvmbtbhlapjlhfppomsw`
+- Vercel production logs for `ku-online-dev`
+- Google sign-in through the configured Supabase OAuth flow
+
+Supabase impact:
+- Tables touched by user flow: `products`, `favorites`
+- Buckets touched by user flow: `product-images`
+- RLS/policies touched by code: none
+- Migrations added: none
+
+Validation performed:
+- Production project status and RPC readiness rechecked for production and replacement staging.
+- Public/protected production health smoke rechecked.
+- Google sign-in completed in a real browser session.
+- Signed-in Messages menu loaded and `GET /api/messages/conversations` returned `200`.
+- Created a temporary sale listing with image upload, verified detail page, category visibility, owner controls, and favorite creation.
+- Created a temporary property listing to test rental readiness.
+- Removed both temporary smoke listings through the production owner UI.
+- Production read-only DB cleanup check returned `matching_smoke_rows: 0` for both temporary smoke listing IDs.
+- Vercel production logs checked with `--status-code 500 --since 2h --expand`.
+- Browser console checked after cleanup: `0` errors and `0` warnings.
+
+Production result:
+- P0 message RPC repair is confirmed in signed-in production use. The prior authenticated messages path no longer fails with the missing-RPC `PGRST202` class of error.
+- Core sale-listing creation works through Supabase/storage enough for the listing to render on the detail page and category listing, and deletion cleanup works from the owner UI.
+- Search consistency is not production-ready: `/api/search/algolia-sync` returned `500` after create, and Vercel logs show Supabase error `42601` / `syntax error at or near ","` while loading the product for Algolia sync. The new listing was not found by title search.
+- Rental listing creation is not production-ready: the `/sell` UI did not expose rental/listing-mode controls for the property category, and the property smoke listing was stored as `listing_type = sale` with `rental_term = null`.
+
+Risks and rollout notes:
+- Do not treat marketplace search as reliable for new listings until the Algolia sync SQL issue is repaired and re-smoked.
+- Do not claim rental listing readiness until `/sell` exposes the intended rental controls and persists `listing_type = rent` / `rental_term` correctly.
+- No production data from the smoke run remains; both temporary listing records were deleted and verified absent.
 
 ## Candidate E
 
