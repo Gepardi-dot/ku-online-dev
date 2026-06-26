@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-25T21:23:00.000Z",
+  "last_updated_utc": "2026-06-26T13:05:51.118Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,16 +27,16 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-p1-algolia-rpc-provider-readiness",
-      "title": "Algolia sync RPC repair and provider readiness",
-      "status": "provider_public_search_smoked_followup_signed_in_sync_pending",
+      "id": "candidate-p1c-signed-in-algolia-sync-smoke",
+      "title": "Signed-in Algolia sync production smoke",
+      "status": "passed_with_search_runtime_followups",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-p1c-signed-in-algolia-sync-smoke",
-      "title": "Confirm signed-in create flow returns Algolia sync ok:true after provider rollout"
+      "id": "candidate-p1d-search-runtime-followups",
+      "title": "Investigate production product-search edge function fallback and search-click RLS failure"
     },
-    "latest_user_request": "Proceed with Algolia provider/search production readiness and avoid exposing provider secrets locally"
+    "latest_user_request": "Proceed after signed-in production browser session"
   },
   "technical_findings": [
     "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
@@ -94,7 +94,9 @@
     "Candidate P1b prepared a manual-only Algolia Provider Rollout workflow plus tools/scripts/algolia-search-key.mjs. The workflow can use an existing ALGOLIA_SEARCH_API_KEY GitHub secret or create/reuse a restricted search-only key scoped to the base product index and replicas, sync all four Algolia env vars into Vercel production, redeploy, and backfill the Algolia index.",
     "First Algolia Provider Rollout dispatch 28197874539 failed before provider mutation: Algolia returned 403 Invalid Application-ID or API key while listing/creating API keys. After adding ALGOLIA_SEARCH_API_KEY, second dispatch 28198477569 passed search-key resolution but failed before Vercel env sync because the GitHub VERCEL_TOKEN could not access the forced Vercel scope. Third dispatch 28198606392 confirmed GitHub secret VERCEL_TOKEN is invalid. Vercel env, Vercel deployment, and Algolia index were not changed.",
     "Candidate P1b provider rollout completed on run 28200724605 after correcting the linked Vercel project behavior and accounting for Vercel sensitive production env values. The run verified Algolia env names, redeployed production, and backfilled 17 Algolia product records.",
-    "Candidate P1b added a manual Algolia Production Smoke workflow and tools/scripts/algolia-production-smoke.mjs. Smoke run 28201312665 created temporary product fdea28c2-91bf-42b2-a9f4-508e091fbdeb, verified direct Algolia search and public /api/products/search, then deleted the Algolia object and DB row."
+    "Candidate P1b added a manual Algolia Production Smoke workflow and tools/scripts/algolia-production-smoke.mjs. Smoke run 28201312665 created temporary product fdea28c2-91bf-42b2-a9f4-508e091fbdeb, verified direct Algolia search and public /api/products/search, then deleted the Algolia object and DB row.",
+    "Candidate P1c signed-in production smoke on 2026-06-26 created temporary listing 34c8165d-2bef-4441-8ec3-a51f3faa0786 through /sell. Supabase product insert returned 201, /api/search/algolia-sync returned 200 with {\"ok\":true}, title search found the listing, owner delete returned 200, public search cleanup returned count 0, and read-only production DB cleanup returned matching_smoke_rows 0.",
+    "The P1c Vercel production log scan found separate search follow-ups: Supabase Edge Function product-search returned 500 while /products and /api/products/search returned fallback 200, and /api/search/click returned 500 because search_click_events insert hit RLS 42501."
   ],
   "decisions": [
     {
@@ -123,7 +125,9 @@
     "Do not blindly apply all missing local Supabase migrations; production has later remote migration versions and at least one local migration targets a table absent in production.",
     "Local Supabase reset still reports final storage readiness failure on the CLI-reported port even though authenticated storage readiness succeeds on Docker's actual published port; keep this separated from repair migration correctness.",
     "Do not run broad migration catch-up on production without a separate plan. Production has later reader/TTS migration-history rows and standalone staging is intentionally not a production clone.",
-    "Algolia provider/runtime public search is now smoke-proven after env rollout, redeploy, backfill, and controlled temporary listing cleanup. The remaining search risk is narrower: the signed-in create flow still needs a follow-up smoke confirming /api/search/algolia-sync returns ok:true after the env rollout.",
+    "Algolia provider/runtime public search and signed-in create-flow sync are now smoke-proven after env rollout, redeploy, backfill, controlled smoke, and real /sell create/search/delete validation.",
+    "Supabase Edge Function product-search can return 500 while the app falls back and returns 200; this masks production search-provider/runtime failures and needs investigation before broad launch.",
+    "/api/search/click currently returns 500 for the observed signed-in click path because search_click_events insert violates RLS 42501; click telemetry is not production-clean yet.",
     "Rental listing creation is not production-ready until the /sell flow exposes the intended listing-mode/rental-term controls and persists listing_type=rent with a valid rental_term."
   ],
   "verification_log": [
@@ -391,6 +395,11 @@
       "timestamp_utc": "2026-06-25T21:23:00.000Z",
       "check": "Candidate P1b Algolia provider rollout, backfill, public search smoke, and cleanup",
       "status": "pass_followup_signed_in_sync_smoke_pending"
+    },
+    {
+      "timestamp_utc": "2026-06-26T13:05:51.118Z",
+      "check": "Candidate P1c signed-in Algolia sync create/search/delete smoke",
+      "status": "pass_with_search_runtime_followups"
     }
   ]
 }

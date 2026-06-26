@@ -1,6 +1,6 @@
 # KU BAZAR Production Readiness
 
-Last updated: 2026-06-25
+Last updated: 2026-06-26
 
 ## Current Status
 
@@ -10,11 +10,12 @@ The current hardening focus is to preserve the intended C2C marketplace behavior
 
 ## Latest Candidate
 
-Candidate P1/P1b: Algolia secure product-row RPC repair plus provider rollout (production applied, backfilled, and public-search smoked).
+Candidate P1/P1b/P1c: Algolia secure product-row RPC repair plus provider rollout (production applied, backfilled, public-search smoked, and signed-in sync smoked).
 
 User-visible outcome:
 - New listing creation should no longer produce a production `500` from `/api/search/algolia-sync` because of the broken secure product-row RPC body.
 - Marketplace title search now has the required Vercel production Algolia env names, a fresh production redeploy, a backfilled Algolia product index, and a controlled public-search smoke that found and cleaned up a temporary listing.
+- Signed-in listing creation now reaches `/api/search/algolia-sync` successfully with `{"ok":true}`, and the new listing appears in title search before owner cleanup.
 
 Current production state:
 - Migration `20260625104000_fix_algolia_product_row_secure.sql` was applied to replacement staging and production on 2026-06-25 and recorded in `supabase_migrations.schema_migrations`.
@@ -23,6 +24,7 @@ Current production state:
 - The same signed-in smoke originally returned `{"ok":false}` from the sync endpoint and title search did not find the listing because Vercel production did not have usable Algolia provider env configured at that time.
 - Manual Algolia provider rollout run `28200724605` passed on 2026-06-25 after the workflow was corrected for the linked Vercel project and Vercel sensitive-env behavior. It synced the Algolia env names, redeployed production, and backfilled the index; the backfill logged `Indexed 17` and `Algolia indexing complete`.
 - GitHub Actions smoke run `28201312665` created temporary product `fdea28c2-91bf-42b2-a9f4-508e091fbdeb`, inserted it into production, indexed it in Algolia, verified direct Algolia search with `nbHits=1`, verified public `/api/products/search` with `count=1` / `items=1`, then deleted the Algolia object and production DB row.
+- Signed-in production smoke on 2026-06-26 created temporary listing `34c8165d-2bef-4441-8ec3-a51f3faa0786`; product insert returned `201`, `/api/search/algolia-sync` returned `200` with `{"ok":true}`, title search showed the listing, owner deletion returned `200`, public `/api/products/search` later returned `count: 0`, and a read-only production DB count returned `matching_smoke_rows: 0`.
 - Vercel production deployment is `Ready`, and public `https://www.kubazar.net/api/health` returned `200` after the rollout and smoke.
 - The temporary smoke listing was removed through the production owner UI and a read-only production DB cleanup check returned `matching_smoke_rows: 0`.
 
@@ -43,9 +45,10 @@ Files and systems involved:
 Risks and rollback:
 - The SQL repair is a `SECURITY DEFINER` function replacement. It preserves the existing owner/admin/moderator guard, removes the broken dynamic `SELECT INTO`, and keeps execute grants restricted to `authenticated` and `service_role`.
 - Rollback would reintroduce the known production `42601` sync crash, so prefer a forward fix unless a new regression is proven.
-- Search provider/runtime readiness is now proven by the controlled public-search smoke, but the exact signed-in create-flow path should still get a follow-up smoke that confirms `/api/search/algolia-sync` returns `{"ok":true}` after the env rollout. The controlled smoke indexes directly for deterministic cleanup and does not exercise the authenticated sync endpoint.
+- Search provider/runtime readiness is now proven by both the controlled public-search smoke and the signed-in create/search/delete smoke.
 - Vercel production env values are sensitive and cannot be verified by `vercel env pull`; provider values must be validated through source-secret checks plus runtime smoke.
 - The provider rollout workflow can mutate Algolia keys, Vercel production env, Vercel production deployment, and the Algolia product index. It must remain manual-only and requires explicit approval before dispatch.
+- The 2026-06-26 signed-in smoke exposed separate search telemetry/runtime follow-ups: Supabase Edge Function `product-search` returned `500` while the app fell back and returned `200`, and `/api/search/click` returned `500` because inserting into `search_click_events` hit RLS `42501`. These did not block the Algolia sync proof, but they are production-readiness work.
 
 Validation performed:
 - `node --check tools/scripts/supabase-rpc-readiness.mjs`: pass.
@@ -74,6 +77,8 @@ Validation performed:
 - GitHub CI run `28201304955` for commit `fdb265d`: pass.
 - GitHub Actions production smoke run `28201312665`: pass; DB insert, Algolia index, direct search, public API search, Algolia cleanup, and DB cleanup all passed.
 - Public production health after rollout/smoke: `200`.
+- Signed-in production browser smoke on 2026-06-26: pass for create-to-search sync. Temporary listing `34c8165d-2bef-4441-8ec3-a51f3faa0786` produced product insert `201`, `/api/search/algolia-sync` `200` with `{"ok":true}`, product title search visibility, owner delete `200`, public search cleanup `count: 0`, read-only production DB cleanup `matching_smoke_rows: 0`, and active browser console `0` errors / `0` warnings after cleanup.
+- Vercel production log scan on 2026-06-26: mixed. No `/api/search/algolia-sync` `500` was found in the checked window, but `product-search` Edge Function `500` fallback logs and `/api/search/click` RLS `42501` logs were found as separate follow-ups.
 
 Prior candidate:
 
