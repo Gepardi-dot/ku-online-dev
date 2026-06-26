@@ -9,6 +9,7 @@ const stubMap = new Map([
   ['@/utils/supabase/server', pathToFileURL(path.join(rootDir, 'tools', 'test-stubs', 'supabase-server.js')).href],
   ['@/lib/storage', pathToFileURL(path.join(rootDir, 'tools', 'test-stubs', 'storage.js')).href],
   ['next/headers', pathToFileURL(path.join(rootDir, 'tools', 'test-stubs', 'next-headers.js')).href],
+  ['algoliasearch', pathToFileURL(path.join(rootDir, 'tools', 'test-stubs', 'algoliasearch.js')).href],
 ]);
 
 export async function resolve(specifier, context, nextResolve) {

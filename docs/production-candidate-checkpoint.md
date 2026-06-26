@@ -6,7 +6,7 @@ Last updated: 2026-06-26
 
 Date: 2026-06-25 through 2026-06-26
 
-Goal: repair the production Algolia sync `500` found during authenticated listing smoke and complete the provider rollout needed for public title search, without adding an app-side workaround or broad migration catch-up.
+Goal: repair the production Algolia sync `500` found during authenticated listing smoke, complete the provider rollout needed for public title search, and clean up the search runtime follow-ups found by the signed-in smoke.
 
 Important files changed:
 - `supabase/migrations/20260625104000_fix_algolia_product_row_secure.sql`
@@ -18,13 +18,18 @@ Important files changed:
 - `tools/scripts/__tests__/algolia-production-smoke.test.mjs`
 - `tools/scripts/supabase-rpc-readiness.mjs`
 - `tools/scripts/__tests__/supabase-rpc-readiness.test.mjs`
+- `src/lib/services/products.ts`
+- `src/lib/services/__tests__/searchProducts.test.ts`
+- `tools/test-stubs/alias-loader.mjs`
+- `tools/test-stubs/algoliasearch.js`
 
 Supabase impact:
-- Tables touched: none directly.
+- Tables touched by schema/policy work: `search_click_events`.
 - Buckets touched: none.
-- RLS/policies touched: none.
+- RLS/policies touched: added `search_click_events_insert_anonymous` and `search_click_events_insert_authenticated` in production.
 - Function replaced: `public.get_algolia_product_row_secure(uuid)`.
 - Migrations added: `20260625104000_fix_algolia_product_row_secure.sql`.
+- Existing migration applied to production: `20260223100328_search_click_events_rls_insert_policies.sql`.
 - Provider rollout prepared: manual-only workflow can sync Vercel production Algolia env, redeploy, and backfill after explicit dispatch approval. It can use a pre-provided `ALGOLIA_SEARCH_API_KEY` GitHub secret or create/reuse a restricted key when the Algolia key has API-key-management permission.
 - Production smoke tooling added: manual-only workflow creates one temporary production listing, indexes it, verifies direct Algolia search and public `/api/products/search`, then removes both the Algolia object and DB row.
 - Signed-in production smoke touched `products`, `product-images`, Algolia sync, public product search, and owner deletion through the real production UI. No RLS, policy, bucket, or migration files were changed by this P1c validation slice.
@@ -51,18 +56,24 @@ Validation performed:
 - Public production health after rollout and smoke returned `200`.
 - Signed-in production smoke on 2026-06-26: passed for create-to-search sync. Temporary listing `34c8165d-2bef-4441-8ec3-a51f3faa0786` was created through `/sell` with an image, product insert returned `201`, `/api/search/algolia-sync` returned `200` with `{"ok":true}`, title search found the listing, owner delete returned `200`, public `/api/products/search` cleanup returned `count: 0`, read-only production DB cleanup returned `matching_smoke_rows: 0`, and active browser console after cleanup reported `0` errors / `0` warnings.
 - Vercel production log scan on 2026-06-26 found no recurrence of the previous `/api/search/algolia-sync` Supabase `42601` crash in the checked window. It did surface separate follow-ups: Supabase Edge Function `product-search` returned `500` while the app returned fallback `200`, and `/api/search/click` returned `500` because `search_click_events` insert hit RLS `42501`.
+- P1d local validation: `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build` passed. The build used a temporary Vercel production env file, which was deleted; the first build without local env failed as expected because required env vars were absent.
+- Production DB gate for the RLS apply passed after Docker Desktop was started and local Supabase status values were exported only for the command process.
+- Production RLS apply passed: `20260223100328_search_click_events_rls_insert_policies.sql` was applied to `kvmbtbhlapjlhfppomsw` with `--record-migration`.
+- Production read-only verification confirmed both `search_click_events` insert policies and migration `20260223100328` are present.
+- Runtime `/api/search/click` smoke returned `{"ok":true}` against an existing active product, and the checked Vercel error-log window had no error records after the smoke.
 
 Production result:
 - The production DB/RPC crash is fixed; `/api/search/algolia-sync` no longer returns the previous Supabase `42601` `500`.
 - Provider/runtime search is now proven for controlled public title search: Vercel Algolia env names are configured, production was redeployed, the index was backfilled, and a temporary listing was found through public `/api/products/search` before cleanup.
 - Signed-in create-flow search is now proven: the real `/sell` flow reached Algolia sync with `ok:true`, the listing was searchable by title, and cleanup removed it from both public search and the production DB.
+- The app search path no longer invokes the stale Supabase `product-search` Edge Function when Algolia returns a valid empty result; if Algolia is unavailable, it falls back to the app's existing Supabase product query.
+- Search click telemetry RLS is repaired in production for anonymous and authenticated insert paths.
 
 Risks and rollout notes:
 - Search indexing consistency is no longer blocked by the Algolia provider rollout or signed-in sync path, based on the 2026-06-26 smoke.
 - Vercel sensitive production env values cannot be verified by `vercel env pull`; runtime smoke is the authoritative value check.
 - The provider rollout workflow uses existing GitHub secrets for app/admin/index values and either uses `ALGOLIA_SEARCH_API_KEY` if provided or creates/reuses a restricted search-only key scoped to the base product index and current replica indices. It does not print the key.
-- Product search still has a runtime fallback concern: the Supabase `product-search` Edge Function can return `500` while the app masks it with `200`; this should be investigated before broad launch because it can hide provider/search regressions.
-- Search click telemetry is not production-clean yet: `/api/search/click` is blocked by `search_click_events` RLS for the observed signed-in click path.
+- The stale Supabase `product-search` Edge Function remains deployed but should be treated as unused by the app search path after P1d deploy. Do not reintroduce it into the hot path without updating/deploying the function and adding runtime smoke coverage.
 - Rental listing creation remains a separate blocker from Candidate P0 smoke.
 
 ## Candidate P0 Authenticated Production Smoke

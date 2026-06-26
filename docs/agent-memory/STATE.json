@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-26T13:05:51.118Z",
+  "last_updated_utc": "2026-06-26T13:52:54.161Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,16 +27,16 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-p1c-signed-in-algolia-sync-smoke",
-      "title": "Signed-in Algolia sync production smoke",
-      "status": "passed_with_search_runtime_followups",
+      "id": "candidate-p1d-search-runtime-followups",
+      "title": "Product search fallback and search-click RLS repair",
+      "status": "implemented_locally_and_rls_applied_pending_deploy",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-p1d-search-runtime-followups",
-      "title": "Investigate production product-search edge function fallback and search-click RLS failure"
+      "id": "candidate-p2-rental-listing-controls",
+      "title": "Make intended rental listing controls production-ready"
     },
-    "latest_user_request": "Proceed after signed-in production browser session"
+    "latest_user_request": "Proceed with the search runtime follow-up phase"
   },
   "technical_findings": [
     "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
@@ -96,7 +96,9 @@
     "Candidate P1b provider rollout completed on run 28200724605 after correcting the linked Vercel project behavior and accounting for Vercel sensitive production env values. The run verified Algolia env names, redeployed production, and backfilled 17 Algolia product records.",
     "Candidate P1b added a manual Algolia Production Smoke workflow and tools/scripts/algolia-production-smoke.mjs. Smoke run 28201312665 created temporary product fdea28c2-91bf-42b2-a9f4-508e091fbdeb, verified direct Algolia search and public /api/products/search, then deleted the Algolia object and DB row.",
     "Candidate P1c signed-in production smoke on 2026-06-26 created temporary listing 34c8165d-2bef-4441-8ec3-a51f3faa0786 through /sell. Supabase product insert returned 201, /api/search/algolia-sync returned 200 with {\"ok\":true}, title search found the listing, owner delete returned 200, public search cleanup returned count 0, and read-only production DB cleanup returned matching_smoke_rows 0.",
-    "The P1c Vercel production log scan found separate search follow-ups: Supabase Edge Function product-search returned 500 while /products and /api/products/search returned fallback 200, and /api/search/click returned 500 because search_click_events insert hit RLS 42501."
+    "The P1c Vercel production log scan found separate search follow-ups: Supabase Edge Function product-search returned 500 while /products and /api/products/search returned fallback 200, and /api/search/click returned 500 because search_click_events insert hit RLS 42501.",
+    "Candidate P1d removed the stale Supabase product-search Edge Function from the app search hot path. Successful Algolia zero-hit searches now return directly, and Algolia-unavailable fallback uses the existing Supabase product query.",
+    "Candidate P1d applied existing migration 20260223100328_search_click_events_rls_insert_policies.sql to production with --record-migration. Production now has anonymous and authenticated insert policies for search_click_events, and runtime /api/search/click smoke returned {\"ok\":true}."
   ],
   "decisions": [
     {
@@ -126,8 +128,7 @@
     "Local Supabase reset still reports final storage readiness failure on the CLI-reported port even though authenticated storage readiness succeeds on Docker's actual published port; keep this separated from repair migration correctness.",
     "Do not run broad migration catch-up on production without a separate plan. Production has later reader/TTS migration-history rows and standalone staging is intentionally not a production clone.",
     "Algolia provider/runtime public search and signed-in create-flow sync are now smoke-proven after env rollout, redeploy, backfill, controlled smoke, and real /sell create/search/delete validation.",
-    "Supabase Edge Function product-search can return 500 while the app falls back and returns 200; this masks production search-provider/runtime failures and needs investigation before broad launch.",
-    "/api/search/click currently returns 500 for the observed signed-in click path because search_click_events insert violates RLS 42501; click telemetry is not production-clean yet.",
+    "The stale Supabase Edge Function product-search remains deployed but should be treated as unused by the app search path after P1d deploy. Do not reintroduce it into the hot path without updating/deploying the function and adding smoke coverage.",
     "Rental listing creation is not production-ready until the /sell flow exposes the intended listing-mode/rental-term controls and persists listing_type=rent with a valid rental_term."
   ],
   "verification_log": [
@@ -400,6 +401,11 @@
       "timestamp_utc": "2026-06-26T13:05:51.118Z",
       "check": "Candidate P1c signed-in Algolia sync create/search/delete smoke",
       "status": "pass_with_search_runtime_followups"
+    },
+    {
+      "timestamp_utc": "2026-06-26T13:52:54.161Z",
+      "check": "Candidate P1d app-search fallback and production search-click RLS repair",
+      "status": "pass_local_validation_rls_applied_pending_deploy"
     }
   ]
 }
