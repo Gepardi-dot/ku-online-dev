@@ -812,3 +812,12 @@
 - details: Changed `searchProducts` so a successful Algolia zero-hit response returns directly instead of falling through to the old Supabase Edge Function. If Algolia is unavailable, the app now falls back to the existing Supabase product query. Applied the existing targeted production migration `20260223100328_search_click_events_rls_insert_policies.sql` with `--record-migration`.
 - verification: `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build` passed; the build used a temporary Vercel production env file that was deleted. The production DB MCP gate passed after Docker Desktop was started and local Supabase status env values were exported only for the command process. Production read-only verification found both `search_click_events` insert policies and migration `20260223100328`; runtime `/api/search/click` smoke returned `{"ok":true}`; Vercel error logs in the checked window returned no records.
 - risks: The stale Supabase `product-search` Edge Function remains deployed but should be treated as unused by app search after P1d deploy. Rental listing creation remains a separate blocker.
+
+## 2026-06-26T13:58:43.132Z
+- type: validation
+- task_id: candidate-p1d-search-runtime-followups
+- task_title: P1d deployment closeout
+- summary: Verified the P1d search runtime fix on production.
+- details: Commit `b18b3eb` was pushed to `main`; Vercel deployed `https://ku-online-jw12n222g-ku-onlines-projects.vercel.app` to production and reached `Ready`.
+- verification: GitHub CI run `28242646711` passed. Post-deploy production smoke passed for `/api/health`, existing product search `earbuds` with `count: 1` / `items: 1`, no-result product search with `count: 0`, `/api/search/click` with `{"ok":true}`, and Vercel error logs in the checked window returned no records.
+- risks: The unrelated scheduled `PWA SLO Alerts` workflow run `28241474623` failed and is intentionally deferred to a later phase per user instruction.

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-26T13:52:54.161Z",
+  "last_updated_utc": "2026-06-26T13:58:43.132Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -29,14 +29,14 @@
     "current_task": {
       "id": "candidate-p1d-search-runtime-followups",
       "title": "Product search fallback and search-click RLS repair",
-      "status": "implemented_locally_and_rls_applied_pending_deploy",
+      "status": "deployed_and_verified",
       "phase": "production-hardening"
     },
     "next_task": {
       "id": "candidate-p2-rental-listing-controls",
       "title": "Make intended rental listing controls production-ready"
     },
-    "latest_user_request": "Proceed with the search runtime follow-up phase"
+    "latest_user_request": "Defer unrelated scheduled PWA SLO Alerts failure and complete P1d verification"
   },
   "technical_findings": [
     "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
@@ -98,7 +98,8 @@
     "Candidate P1c signed-in production smoke on 2026-06-26 created temporary listing 34c8165d-2bef-4441-8ec3-a51f3faa0786 through /sell. Supabase product insert returned 201, /api/search/algolia-sync returned 200 with {\"ok\":true}, title search found the listing, owner delete returned 200, public search cleanup returned count 0, and read-only production DB cleanup returned matching_smoke_rows 0.",
     "The P1c Vercel production log scan found separate search follow-ups: Supabase Edge Function product-search returned 500 while /products and /api/products/search returned fallback 200, and /api/search/click returned 500 because search_click_events insert hit RLS 42501.",
     "Candidate P1d removed the stale Supabase product-search Edge Function from the app search hot path. Successful Algolia zero-hit searches now return directly, and Algolia-unavailable fallback uses the existing Supabase product query.",
-    "Candidate P1d applied existing migration 20260223100328_search_click_events_rls_insert_policies.sql to production with --record-migration. Production now has anonymous and authenticated insert policies for search_click_events, and runtime /api/search/click smoke returned {\"ok\":true}."
+    "Candidate P1d applied existing migration 20260223100328_search_click_events_rls_insert_policies.sql to production with --record-migration. Production now has anonymous and authenticated insert policies for search_click_events, and runtime /api/search/click smoke returned {\"ok\":true}.",
+    "Candidate P1d commit b18b3eb passed GitHub CI run 28242646711, deployed to Vercel production as https://ku-online-jw12n222g-ku-onlines-projects.vercel.app, and post-deploy smokes passed for public health, existing product search, no-result product search, search-click telemetry, and Vercel error-log scan."
   ],
   "decisions": [
     {
@@ -129,6 +130,7 @@
     "Do not run broad migration catch-up on production without a separate plan. Production has later reader/TTS migration-history rows and standalone staging is intentionally not a production clone.",
     "Algolia provider/runtime public search and signed-in create-flow sync are now smoke-proven after env rollout, redeploy, backfill, controlled smoke, and real /sell create/search/delete validation.",
     "The stale Supabase Edge Function product-search remains deployed but should be treated as unused by the app search path after P1d deploy. Do not reintroduce it into the hot path without updating/deploying the function and adding smoke coverage.",
+    "Scheduled PWA SLO Alerts workflow run 28241474623 failed on 2026-06-26 and is intentionally deferred to a later phase.",
     "Rental listing creation is not production-ready until the /sell flow exposes the intended listing-mode/rental-term controls and persists listing_type=rent with a valid rental_term."
   ],
   "verification_log": [
@@ -406,6 +408,11 @@
       "timestamp_utc": "2026-06-26T13:52:54.161Z",
       "check": "Candidate P1d app-search fallback and production search-click RLS repair",
       "status": "pass_local_validation_rls_applied_pending_deploy"
+    },
+    {
+      "timestamp_utc": "2026-06-26T13:58:43.132Z",
+      "check": "Candidate P1d CI, Vercel deployment, and production smoke",
+      "status": "pass"
     }
   ]
 }

@@ -29,6 +29,8 @@ Current production state:
 - Candidate P1d removed the hot-path Supabase `product-search` Edge Function fallback from app search. When Algolia is configured and returns `0` hits, the app now returns that valid empty result; if Algolia is unavailable, the app falls back to the existing Supabase product query instead of invoking the stale edge function.
 - Production RLS migration `20260223100328_search_click_events_rls_insert_policies.sql` was applied to `kvmbtbhlapjlhfppomsw` on 2026-06-26 with `--record-migration`. Read-only verification shows `search_click_events_insert_anonymous` and `search_click_events_insert_authenticated` policies present, and migration history records `20260223100328`.
 - Runtime `/api/search/click` smoke on 2026-06-26 returned `{"ok":true}` for an existing active product after the RLS policy apply; the previous production RLS `42501` failure did not recur in the checked Vercel error-log window.
+- Commit `b18b3eb` was pushed to `main`, GitHub CI run `28242646711` passed, and Vercel production deployment `https://ku-online-jw12n222g-ku-onlines-projects.vercel.app` reached `Ready`.
+- Post-deploy production smoke on 2026-06-26 passed: `/api/health` returned `ok`, existing product search for `earbuds` returned `count: 1` / `items: 1`, no-result search for `KU_BAZAR_NO_RESULT_SMOKE_20260626_XYZ` returned `count: 0`, `/api/search/click` returned `{"ok":true}`, and Vercel error logs in the checked window returned no records.
 - Vercel production deployment is `Ready`, and public `https://www.kubazar.net/api/health` returned `200` after the rollout and smoke.
 - The temporary smoke listing was removed through the production owner UI and a read-only production DB cleanup check returned `matching_smoke_rows: 0`.
 
@@ -96,6 +98,9 @@ Validation performed:
 - Production RLS apply: pass; migration `20260223100328` recorded.
 - Production read-only RLS verification: pass; anonymous and authenticated `search_click_events` insert policies are present.
 - Runtime `/api/search/click` smoke: pass with `{"ok":true}`.
+- GitHub CI run `28242646711` for commit `b18b3eb`: pass.
+- Vercel production deployment `https://ku-online-jw12n222g-ku-onlines-projects.vercel.app`: Ready.
+- Post-deploy production smoke: pass for public health, existing product search, no-result product search, click telemetry, and Vercel error-log scan.
 
 Prior candidate:
 

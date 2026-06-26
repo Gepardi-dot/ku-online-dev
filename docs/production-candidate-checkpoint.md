@@ -61,6 +61,8 @@ Validation performed:
 - Production RLS apply passed: `20260223100328_search_click_events_rls_insert_policies.sql` was applied to `kvmbtbhlapjlhfppomsw` with `--record-migration`.
 - Production read-only verification confirmed both `search_click_events` insert policies and migration `20260223100328` are present.
 - Runtime `/api/search/click` smoke returned `{"ok":true}` against an existing active product, and the checked Vercel error-log window had no error records after the smoke.
+- Commit `b18b3eb` was pushed to `main`; GitHub CI run `28242646711` passed. Vercel production deployment `https://ku-online-jw12n222g-ku-onlines-projects.vercel.app` reached `Ready`.
+- Post-deploy production smoke passed: public health returned `ok`, existing product search for `earbuds` returned `count: 1` / `items: 1`, no-result product search returned `count: 0`, `/api/search/click` returned `{"ok":true}`, and Vercel error logs in the checked window returned no records.
 
 Production result:
 - The production DB/RPC crash is fixed; `/api/search/algolia-sync` no longer returns the previous Supabase `42601` `500`.
