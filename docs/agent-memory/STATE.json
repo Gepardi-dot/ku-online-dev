@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-27T07:49:31.369Z",
+  "last_updated_utc": "2026-06-27T08:30:00.000Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,13 +27,13 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-p2-rental-listing-controls",
-      "title": "Make intended rental listing controls production-ready",
-      "status": "deployed_and_signed_in_smoke_verified",
+      "id": "candidate-p3-pwa-slo-alert-delivery",
+      "title": "Diagnose scheduled PWA SLO Alerts failure",
+      "status": "root_cause_found_docs_and_workflow_diagnostics_updated",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-p3-ops-followups",
+      "id": "candidate-p4-next-production-hardening-slice",
       "title": "Select the next production hardening follow-up"
     },
     "latest_user_request": "Proceed with the next production-readiness phase"
@@ -134,7 +134,7 @@
     "Do not run broad migration catch-up on production without a separate plan. Production has later reader/TTS migration-history rows and standalone staging is intentionally not a production clone.",
     "Algolia provider/runtime public search and signed-in create-flow sync are now smoke-proven after env rollout, redeploy, backfill, controlled smoke, and real /sell create/search/delete validation.",
     "The stale Supabase Edge Function product-search remains deployed but should be treated as unused by the app search path after P1d deploy. Do not reintroduce it into the hot path without updating/deploying the function and adding smoke coverage.",
-    "Scheduled PWA SLO Alerts workflow run 28241474623 failed on 2026-06-26 and is intentionally deferred to a later phase.",
+    "Scheduled PWA SLO Alerts workflow run 28241474623 failed on 2026-06-26 because production detected an active fail-status PWA alert but Vercel production is missing PWA_SLO_ALERT_WEBHOOK_URL, so delivery was persisted as skipped_config.",
     "Rental listing creation is production-smoke proven for the /sell create/delete flow. Edit form behavior received the same category-name fix and is code/build validated, but editing an existing rental listing was not separately browser-smoked."
   ],
   "verification_log": [
@@ -427,6 +427,11 @@
       "timestamp_utc": "2026-06-27T07:49:31.369Z",
       "check": "Candidate P2 CI, Vercel deployment, and signed-in production rental smoke",
       "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-27T08:30:00.000Z",
+      "check": "Candidate P3 PWA SLO Alerts failure triage",
+      "status": "root_cause_missing_webhook_config_workflow_diagnostics_updated"
     }
   ]
 }

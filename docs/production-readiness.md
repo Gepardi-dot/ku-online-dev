@@ -10,6 +10,44 @@ The current hardening focus is to preserve the intended C2C marketplace behavior
 
 ## Latest Candidate
 
+Candidate P3: PWA SLO alert delivery diagnostics.
+
+User-visible outcome:
+- Scheduled PWA SLO alert failures are now diagnosable from GitHub Actions logs without querying production tables first.
+- Production readiness now clearly records that active PWA SLO alert delivery is not complete until `PWA_SLO_ALERT_WEBHOOK_URL` is configured in Vercel production.
+
+Current production state:
+- GitHub workflow run `28241474623` failed on 2026-06-26 during `PWA SLO Alerts` because the internal alert endpoint returned HTTP `500`.
+- Read-only production dispatch rows around the failure show `delivery_status = skipped_config`, `summary_status = fail`, `alert_count = 1`, and `delivery_error = PWA_SLO_ALERT_WEBHOOK_URL is not configured`.
+- Vercel production env currently has `PWA_SLO_ALERT_SECRET` but does not list `PWA_SLO_ALERT_WEBHOOK_URL`.
+- Later scheduled SLO alert runs passed because the checked windows had no active alerts, not because active-alert delivery is configured.
+
+Files and systems involved:
+- `.github/workflows/pwa-slo-alerts.yml`
+- `tools/scripts/secret-rotation-readiness.mjs`
+- `docs/pwa-rollout-burn-in-runbook.md`
+- `docs/production-readiness.md`
+- `docs/agent-memory/`
+- Supabase production table `pwa_slo_alert_dispatches` was queried read-only.
+- Vercel production env names were inspected read-only.
+
+Risks and rollback:
+- Runtime alert behavior remains strict: active alerts without a webhook still fail loudly instead of being treated as success.
+- The workflow now prints the endpoint response body on non-2xx responses. The body is the app result JSON and must not include secrets.
+- Rollback is a normal git revert of the workflow/docs/tooling change. The provider gap would remain until a real webhook URL is configured.
+
+Validation performed:
+- GitHub run/log inspection for failed run `28241474623`: pass, endpoint returned HTTP `500`.
+- Supabase Management API read-only query on `pwa_slo_alert_dispatches`: pass, root cause was missing `PWA_SLO_ALERT_WEBHOOK_URL` during an active fail-status alert window.
+- `vercel env ls --scope ku-onlines-projects`: pass, confirmed `PWA_SLO_ALERT_SECRET` exists and `PWA_SLO_ALERT_WEBHOOK_URL` is absent from production env names.
+
+Acceptance criteria:
+- Root cause of the deferred PWA SLO Alerts failure is identified from production evidence: pass.
+- Future scheduled workflow failures expose actionable non-secret response details in GitHub logs: implemented, pending next failing workflow occurrence for live proof.
+- Production docs and memory identify the webhook env as a remaining operational blocker: pass.
+
+## Previous Candidate
+
 Candidate P2: rental listing controls.
 
 User-visible outcome:
@@ -56,7 +94,7 @@ Acceptance criteria:
 - Shared validation accepts a rental listing matched by category name and strips helper-only `categoryName` before database payload use: pass.
 - Post-deploy signed-in smoke creates, renders, indexes/syncs, and deletes a temporary rental listing: pass.
 
-## Previous Candidate
+## Earlier Candidate
 
 Candidate P1/P1b/P1c/P1d: Algolia secure product-row RPC repair plus provider rollout and search runtime cleanup.
 
@@ -648,6 +686,7 @@ Known notes:
 ## Active Production Risks
 
 - Real-user homepage performance needs more evidence: the previous poor-vitals sample aged out, but the latest manual window had zero events, so there is not enough fresh real-user telemetry to claim the homepage is fully cleared.
+- PWA SLO alert delivery is not production-complete: production is missing `PWA_SLO_ALERT_WEBHOOK_URL`, so active SLO alerts are detected and persisted but cannot be delivered to an operator channel yet.
 - Full dependency audit has no high/critical advisories after Candidate K local validation; remaining audit findings are non-high.
 - Distributed rate limiting is active through Vercel KV/Upstash, but the current provider resource is on the free plan. Revisit plan limits, eviction behavior, and SLA before broad public launch.
 - Production maintenance workflows should be observed on their next schedules; manual dispatch is intentionally avoided unless approved because these jobs can mutate production listings, translations, embeddings, Algolia indexes, and storage.

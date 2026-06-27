@@ -28,6 +28,11 @@ Set these before enabling rollout:
 - `PWA_SLO_ALERT_SECRET=<strong_secret>`
 - `PWA_SLO_ALERT_COOLDOWN_MINUTES=30`
 
+Scheduled SLO alert workflow secrets:
+
+- `PWA_SLO_ALERT_RUN_URL=https://<prod-domain>/api/internal/pwa/slo-alerts`
+- `PWA_SLO_ALERT_SECRET=<same as app secret>`
+
 Burn-in monitor workflow secrets:
 
 - `PWA_BURN_IN_BASE_URL=<https://your-domain>`
@@ -48,7 +53,8 @@ Burn-in monitor workflow secrets:
 5. Verify alert route security:
 - `GET /api/internal/pwa/slo-alerts` without secret returns `401` or `503`.
 6. Verify authenticated alert execution:
-- `POST /api/internal/pwa/slo-alerts` with bearer secret returns `200` (or expected config error during setup).
+- `POST /api/internal/pwa/slo-alerts` with bearer secret returns `200` when there are no active alerts or when active-alert webhook delivery is configured.
+- During setup only, active alerts may return a config error if `PWA_SLO_ALERT_WEBHOOK_URL` is missing. Do not leave production in this state.
 7. Verify scheduled automation:
 - Confirm `.github/workflows/pwa-slo-alerts.yml` and `.github/workflows/pwa-burn-in-monitor.yml` run successfully.
 

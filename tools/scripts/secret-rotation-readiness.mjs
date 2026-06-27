@@ -163,16 +163,16 @@ const envVars = [
   {
     name: 'PWA_SLO_ALERT_WEBHOOK_URL',
     kind: 'secret',
-    tier: 'optional',
+    tier: 'recommended',
     owner: 'Application',
-    verify: 'PWA SLO alert trigger smoke if alerting is enabled.',
+    verify: 'scheduled PWA SLO alerts can deliver active-alert payloads instead of failing skipped_config.',
   },
   {
     name: 'PWA_SLO_ALERT_SECRET',
     kind: 'secret',
-    tier: 'optional',
+    tier: 'recommended',
     owner: 'Application',
-    verify: 'PWA SLO alert trigger smoke if alerting is enabled.',
+    verify: 'scheduled PWA SLO alert workflow and internal alert endpoint authenticate successfully.',
   },
   {
     name: 'UPSTASH_REDIS_REST_URL',

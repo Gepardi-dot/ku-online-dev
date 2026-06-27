@@ -839,3 +839,12 @@
 - details: Commit `71c85ee` was pushed to `main`; GitHub CI run `28282489108` passed; Vercel production deployment `dpl_M3rkZPdn7bmQ5G9Axy7GC3g3X2Ei` reached Ready. Signed-in production smoke created temporary listing `f592fc6c-3b9f-4b14-af18-cb760370fb3b` through `/sell` with image upload, Property category, For rent, Monthly, and Duhok. Homepage and detail rendered `For Rent` / `Monthly` with `/month`.
 - verification: Public production health passed with database/storage ok, existing-listing search passed, browser network showed product insert `201`, `/api/search/algolia-sync` `200`, `/api/products/translate` `200`, and owner delete `DELETE /api/products/f592fc6c-3b9f-4b14-af18-cb760370fb3b => 200`. After deletion, `/products` no longer showed the listing, the deleted detail page returned `404`, public search cleanup returned `count: 0` / `items: 0`, browser console reported `0` errors / `0` warnings, and Vercel 500-log scan returned no logs.
 - risks: Edit form received the same category-name fix and is code/build validated, but this phase did not separately edit an existing rental listing in the browser.
+
+## 2026-06-27T08:30:00.000Z
+- type: implementation
+- task_id: candidate-p3-pwa-slo-alert-delivery
+- task_title: Scheduled PWA SLO Alerts failure triage
+- summary: Identified the failed scheduled PWA SLO Alerts run as missing active-alert webhook configuration and improved future workflow diagnostics.
+- details: GitHub run `28241474623` reached the internal alert endpoint and received HTTP `500`. Read-only production dispatch rows at `2026-06-26T13:32:43Z` and `2026-06-26T13:34:22Z` show `delivery_status=skipped_config`, `summary_status=fail`, `alert_count=1`, and `delivery_error=PWA_SLO_ALERT_WEBHOOK_URL is not configured`. Vercel production env lists `PWA_SLO_ALERT_SECRET` but not `PWA_SLO_ALERT_WEBHOOK_URL`. Updated the scheduled workflow to print non-secret endpoint response body/status on non-2xx responses, promoted PWA SLO alert envs to recommended in the secret readiness checker, and documented that production must not remain with active-alert delivery unconfigured.
+- verification: `gh run view 28241474623 --log-failed`, latest successful PWA SLO Alerts run inspection, Supabase Management API read-only query against `pwa_slo_alert_dispatches`, `vercel env ls --scope ku-onlines-projects`, and source inspection passed.
+- risks: No provider webhook URL was configured in this slice. Active PWA SLO alerts will still fail loudly until a real `PWA_SLO_ALERT_WEBHOOK_URL` is added to Vercel production and redeployed.
