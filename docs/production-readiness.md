@@ -1,6 +1,6 @@
 # KU BAZAR Production Readiness
 
-Last updated: 2026-06-26
+Last updated: 2026-06-27
 
 ## Current Status
 
@@ -9,6 +9,44 @@ KU BAZAR should still be treated as a production-capable beta until abuse resist
 The current hardening focus is to preserve the intended C2C marketplace behavior while improving production confidence. Intentional product decisions remain in place: public product browsing for signed-out users, contact/actions gated by sign-in, no marketplace payments for now, and automatic product lifecycle cleanup after roughly three months.
 
 ## Latest Candidate
+
+Candidate P2: rental listing controls.
+
+User-visible outcome:
+- The `/sell` and edit forms now classify the Property category by the actual category row name as well as the legacy fixed category ID.
+- This fixes the production-smoke class of failure where the user saw a Property category, but the form treated it as a normal sale category and hid the intended `For Sale` / `For Rent` controls.
+- Rental property submissions now pass the selected category name into shared validation, so a real production category ID named `Property` can persist `listing_type = rent` with a valid `rental_term`.
+
+Current production state:
+- This slice is code-validated locally but not yet deployed at the time of this note.
+- No Supabase schema, RLS, storage, auth provider, Vercel env, Algolia, payment, subscription, voucher, or production data mutation was performed.
+- A post-deploy signed-in smoke is still required before claiming rental listing creation is production-ready end to end.
+
+Files and systems involved:
+- `src/app/sell/sell-form.tsx`
+- `src/app/product/[id]/edit/EditProductForm.tsx`
+- `src/app/product/[id]/edit/page.tsx`
+- `src/lib/validation/schemas.ts`
+- `src/lib/validation/__tests__/schemas.test.ts`
+
+Risks and rollback:
+- Risk is limited to category classification in create/edit validation and UI exposure. The change allows rental mode only when the category is recognized as Property by the existing helper.
+- Rollback is a code revert if the Property category mapping behaves unexpectedly.
+- The safer forward path is to keep the category-name detection and add production smoke evidence after deployment.
+
+Validation performed:
+- `npm test`: pass.
+- `npm run typecheck`: pass.
+- `npm run lint`: first run timed out without reporting an error; rerun passed.
+- `npm run build`: first run failed because local public env was missing for `/robots.txt`; rerun passed with a temporary Vercel production env file. The temporary env file was deleted.
+
+Acceptance criteria:
+- Property category selection in `/sell` exposes listing-mode controls even when production category IDs differ from the legacy constant.
+- Edit form keeps existing Property rental listings classified correctly before the category dropdown finishes loading.
+- Shared validation accepts a rental listing matched by category name and strips helper-only `categoryName` before database payload use.
+- Post-deploy signed-in smoke must still create, find, and delete a temporary rental listing before this is marked fully production-ready.
+
+## Previous Candidate
 
 Candidate P1/P1b/P1c/P1d: Algolia secure product-row RPC repair plus provider rollout and search runtime cleanup.
 

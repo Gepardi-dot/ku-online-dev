@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 import { createClient } from '@/utils/supabase/client';
-import { PROPERTY_CATEGORY_ID } from '@/data/category-ui-config';
 import { MARKET_CITY_OPTIONS } from '@/data/market-cities';
 import { mapCategoriesForUi, type RawCategoryRow } from '@/data/category-labels';
 import { CATEGORY_LABEL_MAP, SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
@@ -20,6 +19,7 @@ import { toast } from '@/hooks/use-toast';
 import { CONDITION_OPTIONS } from '@/lib/products/filter-params';
 import { createProductSchema } from '@/lib/validation/schemas';
 import {
+  isPropertyCategory,
   normalizeProductListingType,
   normalizePropertyRentalTerm,
   type ProductListingType,
@@ -60,6 +60,7 @@ type EditProductFormProps = {
     listingType: ProductListingType;
     rentalTerm: PropertyRentalTerm | null;
     categoryId: string;
+    categoryName: string | null;
     location: string;
     imagePaths: string[];
     imageUrls: string[];
@@ -129,7 +130,15 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
     }
     return formData.currency;
   })();
-  const isPropertyCategorySelected = formData.categoryId === PROPERTY_CATEGORY_ID;
+  const selectedCategory = useMemo(() => {
+    const category = categories.find((item) => item.id === formData.categoryId);
+    if (category) return category;
+    if (initial.categoryId === formData.categoryId && initial.categoryName) {
+      return { id: initial.categoryId, name: initial.categoryName };
+    }
+    return null;
+  }, [categories, formData.categoryId, initial.categoryId, initial.categoryName]);
+  const isPropertyCategorySelected = isPropertyCategory(formData.categoryId, selectedCategory?.name ?? null);
   const propertyListingOptions = useMemo(
     () => [
       { value: 'sale' as const, label: t('sellForm.fields.listingTypeSale') },
@@ -403,6 +412,7 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         currency: formData.currency,
         condition: formData.condition,
         categoryId: normalizedCategoryId,
+        categoryName: selectedCategory?.name ?? null,
         listingType: formData.listingType,
         rentalTerm: formData.rentalTerm,
         location: formData.location,
@@ -733,7 +743,8 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
                       onValueChange={(value) => {
                         setHasUnsaved(true);
                         setFormData((p) => {
-                          const nextIsProperty = value === PROPERTY_CATEGORY_ID;
+                          const nextCategory = categories.find((category) => category.id === value) ?? null;
+                          const nextIsProperty = isPropertyCategory(value, nextCategory?.name ?? null);
                           const nextListingType = nextIsProperty ? p.listingType : 'sale';
                           return {
                             ...p,

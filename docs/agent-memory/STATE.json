@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-26T13:58:43.132Z",
+  "last_updated_utc": "2026-06-27T07:21:22.554Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,16 +27,16 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-p1d-search-runtime-followups",
-      "title": "Product search fallback and search-click RLS repair",
-      "status": "deployed_and_verified",
+      "id": "candidate-p2-rental-listing-controls",
+      "title": "Make intended rental listing controls production-ready",
+      "status": "implemented_local_validated_pending_deploy_smoke",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-p2-rental-listing-controls",
-      "title": "Make intended rental listing controls production-ready"
+      "id": "candidate-p2-deploy-rental-smoke",
+      "title": "Deploy rental listing controls and run signed-in rental smoke"
     },
-    "latest_user_request": "Defer unrelated scheduled PWA SLO Alerts failure and complete P1d verification"
+    "latest_user_request": "Proceed with the next production-readiness phase"
   },
   "technical_findings": [
     "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
@@ -99,7 +99,9 @@
     "The P1c Vercel production log scan found separate search follow-ups: Supabase Edge Function product-search returned 500 while /products and /api/products/search returned fallback 200, and /api/search/click returned 500 because search_click_events insert hit RLS 42501.",
     "Candidate P1d removed the stale Supabase product-search Edge Function from the app search hot path. Successful Algolia zero-hit searches now return directly, and Algolia-unavailable fallback uses the existing Supabase product query.",
     "Candidate P1d applied existing migration 20260223100328_search_click_events_rls_insert_policies.sql to production with --record-migration. Production now has anonymous and authenticated insert policies for search_click_events, and runtime /api/search/click smoke returned {\"ok\":true}.",
-    "Candidate P1d commit b18b3eb passed GitHub CI run 28242646711, deployed to Vercel production as https://ku-online-jw12n222g-ku-onlines-projects.vercel.app, and post-deploy smokes passed for public health, existing product search, no-result product search, search-click telemetry, and Vercel error-log scan."
+    "Candidate P1d commit b18b3eb passed GitHub CI run 28242646711, deployed to Vercel production as https://ku-online-jw12n222g-ku-onlines-projects.vercel.app, and post-deploy smokes passed for public health, existing product search, no-result product search, search-click telemetry, and Vercel error-log scan.",
+    "Candidate P2 repaired rental listing controls by switching /sell, edit, and shared create/update validation from hardcoded Property category ID checks to the existing isPropertyCategory(id, name) helper. This preserves the fixed-ID path while supporting production category rows mapped to visible Property by name.",
+    "Candidate P2 local validation passed on 2026-06-27: npm test, npm run typecheck, rerun npm run lint, and npm run build with a temporary Vercel production env file. Deployment and signed-in rental listing smoke remain pending."
   ],
   "decisions": [
     {
@@ -131,7 +133,7 @@
     "Algolia provider/runtime public search and signed-in create-flow sync are now smoke-proven after env rollout, redeploy, backfill, controlled smoke, and real /sell create/search/delete validation.",
     "The stale Supabase Edge Function product-search remains deployed but should be treated as unused by the app search path after P1d deploy. Do not reintroduce it into the hot path without updating/deploying the function and adding smoke coverage.",
     "Scheduled PWA SLO Alerts workflow run 28241474623 failed on 2026-06-26 and is intentionally deferred to a later phase.",
-    "Rental listing creation is not production-ready until the /sell flow exposes the intended listing-mode/rental-term controls and persists listing_type=rent with a valid rental_term."
+    "Rental listing controls are locally fixed and build-validated, but rental listing creation should not be claimed production-ready until the P2 code is deployed and a signed-in production smoke proves listing_type=rent with a valid rental_term."
   ],
   "verification_log": [
     {
@@ -413,6 +415,11 @@
       "timestamp_utc": "2026-06-26T13:58:43.132Z",
       "check": "Candidate P1d CI, Vercel deployment, and production smoke",
       "status": "pass"
+    },
+    {
+      "timestamp_utc": "2026-06-27T07:21:22.554Z",
+      "check": "Candidate P2 rental listing controls local validation",
+      "status": "pass_pending_deploy_smoke"
     }
   ]
 }

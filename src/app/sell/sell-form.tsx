@@ -35,10 +35,11 @@ import { compressToWebp } from '@/lib/images/client-compress';
 import { highlightDollar } from '@/components/currency-text';
 import { useLocale } from '@/providers/locale-provider';
 import { rtlLocales } from '@/lib/locale/dictionary';
-import { CATEGORY_LABEL_MAP, PROPERTY_CATEGORY_ID, SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
+import { CATEGORY_LABEL_MAP, SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
 import ProductCard from '@/components/product-card-new';
 import type { ProductWithRelations } from '@/lib/services/products';
 import {
+  isPropertyCategory,
   normalizeProductListingType,
   normalizePropertyRentalTerm,
   type ProductListingType,
@@ -170,7 +171,11 @@ export default function SellForm({ user, initialCategories = [], storeContext = 
   const [canScrollDown, setCanScrollDown] = useState(false);
   const colorScrollRef = useRef<HTMLDivElement>(null);
   const { t, messages, locale } = useLocale();
-  const isPropertyCategorySelected = formData.categoryId === PROPERTY_CATEGORY_ID;
+  const selectedCategory = useMemo(
+    () => categories.find((category) => category.id === formData.categoryId) ?? null,
+    [categories, formData.categoryId],
+  );
+  const isPropertyCategorySelected = isPropertyCategory(formData.categoryId, selectedCategory?.name ?? null);
   const direction = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
   const returnTo = useMemo(() => {
     const raw = searchParams.get('returnTo')?.trim() ?? '';
@@ -1004,6 +1009,7 @@ export default function SellForm({ user, initialCategories = [], storeContext = 
         currency: formData.currency,
         condition: formData.condition,
         categoryId: normalizedCategoryId,
+        categoryName: selectedCategory?.name ?? null,
         listingType: formData.listingType,
         rentalTerm: formData.rentalTerm,
         location: formData.location,
@@ -1183,7 +1189,6 @@ export default function SellForm({ user, initialCategories = [], storeContext = 
     }
     return formData.currency;
   })();
-  const selectedCategory = categories.find((category) => category.id === formData.categoryId) ?? null;
   const conditionTriggerLabel =
     formData.condition.trim().length > 0
       ? getConditionLabel(formData.condition)
@@ -1715,7 +1720,7 @@ export default function SellForm({ user, initialCategories = [], storeContext = 
                                           onClick={() => {
                                             setHasUnsaved(true);
                                             setFormData((prev) => {
-                                              const nextIsProperty = category.id === PROPERTY_CATEGORY_ID;
+                                              const nextIsProperty = isPropertyCategory(category.id, category.name);
                                               const nextListingType = nextIsProperty ? prev.listingType : 'sale';
                                               return {
                                                 ...prev,

@@ -47,4 +47,20 @@ describe('createProductSchema', () => {
     if (result.success) return;
     assert.equal(result.error.issues.some((issue) => issue.path.join('.') === 'rentalTerm'), true);
   });
+
+  it('accepts rental property listings matched by category name', () => {
+    const result = createProductSchema.safeParse({
+      ...baseListing,
+      categoryName: 'Property',
+      condition: '',
+      listingType: 'rent',
+      rentalTerm: 'monthly',
+    });
+
+    assert.equal(result.success, true);
+    if (!result.success) return;
+    assert.equal(result.data.listingType, 'rent');
+    assert.equal(result.data.rentalTerm, 'monthly');
+    assert.equal('categoryName' in result.data, false);
+  });
 });

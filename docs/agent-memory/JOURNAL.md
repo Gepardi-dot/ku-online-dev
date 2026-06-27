@@ -821,3 +821,12 @@
 - details: Commit `b18b3eb` was pushed to `main`; Vercel deployed `https://ku-online-jw12n222g-ku-onlines-projects.vercel.app` to production and reached `Ready`.
 - verification: GitHub CI run `28242646711` passed. Post-deploy production smoke passed for `/api/health`, existing product search `earbuds` with `count: 1` / `items: 1`, no-result product search with `count: 0`, `/api/search/click` with `{"ok":true}`, and Vercel error logs in the checked window returned no records.
 - risks: The unrelated scheduled `PWA SLO Alerts` workflow run `28241474623` failed and is intentionally deferred to a later phase per user instruction.
+
+## 2026-06-27T07:21:22.554Z
+- type: implementation
+- task_id: candidate-p2-rental-listing-controls
+- task_title: Rental listing controls
+- summary: Repaired Property rental listing detection in the sell/edit UI and shared validation.
+- details: The root cause was hardcoded Property category detection against `PROPERTY_CATEGORY_ID`. The production category mapper can expose a real category row as visible `Property` by name even when its ID differs, so `/sell` hid the rental controls and submitted the listing as a sale. The forms now use the existing `isPropertyCategory(id, name)` helper, and validation accepts a helper-only `categoryName` while stripping it from the parsed product payload.
+- verification: `npm test`, `npm run typecheck`, rerun `npm run lint`, and `npm run build` passed. The first lint run timed out without reporting an error. The first build failed because local public env was missing for `/robots.txt`; the passing build used a temporary Vercel production env file that was deleted.
+- risks: This slice has not been deployed yet. Production readiness still requires source-control/deploy closeout and a signed-in smoke that creates, verifies, and deletes a temporary rental Property listing.

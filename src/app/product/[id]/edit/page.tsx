@@ -42,6 +42,7 @@ export default async function EditProductPage({ params }: PageProps) {
     listingType: product.listingType,
     rentalTerm: product.rentalTerm,
     categoryId: product.categoryId ?? '',
+    categoryName: product.category?.name ?? null,
     location: product.location ?? '',
     imagePaths: product.imagePaths ?? [],
     imageUrls: product.imageUrls ?? [],

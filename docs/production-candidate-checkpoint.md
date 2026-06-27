@@ -1,6 +1,41 @@
 # Production Candidate Checkpoint
 
-Last updated: 2026-06-26
+Last updated: 2026-06-27
+
+## Candidate P2 Rental Listing Controls
+
+Date: 2026-06-27
+
+Goal: repair the intended Property rental listing controls without changing the broader marketplace model.
+
+Important files changed:
+- `src/app/sell/sell-form.tsx`
+- `src/app/product/[id]/edit/EditProductForm.tsx`
+- `src/app/product/[id]/edit/page.tsx`
+- `src/lib/validation/schemas.ts`
+- `src/lib/validation/__tests__/schemas.test.ts`
+
+Supabase impact:
+- Tables touched: none by this code slice.
+- Buckets touched: none.
+- RLS/policies touched: none.
+- Migration files added: none.
+- Runtime fields affected after deployment: `products.listing_type` and `products.rental_term` can be populated by the intended rental flow when a Property category is selected.
+
+Validation performed:
+- Root cause narrowed to hardcoded Property category detection. The forms and schema only treated `PROPERTY_CATEGORY_ID` as a Property listing, while production category rows can be mapped to the visible `Property` label by name.
+- `npm test`: pass, including a new schema regression proving rental listings matched by `categoryName: "Property"` are accepted and helper-only `categoryName` is stripped from parsed output.
+- `npm run typecheck`: pass.
+- `npm run lint`: first run timed out without reporting an error; rerun passed.
+- `npm run build`: first run failed because local public env was missing for `/robots.txt`; rerun passed with a temporary Vercel production env file. The temporary env file was deleted.
+
+Production result:
+- Not deployed yet at this checkpoint.
+- The next production gate is source-control/deploy closeout followed by a signed-in browser smoke that creates a temporary Property rental listing, confirms `listing_type = rent` plus a valid `rental_term`, verifies product detail/search display, and deletes the listing.
+
+Risks and rollout notes:
+- This is a UI/domain validation change only. It does not mutate Supabase schema, RLS, storage, auth, providers, Vercel env, payments, subscriptions, vouchers, or production data.
+- Rollback is a code revert if production category mapping behaves unexpectedly.
 
 ## Candidate P1 Algolia Product-Row RPC Repair
 

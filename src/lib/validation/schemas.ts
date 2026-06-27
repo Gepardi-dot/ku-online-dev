@@ -1,8 +1,11 @@
 import { z } from 'zod';
 
-import { PROPERTY_CATEGORY_ID } from '@/data/category-ui-config';
 import { CONDITION_VALUES } from '@/lib/products/filter-params';
-import { PRODUCT_LISTING_TYPE_VALUES, PROPERTY_RENTAL_TERM_VALUES } from '@/lib/products/property-listing';
+import {
+  isPropertyCategory,
+  PRODUCT_LISTING_TYPE_VALUES,
+  PROPERTY_RENTAL_TERM_VALUES,
+} from '@/lib/products/property-listing';
 import { isAllowedProductImageInput } from '@/lib/storage-public';
 
 const phoneRegex = /^[+0-9()\-\s]{6,20}$/;
@@ -39,6 +42,9 @@ export const createProductSchema = z
         return value;
       }),
     categoryId: z.string().trim().min(1, { message: 'Select a valid category.' }),
+    categoryName: z
+      .union([z.string().trim().max(120), z.null(), z.undefined()])
+      .transform((value) => (value && value.length > 0 ? value : null)),
     listingType: productListingTypeEnum.default('sale'),
     rentalTerm: z
       .union([propertyRentalTermEnum, z.literal(''), z.null()])
@@ -71,7 +77,7 @@ export const createProductSchema = z
       .transform((v) => (v && v.length > 0 ? v : undefined)),
   })
   .superRefine((value, ctx) => {
-    const isProperty = value.categoryId === PROPERTY_CATEGORY_ID;
+    const isProperty = isPropertyCategory(value.categoryId, value.categoryName);
 
     if (isProperty) {
       if (value.listingType === 'rent' && !value.rentalTerm) {
@@ -100,11 +106,15 @@ export const createProductSchema = z
       });
     }
   })
-  .transform((value) => ({
-    ...value,
-    description: value.description ?? null,
-    rentalTerm: value.listingType === 'rent' ? value.rentalTerm ?? null : null,
-  }));
+  .transform((value) => {
+    const { categoryName: _categoryName, ...product } = value;
+
+    return {
+      ...product,
+      description: product.description ?? null,
+      rentalTerm: product.listingType === 'rent' ? product.rentalTerm ?? null : null,
+    };
+  });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
