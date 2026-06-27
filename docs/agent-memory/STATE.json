@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-27T08:30:00.000Z",
+  "last_updated_utc": "2026-06-27T08:24:00.000Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -29,7 +29,7 @@
     "current_task": {
       "id": "candidate-p3-pwa-slo-alert-delivery",
       "title": "Diagnose scheduled PWA SLO Alerts failure",
-      "status": "root_cause_found_docs_and_workflow_diagnostics_updated",
+      "status": "deployed_and_verified_with_active_pwa_governance_risk",
       "phase": "production-hardening"
     },
     "next_task": {
@@ -135,6 +135,8 @@
     "Algolia provider/runtime public search and signed-in create-flow sync are now smoke-proven after env rollout, redeploy, backfill, controlled smoke, and real /sell create/search/delete validation.",
     "The stale Supabase Edge Function product-search remains deployed but should be treated as unused by the app search path after P1d deploy. Do not reintroduce it into the hot path without updating/deploying the function and adding smoke coverage.",
     "Scheduled PWA SLO Alerts workflow run 28241474623 failed on 2026-06-26 because production detected an active fail-status PWA alert but Vercel production is missing PWA_SLO_ALERT_WEBHOOK_URL, so delivery was persisted as skipped_config.",
+    "Candidate P3 commit cf88f81 adds GitHub workflow diagnostics for PWA SLO alert endpoint failures and promotes PWA SLO alert envs to recommended in the secret readiness checker. CI run 28283615943 passed and Vercel deployment dpl_BkqTa7BHCoajugonwtiFV5Sc4CnW reached Ready.",
+    "Scheduled PWA Ramp Governance run 28283521030 failed on 2026-06-27 with summary_status fail, active alerts 1, and poor-vitals rate 31.48% over the 15.00% gate. This is a real production-readiness risk separate from the missing webhook delivery config.",
     "Rental listing creation is production-smoke proven for the /sell create/delete flow. Edit form behavior received the same category-name fix and is code/build validated, but editing an existing rental listing was not separately browser-smoked."
   ],
   "verification_log": [
@@ -429,9 +431,14 @@
       "status": "pass"
     },
     {
-      "timestamp_utc": "2026-06-27T08:30:00.000Z",
+      "timestamp_utc": "2026-06-27T08:24:00.000Z",
       "check": "Candidate P3 PWA SLO Alerts failure triage",
       "status": "root_cause_missing_webhook_config_workflow_diagnostics_updated"
+    },
+    {
+      "timestamp_utc": "2026-06-27T08:24:00.000Z",
+      "check": "Candidate P3 CI, Vercel deployment, health, logs, and current PWA governance evidence",
+      "status": "ci_deploy_health_pass_pwa_governance_fail_active_poor_vitals"
     }
   ]
 }

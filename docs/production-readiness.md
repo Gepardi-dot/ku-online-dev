@@ -21,6 +21,10 @@ Current production state:
 - Read-only production dispatch rows around the failure show `delivery_status = skipped_config`, `summary_status = fail`, `alert_count = 1`, and `delivery_error = PWA_SLO_ALERT_WEBHOOK_URL is not configured`.
 - Vercel production env currently has `PWA_SLO_ALERT_SECRET` but does not list `PWA_SLO_ALERT_WEBHOOK_URL`.
 - Later scheduled SLO alert runs passed because the checked windows had no active alerts, not because active-alert delivery is configured.
+- Scheduled PWA Ramp Governance run `28283521030` on 2026-06-27 failed before the P3 commit with `summary_status = fail`, `active alerts = 1`, and poor-vitals rate `31.48%` over the `15.00%` gate.
+- Scheduled PWA SLO Alerts run `28283560786` on 2026-06-27 also failed before the P3 commit. Read-only production dispatch rows at `2026-06-27T08:12:14Z` and `2026-06-27T08:13:53Z` again show `delivery_status = skipped_config` because `PWA_SLO_ALERT_WEBHOOK_URL` is missing.
+- Commit `cf88f81` (`chore: expose pwa slo alert failure details`) was pushed to `main`; GitHub CI run `28283615943` passed; Vercel production deployment `dpl_BkqTa7BHCoajugonwtiFV5Sc4CnW` reached `Ready` and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Post-deploy public production health returned HTTP `200` with database and storage `ok`, and Vercel 500-log scan for the new deployment window returned no logs.
 
 Files and systems involved:
 - `.github/workflows/pwa-slo-alerts.yml`
@@ -40,6 +44,16 @@ Validation performed:
 - GitHub run/log inspection for failed run `28241474623`: pass, endpoint returned HTTP `500`.
 - Supabase Management API read-only query on `pwa_slo_alert_dispatches`: pass, root cause was missing `PWA_SLO_ALERT_WEBHOOK_URL` during an active fail-status alert window.
 - `vercel env ls --scope ku-onlines-projects`: pass, confirmed `PWA_SLO_ALERT_SECRET` exists and `PWA_SLO_ALERT_WEBHOOK_URL` is absent from production env names.
+- `node --check tools/scripts/secret-rotation-readiness.mjs`: pass.
+- `node tools/scripts/secret-rotation-readiness.mjs --help`: pass.
+- `node tools/scripts/secret-rotation-readiness.mjs --no-env-files --mode production`: expected missing-required failure path, pass.
+- `STATE.json` parse check: pass.
+- Workflow shell block syntax check through Git Bash: pass. Bare `bash` is unavailable locally because WSL lacks `/bin/bash`.
+- `git diff --check`: pass.
+- GitHub CI run `28283615943`: pass.
+- Vercel production deployment `dpl_BkqTa7BHCoajugonwtiFV5Sc4CnW`: ready.
+- Public production health after deploy: pass, database and storage `ok`.
+- Vercel 500-log scan for the new deployment window: no logs found.
 
 Acceptance criteria:
 - Root cause of the deferred PWA SLO Alerts failure is identified from production evidence: pass.
@@ -685,7 +699,7 @@ Known notes:
 
 ## Active Production Risks
 
-- Real-user homepage performance needs more evidence: the previous poor-vitals sample aged out, but the latest manual window had zero events, so there is not enough fresh real-user telemetry to claim the homepage is fully cleared.
+- Real-user homepage performance is not currently cleared: scheduled PWA Ramp Governance run `28283521030` failed on 2026-06-27 with one active alert and poor-vitals rate `31.48%` over the `15.00%` gate.
 - PWA SLO alert delivery is not production-complete: production is missing `PWA_SLO_ALERT_WEBHOOK_URL`, so active SLO alerts are detected and persisted but cannot be delivered to an operator channel yet.
 - Full dependency audit has no high/critical advisories after Candidate K local validation; remaining audit findings are non-high.
 - Distributed rate limiting is active through Vercel KV/Upstash, but the current provider resource is on the free plan. Revisit plan limits, eviction behavior, and SLA before broad public launch.
