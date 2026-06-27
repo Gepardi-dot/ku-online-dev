@@ -28,14 +28,23 @@ Validation performed:
 - `npm run typecheck`: pass.
 - `npm run lint`: first run timed out without reporting an error; rerun passed.
 - `npm run build`: first run failed because local public env was missing for `/robots.txt`; rerun passed with a temporary Vercel production env file. The temporary env file was deleted.
+- Commit `71c85ee` was pushed to `main`; GitHub CI run `28282489108` passed.
+- Vercel production deployment `dpl_M3rkZPdn7bmQ5G9Axy7GC3g3X2Ei` reached `Ready`.
+- Production public health passed with database/storage `ok`; public existing-listing search passed.
+- Signed-in production smoke created temporary listing `f592fc6c-3b9f-4b14-af18-cb760370fb3b` through the real `/sell` UI with image upload, Property category, `For rent`, `Monthly`, and Duhok location.
+- Browser network showed Supabase product insert `201`, `/api/search/algolia-sync` `200`, `/api/products/translate` `200`, and owner delete `DELETE /api/products/f592fc6c-3b9f-4b14-af18-cb760370fb3b => 200`.
+- The temporary listing rendered on homepage and detail as `For Rent` / `Monthly` with `/month`; after owner deletion, `/products` no longer showed it, the deleted detail page returned `404`, and public search cleanup returned `count: 0` / `items: 0`.
+- Browser console after the smoke reported `0` errors and `0` warnings. Vercel 500-log scan for the new deployment returned no logs in the checked window.
 
 Production result:
-- Not deployed yet at this checkpoint.
-- The next production gate is source-control/deploy closeout followed by a signed-in browser smoke that creates a temporary Property rental listing, confirms `listing_type = rent` plus a valid `rental_term`, verifies product detail/search display, and deletes the listing.
+- Rental listing creation is now production-smoke proven for the intended `/sell` flow.
+- A production category row mapped to visible `Property` exposes `For sale` / `For rent`, persists rental intent, and renders the created listing as `For Rent` / `Monthly` with `/month`.
+- The temporary production smoke listing was removed through owner controls and no longer appears in public title search.
 
 Risks and rollout notes:
 - This is a UI/domain validation change only. It does not mutate Supabase schema, RLS, storage, auth, providers, Vercel env, payments, subscriptions, vouchers, or production data.
 - Rollback is a code revert if production category mapping behaves unexpectedly.
+- Edit form behavior is code/build validated and receives the same category-name fix, but this phase did not separately edit an existing rental listing in the browser.
 
 ## Candidate P1 Algolia Product-Row RPC Repair
 

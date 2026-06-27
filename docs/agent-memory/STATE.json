@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-27T07:21:22.554Z",
+  "last_updated_utc": "2026-06-27T07:49:31.369Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -29,12 +29,12 @@
     "current_task": {
       "id": "candidate-p2-rental-listing-controls",
       "title": "Make intended rental listing controls production-ready",
-      "status": "implemented_local_validated_pending_deploy_smoke",
+      "status": "deployed_and_signed_in_smoke_verified",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-p2-deploy-rental-smoke",
-      "title": "Deploy rental listing controls and run signed-in rental smoke"
+      "id": "candidate-p3-ops-followups",
+      "title": "Select the next production hardening follow-up"
     },
     "latest_user_request": "Proceed with the next production-readiness phase"
   },
@@ -101,7 +101,9 @@
     "Candidate P1d applied existing migration 20260223100328_search_click_events_rls_insert_policies.sql to production with --record-migration. Production now has anonymous and authenticated insert policies for search_click_events, and runtime /api/search/click smoke returned {\"ok\":true}.",
     "Candidate P1d commit b18b3eb passed GitHub CI run 28242646711, deployed to Vercel production as https://ku-online-jw12n222g-ku-onlines-projects.vercel.app, and post-deploy smokes passed for public health, existing product search, no-result product search, search-click telemetry, and Vercel error-log scan.",
     "Candidate P2 repaired rental listing controls by switching /sell, edit, and shared create/update validation from hardcoded Property category ID checks to the existing isPropertyCategory(id, name) helper. This preserves the fixed-ID path while supporting production category rows mapped to visible Property by name.",
-    "Candidate P2 local validation passed on 2026-06-27: npm test, npm run typecheck, rerun npm run lint, and npm run build with a temporary Vercel production env file. Deployment and signed-in rental listing smoke remain pending."
+    "Candidate P2 local validation passed on 2026-06-27: npm test, npm run typecheck, rerun npm run lint, and npm run build with a temporary Vercel production env file.",
+    "Candidate P2 commit 71c85ee passed GitHub CI run 28282489108 and deployed to Vercel production as dpl_M3rkZPdn7bmQ5G9Axy7GC3g3X2Ei.",
+    "Candidate P2 signed-in production smoke created temporary rental listing f592fc6c-3b9f-4b14-af18-cb760370fb3b through /sell with Property, For rent, Monthly, and Duhok; homepage/detail rendered For Rent / Monthly with /month; owner delete returned 200; deleted detail returned 404; public title search cleanup returned count 0/items 0; browser console had 0 errors/warnings."
   ],
   "decisions": [
     {
@@ -133,7 +135,7 @@
     "Algolia provider/runtime public search and signed-in create-flow sync are now smoke-proven after env rollout, redeploy, backfill, controlled smoke, and real /sell create/search/delete validation.",
     "The stale Supabase Edge Function product-search remains deployed but should be treated as unused by the app search path after P1d deploy. Do not reintroduce it into the hot path without updating/deploying the function and adding smoke coverage.",
     "Scheduled PWA SLO Alerts workflow run 28241474623 failed on 2026-06-26 and is intentionally deferred to a later phase.",
-    "Rental listing controls are locally fixed and build-validated, but rental listing creation should not be claimed production-ready until the P2 code is deployed and a signed-in production smoke proves listing_type=rent with a valid rental_term."
+    "Rental listing creation is production-smoke proven for the /sell create/delete flow. Edit form behavior received the same category-name fix and is code/build validated, but editing an existing rental listing was not separately browser-smoked."
   ],
   "verification_log": [
     {
@@ -420,6 +422,11 @@
       "timestamp_utc": "2026-06-27T07:21:22.554Z",
       "check": "Candidate P2 rental listing controls local validation",
       "status": "pass_pending_deploy_smoke"
+    },
+    {
+      "timestamp_utc": "2026-06-27T07:49:31.369Z",
+      "check": "Candidate P2 CI, Vercel deployment, and signed-in production rental smoke",
+      "status": "pass"
     }
   ]
 }

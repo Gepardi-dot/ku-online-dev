@@ -830,3 +830,12 @@
 - details: The root cause was hardcoded Property category detection against `PROPERTY_CATEGORY_ID`. The production category mapper can expose a real category row as visible `Property` by name even when its ID differs, so `/sell` hid the rental controls and submitted the listing as a sale. The forms now use the existing `isPropertyCategory(id, name)` helper, and validation accepts a helper-only `categoryName` while stripping it from the parsed product payload.
 - verification: `npm test`, `npm run typecheck`, rerun `npm run lint`, and `npm run build` passed. The first lint run timed out without reporting an error. The first build failed because local public env was missing for `/robots.txt`; the passing build used a temporary Vercel production env file that was deleted.
 - risks: This slice has not been deployed yet. Production readiness still requires source-control/deploy closeout and a signed-in smoke that creates, verifies, and deletes a temporary rental Property listing.
+
+## 2026-06-27T07:49:31.369Z
+- type: validation
+- task_id: candidate-p2-rental-listing-controls
+- task_title: P2 deployment and signed-in rental smoke
+- summary: Deployed the rental listing controls and proved the signed-in production rental create/delete flow.
+- details: Commit `71c85ee` was pushed to `main`; GitHub CI run `28282489108` passed; Vercel production deployment `dpl_M3rkZPdn7bmQ5G9Axy7GC3g3X2Ei` reached Ready. Signed-in production smoke created temporary listing `f592fc6c-3b9f-4b14-af18-cb760370fb3b` through `/sell` with image upload, Property category, For rent, Monthly, and Duhok. Homepage and detail rendered `For Rent` / `Monthly` with `/month`.
+- verification: Public production health passed with database/storage ok, existing-listing search passed, browser network showed product insert `201`, `/api/search/algolia-sync` `200`, `/api/products/translate` `200`, and owner delete `DELETE /api/products/f592fc6c-3b9f-4b14-af18-cb760370fb3b => 200`. After deletion, `/products` no longer showed the listing, the deleted detail page returned `404`, public search cleanup returned `count: 0` / `items: 0`, browser console reported `0` errors / `0` warnings, and Vercel 500-log scan returned no logs.
+- risks: Edit form received the same category-name fix and is code/build validated, but this phase did not separately edit an existing rental listing in the browser.

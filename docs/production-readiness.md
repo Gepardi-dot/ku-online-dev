@@ -18,9 +18,14 @@ User-visible outcome:
 - Rental property submissions now pass the selected category name into shared validation, so a real production category ID named `Property` can persist `listing_type = rent` with a valid `rental_term`.
 
 Current production state:
-- This slice is code-validated locally but not yet deployed at the time of this note.
-- No Supabase schema, RLS, storage, auth provider, Vercel env, Algolia, payment, subscription, voucher, or production data mutation was performed.
-- A post-deploy signed-in smoke is still required before claiming rental listing creation is production-ready end to end.
+- Commit `71c85ee` (`fix: recognize property rentals by category name`) was pushed to `main` on 2026-06-27.
+- GitHub CI run `28282489108` passed.
+- Vercel production deployment `dpl_M3rkZPdn7bmQ5G9Axy7GC3g3X2Ei` reached `Ready` and was aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Signed-in production rental smoke created temporary listing `f592fc6c-3b9f-4b14-af18-cb760370fb3b`, title `KU BAZAR RENT SMOKE DELETE 20260627`.
+- The listing rendered on the homepage as `For Rent · Monthly` with price suffix `/month`, and the detail page rendered `For Rent`, `Monthly`, and `/month`.
+- Owner deletion returned `DELETE /api/products/f592fc6c-3b9f-4b14-af18-cb760370fb3b => 200`, redirected to `/products`, and the deleted product detail URL returned `404`.
+- Public `/api/products/search?search=KU%20BAZAR%20RENT%20SMOKE%20DELETE%2020260627` returned `count: 0`, `items: 0`, `page: 1` after deletion.
+- No Supabase schema, RLS, storage policy, auth provider, Vercel env, Algolia provider configuration, payment, subscription, voucher, or direct production data mutation was performed by code changes. The smoke created and deleted one temporary production listing through the real UI.
 
 Files and systems involved:
 - `src/app/sell/sell-form.tsx`
@@ -39,12 +44,17 @@ Validation performed:
 - `npm run typecheck`: pass.
 - `npm run lint`: first run timed out without reporting an error; rerun passed.
 - `npm run build`: first run failed because local public env was missing for `/robots.txt`; rerun passed with a temporary Vercel production env file. The temporary env file was deleted.
+- GitHub CI run `28282489108`: pass.
+- Public production health after deploy: pass, database and storage `ok`.
+- Public production search smoke for existing listings: pass.
+- Signed-in production browser smoke: pass for Property category selection, `For rent`, `Monthly`, image upload, product insert, Algolia sync, translate request, homepage/detail rental display, owner deletion, public search cleanup, deleted detail `404`, and browser console `0` errors / `0` warnings.
+- Vercel 500-log scan for the new deployment in the checked window: no logs found.
 
 Acceptance criteria:
-- Property category selection in `/sell` exposes listing-mode controls even when production category IDs differ from the legacy constant.
-- Edit form keeps existing Property rental listings classified correctly before the category dropdown finishes loading.
-- Shared validation accepts a rental listing matched by category name and strips helper-only `categoryName` before database payload use.
-- Post-deploy signed-in smoke must still create, find, and delete a temporary rental listing before this is marked fully production-ready.
+- Property category selection in `/sell` exposes listing-mode controls even when production category IDs differ from the legacy constant: pass.
+- Edit form keeps existing Property rental listings classified correctly before the category dropdown finishes loading: code/build validated; not separately browser-smoked.
+- Shared validation accepts a rental listing matched by category name and strips helper-only `categoryName` before database payload use: pass.
+- Post-deploy signed-in smoke creates, renders, indexes/syncs, and deletes a temporary rental listing: pass.
 
 ## Previous Candidate
 
