@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-27T08:24:00.000Z",
+  "last_updated_utc": "2026-06-28T21:10:00.000Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,14 +27,14 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-p3-pwa-slo-alert-delivery",
-      "title": "Diagnose scheduled PWA SLO Alerts failure",
-      "status": "deployed_and_verified_with_active_pwa_governance_risk",
+      "id": "candidate-p4b-pwa-governance-telemetry-diagnosis",
+      "title": "Diagnose PWA governance and telemetry quality",
+      "status": "read_only_diagnosis_complete_p4c_recommended",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-p4-next-production-hardening-slice",
-      "title": "Select the next production hardening follow-up"
+      "id": "candidate-p4c-pwa-telemetry-governance-hygiene",
+      "title": "Fix PWA telemetry hygiene and low-sample governance false positives"
     },
     "latest_user_request": "Proceed with the next production-readiness phase"
   },
@@ -136,7 +136,9 @@
     "The stale Supabase Edge Function product-search remains deployed but should be treated as unused by the app search path after P1d deploy. Do not reintroduce it into the hot path without updating/deploying the function and adding smoke coverage.",
     "Scheduled PWA SLO Alerts workflow run 28241474623 failed on 2026-06-26 because production detected an active fail-status PWA alert but Vercel production is missing PWA_SLO_ALERT_WEBHOOK_URL, so delivery was persisted as skipped_config.",
     "Candidate P3 commit cf88f81 adds GitHub workflow diagnostics for PWA SLO alert endpoint failures and promotes PWA SLO alert envs to recommended in the secret readiness checker. CI run 28283615943 passed and Vercel deployment dpl_BkqTa7BHCoajugonwtiFV5Sc4CnW reached Ready.",
-    "Scheduled PWA Ramp Governance run 28283521030 failed on 2026-06-27 with summary_status fail, active alerts 1, and poor-vitals rate 31.48% over the 15.00% gate. This is a real production-readiness risk separate from the missing webhook delivery config.",
+    "Scheduled PWA Ramp Governance run 28283521030 failed on 2026-06-27 with summary_status fail, active alerts 1, and poor-vitals rate 31.48% over the 15.00% gate. P4B later found this window included implausible stale web-vital values such as FCP 233804ms and LCP 1752544ms, so telemetry hygiene must be improved before treating every poor-vitals percentage as a normal rendering regression.",
+    "P4B read-only diagnosis on 2026-06-28 found current scheduled PWA governance and SLO alert runs are green, but telemetry volume is very low: only 2 events in the latest 60-minute read-only DB window and 6 events in 24 hours. Governance run 28305859484 failed despite summary_status pass and active alerts 0 because the script failed on poor-vitals rate with only 3 rated web-vital samples.",
+    "Recommended P4C fix: reject unknown/implausible web-vital values server-side, suppress hidden/stale web-vital sends client-side, and make tools/scripts/pwa-ramp-governance.mjs apply poor-vitals failure only when web-vital sample volume meets summary.thresholds.minSamples; below that should warn, not fail scheduled governance.",
     "Rental listing creation is production-smoke proven for the /sell create/delete flow. Edit form behavior received the same category-name fix and is code/build validated, but editing an existing rental listing was not separately browser-smoked."
   ],
   "verification_log": [
@@ -439,6 +441,11 @@
       "timestamp_utc": "2026-06-27T08:24:00.000Z",
       "check": "Candidate P3 CI, Vercel deployment, health, logs, and current PWA governance evidence",
       "status": "ci_deploy_health_pass_pwa_governance_fail_active_poor_vitals"
+    },
+    {
+      "timestamp_utc": "2026-06-28T21:10:00.000Z",
+      "check": "Candidate P4B PWA governance and telemetry read-only diagnosis",
+      "status": "current_schedules_green_low_volume_false_positive_and_stale_metric_sources_identified"
     }
   ]
 }

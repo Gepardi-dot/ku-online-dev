@@ -1,6 +1,6 @@
 # KU BAZAR Production Readiness
 
-Last updated: 2026-06-27
+Last updated: 2026-06-28
 
 ## Current Status
 
@@ -9,6 +9,56 @@ KU BAZAR should still be treated as a production-capable beta until abuse resist
 The current hardening focus is to preserve the intended C2C marketplace behavior while improving production confidence. Intentional product decisions remain in place: public product browsing for signed-out users, contact/actions gated by sign-in, no marketplace payments for now, and automatic product lifecycle cleanup after roughly three months.
 
 ## Latest Candidate
+
+Candidate P4B: PWA governance and telemetry read-only diagnosis.
+
+User-visible outcome:
+- The alert webhook phase can be deferred, but PWA governance failures are now separated into real performance signals, telemetry hygiene issues, and governance-gate false positives.
+- No production code, DB, provider, auth, storage, or deploy mutation was performed in this phase.
+
+Current production state:
+- Latest scheduled PWA Ramp Governance runs on 2026-06-28 are passing or warning-only; latest checked run `28335709316` was `success` with `summary_status = pass`, `active alerts = 0`, poor-vitals rate `0.00%`, and only an `sw_failure_rate_missing` warning.
+- Latest scheduled PWA SLO Alerts runs on 2026-06-28 are passing because no active alerts exist in the checked windows.
+- Scheduled PWA Ramp Governance run `28305859484` failed at `2026-06-28T00:04:38Z`, but the endpoint summary was `pass`, active alerts were `0`, and the workflow failed only because the governance script applied the poor-vitals-rate gate to a tiny sample: 3 rated web-vital events with 2 poor samples.
+- Production telemetry volume remains very low: read-only query at `2026-06-28T21:01Z` found 2 events in the previous 60 minutes and 6 events in the previous 24 hours.
+- The earlier `2026-06-27T08:12Z` governance failure had higher volume and one active alert, but the underlying samples include implausible web-vital values such as FCP `233804ms`, FCP `1053576ms`, LCP `1752544ms`, and INP `495656ms`, while TTFB was often good. This points to stale/background web-vital telemetry being accepted, not only a normal slow-rendering problem.
+- Durable PWA telemetry currently stores event type, metric name, timestamp, path, value, rating, and display mode. It does not persist user agent, device, browser family, metric `navigationType`, or visibility state, so current DB evidence can identify metric/path but not device/browser root cause.
+
+Files and systems inspected:
+- `src/components/pwa/pwa-telemetry.tsx`
+- `src/app/api/pwa/telemetry/route.ts`
+- `src/lib/pwa/telemetry-store.ts`
+- `src/lib/pwa/telemetry-durable.ts`
+- `tools/scripts/pwa-ramp-governance.mjs`
+- `.github/workflows/pwa-ramp-governance.yml`
+- Supabase production table `pwa_telemetry_events` was queried read-only.
+- GitHub scheduled workflow logs were inspected read-only.
+
+Risks and rollback:
+- P4B is read-only except documentation and memory updates.
+- The next code slice should not weaken production gates blindly. It should make the gate respect credible sample volume and prevent stale/implausible web-vital events from poisoning RUM.
+- Rollback for P4B docs is a normal docs revert.
+
+Recommended P4C implementation:
+- Server-side telemetry hygiene: reject unknown or implausible web-vital metric values in `normalizePwaTelemetryEvent` so already-deployed old clients cannot persist impossible values.
+- Client-side telemetry hygiene: suppress web-vital sends when the document is hidden and avoid enqueuing metric values beyond sane per-metric caps.
+- Governance gate alignment: make `tools/scripts/pwa-ramp-governance.mjs` treat poor-vitals rate as decisive only when web-vital sample volume meets `summary.thresholds.minSamples`; otherwise report a warning rather than failing scheduled production governance.
+- Add focused tests for low-sample governance behavior and telemetry normalization.
+
+Validation performed:
+- `git status --short`: clean before diagnosis.
+- GitHub PWA Ramp Governance latest runs: latest checked scheduled runs on 2026-06-28 were green, with one earlier failure `28305859484`.
+- GitHub PWA SLO Alerts latest runs: latest checked scheduled runs on 2026-06-28 were green.
+- GitHub log inspection for failed governance run `28305859484`: pass; failure was poor-vitals rate `66.67%` with summary `pass`, active alerts `0`, and event volume `4`.
+- GitHub log inspection for latest successful governance run `28335709316`: pass; poor-vitals rate `0.00%`, active alerts `0`, event volume `2`.
+- Supabase Management API read-only telemetry queries: pass; confirmed low current volume and identified path/metric contributors in the failing windows.
+
+Acceptance criteria:
+- Determine whether the current issue is still an active alert: pass, latest checked scheduled runs are not actively failing.
+- Determine whether the recent failure was a real product-rendering blocker or a telemetry/gate issue: pass, the recent failure was a low-sample gate false positive; the earlier failure includes stale/implausible values and needs telemetry hygiene.
+- Produce a targeted next implementation plan: pass.
+
+## Previous Candidate
 
 Candidate P3: PWA SLO alert delivery diagnostics.
 
@@ -60,7 +110,7 @@ Acceptance criteria:
 - Future scheduled workflow failures expose actionable non-secret response details in GitHub logs: implemented, pending next failing workflow occurrence for live proof.
 - Production docs and memory identify the webhook env as a remaining operational blocker: pass.
 
-## Previous Candidate
+## Earlier Candidate
 
 Candidate P2: rental listing controls.
 
@@ -699,7 +749,7 @@ Known notes:
 
 ## Active Production Risks
 
-- Real-user homepage performance is not currently cleared: scheduled PWA Ramp Governance run `28283521030` failed on 2026-06-27 with one active alert and poor-vitals rate `31.48%` over the `15.00%` gate.
+- PWA telemetry/gating needs a hygiene pass: current scheduled governance is green, but recent failures were driven by low-volume percentages and implausible stale web-vital values. P4C should fix ingestion and governance semantics before treating every poor-vitals percentage as a product rendering regression.
 - PWA SLO alert delivery is not production-complete: production is missing `PWA_SLO_ALERT_WEBHOOK_URL`, so active SLO alerts are detected and persisted but cannot be delivered to an operator channel yet.
 - Full dependency audit has no high/critical advisories after Candidate K local validation; remaining audit findings are non-high.
 - Distributed rate limiting is active through Vercel KV/Upstash, but the current provider resource is on the free plan. Revisit plan limits, eviction behavior, and SLA before broad public launch.
