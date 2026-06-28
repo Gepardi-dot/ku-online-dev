@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-28T21:10:00.000Z",
+  "last_updated_utc": "2026-06-28T21:35:00.000Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -27,16 +27,16 @@
   "session_context": {
     "active_objective": "Production hardening for KU BAZAR C2C marketplace",
     "current_task": {
-      "id": "candidate-p4b-pwa-governance-telemetry-diagnosis",
-      "title": "Diagnose PWA governance and telemetry quality",
-      "status": "read_only_diagnosis_complete_p4c_recommended",
+      "id": "candidate-p4c-pwa-telemetry-governance-hygiene",
+      "title": "Fix PWA telemetry hygiene and low-sample governance false positives",
+      "status": "local_validation_complete_pending_source_control_deploy",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-p4c-pwa-telemetry-governance-hygiene",
-      "title": "Fix PWA telemetry hygiene and low-sample governance false positives"
+      "id": "candidate-p4c-deploy-observation",
+      "title": "Commit, push, verify CI/Vercel, and observe production health/logs"
     },
-    "latest_user_request": "Proceed with the next production-readiness phase"
+    "latest_user_request": "Proceed with P4C implementation"
   },
   "technical_findings": [
     "Trendyol mobile web uses manifest + service worker + Workbox + push worker integration.",
@@ -103,7 +103,9 @@
     "Candidate P2 repaired rental listing controls by switching /sell, edit, and shared create/update validation from hardcoded Property category ID checks to the existing isPropertyCategory(id, name) helper. This preserves the fixed-ID path while supporting production category rows mapped to visible Property by name.",
     "Candidate P2 local validation passed on 2026-06-27: npm test, npm run typecheck, rerun npm run lint, and npm run build with a temporary Vercel production env file.",
     "Candidate P2 commit 71c85ee passed GitHub CI run 28282489108 and deployed to Vercel production as dpl_M3rkZPdn7bmQ5G9Axy7GC3g3X2Ei.",
-    "Candidate P2 signed-in production smoke created temporary rental listing f592fc6c-3b9f-4b14-af18-cb760370fb3b through /sell with Property, For rent, Monthly, and Duhok; homepage/detail rendered For Rent / Monthly with /month; owner delete returned 200; deleted detail returned 404; public title search cleanup returned count 0/items 0; browser console had 0 errors/warnings."
+    "Candidate P2 signed-in production smoke created temporary rental listing f592fc6c-3b9f-4b14-af18-cb760370fb3b through /sell with Property, For rent, Monthly, and Duhok; homepage/detail rendered For Rent / Monthly with /month; owner delete returned 200; deleted detail returned 404; public title search cleanup returned count 0/items 0; browser console had 0 errors/warnings.",
+    "Candidate P4C implements PWA telemetry hygiene: server normalization rejects unsupported/implausible web-vital names and values, client telemetry avoids hidden-document web-vital sends and applies the same caps, and pwa-ramp-governance treats poor-vitals rate as blocking only when web-vital sample count meets summary.thresholds.minSamples.",
+    "Candidate P4C local validation passed with focused governance tests, telemetry-store tests through npm test, typecheck, lint, production build with a temporary Vercel env file, and git diff --check. Source-control, CI, Vercel deploy, and scheduled-governance observation remain pending."
   ],
   "decisions": [
     {
@@ -138,7 +140,7 @@
     "Candidate P3 commit cf88f81 adds GitHub workflow diagnostics for PWA SLO alert endpoint failures and promotes PWA SLO alert envs to recommended in the secret readiness checker. CI run 28283615943 passed and Vercel deployment dpl_BkqTa7BHCoajugonwtiFV5Sc4CnW reached Ready.",
     "Scheduled PWA Ramp Governance run 28283521030 failed on 2026-06-27 with summary_status fail, active alerts 1, and poor-vitals rate 31.48% over the 15.00% gate. P4B later found this window included implausible stale web-vital values such as FCP 233804ms and LCP 1752544ms, so telemetry hygiene must be improved before treating every poor-vitals percentage as a normal rendering regression.",
     "P4B read-only diagnosis on 2026-06-28 found current scheduled PWA governance and SLO alert runs are green, but telemetry volume is very low: only 2 events in the latest 60-minute read-only DB window and 6 events in 24 hours. Governance run 28305859484 failed despite summary_status pass and active alerts 0 because the script failed on poor-vitals rate with only 3 rated web-vital samples.",
-    "Recommended P4C fix: reject unknown/implausible web-vital values server-side, suppress hidden/stale web-vital sends client-side, and make tools/scripts/pwa-ramp-governance.mjs apply poor-vitals failure only when web-vital sample volume meets summary.thresholds.minSamples; below that should warn, not fail scheduled governance.",
+    "P4C telemetry/governance hygiene is implemented locally but not yet deployed: reject unknown/implausible web-vital values server-side, suppress hidden/stale web-vital sends client-side, and make tools/scripts/pwa-ramp-governance.mjs apply poor-vitals failure only when web-vital sample volume meets summary.thresholds.minSamples; below that warns instead of failing scheduled governance.",
     "Rental listing creation is production-smoke proven for the /sell create/delete flow. Edit form behavior received the same category-name fix and is code/build validated, but editing an existing rental listing was not separately browser-smoked."
   ],
   "verification_log": [
@@ -446,6 +448,11 @@
       "timestamp_utc": "2026-06-28T21:10:00.000Z",
       "check": "Candidate P4B PWA governance and telemetry read-only diagnosis",
       "status": "current_schedules_green_low_volume_false_positive_and_stale_metric_sources_identified"
+    },
+    {
+      "timestamp_utc": "2026-06-28T21:35:00.000Z",
+      "check": "Candidate P4C PWA telemetry and governance hygiene local validation",
+      "status": "pass_pending_source_control_deploy_observation"
     }
   ]
 }

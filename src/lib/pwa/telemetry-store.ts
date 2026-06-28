@@ -125,6 +125,14 @@ const RETENTION_WINDOW_MS = 24 * 60 * 60 * 1000;
 const MAX_STORED_EVENTS = 60_000;
 const MAX_EVENT_NAME = 64;
 const MAX_PATH = 180;
+const SUPPORTED_WEB_VITAL_NAMES = new Set<VitalName>(['lcp', 'inp', 'cls', 'fcp', 'ttfb']);
+const WEB_VITAL_VALUE_LIMITS: Record<VitalName, number> = {
+  cls: 10,
+  fcp: 60_000,
+  inp: 60_000,
+  lcp: 60_000,
+  ttfb: 60_000,
+};
 
 const sharedStore = {
   events: [] as PwaTelemetryStoredEvent[],
@@ -357,6 +365,22 @@ export function normalizePwaTelemetryName(value: string): string {
   return value.trim().slice(0, MAX_EVENT_NAME).toLowerCase();
 }
 
+function isSupportedWebVitalName(value: string): value is VitalName {
+  return SUPPORTED_WEB_VITAL_NAMES.has(value as VitalName);
+}
+
+function isPlausibleWebVitalValue(name: VitalName, value: unknown): value is number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return false;
+  }
+
+  if (value < 0) {
+    return false;
+  }
+
+  return value <= WEB_VITAL_VALUE_LIMITS[name];
+}
+
 export function normalizePwaTelemetryDisplayMode(
   value: string | undefined | null,
 ): PwaTelemetryDisplayMode {
@@ -385,10 +409,21 @@ export function normalizePwaTelemetryEvent(
     event.rating === 'good' || event.rating === 'needs-improvement' || event.rating === 'poor'
       ? event.rating
       : null;
+  const normalizedName = normalizePwaTelemetryName(event.name);
+
+  if (event.type === 'web_vital') {
+    if (!isSupportedWebVitalName(normalizedName)) {
+      return null;
+    }
+
+    if (!isPlausibleWebVitalValue(normalizedName, event.value)) {
+      return null;
+    }
+  }
 
   return {
     type: event.type,
-    name: normalizePwaTelemetryName(event.name),
+    name: normalizedName,
     ts: eventTs,
     path: normalizePwaTelemetryPath(event.path),
     value: typeof event.value === 'number' && Number.isFinite(event.value) ? event.value : null,

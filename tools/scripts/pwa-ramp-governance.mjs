@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { pathToFileURL } from 'node:url';
 
 function parseArgs(argv) {
   const args = {};
@@ -145,7 +146,7 @@ function addFinding(findings, severity, code, message) {
   findings.push({ severity, code, message });
 }
 
-function evaluateGate(payload, thresholds) {
+export function evaluateGate(payload, thresholds) {
   const findings = [];
   const summary = payload?.summary ?? null;
   const totals = summary?.totals ?? null;
@@ -217,8 +218,23 @@ function evaluateGate(payload, thresholds) {
   }
 
   const poorRate = totals?.poorVitalsRate;
+  const webVitalsCount = totals?.webVitals;
+  const minWebVitalSamples = summary?.thresholds?.minSamples;
   if (typeof poorRate === 'number' && Number.isFinite(poorRate)) {
-    if (poorRate > thresholds.maxPoorVitalsRate) {
+    if (
+      typeof webVitalsCount === 'number' &&
+      Number.isFinite(webVitalsCount) &&
+      typeof minWebVitalSamples === 'number' &&
+      Number.isFinite(minWebVitalSamples) &&
+      webVitalsCount < minWebVitalSamples
+    ) {
+      addFinding(
+        findings,
+        'warn',
+        'poor_vitals_rate_low_sample',
+        `Poor vitals rate ${formatRate(poorRate)} has only ${webVitalsCount} web-vital samples; minimum for failure is ${minWebVitalSamples}.`,
+      );
+    } else if (poorRate > thresholds.maxPoorVitalsRate) {
       addFinding(
         findings,
         'fail',
@@ -499,8 +515,10 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  const message = error instanceof Error ? error.message : String(error);
-  console.error(`pwa-ramp-governance error: ${message}`);
-  process.exit(1);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`pwa-ramp-governance error: ${message}`);
+    process.exit(1);
+  });
+}

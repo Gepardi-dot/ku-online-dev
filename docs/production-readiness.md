@@ -10,6 +10,49 @@ The current hardening focus is to preserve the intended C2C marketplace behavior
 
 ## Latest Candidate
 
+Candidate P4C: PWA telemetry and governance hygiene.
+
+User-visible outcome:
+- Future PWA web-vital telemetry should be less likely to persist stale, hidden-tab, unsupported, or impossible metric samples that can create false production alarms.
+- Scheduled PWA governance now treats poor-vitals percentage as a production blocker only when web-vital sample volume meets the endpoint's own minimum sample threshold. Below that, it warns instead of failing the rollout gate.
+- This phase does not change Supabase schema, RLS, storage, auth providers, Vercel env, Algolia, payments, subscriptions, vouchers, or user-facing marketplace behavior.
+
+Current implementation state:
+- Server-side telemetry normalization rejects unsupported web-vital names and implausible values before durable persistence, so old clients cannot keep sending impossible values such as multi-minute FCP/LCP/INP samples.
+- Client-side PWA telemetry now avoids sending web-vital samples while the document is hidden and applies the same supported-metric/value caps before enqueueing telemetry.
+- `tools/scripts/pwa-ramp-governance.mjs` exports `evaluateGate` for focused tests and emits `poor_vitals_rate_low_sample` warnings when poor-vitals rate is high but web-vital sample count is below `summary.thresholds.minSamples`.
+- Source-control, CI, Vercel deployment, and post-deploy production smoke are pending at this checkpoint.
+
+Files and systems involved:
+- `src/components/pwa/pwa-telemetry.tsx`
+- `src/lib/pwa/telemetry-store.ts`
+- `src/lib/pwa/__tests__/telemetry-store.test.ts`
+- `tools/scripts/pwa-ramp-governance.mjs`
+- `tools/scripts/__tests__/pwa-ramp-governance.test.mjs`
+- `tsconfig.test.json`
+
+Risks and rollback:
+- The telemetry caps are intentionally high and only reject unsupported or implausible web-vital values; they should not hide normal poor performance.
+- The governance gate still fails poor-vitals regressions once sample volume is credible.
+- Rollback is a normal code revert if legitimate telemetry is found to be filtered unexpectedly or if scheduled governance misses a real regression.
+
+Validation performed:
+- `node --check tools/scripts/pwa-ramp-governance.mjs`: pass.
+- `node --test tools/scripts/__tests__/pwa-ramp-governance.test.mjs`: pass.
+- `npm run build:test`: pass.
+- `npm test`: pass.
+- `npm run typecheck`: pass.
+- `npm run lint`: pass on rerun with a longer timeout after the first lint attempt timed out without a failure result.
+- `npm run build`: first run failed because the local shell lacked required public env for `/robots.txt`; rerun passed with a temporary Vercel production env file. The temporary env file was deleted.
+- `git diff --check`: pass.
+
+Acceptance criteria:
+- Implausible/stale web-vital samples are rejected both client-side for updated clients and server-side for old clients: pass locally.
+- Low-sample poor-vitals governance failures become warnings, while credible sample-volume failures remain blocking: pass in focused tests.
+- Production deployment and scheduled-governance observation remain pending.
+
+## Previous Candidate
+
 Candidate P4B: PWA governance and telemetry read-only diagnosis.
 
 User-visible outcome:
@@ -58,7 +101,7 @@ Acceptance criteria:
 - Determine whether the recent failure was a real product-rendering blocker or a telemetry/gate issue: pass, the recent failure was a low-sample gate false positive; the earlier failure includes stale/implausible values and needs telemetry hygiene.
 - Produce a targeted next implementation plan: pass.
 
-## Previous Candidate
+## Earlier Candidate
 
 Candidate P3: PWA SLO alert delivery diagnostics.
 
@@ -749,7 +792,7 @@ Known notes:
 
 ## Active Production Risks
 
-- PWA telemetry/gating needs a hygiene pass: current scheduled governance is green, but recent failures were driven by low-volume percentages and implausible stale web-vital values. P4C should fix ingestion and governance semantics before treating every poor-vitals percentage as a product rendering regression.
+- PWA telemetry/gating hygiene is implemented locally in P4C, but production deployment and scheduled-governance observation are still pending. Current scheduled governance is green, but real-traffic volume remains low, so do not treat PWA performance as fully cleared yet.
 - PWA SLO alert delivery is not production-complete: production is missing `PWA_SLO_ALERT_WEBHOOK_URL`, so active SLO alerts are detected and persisted but cannot be delivered to an operator channel yet.
 - Full dependency audit has no high/critical advisories after Candidate K local validation; remaining audit findings are non-high.
 - Distributed rate limiting is active through Vercel KV/Upstash, but the current provider resource is on the free plan. Revisit plan limits, eviction behavior, and SLA before broad public launch.

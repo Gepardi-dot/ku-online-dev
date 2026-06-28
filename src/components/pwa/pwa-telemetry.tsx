@@ -46,6 +46,14 @@ const FLUSH_DELAY_MS = 8_000;
 const RETRY_DELAY_MS = 1_500;
 const MAX_DETAIL_STRING = 160;
 const MAX_VITAL_ID_LENGTH = 96;
+const SUPPORTED_WEB_VITAL_NAMES = new Set(['CLS', 'FCP', 'INP', 'LCP', 'TTFB']);
+const WEB_VITAL_VALUE_LIMITS: Record<string, number> = {
+  CLS: 10,
+  FCP: 60_000,
+  INP: 60_000,
+  LCP: 60_000,
+  TTFB: 60_000,
+};
 
 const lifecycleEventMap: LifecycleEventMap = {
   'ku-pwa-sw-registered': 'sw_registered',
@@ -162,6 +170,18 @@ function metricUnit(metricName: string): TelemetryEvent['unit'] {
     return 'score';
   }
   return 'ms';
+}
+
+function isPlausibleWebVitalMetric(metricName: string, value: number) {
+  if (!SUPPORTED_WEB_VITAL_NAMES.has(metricName)) {
+    return false;
+  }
+
+  if (!Number.isFinite(value) || value < 0) {
+    return false;
+  }
+
+  return value <= WEB_VITAL_VALUE_LIMITS[metricName];
 }
 
 export default function PwaTelemetry() {
@@ -293,6 +313,15 @@ export default function PwaTelemetry() {
       return;
     }
 
+    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+      return;
+    }
+
+    const roundedValue = roundMetricValue(metric.value);
+    if (!isPlausibleWebVitalMetric(metric.name, roundedValue)) {
+      return;
+    }
+
     const normalizedName = metric.name.toLowerCase();
     const metricId =
       typeof metric.id === 'string' && metric.id.length > 0
@@ -314,7 +343,7 @@ export default function PwaTelemetry() {
     enqueueEventRef.current({
       type: 'web_vital',
       name: normalizedName,
-      value: roundMetricValue(metric.value),
+      value: roundedValue,
       unit: metricUnit(metric.name),
       rating,
       id: metricId,

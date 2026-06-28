@@ -857,3 +857,12 @@
 - details: Latest checked PWA Ramp Governance and PWA SLO Alerts scheduled runs on 2026-06-28 were green. Run `28305859484` failed with summary `pass`, active alerts `0`, poor-vitals rate `66.67%`, and only 3 rated web-vital samples. Read-only production telemetry at `2026-06-28T21:01Z` had only 2 events in 60 minutes and 6 in 24 hours. The earlier `2026-06-27T08:12Z` failure had higher volume but included implausible values such as FCP `233804ms`, FCP `1053576ms`, LCP `1752544ms`, and INP `495656ms`, while TTFB often remained good.
 - verification: `git status --short`, `gh run list` for PWA Ramp Governance and PWA SLO Alerts, `gh run view 28305859484 --log-failed`, `gh run view 28335709316 --log`, production read-only SQL against `pwa_telemetry_events`, and source inspection of PWA telemetry/gate code passed.
 - risks: P4B made no runtime or provider change. P4C should add telemetry hygiene and align the governance gate with SLO minimum sample semantics; do not simply raise the poor-vitals threshold.
+
+## 2026-06-28T21:35:00.000Z
+- type: implementation
+- task_id: candidate-p4c-pwa-telemetry-governance-hygiene
+- task_title: PWA telemetry and governance hygiene
+- summary: Implemented the P4C hygiene slice locally so stale/implausible web-vital telemetry is filtered and low-sample poor-vitals rates warn instead of failing governance.
+- details: Server-side telemetry normalization now rejects unsupported web-vital names and implausible values before durable persistence. Client PWA telemetry now avoids hidden-document web-vital sends and applies the same high caps before enqueueing metrics. The PWA ramp governance script now exports `evaluateGate` and fails poor-vitals rate only when web-vital count meets `summary.thresholds.minSamples`; below that it emits `poor_vitals_rate_low_sample`.
+- verification: `node --check tools/scripts/pwa-ramp-governance.mjs`, focused `node --test`, `npm run build:test`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run build` with a temporary Vercel production env file, and `git diff --check` passed. The temporary env file was deleted.
+- risks: Source-control push, GitHub CI, Vercel deployment, production health/log checks, and scheduled-governance observation are still pending. The telemetry caps are deliberately high and should be revisited only if legitimate samples are filtered.
