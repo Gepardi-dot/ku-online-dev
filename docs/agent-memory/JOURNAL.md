@@ -866,3 +866,12 @@
 - details: Server-side telemetry normalization now rejects unsupported web-vital names and implausible values before durable persistence. Client PWA telemetry now avoids hidden-document web-vital sends and applies the same high caps before enqueueing metrics. The PWA ramp governance script now exports `evaluateGate` and fails poor-vitals rate only when web-vital count meets `summary.thresholds.minSamples`; below that it emits `poor_vitals_rate_low_sample`.
 - verification: `node --check tools/scripts/pwa-ramp-governance.mjs`, focused `node --test`, `npm run build:test`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run build` with a temporary Vercel production env file, and `git diff --check` passed. The temporary env file was deleted.
 - risks: Source-control push, GitHub CI, Vercel deployment, production health/log checks, and scheduled-governance observation are still pending. The telemetry caps are deliberately high and should be revisited only if legitimate samples are filtered.
+
+## 2026-06-28T21:48:00.000Z
+- type: deployment
+- task_id: candidate-p4c-pwa-telemetry-governance-hygiene
+- task_title: P4C deployment and production closeout
+- summary: Deployed the P4C telemetry/governance hygiene slice and verified production health, logs, and read-only governance.
+- details: Commit `2cf0ed7` (`fix: harden pwa telemetry governance`) was pushed to `main`; GitHub reported the protected-ref rule was bypassed, so CI and deploy were checked explicitly. GitHub CI run `28336858111` passed, and Vercel deployment `dpl_DBFEhJhs1BcT5xZapuwoSMaQJFEH` reached Ready. Vercel project metadata showed `ku-online-dev` latest production URL as `https://www.kubazar.net`.
+- verification: Public health returned HTTP `200` with database/storage `ok` on the deployment URL, `www.kubazar.net`, and `kubazar.net`. Protected internal health returned HTTP `200` with database/storage/rate-limit `ok`, rate-limit configured through Vercel KV, backend `upstash`. Vercel 500-status and error-level log scans for the deployment window returned no records. Local post-deploy PWA governance against `https://www.kubazar.net` returned `WARN`, not fail: durable source active, summary `pass`, rollout percent `10`, active alerts `0`, failed dispatches `0`, and only missing-rate warnings because event volume was `0` in the 60-minute window.
+- risks: The next scheduled PWA Ramp Governance run should still be observed, but no current active alert exists. Real-user PWA volume is too low to claim final performance clearance.

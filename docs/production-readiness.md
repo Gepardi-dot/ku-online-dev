@@ -17,11 +17,15 @@ User-visible outcome:
 - Scheduled PWA governance now treats poor-vitals percentage as a production blocker only when web-vital sample volume meets the endpoint's own minimum sample threshold. Below that, it warns instead of failing the rollout gate.
 - This phase does not change Supabase schema, RLS, storage, auth providers, Vercel env, Algolia, payments, subscriptions, vouchers, or user-facing marketplace behavior.
 
-Current implementation state:
+Current production state:
 - Server-side telemetry normalization rejects unsupported web-vital names and implausible values before durable persistence, so old clients cannot keep sending impossible values such as multi-minute FCP/LCP/INP samples.
 - Client-side PWA telemetry now avoids sending web-vital samples while the document is hidden and applies the same supported-metric/value caps before enqueueing telemetry.
 - `tools/scripts/pwa-ramp-governance.mjs` exports `evaluateGate` for focused tests and emits `poor_vitals_rate_low_sample` warnings when poor-vitals rate is high but web-vital sample count is below `summary.thresholds.minSamples`.
-- Source-control, CI, Vercel deployment, and post-deploy production smoke are pending at this checkpoint.
+- Commit `2cf0ed7` (`fix: harden pwa telemetry governance`) was pushed to `main`; GitHub CI run `28336858111` passed; Vercel production deployment `dpl_DBFEhJhs1BcT5xZapuwoSMaQJFEH` reached `Ready`.
+- Post-deploy public production health returned HTTP `200` with database and storage `ok` for the deployment URL, `www.kubazar.net`, and `kubazar.net`.
+- Protected internal health on `www.kubazar.net` returned HTTP `200` with database, storage, and rate-limit checks `ok`; rate limiting is configured through Vercel KV/Upstash.
+- Post-deploy Vercel 500-status and error-level log scans for the new deployment window returned no records.
+- Local post-deploy PWA governance against `https://www.kubazar.net` returned `WARN`, not fail: durable source active, summary `pass`, rollout percent `10`, active alerts `0`, no failed dispatches, and only missing-rate warnings because event volume was `0` in the 60-minute window.
 
 Files and systems involved:
 - `src/components/pwa/pwa-telemetry.tsx`
@@ -45,11 +49,18 @@ Validation performed:
 - `npm run lint`: pass on rerun with a longer timeout after the first lint attempt timed out without a failure result.
 - `npm run build`: first run failed because the local shell lacked required public env for `/robots.txt`; rerun passed with a temporary Vercel production env file. The temporary env file was deleted.
 - `git diff --check`: pass.
+- GitHub CI run `28336858111`: pass.
+- Vercel production deployment `dpl_DBFEhJhs1BcT5xZapuwoSMaQJFEH`: ready.
+- Public production health after deploy: pass, database and storage `ok`.
+- Protected internal production health after deploy: pass, database/storage/rate-limit `ok`, rate-limit backend `upstash`.
+- Vercel 500-status and error-level log scans for the new deployment window: no records.
+- Local `node tools/scripts/pwa-ramp-governance.mjs --base-url https://www.kubazar.net` with temporary Vercel production env secret: pass with warning-only result due missing rate data at zero event volume. The temporary env file was deleted.
 
 Acceptance criteria:
-- Implausible/stale web-vital samples are rejected both client-side for updated clients and server-side for old clients: pass locally.
-- Low-sample poor-vitals governance failures become warnings, while credible sample-volume failures remain blocking: pass in focused tests.
-- Production deployment and scheduled-governance observation remain pending.
+- Implausible/stale web-vital samples are rejected both client-side for updated clients and server-side for old clients: pass.
+- Low-sample poor-vitals governance failures become warnings, while credible sample-volume failures remain blocking: pass.
+- Production deployment, CI, health, logs, and read-only governance closeout are complete: pass.
+- The next scheduled PWA governance run should still be observed, but there is no current active PWA alert.
 
 ## Previous Candidate
 
@@ -792,7 +803,7 @@ Known notes:
 
 ## Active Production Risks
 
-- PWA telemetry/gating hygiene is implemented locally in P4C, but production deployment and scheduled-governance observation are still pending. Current scheduled governance is green, but real-traffic volume remains low, so do not treat PWA performance as fully cleared yet.
+- PWA telemetry/gating hygiene is deployed in P4C and post-deploy governance is warning-only, but real-traffic volume remains low. Do not treat PWA performance as fully cleared until future scheduled runs include credible event volume.
 - PWA SLO alert delivery is not production-complete: production is missing `PWA_SLO_ALERT_WEBHOOK_URL`, so active SLO alerts are detected and persisted but cannot be delivered to an operator channel yet.
 - Full dependency audit has no high/critical advisories after Candidate K local validation; remaining audit findings are non-high.
 - Distributed rate limiting is active through Vercel KV/Upstash, but the current provider resource is on the free plan. Revisit plan limits, eviction behavior, and SLA before broad public launch.
