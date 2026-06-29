@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "last_updated_utc": "2026-06-29T09:34:00.000Z",
+  "last_updated_utc": "2026-06-29T09:43:00.000Z",
   "project_context": {
     "repository_path": "c:\\Users\\miroa\\kubazar-candidate-e",
     "framework": "Next.js App Router",
@@ -29,12 +29,12 @@
     "current_task": {
       "id": "candidate-p5a-trust-safety-input-hardening",
       "title": "Harden abuse report, block, and report-management input validation",
-      "status": "local_validation_complete_pending_source_control_deploy",
+      "status": "complete_ci_deploy_health_logs_smoke",
       "phase": "production-hardening"
     },
     "next_task": {
-      "id": "candidate-p5a-deploy-observation",
-      "title": "Commit, push, verify CI/Vercel, and production health/logs"
+      "id": "next-production-hardening-slice",
+      "title": "Choose the next production-readiness slice after P5A closeout"
     },
     "latest_user_request": "Proceed with P5A trust/safety input hardening"
   },
@@ -109,7 +109,9 @@
     "Candidate P4C commit 2cf0ed7 passed GitHub CI run 28336858111 and deployed to Vercel production as dpl_DBFEhJhs1BcT5xZapuwoSMaQJFEH. Public health passed on deployment URL, www.kubazar.net, and kubazar.net; protected internal health passed with database/storage/rate-limit ok and Upstash backend; Vercel 500/error log scans returned no records.",
     "Post-deploy local PWA governance against https://www.kubazar.net on 2026-06-28 returned WARN, not fail: durable source active, summary pass, rollout percent 10, active alerts 0, failed dispatches 0, and only missing-rate warnings due zero events in the 60-minute window.",
     "Candidate P5A adds shared trust/safety input validation for abuse report, block/unblock, and report-management endpoints. The routes now reject malformed UUIDs and oversized report/block text before hitting database/RLS paths while preserving valid signed-in user and moderator flows.",
-    "Candidate P5A local validation passed with focused compiled abuse-input tests, focused ESLint on changed files, npm test, npm run typecheck, npm run lint, and npm run build with a temporary Vercel production env file. Source-control, CI, Vercel deploy, and production health/log checks remain pending."
+    "Candidate P5A local validation passed with focused compiled abuse-input tests, focused ESLint on changed files, npm test, npm run typecheck, npm run lint, and npm run build with a temporary Vercel production env file.",
+    "Candidate P5A commit 5185d04 passed GitHub CI run 28362849682 and deployed to Vercel production as dpl_EKb2r6E1Hd2FxjR6k9y6PksXrw5k. Public health passed on deployment URL, www.kubazar.net, kubazar.net, and ku-online-dev.vercel.app; protected internal health passed with database/storage/rate-limit ok and Upstash backend; Vercel 500/error log scans returned no records.",
+    "Post-deploy invalid-payload smokes confirmed /api/abuse/report rejects malformed targetId with HTTP 400 and /api/abuse/block rejects malformed blockedUserId with HTTP 400 before auth/DB paths."
   ],
   "decisions": [
     {
@@ -145,7 +147,7 @@
     "Scheduled PWA Ramp Governance run 28283521030 failed on 2026-06-27 with summary_status fail, active alerts 1, and poor-vitals rate 31.48% over the 15.00% gate. P4B later found this window included implausible stale web-vital values such as FCP 233804ms and LCP 1752544ms, so telemetry hygiene must be improved before treating every poor-vitals percentage as a normal rendering regression.",
     "P4B read-only diagnosis on 2026-06-28 found current scheduled PWA governance and SLO alert runs are green, but telemetry volume is very low: only 2 events in the latest 60-minute read-only DB window and 6 events in 24 hours. Governance run 28305859484 failed despite summary_status pass and active alerts 0 because the script failed on poor-vitals rate with only 3 rated web-vital samples.",
     "P4C telemetry/governance hygiene is deployed: reject unknown/implausible web-vital values server-side, suppress hidden/stale web-vital sends client-side, and make tools/scripts/pwa-ramp-governance.mjs apply poor-vitals failure only when web-vital sample volume meets summary.thresholds.minSamples; below that warns instead of failing scheduled governance. Real-traffic volume remains too low to fully clear PWA performance.",
-    "P5A trust/safety input validation is implemented locally but not yet deployed: abuse report, block/unblock, and report-management endpoints reject invalid UUIDs and oversized moderation text before database/RLS paths. Broader moderation-queue depth, repeat-offender detection, and auditability work remains open.",
+    "P5A trust/safety input validation is deployed: abuse report, block/unblock, and report-management endpoints reject invalid UUIDs and oversized moderation text before database/RLS paths. Broader moderation-queue depth, repeat-offender detection, and auditability work remains open.",
     "Rental listing creation is production-smoke proven for the /sell create/delete flow. Edit form behavior received the same category-name fix and is code/build validated, but editing an existing rental listing was not separately browser-smoked."
   ],
   "verification_log": [
@@ -468,6 +470,11 @@
       "timestamp_utc": "2026-06-29T09:34:00.000Z",
       "check": "Candidate P5A trust/safety input hardening local validation",
       "status": "pass_pending_source_control_deploy_observation"
+    },
+    {
+      "timestamp_utc": "2026-06-29T09:43:00.000Z",
+      "check": "Candidate P5A CI, Vercel deploy, health, logs, and invalid-payload smoke",
+      "status": "pass"
     }
   ]
 }

@@ -17,7 +17,7 @@ User-visible outcome:
 - This keeps existing C2C behavior intact: signed-in users can still report listings/users/messages and block users; moderators can still update report status and reactivate products.
 - This phase does not change Supabase schema, RLS, storage, auth providers, Vercel env, Algolia, payments, subscriptions, vouchers, or product listing behavior.
 
-Current implementation state:
+Current production state:
 - Added shared abuse/trust-safety input parsing in `src/lib/security/abuse-input.ts`.
 - Enforced UUID validation for report targets, blocked users, and moderator report IDs.
 - Added bounded text normalization for report reasons/details and block reasons.
@@ -26,7 +26,12 @@ Current implementation state:
   - `src/app/api/abuse/block/route.ts`
   - `src/app/api/abuse/report/manage/route.ts`
 - Added focused parser tests in `src/lib/security/__tests__/abuse-input.test.ts`.
-- Source-control, CI, Vercel deployment, and post-deploy production smoke are pending at this checkpoint.
+- Commit `5185d04` (`fix: harden trust safety inputs`) was pushed to `main`; GitHub CI run `28362849682` passed; Vercel production deployment `dpl_EKb2r6E1Hd2FxjR6k9y6PksXrw5k` reached `Ready`.
+- The deployment is aliased to `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Post-deploy public production health returned HTTP `200` with database and storage `ok` for the deployment URL, `www.kubazar.net`, `kubazar.net`, and `ku-online-dev.vercel.app`.
+- Protected internal health on `www.kubazar.net` returned HTTP `200` with database, storage, and rate-limit checks `ok`; rate limiting is configured through Vercel KV/Upstash.
+- Runtime invalid-payload smokes returned HTTP `400` before auth/DB paths for malformed `/api/abuse/report` target ID and malformed `/api/abuse/block` blocked-user ID.
+- Post-deploy Vercel 500-status and error-level log scans for the new deployment window returned no records.
 
 Risks and rollback:
 - Clients sending non-UUID IDs or oversized text now receive HTTP `400`; this is intentional because the underlying IDs are UUIDs and moderation text should be bounded.
@@ -41,12 +46,18 @@ Validation performed:
 - `npm run typecheck`: pass.
 - `npm run lint`: pass on rerun with a longer timeout after the first lint attempt timed out without a failure result.
 - `npm run build`: first run failed because the local shell lacked required public env for `/robots.txt`; rerun passed with a temporary Vercel production env file. The temporary env file was deleted.
+- GitHub CI run `28362849682`: pass.
+- Vercel production deployment `dpl_EKb2r6E1Hd2FxjR6k9y6PksXrw5k`: ready and aliased to production domains.
+- Public production health after deploy: pass, database and storage `ok`.
+- Protected internal production health after deploy: pass, database/storage/rate-limit `ok`, rate-limit backend `upstash`.
+- Invalid-payload production smokes for `/api/abuse/report` and `/api/abuse/block`: pass, both returned expected HTTP `400`.
+- Vercel 500-status and error-level log scans for the new deployment window: no records.
 
 Acceptance criteria:
-- Invalid report target IDs, blocked user IDs, and moderator report IDs are rejected before DB calls: pass locally.
-- Report/block free-text fields are normalized and bounded: pass locally.
-- Valid report/block/manage payload shapes still normalize to the expected database/API values: pass locally.
-- Production deployment and post-deploy verification remain pending.
+- Invalid report target IDs, blocked user IDs, and moderator report IDs are rejected before DB calls: pass.
+- Report/block free-text fields are normalized and bounded: pass.
+- Valid report/block/manage payload shapes still normalize to the expected database/API values: pass.
+- Production deployment, CI, health, logs, and invalid-payload smoke are complete: pass.
 
 ## Previous Candidate
 
@@ -848,6 +859,6 @@ Known notes:
 - Full dependency audit has no high/critical advisories after Candidate K local validation; remaining audit findings are non-high.
 - Distributed rate limiting is active through Vercel KV/Upstash, but the current provider resource is on the free plan. Revisit plan limits, eviction behavior, and SLA before broad public launch.
 - Production maintenance workflows should be observed on their next schedules; manual dispatch is intentionally avoided unless approved because these jobs can mutate production listings, translations, embeddings, Algolia indexes, and storage.
-- C2C abuse workflows still need continuous hardening. P5A adds local input validation for report/block/manage endpoints, but production deploy evidence, moderation-queue depth, repeat-offender detection, and auditability improvements remain open.
+- C2C abuse workflows still need continuous hardening. P5A deploys input validation for report/block/manage endpoints, but moderation-queue depth, repeat-offender detection, and auditability improvements remain open.
 - Server-side service-role paths should continue to receive ownership checks, tests, and audit logging.
 - Local and production environment parity should be checked before DB, auth, provider, storage, or deploy mutations.
