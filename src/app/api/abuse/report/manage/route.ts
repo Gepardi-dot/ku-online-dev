@@ -6,6 +6,7 @@ import { withSentryRoute } from '@/utils/sentry-route';
 import { createClient } from '@/utils/supabase/server';
 import { isModerator } from '@/lib/auth/roles';
 import { getEnv } from '@/lib/env';
+import { parseManageReportInput } from '@/lib/security/abuse-input';
 import {
   buildOriginAllowList,
   checkRateLimit,
@@ -33,12 +34,6 @@ const originAllowList = buildOriginAllowList([
   'https://ku-online-dev.vercel.app',
   'http://localhost:5000',
 ]);
-
-type ManageReportBody = {
-  id?: string;
-  status?: 'open' | 'auto-flagged' | 'resolved' | 'dismissed';
-  reactivateProduct?: boolean;
-};
 
 function tooManyRequestsResponse(retryAfter: number, message: string) {
   const response = NextResponse.json({ error: message }, { status: 429 });
@@ -75,23 +70,15 @@ const handler: (request: NextRequest) => Promise<Response> = async (request: Nex
     return tooManyRequestsResponse(userRate.retryAfter, 'Too many requests. Please try again later.');
   }
 
+  const body = await request.json().catch(() => ({}));
+  const parsedInput = parseManageReportInput(body);
+  if (!parsedInput.ok) {
+    return NextResponse.json({ error: parsedInput.error }, { status: 400 });
+  }
+  const { id, status, reactivateProduct } = parsedInput.value;
+
   if (!supabaseServiceRole) {
     return NextResponse.json({ error: 'Service role client unavailable' }, { status: 500 });
-  }
-
-  const body = (await request.json().catch(() => ({}))) as ManageReportBody;
-  const id = typeof body.id === 'string' ? body.id.trim() : '';
-  const status = typeof body.status === 'string' ? (body.status as ManageReportBody['status']) : undefined;
-  const reactivateProduct = body.reactivateProduct === true;
-
-  const allowedStatuses = new Set<ManageReportBody['status']>(['open', 'auto-flagged', 'resolved', 'dismissed']);
-
-  if (!id) {
-    return NextResponse.json({ error: 'Missing report id' }, { status: 400 });
-  }
-
-  if (status && !allowedStatuses.has(status)) {
-    return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
   }
 
   const { data: existing, error: fetchError } = await supabaseServiceRole

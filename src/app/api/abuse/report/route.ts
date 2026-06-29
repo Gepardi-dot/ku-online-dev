@@ -11,6 +11,7 @@ import {
   isSameOriginRequest,
 } from '@/lib/security/request';
 import { getEnv } from '@/lib/env';
+import { parseAbuseReportInput } from '@/lib/security/abuse-input';
 
 export const runtime = 'nodejs';
 
@@ -26,13 +27,6 @@ const originAllowList = buildOriginAllowList([
 
 const REPORT_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 40 } as const;
 const REPORT_RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 20 } as const;
-
-type ReportBody = {
-  targetType?: 'product' | 'user' | 'message';
-  targetId?: string;
-  reason?: string;
-  details?: string;
-};
 
 const handler: (request: Request) => Promise<Response> = async (request: Request) => {
   const originHeader = request.headers.get('origin');
@@ -53,15 +47,12 @@ const handler: (request: Request) => Promise<Response> = async (request: Request
     }
   }
 
-  const body = (await request.json().catch(() => ({}))) as ReportBody;
-  const targetType = body.targetType;
-  const targetId = body.targetId;
-  const reason = (body.reason ?? '').trim();
-  const details = (body.details ?? '').trim() || null;
-
-  if (!targetType || !targetId || !reason) {
-    return NextResponse.json({ error: 'targetType, targetId, and reason are required.' }, { status: 400 });
+  const body = await request.json().catch(() => ({}));
+  const parsedInput = parseAbuseReportInput(body);
+  if (!parsedInput.ok) {
+    return NextResponse.json({ error: parsedInput.error }, { status: 400 });
   }
+  const { targetType, targetId, reason, details } = parsedInput.value;
 
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
@@ -103,8 +94,6 @@ const handler: (request: Request) => Promise<Response> = async (request: Request
     payload.reported_user_id = targetId;
   } else if (targetType === 'message') {
     payload.message_id = targetId;
-  } else {
-    return NextResponse.json({ error: 'Unsupported targetType.' }, { status: 400 });
   }
 
   const { error } = await supabase

@@ -11,6 +11,7 @@ import {
   isSameOriginRequest,
 } from '@/lib/security/request';
 import { getEnv } from '@/lib/env';
+import { parseBlockUserInput } from '@/lib/security/abuse-input';
 
 export const runtime = 'nodejs';
 
@@ -26,11 +27,6 @@ const originAllowList = buildOriginAllowList([
 
 const BLOCK_RATE_LIMIT_PER_IP = { windowMs: 60_000, max: 60 } as const;
 const BLOCK_RATE_LIMIT_PER_USER = { windowMs: 60_000, max: 30 } as const;
-
-type BlockBody = {
-  blockedUserId?: string;
-  reason?: string;
-};
 
 const postHandler: (request: Request) => Promise<Response> = async (request: Request) => {
   const originHeader = request.headers.get('origin');
@@ -51,13 +47,12 @@ const postHandler: (request: Request) => Promise<Response> = async (request: Req
     }
   }
 
-  const body = (await request.json().catch(() => ({}))) as BlockBody;
-  const blockedUserId = body.blockedUserId;
-  const reason = (body.reason ?? '').trim() || null;
-
-  if (!blockedUserId) {
-    return NextResponse.json({ error: 'blockedUserId is required.' }, { status: 400 });
+  const body = await request.json().catch(() => ({}));
+  const parsedInput = parseBlockUserInput(body);
+  if (!parsedInput.ok) {
+    return NextResponse.json({ error: parsedInput.error }, { status: 400 });
   }
+  const { blockedUserId, reason } = parsedInput.value;
 
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
@@ -122,11 +117,12 @@ const deleteHandler: (request: Request) => Promise<Response> = async (request: R
     }
   }
 
-  const body = (await request.json().catch(() => ({}))) as BlockBody;
-  const blockedUserId = body.blockedUserId;
-  if (!blockedUserId) {
-    return NextResponse.json({ error: 'blockedUserId is required.' }, { status: 400 });
+  const body = await request.json().catch(() => ({}));
+  const parsedInput = parseBlockUserInput(body);
+  if (!parsedInput.ok) {
+    return NextResponse.json({ error: parsedInput.error }, { status: 400 });
   }
+  const { blockedUserId } = parsedInput.value;
 
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);

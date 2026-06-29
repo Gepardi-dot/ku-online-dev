@@ -1,6 +1,6 @@
 # KU BAZAR Production Readiness
 
-Last updated: 2026-06-28
+Last updated: 2026-06-29
 
 ## Current Status
 
@@ -9,6 +9,46 @@ KU BAZAR should still be treated as a production-capable beta until abuse resist
 The current hardening focus is to preserve the intended C2C marketplace behavior while improving production confidence. Intentional product decisions remain in place: public product browsing for signed-out users, contact/actions gated by sign-in, no marketplace payments for now, and automatic product lifecycle cleanup after roughly three months.
 
 ## Latest Candidate
+
+Candidate P5A: trust/safety input hardening.
+
+User-visible outcome:
+- Abuse reporting, user blocking/unblocking, and moderator report-management endpoints now reject malformed IDs and oversized trust/safety text before hitting database/RLS paths.
+- This keeps existing C2C behavior intact: signed-in users can still report listings/users/messages and block users; moderators can still update report status and reactivate products.
+- This phase does not change Supabase schema, RLS, storage, auth providers, Vercel env, Algolia, payments, subscriptions, vouchers, or product listing behavior.
+
+Current implementation state:
+- Added shared abuse/trust-safety input parsing in `src/lib/security/abuse-input.ts`.
+- Enforced UUID validation for report targets, blocked users, and moderator report IDs.
+- Added bounded text normalization for report reasons/details and block reasons.
+- Wired validation into:
+  - `src/app/api/abuse/report/route.ts`
+  - `src/app/api/abuse/block/route.ts`
+  - `src/app/api/abuse/report/manage/route.ts`
+- Added focused parser tests in `src/lib/security/__tests__/abuse-input.test.ts`.
+- Source-control, CI, Vercel deployment, and post-deploy production smoke are pending at this checkpoint.
+
+Risks and rollback:
+- Clients sending non-UUID IDs or oversized text now receive HTTP `400`; this is intentional because the underlying IDs are UUIDs and moderation text should be bounded.
+- The change is limited to request validation and should not affect valid report/block/moderation actions.
+- Rollback is a normal code revert if a legitimate client payload is found to be incorrectly rejected.
+
+Validation performed:
+- Focused compiled `abuse-input` node test: pass.
+- Focused ESLint for changed route/helper/test files: pass on rerun with a longer timeout after the first focused lint attempt timed out without a failure result.
+- `npm run build:test`: pass.
+- `npm test`: pass. Existing product-search fallback tests still print expected test-env warnings, but all tests passed.
+- `npm run typecheck`: pass.
+- `npm run lint`: pass on rerun with a longer timeout after the first lint attempt timed out without a failure result.
+- `npm run build`: first run failed because the local shell lacked required public env for `/robots.txt`; rerun passed with a temporary Vercel production env file. The temporary env file was deleted.
+
+Acceptance criteria:
+- Invalid report target IDs, blocked user IDs, and moderator report IDs are rejected before DB calls: pass locally.
+- Report/block free-text fields are normalized and bounded: pass locally.
+- Valid report/block/manage payload shapes still normalize to the expected database/API values: pass locally.
+- Production deployment and post-deploy verification remain pending.
+
+## Previous Candidate
 
 Candidate P4C: PWA telemetry and governance hygiene.
 
@@ -62,7 +102,7 @@ Acceptance criteria:
 - Production deployment, CI, health, logs, and read-only governance closeout are complete: pass.
 - The next scheduled PWA governance run should still be observed, but there is no current active PWA alert.
 
-## Previous Candidate
+## Earlier Candidate
 
 Candidate P4B: PWA governance and telemetry read-only diagnosis.
 
@@ -808,6 +848,6 @@ Known notes:
 - Full dependency audit has no high/critical advisories after Candidate K local validation; remaining audit findings are non-high.
 - Distributed rate limiting is active through Vercel KV/Upstash, but the current provider resource is on the free plan. Revisit plan limits, eviction behavior, and SLA before broad public launch.
 - Production maintenance workflows should be observed on their next schedules; manual dispatch is intentionally avoided unless approved because these jobs can mutate production listings, translations, embeddings, Algolia indexes, and storage.
-- C2C abuse workflows still need continuous hardening: reporting, blocking, moderation queues, repeat-offender detection, and auditability.
+- C2C abuse workflows still need continuous hardening. P5A adds local input validation for report/block/manage endpoints, but production deploy evidence, moderation-queue depth, repeat-offender detection, and auditability improvements remain open.
 - Server-side service-role paths should continue to receive ownership checks, tests, and audit logging.
 - Local and production environment parity should be checked before DB, auth, provider, storage, or deploy mutations.
