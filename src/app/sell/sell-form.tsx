@@ -1,1 +1,1 @@
-file:///workspace/ku-fix-batch/RESTORE_sell-form.tsx
+{{INCLUDE_FILE:/workspace/ku-fix-batch/RESTORE_sell-form.tsx}}
