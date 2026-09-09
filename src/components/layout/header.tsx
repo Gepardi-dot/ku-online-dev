@@ -248,16 +248,20 @@ export default function AppHeader({ user }: AppHeaderProps) {
     [searchParams],
   );
 
+  const runSearch = useCallback(() => {
+    const query = updateQueryString({
+      search: searchTerm.trim() ? searchTerm.trim() : null,
+      location: city !== 'all' ? city : null,
+    });
+    router.push(`/products${query}`);
+  }, [updateQueryString, searchTerm, city, router]);
+
   const handleSearchSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      const query = updateQueryString({
-        search: searchTerm.trim() ? searchTerm.trim() : null,
-        location: city !== 'all' ? city : null,
-      });
-      router.push(`/products${query}`);
+      runSearch();
     },
-    [updateQueryString, searchTerm, city, router],
+    [runSearch],
   );
 
   const handleCitySelection = useCallback(
@@ -412,6 +416,10 @@ export default function AppHeader({ user }: AppHeaderProps) {
                     type="submit"
                     className="h-9 w-12 rounded-full bg-primary hover:bg-accent-foreground"
                     aria-label={t('header.searchButton')}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      runSearch();
+                    }}
                   >
                     <Search className="h-5 w-5" aria-hidden="true" />
                   </Button>
@@ -493,6 +501,10 @@ export default function AppHeader({ user }: AppHeaderProps) {
                 type="submit"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
                 aria-label={t('header.searchButton')}
+                onClick={(event) => {
+                  event.preventDefault();
+                  runSearch();
+                }}
               >
                 <Search className="h-5 w-5" aria-hidden="true" />
               </button>
