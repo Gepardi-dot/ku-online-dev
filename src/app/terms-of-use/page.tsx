@@ -15,7 +15,7 @@ export default async function TermsOfUsePage() {
         <div className="container mx-auto px-4 max-w-4xl">
           <h1 className="text-3xl font-bold mb-6">Terms of Use</h1>
           <p className="text-gray-700 mb-4">
-            By using KU‑ONLINE you agree to these terms. KU‑ONLINE provides a
+            By using KU BAZAR you agree to these terms. KU BAZAR provides a
             platform where users list, buy, and sell items. We are not a party to
             transactions between users.
           </p>
@@ -33,12 +33,12 @@ export default async function TermsOfUsePage() {
           </ul>
           <h2 className="text-xl font-semibold mt-8 mb-3">Content and listings</h2>
           <p className="text-gray-700">
-            You are responsible for the content you post. KU‑ONLINE may remove
+            You are responsible for the content you post. KU BAZAR may remove
             content or restrict accounts that violate policies or the law.
           </p>
           <h2 className="text-xl font-semibold mt-8 mb-3">Limitation of liability</h2>
           <p className="text-gray-700">
-            To the extent permitted by law, KU‑ONLINE is not liable for losses
+            To the extent permitted by law, KU BAZAR is not liable for losses
             arising from transactions between users. The service is provided on an
             “as‑is” basis.
           </p>
@@ -51,4 +51,3 @@ export default async function TermsOfUsePage() {
     </AppLayout>
   );
 }
-

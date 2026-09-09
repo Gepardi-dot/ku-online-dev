@@ -23,6 +23,8 @@ interface ProductCardProps {
   imagePriority?: boolean;
   imageQuality?: number;
   prefetch?: boolean;
+  /** When set, overrides the default price<=0 → Free label (used by sell preview). */
+  forceFreeLabel?: boolean;
 }
 
 const conditionColorMap: Record<string, string> = {
@@ -41,6 +43,7 @@ const ProductCard = memo(function ProductCardImpl({
   imagePriority = false,
   imageQuality = 70,
   prefetch = false,
+  forceFreeLabel,
 }: ProductCardProps) {
   const { t, locale, messages } = useLocale();
   const isRtl = rtlLocales.includes(locale);
@@ -100,7 +103,11 @@ const ProductCard = memo(function ProductCardImpl({
 
   const sellerNameFromStore = (product.sellerStoreName ?? '').trim();
   const sellerNameFromProfile = (product.seller?.fullName ?? product.seller?.name ?? product.seller?.email ?? '').trim();
-  const sellerDisplayName = sellerNameFromStore || sellerNameFromProfile || messages.product.sellerFallback;
+  // Prefer person name (matches product detail); show store separately when it differs.
+  const sellerDisplayName = sellerNameFromProfile || sellerNameFromStore || messages.product.sellerFallback;
+  const showStoreChip =
+    Boolean(sellerNameFromStore) &&
+    sellerNameFromStore.toLowerCase() !== sellerDisplayName.toLowerCase();
   const isAdminOwnedListing = Boolean(viewerIsAdmin && viewerId && product.sellerId && viewerId === product.sellerId);
   const showVerifiedBadge = Boolean(product.seller?.isVerified || sellerNameFromStore || isAdminOwnedListing);
   const isPropertyListing = isPropertyCategory(product.categoryId, product.category?.name ?? null);
@@ -123,7 +130,11 @@ const ProductCard = memo(function ProductCardImpl({
       : 'bg-emerald-600'
     : getConditionColor(product.condition || null);
   const numericPrice = Number(product.price);
-  const isFreeListing = Number.isFinite(numericPrice) && numericPrice <= 0;
+  const hasExplicitPrice = Number.isFinite(numericPrice);
+  const isFreeListing =
+    typeof forceFreeLabel === 'boolean'
+      ? forceFreeLabel
+      : hasExplicitPrice && numericPrice <= 0;
   const priceSuffix =
     isPropertyListing && normalizedListingType === 'rent'
       ? product.rentalTerm === 'monthly'
@@ -209,7 +220,7 @@ const ProductCard = memo(function ProductCardImpl({
           <div className="flex items-center justify-start gap-2">
             {isFreeListing ? (
               <span className="text-lg font-bold text-primary bidi-auto">{t('sellForm.fields.free')}</span>
-            ) : (
+            ) : Number.isFinite(numericPrice) ? (
               <div className="inline-flex items-baseline gap-1.5">
                 <CurrencyText
                   amount={numericPrice}
@@ -221,6 +232,8 @@ const ProductCard = memo(function ProductCardImpl({
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{priceSuffix}</span>
                 ) : null}
               </div>
+            ) : (
+              <span className="text-lg font-bold text-muted-foreground bidi-auto">—</span>
             )}
           </div>
           
@@ -261,6 +274,14 @@ const ProductCard = memo(function ProductCardImpl({
                 </>
               ) : null}
             </span>
+            {showStoreChip ? (
+              <span
+                dir="auto"
+                className="inline-flex max-w-full truncate rounded-full border border-slate-200/80 bg-white px-2.5 py-1 font-medium text-slate-500 bidi-auto"
+              >
+                {sellerNameFromStore}
+              </span>
+            ) : null}
           </div>
         </div>
         </CardContent>

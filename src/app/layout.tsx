@@ -30,8 +30,8 @@ const notoKufiArabic = Noto_Kufi_Arabic({
 });
 
 export const metadata: Metadata = {
-  title: 'KU BAZAR - Your Global Online Shopping Destination',
-  description: 'A multi-vendor local marketplace for the Kurdistan region.',
+  title: 'KU BAZAR — Buy & sell between people in Kurdistan',
+  description: 'Peer-to-peer marketplace for Kurdistan. List items, chat with sellers, and arrange deals directly.',
   applicationName: 'KU BAZAR',
   manifest: '/manifest.webmanifest',
   appleWebApp: {

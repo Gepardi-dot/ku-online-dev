@@ -15,14 +15,14 @@ export default async function PrivacyPolicyPage() {
         <div className="container mx-auto px-4 max-w-4xl">
           <h1 className="text-3xl font-bold mb-6">Privacy Policy</h1>
           <p className="text-gray-700 mb-4">
-            This page describes how KU‑ONLINE handles personal information when you
+            This page describes how KU BAZAR handles personal information when you
             use our marketplace. It summarizes common practices and may be updated
             as our product evolves.
           </p>
           <h2 className="text-xl font-semibold mt-8 mb-3">Data we collect</h2>
           <ul className="list-disc pl-6 space-y-2 text-gray-700">
             <li>Account details you provide (name, email, and profile info).</li>
-            <li>Listing content, messages, and activity on KU‑ONLINE.</li>
+            <li>Listing content, messages, and activity on KU BAZAR.</li>
             <li>Technical data such as IP address, device, and cookies to keep you signed in and secure the service.</li>
           </ul>
           <h2 className="text-xl font-semibold mt-8 mb-3">How we use data</h2>
@@ -33,7 +33,7 @@ export default async function PrivacyPolicyPage() {
           </ul>
           <h2 className="text-xl font-semibold mt-8 mb-3">Sharing</h2>
           <p className="text-gray-700">
-            We share data with service providers that help run KU‑ONLINE (for
+            We share data with service providers that help run KU BAZAR (for
             example, cloud hosting and analytics) under appropriate safeguards, and
             with authorities when required by law.
           </p>
@@ -52,4 +52,3 @@ export default async function PrivacyPolicyPage() {
     </AppLayout>
   );
 }
-

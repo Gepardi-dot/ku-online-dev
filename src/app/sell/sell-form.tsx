@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
+  AlertTriangle,
   Camera,
   CheckCircle2,
   ChevronDown,
@@ -35,6 +36,7 @@ import { compressToWebp } from '@/lib/images/client-compress';
 import { highlightDollar } from '@/components/currency-text';
 import { useLocale } from '@/providers/locale-provider';
 import { rtlLocales } from '@/lib/locale/dictionary';
+import { isAdmin } from '@/lib/auth/roles';
 import { CATEGORY_LABEL_MAP, SPONSORS_CATEGORY_ID } from '@/data/category-ui-config';
 import ProductCard from '@/components/product-card-new';
 import type { ProductWithRelations } from '@/lib/services/products';
@@ -136,6 +138,7 @@ interface SellFormProps {
 export default function SellForm({ user, initialCategories = [], storeContext = null }: SellFormProps) {
   const [loading, setLoading] = useState(false);
   const [storageBusy, setStorageBusy] = useState(false);
+  const [dailyLimitBanner, setDailyLimitBanner] = useState<{ limit: number } | null>(null);
   const initialCategoryOptions = useMemo(() => mapCategoriesForUi(initialCategories), [initialCategories]);
   const hasInitialCategories = initialCategoryOptions.length > 0;
   const [formData, setFormData] = useState<SellFormData>({
@@ -1130,6 +1133,9 @@ export default function SellForm({ user, initialCategories = [], storeContext = 
           .replace('{limit}', limitLabel)
           .concat(dailyLimit < 10 ? ` ${t('sellForm.toast.dailyLimitUpgradeDescription')}` : '');
 
+        if (!isAdmin(user)) {
+          setDailyLimitBanner({ limit: dailyLimit });
+        }
         toast({
           title: t('sellForm.toast.dailyLimitTitle'),
           description,
@@ -1206,8 +1212,10 @@ export default function SellForm({ user, initialCategories = [], storeContext = 
   const previewImage = uploadedImages[0]?.url ?? null;
   const previewNumericPrice = (() => {
     if (isFree) return 0;
-    const numericPrice = Number.parseFloat(formData.price);
-    return Number.isFinite(numericPrice) ? numericPrice : 0;
+    const raw = formData.price.trim();
+    if (!raw) return null;
+    const numericPrice = Number.parseFloat(raw);
+    return Number.isFinite(numericPrice) ? numericPrice : null;
   })();
   const metadata =
     currentUser && typeof currentUser.user_metadata === 'object' && currentUser.user_metadata !== null
@@ -1222,7 +1230,7 @@ export default function SellForm({ user, initialCategories = [], storeContext = 
     id: 'preview-listing',
     title: previewTitle,
     description: formData.description.trim() || null,
-    price: previewNumericPrice,
+    price: (previewNumericPrice ?? Number.NaN) as number,
     currency: formData.currency,
     condition: isPropertyCategorySelected ? null : formData.condition.trim() || null,
     listingType: normalizeProductListingType(formData.listingType),
@@ -1290,6 +1298,36 @@ export default function SellForm({ user, initialCategories = [], storeContext = 
                 </div>
 
               </CardHeader>
+
+              {dailyLimitBanner && !isAdmin(user) ? (
+                <div
+                  role="alert"
+                  className="mx-6 mb-4 rounded-xl border-2 border-red-500 bg-red-50 px-4 py-3 text-red-950 shadow-sm md:mx-8"
+                >
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-red-600" aria-hidden />
+                    <div className="min-w-0 space-y-1">
+                      <p className="text-sm font-bold tracking-tight">
+                        {t('sellForm.toast.dailyLimitTitle')}
+                      </p>
+                      <p className="text-sm leading-snug">
+                        {t('sellForm.toast.dailyLimitDescription').replace(
+                          '{limit}',
+                          new Intl.NumberFormat(
+                            locale === 'ku' ? 'ku-u-nu-arab' : locale === 'ar' ? 'ar-u-nu-arab' : 'en-US',
+                          ).format(dailyLimitBanner.limit),
+                        )}
+                        {dailyLimitBanner.limit < 10
+                          ? ` ${t('sellForm.toast.dailyLimitUpgradeDescription')}`
+                          : ''}
+                      </p>
+                      <p className="text-xs font-medium text-red-800/80">
+                        Limit resets at midnight (Asia/Baghdad).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               <CardContent className="p-6 pt-0 md:p-8 md:pt-0">
                 <form
@@ -2047,7 +2085,7 @@ export default function SellForm({ user, initialCategories = [], storeContext = 
                 </CardHeader>
                 <CardContent className="p-6 pt-4">
                   <div className="pointer-events-none select-none">
-                    <ProductCard product={previewProduct} viewerId={null} interactive={false} />
+                    <ProductCard product={previewProduct} viewerId={null} interactive={false} forceFreeLabel={isFree} />
                   </div>
                 </CardContent>
               </Card>
