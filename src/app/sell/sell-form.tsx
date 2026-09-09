@@ -1,1 +1,1 @@
-PLACEHOLDER_WILL_REPLACE
+LOAD_FROM:/workspace/ku-fix-batch/_restore_sell_banner.json#content
