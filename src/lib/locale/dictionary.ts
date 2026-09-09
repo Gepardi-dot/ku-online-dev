@@ -111,7 +111,7 @@ export const translations = {
       },
       paymentSecurityTitle: "Payment & Security",
       paymentSecurityLinks: {
-        secureShopping: "Secure Shopping",
+        secureShopping: "Safe buying & selling",
         feesPayments: "Fees & Payments",
         privacyPolicy: "Privacy Policy",
         termsOfUse: "Terms of Use",
@@ -138,22 +138,22 @@ export const translations = {
         {
           question: "Is KU BAZAR reliable and safe to use?",
           answer:
-            "Yes, KU BAZAR is a trustworthy marketplace. We protect every transaction with buyer safeguards so you can shop confidently.",
+            "Yes. KU BAZAR is a peer-to-peer marketplace — you chat with sellers and arrange pickup or meeting directly. Stay safe: meet in public, verify items, and never send money blindly.",
         },
         {
-          question: "How long does shipping take?",
+          question: "How do I get the item after I buy?",
           answer:
-            "Delivery times depend on the seller's location and yours, but most local orders arrive within 1–3 business days.",
+            "You and the seller arrange it yourselves — meetup, pickup, or local delivery you agree on. There is no cart checkout; Chat is the path.",
         },
         {
-          question: "How can I contact customer service?",
+          question: "How can I get help?",
           answer:
-            "Reach our team any time through the Help Center. We offer live chat and fast email support around the clock.",
+            "Use in-app Chat with the other person first. For account or safety issues, contact support via the Help Center.",
         },
       ],
       subscribeTitle: "Stay Updated with KU BAZAR",
       subscribeDescription:
-        "Subscribe to our newsletter for exclusive deals, new product alerts, and shopping tips.",
+        "Get new listing alerts and tips for buying and selling between people on KU BAZAR.",
       subscribePlaceholder: "Your email address",
       subscribeButton: "Subscribe",
       subscribeSuccess: "Thanks for subscribing! You will hear from us soon.",
