@@ -63,8 +63,8 @@ export const CATEGORY_UI_CONFIG: CategoryUiConfig[] = [
     label: 'Home Appliance',
     labelAr: 'أجهزة منزلية',
     labelKu: 'کەرەساتی ناو ماڵ',
-    // Temporary: real binary lives at _binary-probe.webp while corrupted home-appliance.webp stub is removed
-    icon: '/optimized/category-icons/_binary-probe.webp',
+    // Use PNG master until a real home-appliance.webp binary is restored on main
+    icon: '/Home%20appliance.png',
     matchNames: ['home appliance', 'home & garden', 'home and garden'],
   },
   {
