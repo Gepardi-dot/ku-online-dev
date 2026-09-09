@@ -1,1 +1,1 @@
-LOAD_FROM:/workspace/ku-fix-batch/_restore_sell_banner.json#content
+file:///workspace/ku-fix-batch/RESTORE_sell-form.tsx
