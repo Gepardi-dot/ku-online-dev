@@ -223,7 +223,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, '.'),
   images: {
     remotePatterns,
-    qualities: [60, 70, 75, 82],
+    qualities: [60, 70, 75, 82, 90, 95],
     // Local Supabase storage runs on 127.0.0.1 in dev; Next.js blocks private-IP
     // upstreams unless this flag is enabled.
     dangerouslyAllowLocalIP: !isProduction,
