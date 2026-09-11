@@ -9,6 +9,7 @@ import { SponsorStoreBasketBar } from '@/components/sponsors/SponsorStoreBasketB
 import { WhatsAppDeepLink } from '@/components/sponsors/WhatsAppDeepLink';
 import { SponsorStoreProductCard, type SponsorStoreProductCardModel } from '@/components/sponsors/SponsorStoreProductCard';
 import { SponsorStoreServiceCard } from '@/components/sponsors/SponsorStoreServiceCard';
+import { SponsorStoreAdminActions } from '@/components/sponsors/SponsorStoreAdminActions';
 import { SponsorStoreTabs } from '@/components/sponsors/SponsorStoreTabs';
 import { Button } from '@/components/ui/button';
 import { VerifiedBadge } from '@/components/ui/verified-badge';
@@ -359,24 +360,14 @@ export default async function SponsorStorePage({
                 </div>
 
                 {canManage ? (
-                  <div className="mt-3 flex items-center gap-2">
-                    <Button
-                      asChild
-                      size="sm"
-                      variant="outline"
-                      className="h-9 rounded-full border-black/10 bg-white/70 px-3.5 text-xs font-bold shadow-sm hover:bg-white"
-                    >
-                      <Link href={manageHref} prefetch={false} className={cn(isRtl && 'flex-row-reverse')}>
-                        {serverTranslate(locale, 'sponsorManage.manageButton')}
-                      </Link>
-                    </Button>
-
-                    <Button asChild size="sm" className="h-9 rounded-full px-3.5 text-xs font-bold">
-                      <Link href={addProductHref} prefetch={false} className={cn(isRtl && 'flex-row-reverse')}>
-                        {serverTranslate(locale, 'sponsorManage.addProduct')}
-                      </Link>
-                    </Button>
-                  </div>
+                  <SponsorStoreAdminActions
+                    storeId={store.id}
+                    storeName={store.name}
+                    editHref={manageHref}
+                    addProductHref={addProductHref}
+                    canRemove={isAdmin(user)}
+                    isRtl={isRtl}
+                  />
                 ) : null}
               </div>
             </div>
