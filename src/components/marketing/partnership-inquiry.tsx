@@ -27,7 +27,7 @@ function PartnershipInquiryFallback({ mode }: { mode: 'partner' | 'seller' }) {
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{description}</DialogDescription>
       </DialogHeader>
-      <div className="py-10 text-center text-muted-foreground">Loading...</div>
+      <div className="py-10 text-center text-muted-foreground">{t('common.loading')}</div>
     </DialogContent>
   );
 }
@@ -57,6 +57,7 @@ export function PartnershipInquiry({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
           <Button
+            type="button"
             className={cn(
               'h-11 w-full rounded-full bg-white px-6 text-base font-semibold text-primary shadow-sm hover:bg-white/90 md:w-auto',
               buttonClassName,

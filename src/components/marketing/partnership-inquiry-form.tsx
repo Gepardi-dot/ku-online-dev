@@ -26,6 +26,7 @@ type PartnershipInquiryFormProps = {
   initialPartnershipType?: PartnershipTypeCode;
   panelTitle?: string;
   panelDescription?: string;
+  asDialog?: boolean;
 };
 
 type PartnershipFormState = {
@@ -81,6 +82,7 @@ export function PartnershipInquiryForm({
   initialPartnershipType,
   panelTitle,
   panelDescription,
+  asDialog = true,
 }: PartnershipInquiryFormProps) {
   const { t } = useLocale();
   const isSellerMode = mode === 'seller';
@@ -285,14 +287,11 @@ export function PartnershipInquiryForm({
     }
   };
 
-  return (
-    <DialogContent className="sm:max-w-[640px] max-h-[85vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>{panelTitle ?? t('partnership.formTitle')}</DialogTitle>
-        <DialogDescription>{panelDescription ?? t('partnership.formDescription')}</DialogDescription>
-      </DialogHeader>
+  const title = panelTitle ?? t('partnership.formTitle');
+  const description = panelDescription ?? t('partnership.formDescription');
 
-      <form onSubmit={handleSubmit} className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+  const form = (
+      <form onSubmit={handleSubmit} className={cn('grid grid-cols-1 gap-4 md:grid-cols-2', asDialog && 'mt-4')}>
         {isSellerMode ? (
           <div className="md:col-span-2 rounded-xl border border-black/10 bg-white/70 p-3.5">
             <p className="text-sm font-semibold text-foreground" dir="auto">
@@ -474,15 +473,42 @@ export function PartnershipInquiryForm({
             {isSellerMode && !isSignedIn ? t('partnership.sellerSignInNotice') : t('partnership.privacyNote')}
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
-            <Button type="button" variant="outline" onClick={closeDialog} disabled={submitting}>
-              {t('partnership.cancel')}
-            </Button>
+            {asDialog ? (
+              <Button type="button" variant="outline" onClick={closeDialog} disabled={submitting}>
+                {t('partnership.cancel')}
+              </Button>
+            ) : null}
             <Button type="submit" disabled={submitting || (isSellerMode && !isSignedIn)}>
               {submitting ? t('partnership.submitting') : t('partnership.submit')}
             </Button>
           </div>
         </div>
       </form>
+  );
+
+  if (!asDialog) {
+    return (
+      <div>
+        <div className="mb-4">
+          <h2 className="text-xl font-extrabold text-[#2D2D2D] md:text-2xl" dir="auto">
+            {title}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground" dir="auto">
+            {description}
+          </p>
+        </div>
+        {form}
+      </div>
+    );
+  }
+
+  return (
+    <DialogContent className="sm:max-w-[640px] max-h-[85vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle>{title}</DialogTitle>
+        <DialogDescription>{description}</DialogDescription>
+      </DialogHeader>
+      {form}
     </DialogContent>
   );
 }
