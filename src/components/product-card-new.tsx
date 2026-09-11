@@ -199,7 +199,7 @@ const ProductCard = memo(function ProductCardImpl({
         {product.isPromoted && (
           <div className="absolute bottom-2 left-2">
             <Badge variant="secondary" className="bg-yellow-400 text-black">
-              Featured
+              {t('product.featuredBadge')}
             </Badge>
           </div>
         )}

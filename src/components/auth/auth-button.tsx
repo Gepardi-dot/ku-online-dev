@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { User, LogOut, Phone, LayoutDashboard, Settings, ShieldCheck } from 'lucide-react';
+import { User, LogOut, Phone, LayoutDashboard, Settings, ShieldCheck, PackagePlus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Icons } from '@/components/icons';
@@ -307,12 +307,20 @@ export default function AuthButton({ user }: AuthButtonProps) {
             </Link>
           </DropdownMenuItem>
           {userIsModerator && (
-            <DropdownMenuItem asChild className="mb-2">
-              <Link href="/admin/moderation" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/3 px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
-                <ShieldCheck className="mr-2 h-4 w-4" />
-                {t('header.userMenu.moderation')}
-              </Link>
-            </DropdownMenuItem>
+            <>
+              <DropdownMenuItem asChild className="mb-2">
+                <Link href="/admin/moderation" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/3 px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  {t('header.userMenu.moderation')}
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild className="mb-2">
+                <Link href="/admin/drafts" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/3 px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
+                  <PackagePlus className="mr-2 h-4 w-4" />
+                  {t('header.userMenu.drafts')}
+                </Link>
+              </DropdownMenuItem>
+            </>
           )}
           <DropdownMenuItem asChild className="mb-3">
             <Link href="/profile?tab=settings" className="flex items-center rounded-2xl border border-transparent bg-white/50 shadow-sm ring-1 ring-black/3 px-3 py-2 hover:bg-white/60 hover:border-[#eadbc5]/50">
