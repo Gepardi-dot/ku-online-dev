@@ -248,8 +248,7 @@ async function hydrateAlgoliaProductImages(products: ProductWithRelations[]): Pr
   }
 
   try {
-    const adminClient = await getSupabaseAdmin();
-    const client = adminClient ?? (await getSupabase());
+    const client = await getSupabase();
     const ids = products.map((product) => product.id);
     const { data, error } = await client.from('products').select('id, images').in('id', ids);
     if (error) {
