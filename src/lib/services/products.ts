@@ -242,6 +242,40 @@ function hydrateProductPublicImages(products: ProductWithRelations[]): void {
   }
 }
 
+async function hydrateAlgoliaProductImages(products: ProductWithRelations[]): Promise<void> {
+  if (products.length === 0) {
+    return;
+  }
+
+  try {
+    const adminClient = await getSupabaseAdmin();
+    const client = adminClient ?? (await getSupabase());
+    const ids = products.map((product) => product.id);
+    const { data, error } = await client.from('products').select('id, images').in('id', ids);
+    if (error) {
+      console.error('Failed to refresh search result images', error);
+    } else {
+      const imagesById = new Map<string, string[]>();
+      for (const row of data ?? []) {
+        if (row?.id) {
+          imagesById.set(row.id, normalizeImages(row.images));
+        }
+      }
+      for (const product of products) {
+        const paths = imagesById.get(product.id);
+        if (paths && paths.length > 0) {
+          product.imagePaths = paths;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to refresh search result images', error);
+  }
+
+  hydrateProductPublicImages(products);
+}
+
+
 function parseNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -881,6 +915,28 @@ function mapProductFromAlgolia(hit: AlgoliaSearchHit): ProductWithRelations | nu
   };
 }
 
+const ALGOLIA_MIN_WORD_SIZE_FOR_1_TYPO = 5;
+const ALGOLIA_MIN_WORD_SIZE_FOR_2_TYPOS = 9;
+
+function shortestSearchWordLength(searchTerm: string): number {
+  const words = searchTerm
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.replace(/[^\p{L}\p{N}]+/gu, ''))
+    .filter((word) => word.length > 0);
+  if (words.length === 0) {
+    return 0;
+  }
+  return Math.min(...words.map((word) => word.length));
+}
+
+function applyAlgoliaTypoPolicy(searchParams: Record<string, unknown>, searchTerm: string): void {
+  searchParams.minWordSizefor1Typo = ALGOLIA_MIN_WORD_SIZE_FOR_1_TYPO;
+  searchParams.minWordSizefor2Typos = ALGOLIA_MIN_WORD_SIZE_FOR_2_TYPOS;
+  searchParams.typoTolerance =
+    shortestSearchWordLength(searchTerm) < ALGOLIA_MIN_WORD_SIZE_FOR_1_TYPO ? false : true;
+}
+
 async function searchProductsViaAlgolia(
   searchTerm: string,
   filters: ProductFilters,
@@ -951,6 +1007,8 @@ async function searchProductsViaAlgolia(
       attributesToHighlight: [],
     };
 
+    applyAlgoliaTypoPolicy(searchParams, searchTerm);
+
     if (numericFilters.length > 0) {
       searchParams.numericFilters = numericFilters;
     }
@@ -1010,6 +1068,7 @@ export async function searchProducts(
   if (algoliaResult) {
     if (algoliaResult.items.length > 0) {
       await hydrateSellerContext(algoliaResult.items);
+      await hydrateAlgoliaProductImages(algoliaResult.items);
     }
     return algoliaResult;
   }
