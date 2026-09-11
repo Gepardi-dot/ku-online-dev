@@ -1,5 +1,5 @@
 
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { unstable_noStore as noStore } from 'next/cache';
@@ -109,6 +109,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
   ]);
 
   if (!product) {
+    notFound();
+  }
+
+  if (!product.isActive) {
+    const canOpenDraft =
+      Boolean(user) && (product.sellerId === user?.id || isModerator(user));
+    if (canOpenDraft) {
+      redirect(`/draft/${id}`);
+    }
     notFound();
   }
 

@@ -118,6 +118,63 @@ export const createProductSchema = z
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 
+export const saveCollabDraftSchema = z
+  .object({
+    title: z
+      .string()
+      .trim()
+      .min(1, 'Title is required.')
+      .max(140, 'Title must be 140 characters or fewer.'),
+    description: descriptionSchema,
+    price: z.coerce
+      .number({ error: 'Price must be a number.' })
+      .min(0, 'Price must be zero or greater.'),
+    currency: productCurrencyEnum.default('IQD'),
+    condition: z
+      .union([productConditionEnum, z.literal('')])
+      .optional()
+      .transform((value) => {
+        if (!value) return null;
+        return value;
+      }),
+    categoryId: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => (value && value.length > 0 ? value : null)),
+    listingType: productListingTypeEnum.default('sale'),
+    rentalTerm: z
+      .union([propertyRentalTermEnum, z.literal(''), z.null()])
+      .optional()
+      .transform((value) => {
+        if (!value) return null;
+        return value;
+      }),
+    location: z
+      .string()
+      .trim()
+      .max(120, 'Location must be 120 characters or fewer.')
+      .optional()
+      .transform((value) => (value && value.length > 0 ? value : null)),
+    images: z
+      .array(
+        z
+          .string()
+          .trim()
+          .min(1, 'Image URL is required.')
+          .refine(isAllowedProductImageInput, 'Images must be stored in Supabase Storage.'),
+      )
+      .max(5, 'You can upload up to 5 images.')
+      .default([]),
+  })
+  .transform((value) => ({
+    ...value,
+    description: value.description ?? null,
+    rentalTerm: value.listingType === 'rent' ? value.rentalTerm ?? null : null,
+  }));
+
+export type SaveCollabDraftInput = z.infer<typeof saveCollabDraftSchema>;
+
 export const updateProfileSchema = z.object({
   fullName: z
     .string()

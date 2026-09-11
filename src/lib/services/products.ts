@@ -661,6 +661,7 @@ function buildProductsQuery(supabase: any, filters: ProductFilters = {}, options
 }
 
 function applyProductsSort(query: any, sort: ProductSort) {
+  query = query.order('is_promoted', { ascending: false, nullsLast: true });
   switch (sort) {
     case 'price_asc':
       return query.order('price', { ascending: true, nullsLast: true });
@@ -675,18 +676,21 @@ function applyProductsSort(query: any, sort: ProductSort) {
 }
 
 function sortProductsInMemory(items: ProductWithRelations[], sort: ProductSort) {
+  const byPromoted = (a: ProductWithRelations, b: ProductWithRelations) =>
+    Number(b.isPromoted) - Number(a.isPromoted);
   switch (sort) {
     case 'price_asc':
-      return [...items].sort((a, b) => a.price - b.price);
+      return [...items].sort((a, b) => byPromoted(a, b) || a.price - b.price);
     case 'price_desc':
-      return [...items].sort((a, b) => b.price - a.price);
+      return [...items].sort((a, b) => byPromoted(a, b) || b.price - a.price);
     case 'views_desc':
-      return [...items].sort((a, b) => b.views - a.views);
+      return [...items].sort((a, b) => byPromoted(a, b) || b.views - a.views);
     case 'newest':
     default:
-      return items;
+      return [...items].sort(byPromoted);
   }
 }
+
 
 type AlgoliaSearchHit = {
   objectID?: string;
@@ -1011,6 +1015,8 @@ async function searchProductsViaAlgolia(
     if (numericFilters.length > 0) {
       searchParams.numericFilters = numericFilters;
     }
+
+    searchParams.optionalFilters = ['is_promoted:true'];
 
     const result = await client.searchSingleIndex<AlgoliaSearchHit>({
       indexName,

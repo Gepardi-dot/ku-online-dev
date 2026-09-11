@@ -214,6 +214,8 @@ export default async function ProfilePage({
     24,
     0,
   );
+  const draftListings = listings.filter((listing) => !listing.isActive && !listing.isSold);
+  const publicListings = listings.filter((listing) => listing.isActive);
   const activeListings = listings.filter((listing) => listing.isActive && !listing.isSold);
   const activeListingIds = activeListings.map((listing) => listing.id);
 
@@ -385,7 +387,7 @@ export default async function ProfilePage({
   );
 
   const totalViews = activeListings.reduce((acc, item) => acc + (item.views ?? 0), 0);
-  const featuredListingsSource = activeListings.length > 0 ? activeListings : listings;
+  const featuredListingsSource = activeListings;
   const featuredListings = featuredListingsSource.slice(0, 3);
   const cityLabels = MARKET_CITY_OPTIONS.reduce<Record<string, string>>((acc, option) => {
     const key = option.value.toLowerCase();
@@ -680,20 +682,45 @@ export default async function ProfilePage({
               </TabsContent>
 
               <TabsContent value="listings" className="space-y-6 min-w-0">
+                {draftListings.length > 0 ? (
+                  <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+                    <CardHeader>
+                      <CardTitle className="text-brand">
+                        {t('collabDraft.profileTitle')} ({draftListings.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {draftListings.map((listing) => (
+                        <Link
+                          key={listing.id}
+                          href={`/draft/${listing.id}`}
+                          className="block rounded-2xl border border-black/10 bg-white/70 px-4 py-3 hover:bg-white"
+                        >
+                          <span className="font-semibold text-[#2D2D2D]">
+                            {localizeListingText(listing.title, listing.titleTranslations, locale)}
+                          </span>
+                          <span className="mt-1 block text-xs text-muted-foreground">
+                            {t('collabDraft.continueDraft')}
+                          </span>
+                        </Link>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ) : null}
                 <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/70 via-white/60 to-white/40 shadow-[0_8px_32px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
                   <CardHeader>
                     <CardTitle className="text-brand">
-                      {t('profile.listings.title')} ({listings.length})
+                      {t('profile.listings.title')} ({publicListings.length})
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {listings.length === 0 ? (
+                    {publicListings.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
                         {t('profile.listings.empty')}
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {listings.map((listing) => (
+                        {publicListings.map((listing) => (
                           <ProductCard key={listing.id} product={listing} viewerId={user.id} />
                         ))}
                       </div>

@@ -1,38 +1,44 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 
 import AppLayout from '@/components/layout/app-layout';
-import { createClient } from '@/utils/supabase/server';
+import { canAccessCollabDraft, canPublishCollabDraft } from '@/lib/products/collab-draft';
 import { getProductById } from '@/lib/services/products';
-import EditProductForm from './EditProductForm';
+import { createClient } from '@/utils/supabase/server';
+import EditProductForm from '@/app/product/[id]/edit/EditProductForm';
 
 type PageProps = {
-  params: Promise<{ id: string }>; 
+  params: Promise<{ id: string }>;
 };
 
-export default async function EditProductPage({ params }: PageProps) {
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: 'Private draft | KU BAZAR',
+    robots: { index: false, follow: false },
+  };
+}
+
+export default async function CollabDraftPage({ params }: PageProps) {
   const { id } = await params;
   if (!id) notFound();
 
   const cookieStore = await cookies();
   const supabase = await createClient(cookieStore);
-
-  const [userRes, product] = await Promise.all([
+  const [{ data: { user } }, product] = await Promise.all([
     supabase.auth.getUser(),
     getProductById(id),
   ]);
 
-  const user = userRes.data.user;
   if (!user) {
     redirect(`/product/${id}`);
   }
 
-  if (!product) notFound();
-  if (!product.isActive) {
-    redirect(`/draft/${id}`);
+  if (!product || !canAccessCollabDraft(user, product.sellerId)) {
+    notFound();
   }
-  if (product.sellerId !== user.id) {
-    // Only owners can edit their listings
+
+  if (product.isActive) {
     redirect(`/product/${id}`);
   }
 
@@ -54,7 +60,13 @@ export default async function EditProductPage({ params }: PageProps) {
   return (
     <AppLayout user={user}>
       <div className="container mx-auto px-4 py-8">
-        <EditProductForm productId={id} initial={initial} />
+        <EditProductForm
+          productId={id}
+          initial={initial}
+          mode="draft"
+          canPublish={canPublishCollabDraft(user)}
+          sellerName={product.seller?.fullName || product.seller?.name || product.seller?.email || null}
+        />
       </div>
     </AppLayout>
   );

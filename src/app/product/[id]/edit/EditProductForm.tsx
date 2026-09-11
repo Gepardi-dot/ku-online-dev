@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Upload, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { CONDITION_OPTIONS } from '@/lib/products/filter-params';
-import { createProductSchema } from '@/lib/validation/schemas';
+import { createProductSchema, saveCollabDraftSchema } from '@/lib/validation/schemas';
 import {
   isPropertyCategory,
   normalizeProductListingType,
@@ -65,9 +65,18 @@ type EditProductFormProps = {
     imagePaths: string[];
     imageUrls: string[];
   };
+  mode?: 'public' | 'draft';
+  canPublish?: boolean;
+  sellerName?: string | null;
 };
 
-export default function EditProductForm({ productId, initial }: EditProductFormProps) {
+export default function EditProductForm({
+  productId,
+  initial,
+  mode = 'public',
+  canPublish = false,
+  sellerName = null,
+}: EditProductFormProps) {
   const { t, messages, locale } = useLocale();
   const direction = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
   const contentAlign = direction === 'rtl' ? 'end' : 'start';
@@ -155,6 +164,9 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
   );
   const [hasUnsaved, setHasUnsaved] = useState(false);
   const [pendingRemoval, setPendingRemoval] = useState<UploadedImage[]>([]);
+  const [publishing, setPublishing] = useState(false);
+  const [featuredOnPublish, setFeaturedOnPublish] = useState(false);
+  const isDraftMode = mode === 'draft';
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const categoryTriggerRef = useRef<HTMLButtonElement | null>(null);
   const router = useRouter();
@@ -389,7 +401,7 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         allowedCategoryIds.add(initialCategoryId);
       }
 
-      if (!allowedCategoryIds.has(normalizedCategoryId)) {
+      if (!isDraftMode && !allowedCategoryIds.has(normalizedCategoryId)) {
         requestAnimationFrame(() => {
           categoryTriggerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
           categoryTriggerRef.current?.focus();
@@ -405,20 +417,33 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         return;
       }
 
-      const validation = createProductSchema.safeParse({
-        title: formData.title,
-        description: formData.description,
-        price: formData.price,
-        currency: formData.currency,
-        condition: formData.condition,
-        categoryId: normalizedCategoryId,
-        categoryName: selectedCategory?.name ?? null,
-        listingType: formData.listingType,
-        rentalTerm: formData.rentalTerm,
-        location: formData.location,
-        images: formData.images,
-        sellerId: data.user.id,
-      });
+      const validation = isDraftMode
+        ? saveCollabDraftSchema.safeParse({
+            title: formData.title || t('collabDraft.untitled'),
+            description: formData.description,
+            price: formData.price,
+            currency: formData.currency,
+            condition: formData.condition,
+            categoryId: normalizedCategoryId,
+            listingType: formData.listingType,
+            rentalTerm: formData.rentalTerm,
+            location: formData.location,
+            images: formData.images,
+          })
+        : createProductSchema.safeParse({
+            title: formData.title,
+            description: formData.description,
+            price: formData.price,
+            currency: formData.currency,
+            condition: formData.condition,
+            categoryId: normalizedCategoryId,
+            categoryName: selectedCategory?.name ?? null,
+            listingType: formData.listingType,
+            rentalTerm: formData.rentalTerm,
+            location: formData.location,
+            images: formData.images,
+            sellerId: data.user.id,
+          });
       if (!validation.success) {
         const issue = validation.error.issues[0];
         toast({
@@ -447,7 +472,7 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         listing_type: payload.listingType,
         rental_term: payload.rentalTerm ?? null,
         location: payload.location,
-        category_id: payload.categoryId,
+        category_id: 'categoryId' in payload ? payload.categoryId : normalizedCategoryId || null,
         images: payload.images,
       };
 
@@ -468,27 +493,29 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         .eq('id', productId);
       if (error) throw error;
 
-      try {
-        const syncResponse = await fetch('/api/search/algolia-sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId }),
-        });
-        if (!syncResponse.ok) {
-          console.warn('Algolia sync failed after update', await syncResponse.text().catch(() => ''));
+      if (!isDraftMode) {
+        try {
+          const syncResponse = await fetch('/api/search/algolia-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId }),
+          });
+          if (!syncResponse.ok) {
+            console.warn('Algolia sync failed after update', await syncResponse.text().catch(() => ''));
+          }
+        } catch (syncError) {
+          console.warn('Algolia sync failed after update', syncError);
         }
-      } catch (syncError) {
-        console.warn('Algolia sync failed after update', syncError);
-      }
 
-      try {
-        fetch('/api/products/translate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId }),
-          keepalive: true,
-        }).catch(() => {});
-      } catch {}
+        try {
+          fetch('/api/products/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId }),
+            keepalive: true,
+          }).catch(() => {});
+        } catch {}
+      }
 
       const removals = pendingRemoval.map((entry) => entry.path).filter(Boolean);
       if (removals.length > 0) {
@@ -501,7 +528,9 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         description: t('profile.settingsPanel.preferencesUpdatedDescription'),
       });
       setHasUnsaved(false);
-      router.push(`/product/${productId}`);
+      if (!isDraftMode) {
+        router.push(`/product/${productId}`);
+      }
       router.refresh();
     } catch (err) {
       console.error('Failed to update product', err);
@@ -512,6 +541,59 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const copyDraftLink = async () => {
+    const url = `${window.location.origin}/draft/${productId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({
+        title: t('collabDraft.linkCopiedTitle'),
+        description: t('collabDraft.linkCopiedBody'),
+      });
+    } catch {
+      toast({
+        title: t('collabDraft.linkCopyFailedTitle'),
+        description: url,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!canPublish) return;
+    setPublishing(true);
+    try {
+      const response = await fetch(`/api/admin/listing-drafts/${encodeURIComponent(productId)}/publish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ featured: featuredOnPublish }),
+      });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.ok) {
+        toast({
+          title: t('collabDraft.publishFailedTitle'),
+          description: data?.error ?? t('collabDraft.publishFailedBody'),
+          variant: 'destructive',
+        });
+        return;
+      }
+      toast({
+        title: t('collabDraft.publishSuccessTitle'),
+        description: t('collabDraft.publishSuccessBody'),
+      });
+      router.push(data.path ?? `/product/${productId}`);
+      router.refresh();
+    } catch (error) {
+      console.error('Failed to publish listing draft', error);
+      toast({
+        title: t('collabDraft.publishFailedTitle'),
+        description: t('collabDraft.publishFailedBody'),
+        variant: 'destructive',
+      });
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -598,7 +680,15 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
         <div aria-hidden="true" className="absolute inset-0 bg-linear-to-br from-white/80 via-white/60 to-primary/10" />
         <div className="relative">
           <CardHeader className="p-6 pb-4">
-            <CardTitle className="text-2xl font-bold tracking-tight">{t('product.editListing')}</CardTitle>
+            <CardTitle className="text-2xl font-bold tracking-tight">
+              {isDraftMode ? t('collabDraft.pageTitle') : t('product.editListing')}
+            </CardTitle>
+            {isDraftMode ? (
+              <p className="pt-2 text-sm text-muted-foreground">
+                {t('collabDraft.pageHelp')}
+                {sellerName ? ` ${t('collabDraft.sellerLabel')}: ${sellerName}` : ''}
+              </p>
+            ) : null}
           </CardHeader>
 
           <CardContent className="p-6 pt-0">
@@ -907,7 +997,13 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <Label className="text-sm font-semibold">
-                      {t('sellForm.fields.images')} <span className="text-primary" aria-hidden="true">*</span>
+                      {t('sellForm.fields.images')}
+                      {isDraftMode ? null : (
+                        <span className="text-primary" aria-hidden="true">
+                          {' '}
+                          *
+                        </span>
+                      )}
                     </Label>
                     <p className="mt-1 text-sm text-muted-foreground">
                       {t('sellForm.upload.selectedCount')
@@ -1016,6 +1112,34 @@ export default function EditProductForm({ productId, initial }: EditProductFormP
               >
                 {loading ? t('profile.settingsPanel.saving') : t('profile.settingsPanel.save')}
               </Button>
+              {isDraftMode ? (
+                <div className="space-y-3 rounded-2xl border border-black/10 bg-white/70 p-4">
+                  <Button type="button" variant="outline" className="w-full" onClick={() => void copyDraftLink()}>
+                    {t('collabDraft.copyLink')}
+                  </Button>
+                  {canPublish ? (
+                    <>
+                      <label className="flex items-center justify-between gap-3 text-sm">
+                        <span>{t('collabDraft.featuredLabel')}</span>
+                        <Switch checked={featuredOnPublish} onCheckedChange={setFeaturedOnPublish} />
+                      </label>
+                      <Button
+                        type="button"
+                        className="w-full"
+                        onClick={() => void handlePublish()}
+                        disabled={publishing || loading || storageBusy || hasUnsaved}
+                      >
+                        {publishing ? t('collabDraft.publishing') : t('collabDraft.publishAction')}
+                      </Button>
+                      {hasUnsaved ? (
+                        <p className="text-xs text-muted-foreground">{t('collabDraft.saveBeforePublish')}</p>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">{t('collabDraft.sellerCannotPublish')}</p>
+                  )}
+                </div>
+              ) : null}
             </form>
           </CardContent>
         </div>

@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import { PROPERTY_CATEGORY_ID } from '@/data/category-ui-config.js';
 
-import { createProductSchema } from '../schemas.js';
+import { createProductSchema, saveCollabDraftSchema } from '../schemas.js';
 
 const sellerId = '11111111-1111-4111-8111-111111111111';
 const productImagePath = `${sellerId}/test-image-full.webp`;
@@ -62,5 +62,26 @@ describe('createProductSchema', () => {
     assert.equal(result.data.listingType, 'rent');
     assert.equal(result.data.rentalTerm, 'monthly');
     assert.equal('categoryName' in result.data, false);
+  });
+});
+
+describe('saveCollabDraftSchema', () => {
+  it('allows incomplete drafts without images or category', () => {
+    const result = saveCollabDraftSchema.safeParse({
+      title: 'Untitled listing',
+      description: '',
+      price: '0',
+      currency: 'IQD',
+      condition: 'Used - Good',
+      listingType: 'sale',
+      location: '',
+      images: [],
+    });
+
+    assert.equal(result.success, true);
+    if (!result.success) return;
+    assert.equal(result.data.images.length, 0);
+    assert.equal(result.data.categoryId, null);
+    assert.equal(result.data.location, null);
   });
 });

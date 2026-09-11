@@ -378,6 +378,10 @@ export async function syncAlgoliaProductRow(row: AlgoliaProductRow): Promise<boo
   const { client, indexName } = clientConfig;
   const record = toAlgoliaProductRecord(row);
 
+  if (!record.is_active || record.is_sold) {
+    return removeAlgoliaProduct(record.objectID);
+  }
+
   try {
     await client.saveObjects({
       indexName,
