@@ -273,6 +273,42 @@ async function fetchProducts(offset) {
   return data ?? [];
 }
 
+const SEARCHABLE_ATTRIBUTES = [
+  "title",
+  "title_i18n_en",
+  "title_i18n_ar",
+  "title_i18n_ku",
+  "title_i18n_ku_latn",
+  "description",
+  "description_i18n_en",
+  "description_i18n_ar",
+  "description_i18n_ku",
+  "description_i18n_ku_latn",
+  "search_text",
+  "category_name",
+  "category_name_ar",
+  "category_name_ku",
+  "location",
+];
+
+const ATTRIBUTES_FOR_FACETING = [
+  "filterOnly(category_id)",
+  "filterOnly(condition)",
+  "filterOnly(color_token)",
+  "filterOnly(location_normalized)",
+  "filterOnly(is_active)",
+  "filterOnly(is_sold)",
+];
+
+// 4-letter queries like "bike" otherwise 1-typo match "Nike" and "Like".
+const RELEVANCE_SETTINGS = {
+  minWordSizefor1Typo: 5,
+  minWordSizefor2Typos: 9,
+  typoTolerance: true,
+  ignorePlurals: ["en", "ar"],
+  allowTyposOnNumericTokens: false,
+};
+
 async function configureIndex() {
   try {
     const replicas = [
@@ -285,31 +321,9 @@ async function configureIndex() {
     const task = await client.setSettings({
       indexName,
       indexSettings: {
-        searchableAttributes: [
-          "title",
-          "title_i18n_en",
-          "title_i18n_ar",
-          "title_i18n_ku",
-          "title_i18n_ku_latn",
-          "description",
-          "description_i18n_en",
-          "description_i18n_ar",
-          "description_i18n_ku",
-          "description_i18n_ku_latn",
-          "search_text",
-          "category_name",
-          "category_name_ar",
-          "category_name_ku",
-          "location",
-        ],
-        attributesForFaceting: [
-          "filterOnly(category_id)",
-          "filterOnly(condition)",
-          "filterOnly(color_token)",
-          "filterOnly(location_normalized)",
-          "filterOnly(is_active)",
-          "filterOnly(is_sold)",
-        ],
+        searchableAttributes: SEARCHABLE_ATTRIBUTES,
+        attributesForFaceting: ATTRIBUTES_FOR_FACETING,
+        ...RELEVANCE_SETTINGS,
         replicas,
       },
     });
@@ -329,31 +343,9 @@ async function configureIndex() {
       const replicaTask = await client.setSettings({
         indexName: replica.name,
         indexSettings: {
-          searchableAttributes: [
-            "title",
-            "title_i18n_en",
-            "title_i18n_ar",
-            "title_i18n_ku",
-            "title_i18n_ku_latn",
-            "description",
-            "description_i18n_en",
-            "description_i18n_ar",
-            "description_i18n_ku",
-            "description_i18n_ku_latn",
-            "search_text",
-            "category_name",
-            "category_name_ar",
-            "category_name_ku",
-            "location",
-          ],
-          attributesForFaceting: [
-            "filterOnly(category_id)",
-            "filterOnly(condition)",
-            "filterOnly(color_token)",
-            "filterOnly(location_normalized)",
-            "filterOnly(is_active)",
-            "filterOnly(is_sold)",
-          ],
+          searchableAttributes: SEARCHABLE_ATTRIBUTES,
+          attributesForFaceting: ATTRIBUTES_FOR_FACETING,
+          ...RELEVANCE_SETTINGS,
           customRanking: replica.customRanking,
         },
       });

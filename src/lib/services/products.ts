@@ -881,6 +881,28 @@ function mapProductFromAlgolia(hit: AlgoliaSearchHit): ProductWithRelations | nu
   };
 }
 
+const ALGOLIA_MIN_WORD_SIZE_FOR_1_TYPO = 5;
+const ALGOLIA_MIN_WORD_SIZE_FOR_2_TYPOS = 9;
+
+function shortestSearchWordLength(searchTerm: string): number {
+  const words = searchTerm
+    .trim()
+    .split(/\s+/)
+    .map((word) => word.replace(/[^\p{L}\p{N}]+/gu, ''))
+    .filter((word) => word.length > 0);
+  if (words.length === 0) {
+    return 0;
+  }
+  return Math.min(...words.map((word) => word.length));
+}
+
+function applyAlgoliaTypoPolicy(searchParams: Record<string, unknown>, searchTerm: string): void {
+  searchParams.minWordSizefor1Typo = ALGOLIA_MIN_WORD_SIZE_FOR_1_TYPO;
+  searchParams.minWordSizefor2Typos = ALGOLIA_MIN_WORD_SIZE_FOR_2_TYPOS;
+  searchParams.typoTolerance =
+    shortestSearchWordLength(searchTerm) < ALGOLIA_MIN_WORD_SIZE_FOR_1_TYPO ? false : true;
+}
+
 async function searchProductsViaAlgolia(
   searchTerm: string,
   filters: ProductFilters,
@@ -950,6 +972,8 @@ async function searchProductsViaAlgolia(
       ],
       attributesToHighlight: [],
     };
+
+    applyAlgoliaTypoPolicy(searchParams, searchTerm);
 
     if (numericFilters.length > 0) {
       searchParams.numericFilters = numericFilters;

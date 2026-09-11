@@ -252,3 +252,80 @@ test('searchProducts returns successful empty Algolia results without invoking e
   assert.equal(invokeMock.mock.calls.length, 0);
   assert.equal(fromMock.mock.calls.length, 0);
 });
+
+function withAlgoliaSearchMock(t: import('node:test').TestContext) {
+  const originalAlgoliaAppId = process.env.ALGOLIA_APP_ID;
+  const originalAlgoliaSearchKey = process.env.ALGOLIA_SEARCH_API_KEY;
+  const originalAlgoliaIndexName = process.env.ALGOLIA_INDEX_NAME;
+
+  process.env.ALGOLIA_APP_ID = 'test-app';
+  process.env.ALGOLIA_SEARCH_API_KEY = 'test-search-key';
+  process.env.ALGOLIA_INDEX_NAME = 'products';
+
+  const algoliaSearchMock = mock.fn(async () => ({ hits: [], nbHits: 0 }));
+  const supabaseClient: SupabaseMock = {
+    functions: { invoke: mock.fn() },
+    from: mock.fn(),
+  };
+
+  globalThis.__supabaseClientMock = supabaseClient;
+  globalThis.__cookiesMock = defaultCookies;
+  globalThis.__algoliaSearchSingleIndexMock = algoliaSearchMock;
+
+  t.after(() => {
+    if (originalAlgoliaAppId === undefined) {
+      delete process.env.ALGOLIA_APP_ID;
+    } else {
+      process.env.ALGOLIA_APP_ID = originalAlgoliaAppId;
+    }
+    if (originalAlgoliaSearchKey === undefined) {
+      delete process.env.ALGOLIA_SEARCH_API_KEY;
+    } else {
+      process.env.ALGOLIA_SEARCH_API_KEY = originalAlgoliaSearchKey;
+    }
+    if (originalAlgoliaIndexName === undefined) {
+      delete process.env.ALGOLIA_INDEX_NAME;
+    } else {
+      process.env.ALGOLIA_INDEX_NAME = originalAlgoliaIndexName;
+    }
+
+    delete globalThis.__supabaseClientMock;
+    delete globalThis.__cookiesMock;
+    delete globalThis.__algoliaSearchSingleIndexMock;
+  });
+
+  return algoliaSearchMock;
+}
+
+function lastAlgoliaSearchParams(mockFn: ReturnType<typeof mock.fn>) {
+  const request = mockFn.mock.calls.at(-1)?.arguments[0] as
+    | { searchParams?: Record<string, unknown> }
+    | undefined;
+  return request?.searchParams ?? {};
+}
+
+test('searchProducts disables typo tolerance for short queries like bike', async (t) => {
+  const algoliaSearchMock = withAlgoliaSearchMock(t);
+  const searchProducts = await loadSearchProducts();
+
+  await searchProducts({ search: 'bike' }, 24, 0, 'newest');
+
+  const searchParams = lastAlgoliaSearchParams(algoliaSearchMock);
+  assert.equal(searchParams.query, 'bike');
+  assert.equal(searchParams.typoTolerance, false);
+  assert.equal(searchParams.minWordSizefor1Typo, 5);
+  assert.equal(searchParams.minWordSizefor2Typos, 9);
+});
+
+test('searchProducts keeps typo tolerance for longer queries', async (t) => {
+  const algoliaSearchMock = withAlgoliaSearchMock(t);
+  const searchProducts = await loadSearchProducts();
+
+  await searchProducts({ search: 'iphone' }, 24, 0, 'newest');
+
+  const searchParams = lastAlgoliaSearchParams(algoliaSearchMock);
+  assert.equal(searchParams.query, 'iphone');
+  assert.equal(searchParams.typoTolerance, true);
+  assert.equal(searchParams.minWordSizefor1Typo, 5);
+  assert.equal(searchParams.minWordSizefor2Typos, 9);
+});
