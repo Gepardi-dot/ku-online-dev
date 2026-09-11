@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { PartnershipInquiryForm } from '@/components/marketing/partnership-inquiry-form';
 import { useLocale } from '@/providers/locale-provider';
 import { cn } from '@/lib/utils';
 import { SELLER_APPLICATION_TYPE } from '@/lib/partnership-types';
@@ -15,7 +14,6 @@ type PartnershipInquiryProps = {
   className?: string;
   mode?: 'partner' | 'seller';
   isSignedIn?: boolean;
-  variant?: 'button' | 'panel';
 };
 
 function PartnershipInquiryFallback({ mode }: { mode: 'partner' | 'seller' }) {
@@ -34,7 +32,7 @@ function PartnershipInquiryFallback({ mode }: { mode: 'partner' | 'seller' }) {
   );
 }
 
-const LazyPartnershipInquiryForm = dynamic(
+const PartnershipInquiryForm = dynamic(
   () => import('@/components/marketing/partnership-inquiry-form').then((mod) => mod.PartnershipInquiryForm),
   {
     ssr: false,
@@ -47,29 +45,12 @@ export function PartnershipInquiry({
   className,
   mode = 'partner',
   isSignedIn = false,
-  variant = 'button',
 }: PartnershipInquiryProps) {
   const { t } = useLocale();
   const [open, setOpen] = useState(false);
   const buttonLabel = mode === 'seller' ? t('partnership.sellerCtaButton') : t('partnership.ctaButton');
   const formTitle = mode === 'seller' ? t('partnership.sellerFormTitle') : t('partnership.formTitle');
   const formDescription = mode === 'seller' ? t('partnership.sellerFormDescription') : t('partnership.formDescription');
-
-  if (variant === 'panel') {
-    return (
-      <div className={cn(className)}>
-        <PartnershipInquiryForm
-          onClose={() => undefined}
-          mode={mode}
-          isSignedIn={isSignedIn}
-          initialPartnershipType={mode === 'seller' ? SELLER_APPLICATION_TYPE : undefined}
-          panelTitle={formTitle}
-          panelDescription={formDescription}
-          asDialog={false}
-        />
-      </div>
-    );
-  }
 
   return (
     <div className={cn('flex flex-col items-center gap-4 md:items-start', className)}>
@@ -85,7 +66,7 @@ export function PartnershipInquiry({
           </Button>
         </DialogTrigger>
         {open ? (
-          <LazyPartnershipInquiryForm
+          <PartnershipInquiryForm
             onClose={() => setOpen(false)}
             mode={mode}
             isSignedIn={isSignedIn}

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { createClient as createSupabaseServiceRole } from '@supabase/supabase-js';
 
 import AppLayout from '@/components/layout/app-layout';
-import { PartnershipInquiry } from '@/components/marketing/partnership-inquiry';
+import { SellerApplicationPanel } from '@/components/marketing/seller-application-panel';
 import { SponsorSpotlightStoreCard } from '@/components/sponsors/SponsorSpotlightStoreCard';
 import { MARKET_CITY_OPTIONS, type MarketCityValue } from '@/data/market-cities';
 import { isAdmin, isModerator } from '@/lib/auth/roles';
@@ -146,11 +146,7 @@ export default async function SponsorsPage({ searchParams }: { searchParams?: Pr
                 <div className="absolute -right-20 -bottom-14 h-48 w-48 rounded-full bg-brand-light/14 blur-3xl" />
               </div>
               <div className="relative">
-                <PartnershipInquiry
-                  mode="seller"
-                  variant="panel"
-                  isSignedIn={Boolean(user)}
-                />
+                <SellerApplicationPanel isSignedIn={Boolean(user)} />
                 {canReviewApplications || canManageStores ? (
                   <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-black/5 pt-4">
                     {canReviewApplications ? (
