@@ -329,3 +329,62 @@ test('searchProducts keeps typo tolerance for longer queries', async (t) => {
   assert.equal(searchParams.minWordSizefor1Typo, 5);
   assert.equal(searchParams.minWordSizefor2Typos, 9);
 });
+
+test('searchProducts refreshes Algolia images from the live product row', async (t) => {
+  const originalAlgoliaAppId = process.env.ALGOLIA_APP_ID;
+  const originalAlgoliaSearchKey = process.env.ALGOLIA_SEARCH_API_KEY;
+  const originalAlgoliaIndexName = process.env.ALGOLIA_INDEX_NAME;
+
+  process.env.ALGOLIA_APP_ID = 'test-app';
+  process.env.ALGOLIA_SEARCH_API_KEY = 'test-search-key';
+  process.env.ALGOLIA_INDEX_NAME = 'products';
+
+  const query: any = {};
+  query.select = mock.fn(() => query);
+  query.in = mock.fn(async () => ({
+    data: [{ id: 'product-1', images: ['seller/new-full.webp'] }],
+    error: null,
+  }));
+
+  const fromMock = mock.fn(() => query);
+  const algoliaSearchMock = mock.fn(async () => ({
+    hits: [{
+      objectID: 'product-1',
+      title: 'Portable power bank',
+      images: ['seller/old-full.webp'],
+      is_active: true,
+      is_sold: false,
+      is_promoted: false,
+      price: 22000,
+      currency: 'IQD',
+      seller_id: 'seller-1',
+    }],
+    nbHits: 1,
+  }));
+
+  globalThis.__supabaseClientMock = {
+    functions: { invoke: mock.fn() },
+    from: fromMock,
+  };
+  globalThis.__cookiesMock = defaultCookies;
+  globalThis.__algoliaSearchSingleIndexMock = algoliaSearchMock;
+
+  t.after(() => {
+    if (originalAlgoliaAppId === undefined) delete process.env.ALGOLIA_APP_ID;
+    else process.env.ALGOLIA_APP_ID = originalAlgoliaAppId;
+    if (originalAlgoliaSearchKey === undefined) delete process.env.ALGOLIA_SEARCH_API_KEY;
+    else process.env.ALGOLIA_SEARCH_API_KEY = originalAlgoliaSearchKey;
+    if (originalAlgoliaIndexName === undefined) delete process.env.ALGOLIA_INDEX_NAME;
+    else process.env.ALGOLIA_INDEX_NAME = originalAlgoliaIndexName;
+    delete globalThis.__supabaseClientMock;
+    delete globalThis.__cookiesMock;
+    delete globalThis.__algoliaSearchSingleIndexMock;
+  });
+
+  const searchProducts = await loadSearchProducts();
+  const result = await searchProducts({ search: 'power' }, 24, 0, 'newest');
+
+  assert.equal(result.items.length, 1);
+  assert.deepEqual(result.items[0].imagePaths, ['seller/new-full.webp']);
+  assert.equal(query.in.mock.calls.length, 1);
+});

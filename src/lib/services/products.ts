@@ -242,6 +242,40 @@ function hydrateProductPublicImages(products: ProductWithRelations[]): void {
   }
 }
 
+async function hydrateAlgoliaProductImages(products: ProductWithRelations[]): Promise<void> {
+  if (products.length === 0) {
+    return;
+  }
+
+  try {
+    const adminClient = await getSupabaseAdmin();
+    const client = adminClient ?? (await getSupabase());
+    const ids = products.map((product) => product.id);
+    const { data, error } = await client.from('products').select('id, images').in('id', ids);
+    if (error) {
+      console.error('Failed to refresh search result images', error);
+    } else {
+      const imagesById = new Map<string, string[]>();
+      for (const row of data ?? []) {
+        if (row?.id) {
+          imagesById.set(row.id, normalizeImages(row.images));
+        }
+      }
+      for (const product of products) {
+        const paths = imagesById.get(product.id);
+        if (paths && paths.length > 0) {
+          product.imagePaths = paths;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to refresh search result images', error);
+  }
+
+  hydrateProductPublicImages(products);
+}
+
+
 function parseNumber(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -1034,6 +1068,7 @@ export async function searchProducts(
   if (algoliaResult) {
     if (algoliaResult.items.length > 0) {
       await hydrateSellerContext(algoliaResult.items);
+      await hydrateAlgoliaProductImages(algoliaResult.items);
     }
     return algoliaResult;
   }
