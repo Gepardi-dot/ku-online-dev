@@ -166,6 +166,7 @@ export const translations = {
       applicationsButton: "Seller applications",
       applicationsCount: "{count} applications",
       applicationsHint: "You have {count} seller applications ready for review.",
+      manageStoresButton: "Manage stores",
       sponsoredBadge: "Sponsored",
       endsIn: "Ends {time}",
       liveStats: {
@@ -988,6 +989,7 @@ export const translations = {
       applicationsButton: "طلبات البائعين",
       applicationsCount: "{count} طلب",
       applicationsHint: "لديك {count} طلب بائع جاهز للمراجعة.",
+      manageStoresButton: "إدارة المتاجر",
       sponsoredBadge: "برعاية",
       endsIn: "ينتهي {time}",
       liveStats: {
@@ -1811,6 +1813,7 @@ export const translations = {
       applicationsButton: "داواکارییەکانی فرۆشیار",
       applicationsCount: "{count} داواکاری",
       applicationsHint: "{count} داواکاریی فرۆشیار هەیە بۆ پشکنین.",
+      manageStoresButton: "بەڕێوەبردنی فرۆشگاکان",
       sponsoredBadge: "سپۆنسەر",
       endsIn: "کۆتایی دێت {time}",
       liveStats: {
