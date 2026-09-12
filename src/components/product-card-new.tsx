@@ -13,6 +13,7 @@ import { localizeListingText } from '@/lib/locale/localize';
 import { rtlLocales } from '@/lib/locale/dictionary';
 import { CurrencyText } from '@/components/currency-text';
 import { isPropertyCategory, normalizeProductListingType } from '@/lib/products/property-listing';
+import { demoListingSellerName } from '@/lib/products/demo-seller-aliases';
 
 interface ProductCardProps {
   product: ProductWithRelations;
@@ -102,7 +103,13 @@ const ProductCard = memo(function ProductCardImpl({
   };
 
   const sellerNameFromStore = (product.sellerStoreName ?? '').trim();
-  const sellerNameFromProfile = (product.seller?.fullName ?? product.seller?.name ?? product.seller?.email ?? '').trim();
+  const sellerNameFromProfile = (
+    demoListingSellerName(product.id, product.seller?.fullName ?? product.seller?.name) ||
+    product.seller?.fullName ||
+    product.seller?.name ||
+    product.seller?.email ||
+    ''
+  ).trim();
   // Prefer person name (matches product detail); show store separately when it differs.
   const sellerDisplayName = sellerNameFromProfile || sellerNameFromStore || messages.product.sellerFallback;
   const showStoreChip =
