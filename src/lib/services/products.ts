@@ -13,6 +13,7 @@ import {
   type ProductListingType,
   type PropertyRentalTerm,
 } from '@/lib/products/property-listing';
+import { demoListingSellerName } from '@/lib/products/demo-seller-aliases';
 
 export interface SellerProfile {
   id: string;
@@ -290,6 +291,16 @@ function parseNumber(value: unknown): number | null {
   return null;
 }
 
+function applyDemoListingSellerName(product: ProductWithRelations): void {
+  const alias = demoListingSellerName(product.id);
+  if (!alias || !product.seller) return;
+  product.seller = {
+    ...product.seller,
+    fullName: alias,
+    name: alias,
+  };
+}
+
 function mapSeller(row: any | null): SellerProfile | null {
   if (!row) return null;
 
@@ -335,7 +346,7 @@ export function mapProduct(row: SupabaseProductRow): ProductWithRelations {
       ? Number(row.original_price)
       : undefined;
 
-  return {
+  const mapped: ProductWithRelations = {
     id: row.id,
     title: row.title,
     description: row.description,
@@ -363,6 +374,9 @@ export function mapProduct(row: SupabaseProductRow): ProductWithRelations {
     category: mapCategory(row.category ?? null),
     originalPrice,
   };
+
+  applyDemoListingSellerName(mapped);
+  return mapped;
 }
 
 async function getSupabase() {
@@ -583,6 +597,9 @@ async function hydrateSellerContext(products: ProductWithRelations[]): Promise<v
 
   await hydrateSellerProfiles(products);
   await hydrateSellerStoreFallback(products);
+  for (const product of products) {
+    applyDemoListingSellerName(product);
+  }
 }
 
 function buildProductsQuery(supabase: any, filters: ProductFilters = {}, options: { withCount?: boolean } = {}) {
