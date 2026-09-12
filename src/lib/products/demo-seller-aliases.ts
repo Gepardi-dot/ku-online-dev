@@ -54,7 +54,21 @@ function sellerNameFromId(productId: string): string {
   return KURDISH_SELLER_NAMES[index];
 }
 
-export function demoListingSellerName(productId: string | null | undefined): string | null {
+function isGepardiDisplayName(name: string | null | undefined): boolean {
+  const normalized = (name ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  return normalized === 'gepardi ari' || normalized === 'ari gepardi';
+}
+
+export function demoListingSellerName(
+  productId: string | null | undefined,
+  currentName?: string | null,
+): string | null {
   if (!productId) return null;
-  return DEMO_LISTING_SELLER_NAMES[productId] ?? sellerNameFromId(productId);
+  if (DEMO_LISTING_SELLER_NAMES[productId]) {
+    return DEMO_LISTING_SELLER_NAMES[productId];
+  }
+  if (isGepardiDisplayName(currentName)) {
+    return sellerNameFromId(productId);
+  }
+  return null;
 }

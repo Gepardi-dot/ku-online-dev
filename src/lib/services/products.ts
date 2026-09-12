@@ -292,7 +292,10 @@ function parseNumber(value: unknown): number | null {
 }
 
 function applyDemoListingSellerName(product: ProductWithRelations): void {
-  const alias = demoListingSellerName(product.id);
+  const alias = demoListingSellerName(
+    product.id,
+    product.seller?.fullName ?? product.seller?.name ?? null,
+  );
   if (!alias || !product.seller) return;
   product.seller = {
     ...product.seller,

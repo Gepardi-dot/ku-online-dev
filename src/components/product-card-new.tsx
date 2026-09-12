@@ -104,7 +104,7 @@ const ProductCard = memo(function ProductCardImpl({
 
   const sellerNameFromStore = (product.sellerStoreName ?? '').trim();
   const sellerNameFromProfile = (
-    demoListingSellerName(product.id) ||
+    demoListingSellerName(product.id, product.seller?.fullName ?? product.seller?.name) ||
     product.seller?.fullName ||
     product.seller?.name ||
     product.seller?.email ||
