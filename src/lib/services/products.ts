@@ -14,6 +14,7 @@ import {
   type PropertyRentalTerm,
 } from '@/lib/products/property-listing';
 import { demoListingSellerName } from '@/lib/products/demo-seller-aliases';
+import { rankSponsoredFeed } from '@/lib/products/sponsored-feed';
 
 export interface SellerProfile {
   id: string;
@@ -69,6 +70,7 @@ export interface ProductWithRelations {
   updatedAt: Date | null;
   seller: SellerProfile | null;
   sellerStoreName?: string | null;
+  sponsorStoreId?: string | null;
   category?: MarketplaceCategory | null;
   originalPrice?: number;
 }
@@ -153,6 +155,8 @@ export type SupabaseProductRow = {
   is_active: boolean | null;
   is_sold: boolean | null;
   is_promoted: boolean | null;
+  is_sponsored?: boolean | null;
+  sponsor_store_id?: string | null;
   views: number | string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -251,20 +255,28 @@ async function hydrateAlgoliaProductImages(products: ProductWithRelations[]): Pr
   try {
     const client = await getSupabase();
     const ids = products.map((product) => product.id);
-    const { data, error } = await client.from('products').select('id, images').in('id', ids);
+    const { data, error } = await client.from('products').select('id, images, sponsor_store_id').in('id', ids);
     if (error) {
       console.error('Failed to refresh search result images', error);
     } else {
       const imagesById = new Map<string, string[]>();
+      const sponsorById = new Map<string, string | null>();
       for (const row of data ?? []) {
         if (row?.id) {
           imagesById.set(row.id, normalizeImages(row.images));
+          sponsorById.set(
+            row.id,
+            typeof row.sponsor_store_id === 'string' ? row.sponsor_store_id : null,
+          );
         }
       }
       for (const product of products) {
         const paths = imagesById.get(product.id);
         if (paths && paths.length > 0) {
           product.imagePaths = paths;
+        }
+        if (sponsorById.has(product.id)) {
+          product.sponsorStoreId = sponsorById.get(product.id) ?? null;
         }
       }
     }
@@ -369,6 +381,7 @@ export function mapProduct(row: SupabaseProductRow): ProductWithRelations {
     isActive: row.is_active ?? true,
     isSold: row.is_sold ?? false,
     isPromoted: row.is_promoted ?? false,
+    sponsorStoreId: typeof row.sponsor_store_id === 'string' ? row.sponsor_store_id : null,
     views: typeof row.views === "number" ? row.views : row.views ? Number(row.views) : 0,
     createdAt: toDate(row.created_at),
     updatedAt: toDate(row.updated_at),
@@ -681,6 +694,7 @@ function buildProductsQuery(supabase: any, filters: ProductFilters = {}, options
 }
 
 function applyProductsSort(query: any, sort: ProductSort) {
+  query = query.order('sponsor_store_id', { ascending: false, nullsLast: true });
   query = query.order('is_promoted', { ascending: false, nullsLast: true });
   switch (sort) {
     case 'price_asc':
@@ -748,6 +762,8 @@ type AlgoliaSearchHit = {
   is_active?: boolean | null;
   is_sold?: boolean | null;
   is_promoted?: boolean | null;
+  is_sponsored?: boolean | null;
+  sponsor_store_id?: string | null;
   views?: number | string | null;
   created_at?: string | null;
   created_at_ts?: number | null;
@@ -929,6 +945,7 @@ function mapProductFromAlgolia(hit: AlgoliaSearchHit): ProductWithRelations | nu
     isActive: typeof hit.is_active === 'boolean' ? hit.is_active : true,
     isSold: typeof hit.is_sold === 'boolean' ? hit.is_sold : false,
     isPromoted: typeof hit.is_promoted === 'boolean' ? hit.is_promoted : false,
+    sponsorStoreId: typeof hit.sponsor_store_id === 'string' ? hit.sponsor_store_id : null,
     views: parseNumber(hit.views) ?? 0,
     createdAt: toDate(hit.created_at ?? null),
     updatedAt: toDate(hit.updated_at ?? null),
@@ -1021,6 +1038,8 @@ async function searchProductsViaAlgolia(
         'is_active',
         'is_sold',
         'is_promoted',
+        'is_sponsored',
+        'sponsor_store_id',
         'views',
         'created_at',
         'created_at_ts',
@@ -1036,7 +1055,7 @@ async function searchProductsViaAlgolia(
       searchParams.numericFilters = numericFilters;
     }
 
-    searchParams.optionalFilters = ['is_promoted:true'];
+    searchParams.optionalFilters = ['is_sponsored:true<score=3>', 'is_promoted:true<score=1>'];
 
     const result = await client.searchSingleIndex<AlgoliaSearchHit>({
       indexName,
@@ -1094,6 +1113,7 @@ export async function searchProducts(
     if (algoliaResult.items.length > 0) {
       await hydrateSellerContext(algoliaResult.items);
       await hydrateAlgoliaProductImages(algoliaResult.items);
+      algoliaResult.items = rankSponsoredFeed(algoliaResult.items, sort);
     }
     return algoliaResult;
   }
@@ -1109,6 +1129,39 @@ export async function searchProducts(
     offset,
     sort,
   );
+}
+
+async function withSponsoredLead(
+  supabase: Awaited<ReturnType<typeof getSupabase>>,
+  filters: ProductFilters,
+  items: ProductWithRelations[],
+  limit: number,
+  offset: number,
+  sort: ProductSort,
+): Promise<ProductWithRelations[]> {
+  if (offset !== 0 || filters.sponsorStoreId || limit <= 0 || items.length < limit) {
+    return rankSponsoredFeed(items, sort);
+  }
+
+  let query = buildProductsQuery(supabase, filters, { withCount: false });
+  query = query.not('sponsor_store_id', 'is', null);
+  query = applyProductsSort(query, sort);
+  const { data, error } = await query.range(0, limit - 1);
+  if (error) {
+    console.error('Failed to load sponsored listings', error);
+    return rankSponsoredFeed(items, sort);
+  }
+
+  const sponsored = ((data ?? []) as SupabaseProductRow[]).map((row) => mapProduct(row));
+  if (sponsored.length === 0) {
+    return rankSponsoredFeed(items, sort);
+  }
+
+  await hydrateSellerContext(sponsored);
+  hydrateProductPublicImages(sponsored);
+  const sponsoredIds = new Set(sponsored.map((item) => item.id));
+  const rest = items.filter((item) => !sponsoredIds.has(item.id));
+  return rankSponsoredFeed([...sponsored, ...rest], sort).slice(0, limit);
 }
 
 export async function getProducts(
@@ -1134,7 +1187,7 @@ export async function getProducts(
   const products = rows.map((row) => mapProduct(row));
   await hydrateSellerContext(products);
   hydrateProductPublicImages(products);
-  return products;
+  return withSponsoredLead(supabase, filters, products, limit, offset, sort);
 }
 
 export async function getProductsWithCount(
@@ -1161,7 +1214,7 @@ export async function getProductsWithCount(
   await hydrateSellerContext(items);
   hydrateProductPublicImages(items);
   return {
-    items,
+    items: await withSponsoredLead(supabase, filters, items, limit, offset, sort),
     count: count ?? 0,
   };
 }

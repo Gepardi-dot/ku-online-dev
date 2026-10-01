@@ -14,6 +14,7 @@ import { rtlLocales } from '@/lib/locale/dictionary';
 import { CurrencyText } from '@/components/currency-text';
 import { isPropertyCategory, normalizeProductListingType } from '@/lib/products/property-listing';
 import { demoListingSellerName } from '@/lib/products/demo-seller-aliases';
+import { SponsoredBadge } from '@/components/sponsors/SponsoredBadge';
 
 interface ProductCardProps {
   product: ProductWithRelations;
@@ -159,10 +160,11 @@ const ProductCard = memo(function ProductCardImpl({
         ? 'text-[0.9rem] sm:text-[0.95rem] leading-tight'
         : 'text-[0.95rem] sm:text-base leading-tight';
   const shouldPrioritizeImage = imagePriority && interactive;
+  const isSponsored = Boolean(product.sponsorStoreId);
 
   const cardContent = (
     <>
-      <Card className="flex h-full flex-col overflow-hidden transition-all duration-300 group-hover:shadow-lg">
+      <Card className={`flex h-full flex-col overflow-hidden transition-all duration-300 group-hover:shadow-lg ${isSponsored ? 'ring-2 ring-[#C62828]/75' : ''}`}>
         {/* Responsive image container:
             - Mobile: height scales with viewport width using clamp for regular/pro/plus sizes
             - Desktop: fixed pleasing card ratio via aspect-ratio */}
@@ -198,7 +200,13 @@ const ProductCard = memo(function ProductCardImpl({
           >
             <FavoriteToggle productId={product.id} userId={viewerId} size="sm" />
           </div>
-        <div className="absolute top-2 left-2">
+        <div className="absolute top-2 left-2 flex max-w-[calc(100%-2.75rem)] flex-col items-start gap-1">
+          {isSponsored ? (
+            <SponsoredBadge
+              label={t('sponsorsHub.sponsoredBadge')}
+              className="px-2 py-0.5 text-[10px] leading-none shadow-[0_6px_12px_rgba(98,20,20,0.28)]"
+            />
+          ) : null}
           <Badge className={`text-white ${badgeClassName}`}>
             {propertyBadgeLabel}
           </Badge>

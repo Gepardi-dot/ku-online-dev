@@ -39,11 +39,13 @@ export type AlgoliaProductRow = {
   color_token?: string | null;
   category_id: string | null;
   seller_id: string | null;
+  sponsor_store_id?: string | null;
   location: string | null;
   images: string[] | null;
   is_active: boolean | null;
   is_sold: boolean | null;
   is_promoted: boolean | null;
+  is_sponsored?: boolean | null;
   views: number | string | null;
   created_at: string | null;
   expires_at?: string | null;
@@ -82,6 +84,8 @@ type AlgoliaProductRecord = {
   seller_email: string | null;
   seller_avatar: string | null;
   seller_is_verified: boolean;
+  sponsor_store_id: string | null;
+  is_sponsored: boolean;
   location: string | null;
   location_normalized: string | null;
   images: string[];
@@ -260,6 +264,7 @@ export async function fetchAlgoliaProductRow(
         color_token,
         category_id,
         seller_id,
+        sponsor_store_id,
         location,
         images,
         is_active,
@@ -344,6 +349,8 @@ function toAlgoliaProductRecord(row: AlgoliaProductRow): AlgoliaProductRecord {
     seller_email: seller?.email ?? null,
     seller_avatar: seller?.avatar_url ?? null,
     seller_is_verified: Boolean(seller?.is_verified),
+    sponsor_store_id: row.sponsor_store_id ?? null,
+    is_sponsored: Boolean(row.sponsor_store_id),
     location: row.location ?? null,
     location_normalized: normalizeLocation(row.location),
     images: imagePaths,

@@ -33,6 +33,7 @@ import RemoveListingButton from '@/components/product/RemoveListingButton';
 import { CurrencyText } from '@/components/currency-text';
 import { getNumberLocale } from '@/lib/locale/formatting';
 import { isPropertyCategory, normalizeProductListingType } from '@/lib/products/property-listing';
+import { SponsoredBadge } from '@/components/sponsors/SponsoredBadge';
 
 const placeholderReviews = [
   {
@@ -372,6 +373,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 <div>
                   <h1 dir="auto" className="text-2xl font-bold bidi-auto">{localizedTitle}</h1>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
+                    {product.sponsorStoreId ? (
+                      <SponsoredBadge label={t('sponsorsHub.sponsoredBadge')} className="px-2.5 py-0.5 text-[11px]" />
+                    ) : null}
                     {isPropertyListing ? (
                       <>
                         <Badge className={normalizedListingType === 'rent' ? 'bg-sky-600 text-white' : 'bg-emerald-600 text-white'}>
