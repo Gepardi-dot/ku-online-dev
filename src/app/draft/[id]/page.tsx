@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
+import { createClient as createSupabaseServiceRole } from '@supabase/supabase-js';
 
 import AppLayout from '@/components/layout/app-layout';
+import { isModerator } from '@/lib/auth/roles';
+import { getEnv } from '@/lib/env';
 import { canAccessCollabDraft, canPublishCollabDraft } from '@/lib/products/collab-draft';
 import { getProductById } from '@/lib/services/products';
 import { createClient } from '@/utils/supabase/server';
@@ -42,6 +45,24 @@ export default async function CollabDraftPage({ params }: PageProps) {
     redirect(`/product/${id}`);
   }
 
+  let storeName: string | null = null;
+  if (isModerator(user)) {
+    const env = getEnv();
+    if (env.NEXT_PUBLIC_SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY) {
+      const admin = createSupabaseServiceRole(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { data } = await admin
+        .from('products')
+        .select('store:sponsor_stores!products_sponsor_store_id_fkey(name)')
+        .eq('id', id)
+        .maybeSingle();
+      const store = data?.store as { name?: string | null } | { name?: string | null }[] | null | undefined;
+      const storeRow = Array.isArray(store) ? store[0] : store;
+      storeName = storeRow?.name?.trim() || null;
+    }
+  }
+
   const initial = {
     title: product.title,
     description: product.description ?? '',
@@ -66,6 +87,7 @@ export default async function CollabDraftPage({ params }: PageProps) {
           mode="draft"
           canPublish={canPublishCollabDraft(user)}
           sellerName={product.seller?.fullName || product.seller?.name || product.seller?.email || null}
+          storeName={storeName}
         />
       </div>
     </AppLayout>
