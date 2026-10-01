@@ -68,6 +68,7 @@ type EditProductFormProps = {
   mode?: 'public' | 'draft';
   canPublish?: boolean;
   sellerName?: string | null;
+  storeName?: string | null;
 };
 
 export default function EditProductForm({
@@ -76,6 +77,7 @@ export default function EditProductForm({
   mode = 'public',
   canPublish = false,
   sellerName = null,
+  storeName = null,
 }: EditProductFormProps) {
   const { t, messages, locale } = useLocale();
   const direction = rtlLocales.includes(locale) ? 'rtl' : 'ltr';
@@ -686,6 +688,7 @@ export default function EditProductForm({
             {isDraftMode ? (
               <p className="pt-2 text-sm text-muted-foreground">
                 {t('collabDraft.pageHelp')}
+                {storeName ? ` ${t('collabDraft.storeLabel')}: ${storeName}.` : ''}
                 {sellerName ? ` ${t('collabDraft.sellerLabel')}: ${sellerName}` : ''}
               </p>
             ) : null}

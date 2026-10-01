@@ -94,7 +94,7 @@ export const POST = withSentryRoute(async (request: NextRequest, context: { para
   const { data: product, error: loadError } = await supabaseServiceRole
     .from('products')
     .select(
-      'id, title, description, price, currency, condition, listing_type, rental_term, location, category_id, seller_id, images, is_active, is_sold',
+      'id, title, description, price, currency, condition, listing_type, rental_term, location, category_id, seller_id, sponsor_store_id, images, is_active, is_sold',
     )
     .eq('id', productId)
     .maybeSingle();
@@ -167,6 +167,17 @@ export const POST = withSentryRoute(async (request: NextRequest, context: { para
   revalidatePath(`/product/${productId}`);
   if (product.seller_id) {
     revalidatePath(`/seller/${product.seller_id}`);
+  }
+  if (product.sponsor_store_id) {
+    const { data: store } = await supabaseServiceRole
+      .from('sponsor_stores')
+      .select('slug')
+      .eq('id', product.sponsor_store_id)
+      .maybeSingle();
+    revalidatePath('/sponsors');
+    if (store?.slug) {
+      revalidatePath(`/sponsors/stores/${store.slug}`);
+    }
   }
 
   return NextResponse.json({

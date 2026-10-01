@@ -8,6 +8,7 @@ import { isModerator } from '@/lib/auth/roles';
 import { getServerLocale, serverTranslate } from '@/lib/locale/server';
 import { createClient } from '@/utils/supabase/server';
 import AdminDraftsPanel from './admin-drafts-panel';
+import AdminSponsorDraftsPanel from './admin-sponsor-drafts-panel';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,14 @@ export default async function AdminDraftsPage() {
           </CardHeader>
           <CardContent>
             <AdminDraftsPanel />
+          </CardContent>
+        </Card>
+        <Card className="rounded-[24px] border border-white/60 bg-linear-to-br from-white/78 via-white/68 to-white/45 shadow-[0_16px_48px_rgba(15,23,42,0.12)] ring-1 ring-white/40">
+          <CardHeader>
+            <CardTitle className="text-2xl font-extrabold text-[#111827]">{t('collabDraft.sponsorTitle')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AdminSponsorDraftsPanel />
           </CardContent>
         </Card>
       </div>
